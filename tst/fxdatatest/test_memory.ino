@@ -309,6 +309,17 @@ __attribute__((noinline)) void runRepresentativePath() {
             state.activeJob.crates = game::kJobCrates;
             cargo_handoff::commit(state, cargo);
         }
+
+#if SH_FEATURE_MULTI_HULL
+        // M8 holds: load and draw every class hold. Reuses the same local
+        // state, so the probe charges no extra persistent byte.
+        for (uint8_t hull = 0; hull < cargo::HULL_COUNT; ++hull) {
+            if (!cargo_screen::load(cargo, reader, hull, 0))
+                continue;
+            cargo_view::draw(cargo.puzzle, cargo.selected, cargo.message);
+            FX::display(CLEAR_BUFFER);
+        }
+#endif
     }
 #endif
 }

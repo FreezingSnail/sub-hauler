@@ -245,6 +245,103 @@ inline void CargoScreenSuite(TestRunner &runner) {
         test.assertEqual(state.selected, 1, "selection is stable while holding");
         runner.add(test);
     }
+
+    {
+        Test test("each hull loads its own scale and arrangement record");
+        cargo_test::FakeBank bank;
+        cargo_test::loadAllHulls(bank);
+
+#if SH_FEATURE_MULTI_HULL
+        const uint8_t hulls[3] = {cargo::HULL_MINNOW, cargo::HULL_HAULER, cargo::HULL_LEVIATHAN};
+        const uint8_t hullCount = 3;
+#else
+        const uint8_t hulls[1] = {cargo::HULL_HAULER};
+        const uint8_t hullCount = 1;
+#endif
+        for (uint8_t i = 0; i < hullCount; ++i) {
+            const cargo::HullSpec &spec = cargo::HULLS[hulls[i]];
+            cargo_screen::State state;
+            test.assertTrue(cargo_screen::load(state, bank, hulls[i], 0), "explicit hull arrangement loads");
+            test.assertEqual(state.hull, hulls[i], "state keeps the requested hull");
+            test.assertEqual(state.arrangement, 0, "state keeps the arrangement");
+            test.assertEqual(state.puzzle.cols, spec.cols, "hold columns follow the class");
+            test.assertEqual(state.puzzle.rows, spec.rows, "hold rows follow the class");
+            test.assertEqual(state.puzzle.pieceCount, spec.pieces, "piece count follows the class");
+            test.assertEqual(state.puzzle.requiredTotal, spec.required, "required target follows the class");
+            test.assertEqual(state.puzzle.bonusTotal, spec.bonus, "bonus target follows the class");
+            test.assertEqual(state.puzzle.load, spec.load, "load target follows the class");
+            test.assertTrue(state.puzzle.hold == spec.hold, "blocked-cell mask follows the class");
+            test.assertTrue(cargo_test::solveRequired(state.puzzle), "class target arrangement solves");
+            test.assertTrue(cargo::requiredComplete(state.puzzle), "class required load completes");
+        }
+        runner.add(test);
+    }
+
+    {
+        Test test("roster selection maps to a hull and survives a reopen");
+        cargo_test::FakeBank bank;
+        cargo_test::loadAllHulls(bank);
+
+        const uint8_t rosterClasses[3] = {0, 1, 2};   // MINNOW, HAULER, LEVIATHAN
+        for (uint8_t i = 0; i < 3; ++i) {
+            const uint8_t selected = cargo_screen::hullForClass(rosterClasses[i]);
+#if SH_FEATURE_MULTI_HULL
+            test.assertEqual(selected, rosterClasses[i], "multi-hull selection maps in roster order");
+#else
+            test.assertEqual(selected, cargo::HULL_HAULER, "single-hull selection folds to HAULER");
+#endif
+            cargo_screen::State state;
+            test.assertTrue(cargo_screen::load(state, bank, selected, 0), "selected class opens");
+            const uint8_t openedHull = state.hull;
+            const uint8_t openedCols = state.puzzle.cols;
+
+            // The commit clears the loading flag; the next LOAD CARGO derives
+            // the class again from the run state and must reopen the same hold.
+            state.loaded = false;
+            test.assertTrue(cargo_screen::load(state, bank, cargo_screen::hullForClass(rosterClasses[i]), 0),
+                            "selected class reopens");
+            test.assertEqual(state.hull, openedHull, "reopen keeps the class");
+            test.assertEqual(state.puzzle.cols, openedCols, "reopen keeps the hold scale");
+            test.assertEqual(state.arrangement, 0, "reopen keeps the arrangement");
+        }
+        test.assertEqual(cargo_screen::hullForClass(7), cargo::HULL_HAULER, "invalid class byte falls back to HAULER");
+        runner.add(test);
+    }
+
+    {
+        Test test("blocked structural cells reject every class hold");
+        cargo_test::FakeBank bank;
+        cargo_test::loadAllHulls(bank);
+#if SH_FEATURE_MULTI_HULL
+        const uint8_t hulls[3] = {cargo::HULL_MINNOW, cargo::HULL_HAULER, cargo::HULL_LEVIATHAN};
+        const uint8_t hullCount = 3;
+#else
+        const uint8_t hulls[1] = {cargo::HULL_HAULER};
+        const uint8_t hullCount = 1;
+#endif
+        for (uint8_t i = 0; i < hullCount; ++i) {
+            cargo_screen::State state;
+            test.assertTrue(cargo_screen::load(state, bank, hulls[i], 0), "class hold loads");
+            for (uint8_t row = 0; row < state.puzzle.rows; ++row) {
+                for (uint8_t col = 0; col < state.puzzle.cols; ++col) {
+                    if (cargo::inHold(state.puzzle, col, row))
+                        continue;
+                    test.assertTrue(!cargo::inHold(state.puzzle, col, row), "cleared hold bit is structural");
+                    cargo::CargoPuzzle probe = state.puzzle;
+                    probe.pieceCount = 1;
+                    probe.grid = 0;
+                    probe.held = -1;
+                    probe.pieces[0].mask = 0x0001;
+                    probe.pieces[0].x = col;
+                    probe.pieces[0].y = row;
+                    probe.pieces[0].flags = 0;
+                    test.assertTrue(!cargo::place(probe, 0, col, row), "blocked cell cannot be occupied");
+                    test.assertEqual(probe.grid, 0, "refused placement leaves the grid empty");
+                }
+            }
+        }
+        runner.add(test);
+    }
 }
 
 #endif   // SH_FEATURE_CARGO_LOAD

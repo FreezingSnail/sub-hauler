@@ -444,8 +444,9 @@ suites print `P`. No screenshot or frame-rate claim.
 ### M8 roster checkpoint — 2026-10-23
 
 `sub-hauler-m8-roster` adds the boot title selection and the three class pilot
-silhouettes. Holds, cargo scales, and per-class arrangements remain the
-`m8-holds` task; the cargo screen still loads HAULER arrangement 0.
+silhouettes. Holds, cargo scales, and per-class arrangements remained the
+`m8-holds` task (see the holds checkpoint above); at this checkpoint the cargo
+screen still loaded HAULER arrangement 0.
 
 - **Roster record** lives in `src/roster.hpp` as pure ids and constexpr
   helpers: MINNOW 64x16 / 24x7 pilot, HAULER 94x22 / 26x8 pilot, LEVIATHAN
@@ -493,6 +494,60 @@ device suite (`test_boot`, `test_cargo`, `test_memory`, `test_world`) prints
 silhouette through the measured pilot frames; with `SH_STACK_DIAG=1` it reports
 **`stack_reserve=601`**, passing the unchanged **600 B** target with a 1 B
 margin. No screenshot or frame-rate claim.
+
+### M8 holds checkpoint — 2026-10-23
+
+`sub-hauler-m8-holds` completes the class cargo experience. The boot roster
+choice now drives the cargo screen, the hold scale, and the arrangement record
+the player packs.
+
+- **Holds:** MINNOW is 6x3 at 7 px cells, HAULER 11x3 at 6 px, LEVIATHAN 14x4
+  at 5 px. A generic cutaway centres each hold at x=64/y=28, so all three fit
+  the 128x64 shell without scrolling. Cell scale is the class distinction; the
+  bow cabin, engine room, ballast tanks, and hatch posts derive from the hold
+  rectangle.
+- **Blocked cells:** the view treats every cleared bit of the loaded
+  `puzzle.hold` as structural. Full blocked columns draw as a double bulkhead;
+  isolated blocks draw as an X hatch. `cargo::canPlace` and the arrangement
+  loader both reject cells outside the hold, and host tests probe every blocked
+  cell for every class.
+- **Load path:** `cargo_screen::load(state, reader, hullId, arrangement)` sets
+  `State.hull`, `State.arrangement`, and the puzzle cols/rows/pieces/required/
+  bonus/load/hold from the generated spec. The HAULER arrangement-0 overload is
+  retained for tests. `hullForClass()` maps `game::State.hullClass` to the cargo
+  id; `enterCargo()` uses it, so reopening LOAD CARGO selects the same class.
+- **Rendering:** installed crates, the held cue, and the selection cue scale
+  with the cell; the tray keeps eight 8x8 slots and previews every unplaced
+  piece. The class name is a gated `F()` string (`HAULER` only when
+  `MULTI_HULL=0`). Header/counters/load/feedback/prompt slots are unchanged;
+  the widest name (`LEVIATHAN`) and `R 0/6 B 0/2` still fit.
+- **Records:** the existing 64 arrangements per hull are sufficient; no
+  generator or FX table change was needed. Host tests solve the target
+  arrangement for each class and the device fixture loads all three class
+  records. `make gen-check` is deterministic.
+- **`MULTI_HULL=0`:** the loader folds to HAULER arrangement 0, `cellFor()`
+  folds to 6 px, `hullForClass()` to HAULER, and the view links only the
+  HAULER name. The runtime `HULLS` table would have cost 54 B of AVR `.data`,
+  so the device loader reads folded scalar accessors (`hullCols`, `hullRows`,
+  `hullHold`, ...); the table remains the canonical host-test record. The A/B
+  binary contains no `MINNOW`/`LEVIATHAN` strings.
+
+Budget: `sizeof(cargo::CargoPuzzle)` is **83 B** and
+`sizeof(cargo_screen::State)` is **88 B** on AVR. The full image is
+**28,810 B flash / 1,689 B static**, so the holds cost **+848 B flash / +0 B
+static** against the M8 roster checkpoint. A full build with only
+`MULTI_HULL=0` measures **26,914 B / 1,688 B** (the accessor rework also trims
+**128 B** from the previous HAULER-only image), making the full `MULTI_HULL`
+A/B **+1,896 B flash / +1 B static**. `lean` measures **25,874 B / 1,679 B**,
+`core` **22,242 B / 1,420 B**, and `min` **10,568 B / 1,259 B**. Static stays
+11 B under the 1,700 B ceiling; flash is 190 B under the 29,000 B planning
+ceiling and 886 B under hardware.
+
+Host tests: **152** full, **119** lean, **95** core, **44** min;
+`make test-tools` passes **75**. All four device suites print `P`. The memory
+probe now loads and draws all three class holds; with `SH_STACK_DIAG=1` it
+reports **`stack_reserve=619`**, passing the 600 B target with 19 B of margin.
+No screenshot or frame-rate claim.
 
 ### Harness sentinel proof — 2026-10-22
 
@@ -975,6 +1030,7 @@ deltas against the same profile with the feature disabled.
 | hull damage | +464 | +2 | 2026-10-23 | 16 px/s wall threshold, 24-tick cooldown, 12-tick edge flash, zero-hull valid, repair clamp; A/B with particles off; +2 B is the hull byte plus the cooldown |
 | particles | +398 | +16 | 2026-10-23 | fixed 4-slot pool (3 B/slot + 4 B anchor), deterministic corner spawn, 1 px/tick, ±24 px clamp, 14-tick max life; A/B with hull damage on |
 | multi-hull | +920 | +1 | 2026-10-23 | boot title with left/right selection, A confirm, B back-to-default; MINNOW/HAULER/LEVIATHAN 24-26 px pilot art, hull-class byte; full A/B (`MULTI_HULL=0` 27,042 B / 1,688 B); `sizeof(game::State)` 92 B; title/class strings and art compile out; linked binary clean |
+| cargo holds (M8) | +848 | +0 | 2026-10-23 | class holds MINNOW 6x3/7 px, HAULER 11x3/6 px, LEVIATHAN 14x4/5 px; dynamic cutaway, blocked-cell masks from `puzzle.hold`, selected-class load and reopen; full A/B vs M8 roster; `MULTI_HULL=0` full 26,914 B / 1,688 B; `sizeof(cargo::CargoPuzzle)` 83 B, `sizeof(cargo_screen::State)` 88 B; no generator change |
 
 The mine and current A/B deltas share 8 B of LTO folding: both enabled is
 +1,574 B, not +1,582 B. The chart `initialised` carve (-1 B) offsets the mine
@@ -999,6 +1055,7 @@ Record the profile matrix separately:
 | 2026-10-23 | M7 damage/particles | 26,088 | 1,697 | `test_memory` P (chart + sonar + mine + current + damage/particle path, 616 B under 600 B target) | full; lean 24,096/1,680; core 22,394/1,421; min 10,586/1,259; ceiling raised to 1,700 B with 3 B headroom |
 | 2026-10-23 | M7 shop | 27,082 | 1,690 | `test_memory` P (chart + sonar + mine + current + damage/particle + shop path, 606 B under 600 B target) | full; SHOP=0 full 26,088/1,697; lean 24,096/1,680; core 22,394/1,421; min 10,586/1,259; flash ceiling raised to 28,000 B |
 | 2026-10-23 | M8 roster | 27,962 | 1,689 | `test_memory` P (chart + sonar + mine + current + damage/particle + shop + title/all-hull art path, 601 B under 600 B target) | full; `MULTI_HULL=0` full 27,042/1,688; lean 24,962/1,679; core 22,368/1,420; min 10,568/1,259; `sizeof(game::State)` 92 B; flash ceiling raised to 29,000 B with 696 B hardware headroom; static 11 B under 1,700 B |
+| 2026-10-23 | M8 holds | 28,810 | 1,689 | `test_memory` P (chart + sonar + mine + current + damage/particle + shop + title + all three class cargo holds, 619 B under 600 B target) | full; `MULTI_HULL=0` full 26,914/1,688; lean 25,874/1,679; core 22,242/1,420; min 10,568/1,259; `sizeof(cargo::CargoPuzzle)` 83 B, `sizeof(cargo_screen::State)` 88 B; flash 190 B under 29,000 B ceiling; static 11 B under 1,700 B |
 
 ## Verification gates
 

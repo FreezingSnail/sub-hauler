@@ -2,8 +2,10 @@
 //
 // Reads HAULER arrangement 0 through cargo::FxCargoReader in setup, outside
 // every FX::display transaction, then checks the known mask, bbox, target
-// position, bonus flag, and hold geometry. Prints exactly one bare P/F marker
-// for the Ardens serial harness. No cargo UI is drawn.
+// position, bonus flag, and hold geometry. The M8 holds task then loads each
+// class record and checks its hold scale, open floor, and a blocked cell.
+// Prints exactly one bare P/F marker for the Ardens serial harness. No cargo
+// UI is drawn.
 #include <Arduboy2.h>
 #include <ArduboyFX.h>
 
@@ -62,6 +64,39 @@ void setup() {
 
     ok = ok && !cargo::requiredComplete(puzzle);
     ok = ok && !cargo::allComplete(puzzle);
+
+    // All three M8 class records: dimensions and hold structure match the
+    // generated class contract. The bottom row is open at column 1 in every
+    // hold; the top-right cell is structural in every hold.
+    const uint8_t hullIds[3] = {cargo::HULL_MINNOW, cargo::HULL_HAULER, cargo::HULL_LEVIATHAN};
+    const uint8_t hullCols[3] = {CARGO_MINNOW_COLS, CARGO_HAULER_COLS, CARGO_LEVIATHAN_COLS};
+    const uint8_t hullRows[3] = {CARGO_MINNOW_ROWS, CARGO_HAULER_ROWS, CARGO_LEVIATHAN_ROWS};
+    const uint8_t hullPieces[3] = {CARGO_MINNOW_PIECES, CARGO_HAULER_PIECES, CARGO_LEVIATHAN_PIECES};
+    const uint8_t hullLoads[3] = {CARGO_MINNOW_LOAD, CARGO_HAULER_LOAD, CARGO_LEVIATHAN_LOAD};
+
+    for (uint8_t i = 0; i < 3; ++i) {
+        cargo::CargoPuzzle classPuzzle{};
+        ok = ok && cargo::loadArrangement(classPuzzle, reader, hullIds[i], 0);
+        ok = ok && classPuzzle.cols == hullCols[i];
+        ok = ok && classPuzzle.rows == hullRows[i];
+        ok = ok && classPuzzle.pieceCount == hullPieces[i];
+        ok = ok && classPuzzle.load == hullLoads[i];
+        ok = ok && classPuzzle.hold == cargo::HULLS[hullIds[i]].hold;
+        ok = ok && classPuzzle.held == -1;
+
+        ok = ok && cargo::inHold(classPuzzle, 1, static_cast<uint8_t>(hullRows[i] - 1));
+        ok = ok && !cargo::inHold(classPuzzle, static_cast<uint8_t>(hullCols[i] - 1), 0);
+
+        cargo::CargoPuzzle probe = classPuzzle;
+        probe.pieceCount = 1;
+        probe.grid = 0;
+        probe.held = -1;
+        probe.pieces[0].mask = 0x0001;
+        probe.pieces[0].x = static_cast<uint8_t>(hullCols[i] - 1);
+        probe.pieces[0].y = 0;
+        probe.pieces[0].flags = 0;
+        ok = ok && !cargo::canPlace(probe, 0, probe.pieces[0].x, 0);
+    }
 
     Serial.println(ok ? F("P") : F("F"));
 }

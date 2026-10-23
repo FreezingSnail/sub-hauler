@@ -251,6 +251,38 @@ inline bool hullSpec(uint8_t hullId, HullSpec &out) {
     return true;
 }
 
+// Scalar accessors for the device loader. A runtime index into HULLS would put
+// the whole 54-byte table in AVR .data (the Harvard ABI copies const arrays);
+// these ternaries fold to immediates instead. HULLS stays the canonical table
+// for host tests and hullSpec().
+constexpr uint16_t hullOffset(uint8_t hullId) {
+    return hullId == HULL_MINNOW ? CARGO_MINNOW_OFFSET
+                                 : hullId == HULL_LEVIATHAN ? CARGO_LEVIATHAN_OFFSET : CARGO_HAULER_OFFSET;
+}
+constexpr uint8_t hullPieces(uint8_t hullId) {
+    return hullId == HULL_MINNOW ? CARGO_MINNOW_PIECES
+                                 : hullId == HULL_LEVIATHAN ? CARGO_LEVIATHAN_PIECES : CARGO_HAULER_PIECES;
+}
+constexpr uint8_t hullRequired(uint8_t hullId) {
+    return hullId == HULL_MINNOW ? CARGO_MINNOW_REQUIRED
+                                 : hullId == HULL_LEVIATHAN ? CARGO_LEVIATHAN_REQUIRED : CARGO_HAULER_REQUIRED;
+}
+constexpr uint8_t hullCols(uint8_t hullId) {
+    return hullId == HULL_MINNOW ? CARGO_MINNOW_COLS
+                                 : hullId == HULL_LEVIATHAN ? CARGO_LEVIATHAN_COLS : CARGO_HAULER_COLS;
+}
+constexpr uint8_t hullRows(uint8_t hullId) {
+    return hullId == HULL_MINNOW ? CARGO_MINNOW_ROWS
+                                 : hullId == HULL_LEVIATHAN ? CARGO_LEVIATHAN_ROWS : CARGO_HAULER_ROWS;
+}
+constexpr uint8_t hullLoad(uint8_t hullId) {
+    return hullId == HULL_MINNOW ? CARGO_MINNOW_LOAD
+                                 : hullId == HULL_LEVIATHAN ? CARGO_LEVIATHAN_LOAD : CARGO_HAULER_LOAD;
+}
+constexpr uint64_t hullBlocked(uint8_t hullId) {
+    return hullId == HULL_MINNOW ? MINNOW_BLOCKED : hullId == HULL_LEVIATHAN ? LEVIATHAN_BLOCKED : HAULER_BLOCKED;
+}
+
 // ---------------------------------------------------------------------------
 // Placement rules
 // ---------------------------------------------------------------------------
@@ -525,31 +557,37 @@ inline bool loadArrangement(CargoPuzzle &puzzle, Reader &reader, uint8_t hullId,
     if (hullId >= HULL_COUNT)
         return false;
 
-    const HullSpec &spec = HULLS[hullId];
-    if (arrangementIndex >= spec.arrangements || spec.recordBytes > MAX_RECORD_BYTES)
+    const uint8_t cols = hullCols(hullId);
+    const uint8_t rows = hullRows(hullId);
+    const uint8_t pieces = hullPieces(hullId);
+    const uint8_t required = hullRequired(hullId);
+    const uint8_t bonus = static_cast<uint8_t>(pieces - required);
+    const uint8_t recordBytes = static_cast<uint8_t>(pieces * CARGO_PIECE_BYTES);
+    const uint64_t hold = holdMask(cols, rows, hullBlocked(hullId));
+    if (arrangementIndex >= CARGO_ARRANGEMENTS_PER_HULL || recordBytes > MAX_RECORD_BYTES)
         return false;
 
     const uint16_t recordOffset =
-        static_cast<uint16_t>(spec.offset + static_cast<uint16_t>(arrangementIndex) * spec.recordBytes);
+        static_cast<uint16_t>(hullOffset(hullId) + static_cast<uint16_t>(arrangementIndex) * recordBytes);
     uint8_t raw[MAX_RECORD_BYTES];
-    if (!reader.readCargo(recordOffset, raw, spec.recordBytes))
+    if (!reader.readCargo(recordOffset, raw, recordBytes))
         return false;
 
     CargoPuzzle loaded{};
-    loaded.cols = spec.cols;
-    loaded.rows = spec.rows;
-    loaded.hold = spec.hold;
-    loaded.pieceCount = spec.pieces;
-    loaded.requiredTotal = spec.required;
-    loaded.bonusTotal = spec.bonus;
-    loaded.load = spec.load;
+    loaded.cols = cols;
+    loaded.rows = rows;
+    loaded.hold = hold;
+    loaded.pieceCount = pieces;
+    loaded.requiredTotal = required;
+    loaded.bonusTotal = bonus;
+    loaded.load = hullLoad(hullId);
     loaded.held = -1;
 
     uint8_t requiredSeen = 0;
     uint8_t bonusSeen = 0;
     uint64_t targetGrid = 0;
 
-    for (uint8_t i = 0; i < spec.pieces; ++i) {
+    for (uint8_t i = 0; i < pieces; ++i) {
         const uint8_t *record = raw + i * CARGO_PIECE_BYTES;
         const uint16_t mask = static_cast<uint16_t>(record[0]) | (static_cast<uint16_t>(record[1]) << 8);
         const uint8_t posKind = record[2];
@@ -558,24 +596,24 @@ inline bool loadArrangement(CargoPuzzle &puzzle, Reader &reader, uint8_t hullId,
 
         const uint8_t x = static_cast<uint8_t>(posKind & CARGO_POS_X_MASK);
         const uint8_t y = static_cast<uint8_t>((posKind & CARGO_POS_Y_MASK) >> CARGO_POS_Y_SHIFT);
-        const bool bonus = (posKind & CARGO_POS_BONUS) != 0;
+        const bool isBonus = (posKind & CARGO_POS_BONUS) != 0;
 
         const MaskBounds bounds = maskBounds(mask);
         if (bounds.width == 0)
             return false;
-        if (static_cast<uint16_t>(x) + bounds.width > spec.cols)
+        if (static_cast<uint16_t>(x) + bounds.width > cols)
             return false;
-        if (static_cast<uint16_t>(y) + bounds.height > spec.rows)
+        if (static_cast<uint16_t>(y) + bounds.height > rows)
             return false;
 
         CargoPiece piece{};
         piece.mask = mask;
         piece.x = x;
         piece.y = y;
-        piece.flags = bonus ? PIECE_BONUS : 0;
+        piece.flags = isBonus ? PIECE_BONUS : 0;
 
         const uint64_t cells = shapeCells(loaded, mask, x, y);
-        if ((cells & ~spec.hold) != 0)
+        if ((cells & ~hold) != 0)
             return false;
         if ((cells & targetGrid) != 0)
             return false;
@@ -583,13 +621,13 @@ inline bool loadArrangement(CargoPuzzle &puzzle, Reader &reader, uint8_t hullId,
 
         loaded.pieces[i] = piece;
         loaded.home[i] = static_cast<uint8_t>(x | (y << 4));
-        if (bonus)
+        if (isBonus)
             ++bonusSeen;
         else
             ++requiredSeen;
     }
 
-    if (requiredSeen != spec.required || bonusSeen != spec.bonus)
+    if (requiredSeen != required || bonusSeen != bonus)
         return false;
 
     puzzle = loaded;

@@ -87,17 +87,11 @@ inline bool offersAllFrom(const game::State &state, uint8_t stationId) {
 }
 
 #if SH_FEATURE_CARGO_LOAD
-// Install the known HAULER target arrangement, required pieces only. The bonus
-// crate stays in the tray, proving the commit accepts a required-only load.
+// Install the target arrangement's required pieces only; the bonus cargo stays
+// in the tray, proving the commit accepts a required-only load. The generic
+// solver works for all three hold scales.
 inline bool solveRequired(cargo_screen::State &screen) {
-    const uint8_t order[6] = {4, 5, 0, 1, 2, 3};
-    for (uint8_t i = 0; i < 6; ++i) {
-        const uint8_t index = order[i];
-        const cargo::CargoPiece &piece = screen.puzzle.pieces[index];
-        if (!cargo::place(screen.puzzle, index, piece.x, piece.y))
-            return false;
-    }
-    return screen.puzzle.held < 0 && cargo::requiredComplete(screen.puzzle);
+    return cargo_test::solveRequired(screen.puzzle) && screen.puzzle.held < 0;
 }
 
 // Load HAULER arrangement 0 and solve its required pieces. Mirrors what the
@@ -340,6 +334,44 @@ inline void LoopSuite(TestRunner &runner) {
         test.assertEqual(state.credits, reward, "the committed load delivers for the full reward");
         test.assertEqual(state.deliveries, 1, "the committed load counts one delivery");
         test.assertTrue(!station::jobActive(state), "delivery closes the contract");
+        runner.add(test);
+    }
+
+    {
+        Test test("all hull classes complete accept, load, commit, and deliver");
+#if SH_FEATURE_MULTI_HULL
+        const uint8_t hulls[3] = {cargo::HULL_MINNOW, cargo::HULL_HAULER, cargo::HULL_LEVIATHAN};
+        const uint8_t hullCount = 3;
+#else
+        const uint8_t hulls[1] = {cargo::HULL_HAULER};
+        const uint8_t hullCount = 1;
+#endif
+        for (uint8_t h = 0; h < hullCount; ++h) {
+            Fixture fake;
+            game::State state;
+            uint8_t station = game::kJobNone;
+            test.assertTrue(dockFromSpawn(state, fake, station), "class loop docks at spawn");
+            test.assertEqual(station::activate(station::kFirstRow, state), station::kActionAccepted,
+                             "class loop accepts a contract");
+            const uint8_t destination = state.activeJob.to;
+            const uint16_t reward = state.activeJob.reward;
+
+            cargo_screen::State cargo;
+            cargo_test::FakeBank bank;
+            cargo_test::loadAllHulls(bank);
+            test.assertTrue(cargo_screen::load(cargo, bank, hulls[h], 0), "class arrangement opens");
+            test.assertEqual(cargo.hull, hulls[h], "class hold is the selected hull");
+            test.assertTrue(solveRequired(cargo), "class target arrangement solves");
+            test.assertEqual(cargo_handoff::commit(state, cargo), cargo_handoff::kCommitted,
+                             "class load commits and auto-undocks");
+            test.assertEqual(state.cargo, game::kJobCrates, "class commit carries four units");
+            test.assertEqual(state.docked, static_cast<int8_t>(-1), "class commit leaves the berth");
+            test.assertTrue(placeAtBerth(state, destination), "class destination metadata loads");
+            test.assertTrue(station::stepFlight(state, idle(), fake), "class destination auto-docks");
+            test.assertEqual(state.credits, reward, "class delivery pays the reward");
+            test.assertEqual(state.deliveries, 1, "class delivery counts");
+            test.assertTrue(!station::jobActive(state), "class delivery closes the contract");
+        }
         runner.add(test);
     }
 #else

@@ -7,9 +7,11 @@
 
 #if SH_FEATURE_CARGO_LOAD
 
-// Fixed cargo screen state and pure input rules. One HAULER arrangement is
-// loaded through the same Reader abstraction as cargo::loadArrangement, so
-// host tests inject a bank and the device supplies cargo::FxCargoReader.
+// Fixed cargo screen state and pure input rules. One arrangement for the
+// selected hull is loaded through the same Reader abstraction as
+// cargo::loadArrangement, so host tests inject a bank and the device supplies
+// cargo::FxCargoReader. With MULTI_HULL=0 every load folds to HAULER
+// arrangement 0.
 //
 // Input map (Arduboy pad has no spare key, so R/N are omitted):
 //   D-pad  empty-handed: cycle the selection across every piece, including
@@ -71,14 +73,42 @@ inline void reset(State &state) {
     state.message = Message::None;
 }
 
-// Load HAULER arrangement 0. The caller supplies the Reader so this header
-// stays free of Arduino/FX headers.
-template <typename Reader> inline bool load(State &state, Reader &reader) {
+// Map the run's roster-class byte to the cargo hull id. The ids share roster
+// order (MINNOW, HAULER, LEVIATHAN); single-hull builds always select HAULER.
+// Keeping this pure lets the app pass game::State.hullClass straight in and
+// lets host tests prove the choice survives a close/reopen.
+inline uint8_t hullForClass(uint8_t hullClass) {
+#if SH_FEATURE_MULTI_HULL
+    return hullClass < cargo::HULL_COUNT ? hullClass : cargo::HULL_HAULER;
+#else
+    (void)hullClass;
+    return cargo::HULL_HAULER;
+#endif
+}
+
+// Load one arrangement for the selected hull. The caller supplies the Reader
+// so this header stays free of Arduino/FX headers.
+template <typename Reader>
+inline bool load(State &state, Reader &reader, uint8_t hullId, uint8_t arrangement) {
     reset(state);
-    if (!cargo::loadArrangement(state.puzzle, reader, cargo::HULL_HAULER, 0))
+#if !SH_FEATURE_MULTI_HULL
+    (void)hullId;
+    (void)arrangement;
+    hullId = cargo::HULL_HAULER;
+    arrangement = 0;
+#endif
+    if (!cargo::loadArrangement(state.puzzle, reader, hullId, arrangement))
         return false;
+    state.hull = hullId;
+    state.arrangement = arrangement;
     state.loaded = true;
     return true;
+}
+
+// HAULER arrangement 0 default. Existing tests and the HAULER-only build use
+// this overload; the app calls the explicit hull form.
+template <typename Reader> inline bool load(State &state, Reader &reader) {
+    return load(state, reader, cargo::HULL_HAULER, 0);
 }
 
 // ---------------------------------------------------------------------------
