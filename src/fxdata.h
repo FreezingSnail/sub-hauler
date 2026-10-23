@@ -12,4 +12,4 @@ constexpr uint24_t FX_DATA_BYTES = 10498;
 constexpr uint24_t hero = 0x000000;
 constexpr uint24_t worldTiles = 0x0000C2;
 constexpr uint24_t worldChart = 0x0019C2;
-constexpr uint24_t cargo = 0x001AC2;
+constexpr uint24_t cargoBank = 0x001AC2;

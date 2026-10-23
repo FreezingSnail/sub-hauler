@@ -23,4 +23,4 @@ raw_t worldChart = "../fxdata/tables/world-chart.bin"
 // order (MINNOW, HAULER, LEVIATHAN) with 64 arrangements each and no
 // per-arrangement header. Fixed counts/offsets live in src/generated/cargo.hpp.
 // 3,648 B: 3-byte pieces, 12/21/24 B per arrangement, required then bonus.
-raw_t cargo = "../fxdata/tables/cargo.bin"
+raw_t cargoBank = "../fxdata/tables/cargo.bin"

@@ -26,9 +26,9 @@ constexpr uint8_t CARGO_FIRST_POSKIND = 0x02;
 static_assert(worldTiles > hero, "worldTiles must follow the shipped symbols");
 static_assert(worldChart == worldTiles + world::WORLD_BYTES,
               "worldChart must immediately follow worldTiles");
-static_assert(cargo == worldChart + world::CHART_BYTES,
-              "cargo must immediately follow the world chart");
-static_assert(FX_DATA_BYTES == cargo + CARGO_TABLE_BYTES,
+static_assert(cargoBank == worldChart + world::CHART_BYTES,
+              "cargoBank must immediately follow the world chart");
+static_assert(FX_DATA_BYTES == cargoBank + CARGO_TABLE_BYTES,
               "FX image size must end after the cargo bank");
 
 // Cargo block layout: fixed counts and back-to-back hull blocks.
@@ -77,7 +77,7 @@ void setup() {
     // Probe the cargo bank header order and one known first record. Reads stay
     // in setup, outside any display transaction; only three bytes are copied
     // to SRAM. M4.3 owns the runtime loader.
-    FX::seekData(cargo);
+    FX::seekData(cargoBank);
     const uint8_t cargoMaskLo = FX::readPendingUInt8();
     const uint8_t cargoMaskHi = FX::readPendingUInt8();
     const uint8_t cargoPosKind = FX::readPendingUInt8();
