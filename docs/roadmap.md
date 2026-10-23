@@ -42,6 +42,40 @@ device check and either confirm that reserve or lower the static ceiling. The
 Whole-image measurements only: LTO makes per-symbol arithmetic misleading. Use
 `make size` and record profile A/B deltas.
 
+### Profile matrix — 2026-10-22
+
+`make size-matrix` at commit `ab8531d`, before any feature code is gated:
+
+| Profile | Flash | Static RAM | Note |
+| --- | ---: | ---: | --- |
+| `full` | 6,636 B | 1,214 B | |
+| `lean` | 6,636 B | 1,214 B | |
+| `core` | 6,636 B | 1,214 B | |
+| `min` | 6,636 B | 1,214 B | |
+
+All four profiles are byte-identical because the flags currently gate no
+feature code: the template has no feature-specific strings, tables, state, or
+calls yet. The matrix is the comparison baseline for every later milestone; a
+profile that fails to shrink when its features land is a harness regression.
+
+### Harness sentinel proof — 2026-10-22
+
+A temporary `SH_FEATURE_SENTINEL` block put a unique string
+(`SENTINEL_M0_PROOF_7QK9`) and a small arithmetic helper on the normal render
+path (`view::hud`), with a temporary header default. `full` was built through
+the existing profile harness with the sentinel default on and off:
+
+| Build | Flash | Static RAM | Sentinel string |
+| --- | ---: | ---: | --- |
+| `full`, sentinel on | 6,690 B | 1,214 B | present |
+| `full`, sentinel off | 6,636 B | 1,214 B | absent |
+
+Delta: **54 B flash, 0 B static RAM**. `strings dist/full/sub-hauler.ino.elf |
+grep SENTINEL_M0_PROOF_7QK9` matched only the enabled build. The sentinel
+block, string, and temporary default were then removed; the committed tree has
+no sentinel and no `SH_FEATURE_SENTINEL` default. This proves the harness
+removes code and strings from the whole image, not just a runtime branch.
+
 ## Architecture decisions
 
 ### 1. Bake the cave into FX flash
