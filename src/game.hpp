@@ -2,6 +2,8 @@
 
 #include <stdint.h>
 
+#include "features.hpp"
+
 // Pure game state and rules. No Arduino headers: this file is compiled into
 // the host test binary and the firmware from the same source.
 namespace game {

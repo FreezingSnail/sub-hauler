@@ -154,7 +154,9 @@ off.
 
 ### Header and validation
 
-`src/features.hpp` supplies defaults for direct builds and validates
+`src/features.hpp` is the single source of feature names, defaults, and
+dependency rules; docs and tools describe or consume that header rather than
+redeclaring flags. It supplies defaults for direct builds and validates
 dependencies with `#error`. Example:
 
 ```cpp
