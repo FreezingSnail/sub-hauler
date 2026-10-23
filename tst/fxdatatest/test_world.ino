@@ -60,6 +60,16 @@ void setup() {
     ok = ok && world::mineInfo(1, mine) && mine.x == 1724 && mine.y == 273;
     ok = ok && !world::mineInfo(8, mine);
 
+    // Current metadata is the AVR PROGMEM copy too: one horizontal and one
+    // vertical zone, plus an out-of-range rejection.
+    world::Current current;
+    ok = ok && world::currentInfo(0, current);
+    ok = ok && current.x == 712 && current.y == 568 && current.w == 32 && current.h == 16;
+    ok = ok && current.ax_q8 == 4096 && current.ay_q8 == 0;
+    ok = ok && world::currentInfo(1, current);
+    ok = ok && current.ax_q8 == 0 && current.ay_q8 == 4096;
+    ok = ok && !world::currentInfo(world::CURRENT_COUNT, current);
+
     Serial.println(ok ? F("P") : F("F"));
 }
 

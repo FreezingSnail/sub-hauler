@@ -217,6 +217,10 @@ inline uint8_t mineCount() {
     return MINE_COUNT;
 }
 
+inline uint8_t currentCount() {
+    return CURRENT_COUNT;
+}
+
 inline int16_t spawnTileX() {
     return SPAWN_TILE_X;
 }
@@ -235,6 +239,10 @@ inline bool settlementInfo(uint8_t id, Settlement &out) {
 
 inline bool mineInfo(uint8_t id, Mine &out) {
     return mineMeta(id, out);
+}
+
+inline bool currentInfo(uint8_t id, Current &out) {
+    return currentMeta(id, out);
 }
 
 static_assert(CACHE_BITS == 180, "18x10 tile cache must hold 180 tiles");

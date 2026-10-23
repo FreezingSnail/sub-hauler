@@ -8,6 +8,13 @@
 #include "test.hpp"
 #include "world_test.hpp"
 
+#if SH_FEATURE_MINES
+#include "hazards_test.hpp"
+#endif
+#if SH_FEATURE_CURRENTS
+#include "currents_test.hpp"
+#endif
+
 #if SH_FEATURE_FOG_CHART
 #include "chart_test.hpp"
 #include "chart_view_test.hpp"
@@ -45,6 +52,12 @@ int main() {
     GameSuite(runner);
     PilotViewSuite(runner);
     WorldSuite(runner);
+#if SH_FEATURE_MINES
+    HazardsSuite(runner);
+#endif
+#if SH_FEATURE_CURRENTS
+    CurrentsSuite(runner);
+#endif
 #if SH_FEATURE_FOG_CHART
     ChartSuite(runner);
     ChartViewSuite(runner);

@@ -15,8 +15,8 @@
 // reads water bits from the cart on demand instead of caching the map.
 //
 // This header is pure C++ (no Arduino headers, heap, String, or float), so the
-// host tests exercise the exact reveal rules the firmware uses. The one byte
-// of metadata only makes the spawn reveal idempotent.
+// host tests exercise the exact reveal rules the firmware uses. The explored
+// set is the whole state; revealInitial() is called once from setup.
 namespace chart {
 
 constexpr uint8_t kCellPixels = static_cast<uint8_t>(world::CHART_CELL_TILES * world::TILE_PIXELS);
@@ -30,7 +30,6 @@ constexpr uint8_t kSpawnRevealRadius = 1;
 
 struct State {
     uint8_t explored[world::CHART_BYTES];
-    uint8_t initialised;   // spawn reveal already applied
 };
 
 // ---------------------------------------------------------------------------
@@ -125,16 +124,13 @@ inline uint16_t revealAtPixels(State &state, int16_t x, int16_t y, uint8_t radiu
 inline void reset(State &state) {
     for (uint16_t i = 0; i < world::CHART_BYTES; ++i)
         state.explored[i] = 0;
-    state.initialised = 0;
 }
 
-// Initial reveal at the baked spawn. Idempotent so a re-entered chart screen
-// can call it without wiping the persistent map.
+// Initial reveal at the baked spawn. setup() calls this exactly once; there is
+// no extra metadata byte, so a later call would simply reveal that position
+// again (idempotent in the explored set) without wiping the map.
 inline void revealInitial(State &state, const game::State &gameState) {
-    if (state.initialised)
-        return;
     revealAtPixels(state, gameState.x, gameState.y, kSpawnRevealRadius);
-    state.initialised = 1;
 }
 
 // Coarse movement reveal. Call once after each flight step; the modulo makes
@@ -148,7 +144,7 @@ inline void revealOnStep(State &state, const game::State &gameState) {
 static_assert(kCellPixels == 40, "chart cell is a 5x5 tile block");
 static_assert(world::CHART_TILES_X * kCellPixels == world::PIXELS_X, "chart cells span the world width");
 static_assert(world::CHART_TILES_Y * kCellPixels == world::PIXELS_Y, "chart cells span the world height");
-static_assert(sizeof(State) == world::CHART_BYTES + 1, "chart state is exactly 256 B plus one metadata byte");
+static_assert(sizeof(State) == world::CHART_BYTES, "chart state is exactly the 256 B explored set");
 
 }   // namespace chart
 

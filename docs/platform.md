@@ -63,11 +63,11 @@ the measured window; the 600 B target leaves room for them.
 
 Target: **at least 600 B of reserve above `__bss_end`** on the full profile.
 This is the 2026-10-23 re-baseline. The earlier 800 B target predated the 258 B
-persistent chart slice; the chart-inclusive probe measured **654 B** and the
-chart+sonar probe measures **649 B**, so 600 B keeps a deliberate 49 B margin
-over the current measurement and still sits well above the estimated stack
-depth. Do not relax this target further without a new dated measurement and an
-explicit note here.
+persistent chart slice; the chart-inclusive probe measured **654 B**, the
+chart+sonar probe **649 B**, and the M7 mine+current probe **641 B**, so
+600 B keeps a deliberate 41 B margin over the current measurement and still
+sits well above the estimated stack depth. Do not relax this target further
+without a new dated measurement and an explicit note here.
 
 Status: **passing 2026-10-23.** `test_memory` includes the M6 chart path: a
 static `chart::State` (the ownership the firmware uses), a spawn
@@ -76,27 +76,30 @@ reset/reveal, `revealAtPixels`/`revealOnStep` calls, and three
 destination X lit and two blinked off. The M6 sonar path follows: a real
 `sonar::fire` into the same `probeChart` (no duplicated chart state), one
 `game::stepWorld` that decrements the cooldown, and a `view::frame` +
-`hud::draw` pilot frame that draws the ring. With `SH_STACK_DIAG=1` the probe
-measures **`stack_reserve=649`**; without diagnostics it prints a bare `P` at
-the 600 B target. The other three suites also print `P`. The probe measures the
-reserve, not the target: 649 B is the number of untouched bytes above
-`__bss_end` on the chart+sonar path, and 600 B is the deliberate pass line
-below it.
+`hud::draw` pilot frame that draws the ring. The M7 hazard path then steps
+inside generated current 0, draws the flow marks, places the hull on mine 0,
+steps once to consume it, and draws the one-frame impact spark. With
+`SH_STACK_DIAG=1` the probe measures **`stack_reserve=641`**; without
+diagnostics it prints a bare `P` at the 600 B target. The other three suites
+also print `P`. The probe measures the reserve, not the target: 641 B is the
+number of untouched bytes above `__bss_end` on the chart+sonar+hazard path, and
+600 B is the deliberate pass line below it.
 
-The firmware comparison is about **658 B** of reserve: the full image has
-**880 B** of static free SRAM and an estimated **222 B** stack depth (the
-chart-only 219 B estimate plus roughly 3 B for the deeper sonar path). Do not
+The firmware comparison is about **650 B** of reserve: the full image has
+**880 B** of static free SRAM and an estimated **230 B** stack depth (the
+chart+sonar 222 B estimate plus roughly 8 B for the deeper hazard path). Do not
 subtract the probe's static locals from the firmware number: `game::State`,
 the cargo screen state, and the tile cache are stack locals in the probe but
 static in the firmware, so the earlier "451 B" arithmetic subtracted
-static-owned bytes twice. The probe's 649 B already charges that state to
+static-owned bytes twice. The probe's 641 B already charges that state to
 static, exactly like the shipped image.
 
 Static free SRAM is **880 B** and the full image is **1,680 B** static, exactly
-at the planning ceiling. `game::State` is **70 B** on AVR (68 B before sonar;
-the two sonar bytes do not fit a device alignment hole, so the whole-image
-static delta is **+2 B**). Any further persistent state needs a carve of
-existing state first; there is no room for another 256 B-class feature.
+at the planning ceiling. `game::State` is **71 B** on AVR with `MINES=1`
+(70 B with `MINES=0`; M7 carved the chart `initialised` byte from 257 B to
+256 B to pay for the one-byte mine mask). Any further persistent state needs a
+carve of existing state first; there is no room for another 256 B-class
+feature.
 
 The suite builds with `make fxtest-build FXTEST_ONLY=test_memory`; rerun it
 after render/state changes:
@@ -133,18 +136,20 @@ Dated whole-image numbers are evidence, not guaranteed headroom.
 | 2026-10-22 | 22,038 B | 1,420 B | M5 cargo integration (job handoff, A+B commit, auto-undock, fallback, LOAD CARGO row); full/core/lean identical, min unchanged; device suites P, stack probe includes commit/undock |
 | 2026-10-23 | 23,286 B | 1,678 B | M6 fog chart (64x32 explored set, paused 128x64 chart, B toggle); full/lean identical, core 22,038 B / 1,420 B, min 10,584 B / 1,259 B; `test_memory` P at 654 B under the 600 B target (chart in probe), other suites P |
 | 2026-10-23 | 23,770 B | 1,680 B | M6 sonar (A ping: air cost, 3+level cell reveal, 120-tick cooldown, 24-tick pilot ring); full/lean identical, core 22,038 B / 1,420 B, min 10,584 B / 1,259 B; `test_memory` P at 649 B under the 600 B target (chart + sonar in probe), other suites P |
+| 2026-10-23 | 25,334 B | 1,680 B | M7 hazards (8 fixed mines, one mask byte, circle/hull hit, one-frame spark, 8 generated current zones with Q8 acceleration and flow marks); full; lean 23,760 B / 1,679 B, core 22,038 B / 1,420 B, min 10,584 B / 1,259 B; `test_memory` P at 641 B under the 600 B target (chart + sonar + mine + current in probe), other suites P |
 
-Static free SRAM is **880 B** at the latest checkpoint. `chart::State` is 257 B
-(256 B explored + one metadata byte), the sketch adds one blink byte, and the
-sonar fields add 2 B, so the whole-image static total is **1,680 B**. The chart
-and sonar paths are both inside the fixed probe with the explored set owned
-statically; the probe measures a **649 B** reserve and prints `P` under the
-**600 B** target re-baselined on 2026-10-23. The 600 B line is a deliberate
-49 B below the measurement. The firmware reserve is about **658 B**
-(880 B static free minus an estimated 222 B stack depth); the test's stack
-locals (`game::State`, cargo state, tile cache) are static in the firmware, so
-they must not be subtracted a second time. The planning ceiling stays
-**1,680 B**: the full image is exactly at it and any future persistent state
-needs a carve rather than another byte-class allocation. The probe does not
-print the exact high-water byte unless `SH_STACK_DIAG=1`; static free bytes are
-still not a stack measurement.
+Static free SRAM is **880 B** at the latest checkpoint. `chart::State` is
+256 B (the M7 carve removed the old `initialised` byte), the sketch adds one
+blink byte, the sonar fields add 2 B, and the mine mask adds 1 B, so the
+whole-image static total stays **1,680 B**. The chart, sonar, mine, and current
+paths are all inside the fixed probe with the explored set owned statically;
+the probe measures a **641 B** reserve and prints `P` under the **600 B**
+target re-baselined on 2026-10-23. The 600 B line is a deliberate 41 B below
+the measurement. The firmware reserve is about **650 B** (880 B static free
+minus an estimated 230 B stack depth); the test's stack locals
+(`game::State`, cargo state, tile cache) are static in the firmware, so they
+must not be subtracted a second time. The planning ceiling stays **1,680 B**:
+the full image is exactly at it and any future persistent state needs a carve
+rather than another byte-class allocation. The probe does not print the exact
+high-water byte unless `SH_STACK_DIAG=1`; static free bytes are still not a
+stack measurement.
