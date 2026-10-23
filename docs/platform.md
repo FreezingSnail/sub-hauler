@@ -34,6 +34,49 @@ LTO makes per-symbol size arithmetic misleading; only whole-image A/B
 measurements count. There is no separate project ceiling yet; add one here
 with a date if the project adopts one.
 
+## Stack measurement
+
+Static free SRAM (`.data` + `.bss`) does not prove stack fit: the stack, locals,
+and interrupt frames share the remaining bytes. The painted-stack probe is
+`tst/fxdatatest/test_memory.ino`, compiled and run by the Ardens device harness.
+
+Method:
+
+1. `__bss_end` is the linker symbol for the first byte above all static RAM.
+2. Read the live stack pointer (`SPL`/`SPH`) and set `paintTop = SP - 64`. The
+   64 B guard keeps the active frame and one interrupt frame out of the paint.
+3. Fill `[__bss_end + 1, paintTop]` with `0xA5` with interrupts disabled.
+4. Re-enable interrupts and run 8 frames of the real path:
+   `pollButtons` -> `game::step` -> `view::frame` (background, hero blit with FX
+   cart reads, HUD) -> `FX::display(CLEAR_BUFFER)`.
+5. Scan upward for the first byte that is no longer `0xA5`; that address is the
+   stack high-water mark.
+6. `reserve = highWater - __bss_end`. The suite prints exactly one bare `P` when
+   the reserve is at least 800 B, otherwise one bare `F`. Diagnostics stay off
+   the marker line (`SH_STACK_DIAG=0` by default) because the Ardens harness
+   matches the exact marker.
+
+The result is conservative: an untouched byte reads back `0xA5`, and a path
+that stays inside the guard region is measured as if it stopped at `paintTop`.
+The marker print happens after the scan, so the final Serial writes are outside
+the measured window; the 800 B target leaves room for them.
+
+Target: **at least 800 B of reserve above `__bss_end`** on the full profile.
+If a measured reserve is below 800 B, lower the static planning ceiling in
+`docs/roadmap.md` instead of relaxing the target.
+
+Status: **pending device run.** Ardens is unavailable in this environment, so
+no high-water number has been recorded and static free bytes are not a stack
+measurement. The suite builds with
+`make fxtest-build FXTEST_ONLY=test_memory`; run it where Ardens exists:
+
+```sh
+make fxtest FXTEST_ONLY=test_memory
+```
+
+A bare `P` means the reserve is at least 800 B; `F` means it is not. Record the
+dated high-water result in the checkpoint table after that run.
+
 ## SPI / display contract
 
 - The OLED and FX cart share SPI.
@@ -51,5 +94,6 @@ Dated whole-image numbers are evidence, not guaranteed headroom.
 | --- | --- | --- | --- |
 | 2026-10-20 | 6,636 B | 1,214 B | arduino-cli 1.2.0; arduboy-homemade:avr 1.4.0; AVR-GCC 7.3.0-atmel3.6.1-arduino7; `make size` |
 
-Static free SRAM is 1,346 B. No painted stack checkpoint yet; static free bytes
-alone do not prove stack fit. Re-measure after art or logic changes.
+Static free SRAM is 1,346 B. No painted stack checkpoint yet: free bytes alone
+do not prove stack fit, and the probe in `tst/fxdatatest/test_memory.ino` has
+not run on device. Re-measure after art or logic changes.
