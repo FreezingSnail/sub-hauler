@@ -214,8 +214,11 @@ inline bool accept(State &state, uint8_t offerIndex) {
     state.activeJob.deadline = offer.deadline;
     state.activeJob.acceptedAt = state.jobClock;
 
-    // MILESTONE FALLBACK: auto-load the contract hold. SH_FEATURE_CARGO_LOAD
-    // replaces this with the loading screen handoff in M5.
+    // MILESTONE FALLBACK: auto-load the contract hold. This is deliberately
+    // unconditional for M3, including with SH_FEATURE_CARGO_LOAD=0: the loader
+    // screen does not exist yet, so the fallback must keep the contract loop
+    // playable in every profile. M5 replaces this with the loading-screen
+    // handoff and then the flag can gate the fill.
     game::setCargo(state, offer.crates);
     state.ballast = static_cast<uint8_t>(game::neutralFor(state.cargo));
 
