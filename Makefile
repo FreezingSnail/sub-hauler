@@ -1,4 +1,4 @@
-.PHONY: help full gen gen-check build mini size size-line run debug test test-tools fxtest fxtest-build fxtest-run clean format
+.PHONY: help full gen gen-check features-check feature-report build mini size size-line size-matrix run debug test test-tools fxtest fxtest-build fxtest-run clean format
 
 # ----------------------------------------------------------------------------
 # Project
@@ -8,8 +8,16 @@ CXX           ?= g++
 ARDUINO_CLI   ?= arduino-cli
 FQBN          ?= arduboy-homemade:avr:arduboy-fx
 MINI_FQBN     ?= arduboy-homemade:avr:arduboy-mini
-BUILD_DIR     ?= build
-DIST_DIR      ?= dist
+
+# Feature profiles are owned by tools/features.py. Profile-specific build and
+# output directories prevent objects compiled with one flag set from being
+# reused by another.
+PROFILE       ?= full
+FEATURES_PY   ?= python3 tools/features.py
+PROFILES      := $(shell $(FEATURES_PY) --list 2>/dev/null)
+FEATURE_FLAGS := $(shell $(FEATURES_PY) --profile "$(PROFILE)" --flags 2>/dev/null)
+BUILD_DIR     ?= build/$(PROFILE)
+DIST_DIR      ?= dist/$(PROFILE)
 ARDENS        ?= $(firstword $(wildcard \
                  $(HOME)/code/Ardens/build/Ardens.app/Contents/MacOS/Ardens \
                  $(HOME)/code/arduboy/Ardens/build/Ardens.app/Contents/MacOS/Ardens))
@@ -23,8 +31,10 @@ FXTEST_BUILD_DIR ?= $(BUILD_DIR)/fxtest
 # source projects. LTO means only whole-image measurements are meaningful;
 # use `make size` after every flash-sensitive change.
 RELAX_FLAGS   ?= -mrelax -mcall-prologues
-SIZE_FLAGS    ?= --build-property compiler.cpp.extra_flags="$(RELAX_FLAGS)" \
-                 --build-property compiler.c.extra_flags="-mrelax" \
+CPP_EXTRA_FLAGS := $(RELAX_FLAGS) $(FEATURE_FLAGS)
+C_EXTRA_FLAGS   := -mrelax $(FEATURE_FLAGS)
+SIZE_FLAGS    ?= --build-property compiler.cpp.extra_flags="$(CPP_EXTRA_FLAGS)" \
+                 --build-property compiler.c.extra_flags="$(C_EXTRA_FLAGS)" \
                  --build-property compiler.c.elf.extra_flags="-mrelax"
 
 AVR_SIZE      ?= $(firstword $(wildcard $(HOME)/Library/Arduino15/packages/arduino/tools/avr-gcc/*/bin/avr-size) $(shell command -v avr-size 2>/dev/null))
@@ -63,15 +73,24 @@ src/fxdata.h: $(FX_INPUTS)
 	./tools/gen.sh
 
 # ----------------------------------------------------------------------------
+# Feature profiles
+# ----------------------------------------------------------------------------
+features-check:
+	@$(FEATURES_PY) --profile "$(PROFILE)" --check
+
+feature-report: features-check
+	@$(FEATURES_PY) --profile "$(PROFILE)" --report
+
+# ----------------------------------------------------------------------------
 # Firmware
 # ----------------------------------------------------------------------------
-build: src/fxdata.h
+build: features-check src/fxdata.h
 	mkdir -p $(DIST_DIR)
 	$(ARDUINO_CLI) compile --fqbn "$(FQBN)" --optimize-for-debug \
 		--build-path $(BUILD_DIR)/arduino --output-dir $(DIST_DIR) \
 		$(SIZE_FLAGS) "$(SKETCH).ino"
 
-mini: src/fxdata.h
+mini: features-check src/fxdata.h
 	mkdir -p $(DIST_DIR)
 	$(ARDUINO_CLI) compile --fqbn "$(MINI_FQBN)" --optimize-for-debug \
 		--build-path $(BUILD_DIR)/arduino-mini --output-dir $(DIST_DIR) \
@@ -80,10 +99,21 @@ mini: src/fxdata.h
 ELF := $(DIST_DIR)/$(SKETCH).ino.elf
 
 size: build
+	@printf 'size: image=%s\n' "$(ELF)"
 	@$(AVR_SIZE) -A "$(ELF)" | awk '$$1==".text"{t=$$2} $$1==".data"{d=$$2} $$1==".bss"{b=$$2} END { flash=t+d; ram=d+b; printf "size: .text=%d .data=%d .bss=%d\n", t, d, b; printf "size: flash=%d/29696 (%d free)  ram=%d/2560\n", flash, 29696-flash, ram }'
 
 size-line: build
 	@$(AVR_SIZE) -A "$(ELF)" | awk '$$1==".text"{t=$$2} $$1==".data"{d=$$2} $$1==".bss"{b=$$2} END { flash=t+d; ram=d+b; printf "size: flash=%d/29696 (%d free)  ram=%d/2560\n", flash, 29696-flash, ram }'
+
+# Release gate: every profile builds in its own directory, so no object file
+# can be shared across feature sets.
+size-matrix:
+	@test -n "$(PROFILES)" || { echo "size-matrix: no profiles reported by $(FEATURES_PY)" >&2; exit 1; }
+	@set -e; \
+	for profile in $(PROFILES); do \
+		printf '%s\n' "=== $$profile ==="; \
+		$(MAKE) --no-print-directory size PROFILE=$$profile; \
+	done
 
 run: build
 	@test -x "$(ARDENS)" || { echo "run: Ardens not found at $(ARDENS); set ARDENS=/path/to/Ardens" >&2; exit 1; }
@@ -101,9 +131,9 @@ TEST_OUT      := $(BUILD_DIR)/tests/host
 TEST_SOURCES  := tst/main.cpp
 CXXFLAGS      ?= -std=c++17 -O0 -g3 -Wall -Wextra
 
-test:
+test: features-check
 	@mkdir -p $(dir $(TEST_OUT))
-	$(CXX) $(CXXFLAGS) -Isrc -DTEST $(TEST_SOURCES) -o $(TEST_OUT)
+	$(CXX) $(CXXFLAGS) $(FEATURE_FLAGS) -Isrc -DTEST $(TEST_SOURCES) -o $(TEST_OUT)
 	./$(TEST_OUT)
 
 test-tools:
@@ -116,9 +146,9 @@ FXTEST_INOS   := $(wildcard tst/fxdatatest/test_*.ino)
 FXTEST_NAMES  := $(basename $(notdir $(FXTEST_INOS)))
 FXTEST_RUN    := $(if $(strip $(FXTEST_ONLY)),$(filter $(FXTEST_ONLY),$(FXTEST_NAMES)),$(FXTEST_NAMES))
 
-fxtest: fxtest-build fxtest-run
+fxtest: features-check fxtest-build fxtest-run
 
-fxtest-build: $(addprefix fxtest-build-,$(FXTEST_RUN))
+fxtest-build: features-check $(addprefix fxtest-build-,$(FXTEST_RUN))
 
 fxtest-build-%:
 	@stage="$(FXTEST_BUILD_DIR)/$*"; \
@@ -159,7 +189,7 @@ fxtest-run:
 # Utility
 # ----------------------------------------------------------------------------
 clean:
-	rm -rf $(BUILD_DIR) $(DIST_DIR)
+	rm -rf build dist $(BUILD_DIR) $(DIST_DIR)
 
 format:
 	@find src tst -type f \( -name '*.hpp' -o -name '*.cpp' -o -name '*.ino' \) \
@@ -172,13 +202,19 @@ help:
 		'  make full       generate FX data, then build the FX firmware' \
 		'  make gen        regenerate fxdata/Sprites.txt, fxdata.bin and headers' \
 		'  make gen-check  prove generation is deterministic (run make gen first)' \
-		'  make build      compile the Arduboy FX firmware into dist/' \
-		'  make mini       compile the Arduboy Mini firmware' \
-		'  make size       whole-image flash/RAM report' \
+		'  make build      compile PROFILE firmware into dist/PROFILE/' \
+		'  make mini       compile the Arduboy Mini firmware for PROFILE' \
+		'  make size       whole-image flash/RAM report for PROFILE' \
+		'  make size-matrix build and report full, lean, core, and min' \
+		'  make feature-report  list active/inactive flags for PROFILE' \
 		'  make run        build, then launch Ardens with the ELF + FX image' \
 		'  make test       host C++ tests (g++, no device required)' \
 		'  make test-tools Python tooling unittest suite' \
 		'  make fxtest     compile and run device suites through Ardens' \
 		'  make clean      remove build/ and dist/' \
 		'' \
-		'Overrides: SKETCH, FQBN, MINI_FQBN, ARDUINO_CLI, ARDENS, FXTEST_ONLY, FXTEST_MS, CXX.'
+		'Profiles: $(PROFILES) (default: $(PROFILE)). Selected with PROFILE=NAME.' \
+		'  make build PROFILE=lean' \
+		'  make feature-report PROFILE=core' \
+		'' \
+		'Overrides: PROFILE, SKETCH, FQBN, MINI_FQBN, ARDUINO_CLI, ARDENS, FXTEST_ONLY, FXTEST_MS, CXX.'

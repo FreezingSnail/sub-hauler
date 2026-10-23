@@ -15,12 +15,30 @@ compile-time feature-flag plan live in
 
 ```sh
 make gen          # images/*.png -> fxdata/Sprites.txt + fxdata.bin + headers
-make build        # dist/<project>.ino.hex + .elf
+make build        # dist/<profile>/<project>.ino.hex + .elf
 make test         # host rules tests
 make fxtest       # device smoke test through Ardens
 make run          # Ardens with the ELF + FX image
 make size         # flash/RAM headroom
 ```
+
+## Feature profiles
+
+`tools/features.py` is the single source of profile values and dependency
+rules. Valid profiles are `full` (default), `lean`, `core`, and `min`; every
+flag is passed explicitly as a numeric `-DSH_FEATURE_*` macro.
+
+```sh
+make build PROFILE=lean
+make size PROFILE=core
+make feature-report PROFILE=lean
+make size-matrix            # build and report full, lean, core, min
+```
+
+Builds and images are separated by profile (`build/<profile>/`,
+`dist/<profile>/`) so objects compiled under different flag sets cannot mix.
+An unknown profile or an invalid dependency fails before compilation. Feature
+flags never change generated FX data.
 
 ## What to edit
 
@@ -81,7 +99,7 @@ src/fxdata.h        generated mirror of fxdata/fxdata.h
 src/generated/      generated sprite constants
 fxdata/             fxdata.txt, Sprites.txt, packed .bin, fxdata.h
 tst/                host tests + device suite
-tools/              gen.sh, gen_sprites.py, fxdata-build.py, tests
+tools/              gen.sh, gen_sprites.py, fxdata-build.py, features.py, tests
 spike/              v1 auto-forward feel test (not firmware)
 spike-trim/         v2 pilot/cargo/fleet tabs, stations/contracts/shop (not firmware)
 docs/platform.md    hardware/resource contract + dated checkpoints
