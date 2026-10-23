@@ -2,6 +2,7 @@
 #include "cargo_test.hpp"
 #include "cave_test.hpp"
 #include "collision_test.hpp"
+#include "damage_test.hpp"
 #include "features.hpp"
 #include "game_test.hpp"
 #include "pilot_view_test.hpp"
@@ -10,6 +11,9 @@
 
 #if SH_FEATURE_MINES
 #include "hazards_test.hpp"
+#endif
+#if SH_FEATURE_PARTICLES
+#include "particles_test.hpp"
 #endif
 #if SH_FEATURE_CURRENTS
 #include "currents_test.hpp"
@@ -49,11 +53,15 @@ int main() {
 #endif
     CaveSuite(runner);
     CollisionSuite(runner);
+    DamageSuite(runner);
     GameSuite(runner);
     PilotViewSuite(runner);
     WorldSuite(runner);
 #if SH_FEATURE_MINES
     HazardsSuite(runner);
+#endif
+#if SH_FEATURE_PARTICLES
+    ParticlesSuite(runner);
 #endif
 #if SH_FEATURE_CURRENTS
     CurrentsSuite(runner);

@@ -8,6 +8,9 @@
 
 #include "game.hpp"
 #include "world.hpp"
+#if SH_FEATURE_HULL_DAMAGE
+#include "damage.hpp"
+#endif
 
 // Fixed mine rules. The generated MINE_META table is the only source of
 // positions: no runtime scatter, no per-mine SRAM array. State stores one byte
@@ -77,11 +80,9 @@ inline bool hullOverlapsMine(const game::State &state, const world::Mine &mine) 
 }
 
 #if SH_FEATURE_HULL_DAMAGE
-// Clean one-point damage hook for the M7 damage bead. Hull is already floored
-// at zero here, so the same function is safe for any future damage source.
-inline void applyDamage(game::State &state, uint8_t amount) {
-    state.hull = amount >= state.hull ? 0 : static_cast<uint8_t>(state.hull - amount);
-}
+// Keep the historical hazards::applyDamage spelling available; the clamped
+// rule lives in damage.hpp so mines and wall impacts share one implementation.
+using damage::applyDamage;
 #endif
 
 // Remove the first armed mine overlapping the hull and record one hit.
@@ -112,7 +113,9 @@ inline uint8_t collide(game::State &state) {
 }
 
 // One-frame feedback clear. Called before physics on the next world step so a
-// hit flash cannot leak into later frames or be confused with a wall impact.
+// mine spark cannot leak into later frames or be confused with a wall impact.
+// Wall-axis fields retain their historical latch; damage resolves on the step
+// that produced them, not from this stale field.
 inline void clearImpact(game::State &state) {
     if (state.impactAxis == kMineImpactAxis) {
         state.impactAxis = 0;

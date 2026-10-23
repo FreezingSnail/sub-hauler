@@ -31,16 +31,16 @@ Measured 2026-10-22 with the existing template:
 | Resource | Current | Planning ceiling | Hardware limit |
 | --- | ---: | ---: | ---: |
 | Flash | 6,636 B | 27,000 B | 29,696 B |
-| Static SRAM | 1,214 B | 1,680 B | 2,560 B |
+| Static SRAM | 1,214 B | 1,700 B | 2,560 B |
 | Stack | unmeasured | ≥600 B reserve | remainder |
 
-The 1,680 B static ceiling is a planning target, not a hardware fact. It was
-lowered from 1,700 B at the M6 chart checkpoint, where the full image reached
-1,678 B. The ceiling stays at 1,680 B through M7 hazards: the full image is
-25,334 B flash / 1,680 B static after carving the chart `initialised` byte to
-pay for the one-byte mine mask, and the chart+sonar+mine+current stack probe
-passes at 641 B under a 600 B reserve target. Any further persistent static
-feature has to carve existing state first.
+The 1,700 B static ceiling is a planning target, not a hardware fact. It was
+raised from 1,680 B on 2026-10-23 at the M7 damage/particles checkpoint: the
+damage cooldown adds one byte and the four-particle pool adds sixteen, taking
+the full image from 1,680 B to **1,697 B static / 26,088 B flash**. The 3 B of
+headroom under 1,700 B is intentional slack for LTO rounding, not a licence for
+another state slice; the 600 B stack target is unchanged and still passes at
+616 B. Any future persistent feature beyond this needs a carve.
 
 Whole-image measurements only: LTO makes per-symbol arithmetic misleading. Use
 `make size` and record profile A/B deltas.
@@ -333,6 +333,62 @@ measures **`stack_reserve=641`**, passing the 600 B target with 41 B of
 margin. Host tests: 111 full, 97 lean, 78 core, 40 min; `make test-tools`
 passes 75. All four device suites print `P`.
 
+### M7 damage and particles checkpoint — 2026-10-23
+
+`sub-hauler-m7-damage` adds hull damage and a fixed debris pool. Damage does
+not gate the mine rule: a mine is still removed exactly once and costs one
+point through `hazards::applyDamage()`.
+
+- **Damage tuning** lives in `src/damage.hpp`: one point per hit, a hard-impact
+  threshold of **16 px/s** (`game::kHardImpactSpeedQ8`), a **24-tick** wall-hit
+  cooldown, and a **12-tick** edge-flash window. The cooldown doubles as the
+  flash timer, so damage costs one byte of state. A scrape below 16 px/s is
+  free. Damage resolves only from the axis move that produced the event
+  (`moveAxis()` now returns whether it recorded an impact), while the existing
+  `impactAxis`/`impactSpeedQ8` fields keep their historical latch for render
+  and tests.
+- **Zero hull is valid.** `damage::applyDamage()` floors at zero and never
+  touches movement, so the boat remains controllable until M9 owns failure
+  states. `damage::repair()`/`repairFull()` clamp to `kHullMax`; station
+  SERVICE now uses `repairFull()`, which also clears the cooldown.
+- **Particles** live in `src/particles.hpp` under `SH_FEATURE_PARTICLES`: four
+  fixed slots sharing one world-pixel anchor. Each slot is 3 B (`dx`, `dy`,
+  `life`), so the pool is 16 B. Slot bit 0/bit 1 select the spawn corner and
+  drift direction; there are no velocity tables, heap, `String`, or float.
+  Offsets advance one pixel per flight tick and clamp at ±24 px, lifetimes are
+  14..11 ticks, and a new hit replaces the pool without growth.
+- **Spawning** is deterministic and event-scoped: an x/y wall impact at or
+  above the threshold, or any mine hit, respawns all four slots at the hull
+  anchor. `PARTICLES=0` removes the state, spawn, tick, and render calls;
+  `HULL_DAMAGE=0` removes hull/cooldown state, damage rules, and the edge
+  flash. The two flags compile independently (a particles-only build is valid).
+- **Free flight only.** `stepWorld()` guards damage ticks, particle ticks,
+  wall damage, and spawns with `docked < 0`; the chart and cargo screens never
+  call it. Mine one-hit removal, mine impact fields, and mine one-point damage
+  are unchanged.
+- **Presentation** is `src/damage_view.hpp`: clipped corner brackets for the
+  damage flash and clipped one-pixel debris at the pool anchor. `view::frame`
+  draws particles after the HAULER and the flash before the mine spark. No
+  strings, no cart reads, no display access.
+- **Budget:** full `sizeof(game::State)` is **88 B** on AVR (71 B hazard state
+  + 1 B cooldown + 16 B pool). Whole-image A/B: hull damage **+464 B flash /
+  +2 B static** (the 2 B are the hull byte plus the new cooldown), particles
+  **+398 B flash / +16 B static**; both enabled **+862 B flash / +18 B static**
+  against a both-disabled build. Against the M7 hazards checkpoint the full
+  image grows **+754 B flash / +17 B static**.
+
+The full image is **26,088 B / 1,697 B**; `lean` is **24,096 B / 1,680 B**
+(hull damage on, particles off); `core` is **22,394 B / 1,421 B**; `min` is
+**10,586 B / 1,259 B** (2 B of flash from the `moveAxis()` return value, static
+unchanged). The static ceiling rises to **1,700 B** with 3 B of headroom.
+
+Host tests: **129** full, **106** lean, **87** core, **41** min. The stack
+probe adds a real hard-impact damage resolve and a particle spawn/tick/render
+frame to the measured path: with diagnostics it reports
+**`stack_reserve=616`**, passing the unchanged **600 B** target with 16 B of
+margin; the production run prints a bare `P`. All four device suites print
+`P`. No screenshot or frame-rate claim.
+
 ### Harness sentinel proof — 2026-10-22
 
 A temporary `SH_FEATURE_SENTINEL` block put a unique string
@@ -482,8 +538,8 @@ there is no runtime options menu.
 | `SH_FEATURE_MINES` | 1 | — | mine placement, collision, damage |
 | `SH_FEATURE_CURRENTS` | 1 | — | current zones/toggle |
 | `SH_FEATURE_SHOP` | 1 | `STATIONS` | upgrades and credit sink |
-| `SH_FEATURE_HULL_DAMAGE` | 1 | — | impact damage/integrity |
-| `SH_FEATURE_PARTICLES` | 1 | — | wash/bubbles/debris |
+| `SH_FEATURE_HULL_DAMAGE` | 1 | — | wall-impact hull points, cooldown, edge flash |
+| `SH_FEATURE_PARTICLES` | 1 | — | fixed 4-slot impact debris pool |
 | `SH_FEATURE_MULTI_HULL` | 1 | — | hull roster/selection and hold variants |
 | `SH_FEATURE_SAVE_CHART` | 0 | `FOG_CHART` | persist explored chart |
 
@@ -800,13 +856,20 @@ deltas against the same profile with the feature disabled.
 | mines | +730 | +1 | 2026-10-23 | 8 fixed positions, one mask byte, circle/hull hit, one-frame spark, optional hull hook; full A/B |
 | currents | +852 | +0 | 2026-10-23 | 8 generated 32x16 zones, Q8 acceleration, flow marks; metadata only; full A/B |
 | shop | — | — | — | |
-| hull damage | — | — | — | |
-| particles | — | — | — | |
+| hull damage | +464 | +2 | 2026-10-23 | 16 px/s wall threshold, 24-tick cooldown, 12-tick edge flash, zero-hull valid, repair clamp; A/B with particles off; +2 B is the hull byte plus the cooldown |
+| particles | +398 | +16 | 2026-10-23 | fixed 4-slot pool (3 B/slot + 4 B anchor), deterministic corner spawn, 1 px/tick, ±24 px clamp, 14-tick max life; A/B with hull damage on |
 | multi-hull | — | — | — | |
 
 The mine and current A/B deltas share 8 B of LTO folding: both enabled is
 +1,574 B, not +1,582 B. The chart `initialised` carve (-1 B) offsets the mine
-mask (+1 B), so the full image remains at the 1,680 B ceiling.
+mask (+1 B), so the hazard checkpoint stayed at the then-current 1,680 B
+ceiling.
+
+The M7 damage and particle A/B deltas are measured separately and sum exactly:
++464 B + +398 B = +862 B flash, +2 B + +16 B = +18 B static. Each also removes
+its own state when disabled. Against the prior hazard checkpoint the full image
+grows +754 B flash / +17 B static because the hull byte was already present
+there; the damage A/B removes it.
 
 Record the profile matrix separately:
 
@@ -817,6 +880,7 @@ Record the profile matrix separately:
 | 2026-10-23 | M6 chart | 23,286 | 1,678 | `test_memory` P (chart path, 654 B under 600 B target) | full/lean identical; core 22,038/1,420; min 10,584/1,259 |
 | 2026-10-23 | M6 sonar | 23,770 | 1,680 | `test_memory` P (chart + sonar path, 649 B under 600 B target) | full/lean identical; core 22,038/1,420; min 10,584/1,259; at the static ceiling |
 | 2026-10-23 | M7 hazards | 25,334 | 1,680 | `test_memory` P (chart + sonar + mine + current path, 641 B under 600 B target) | full; lean 23,760/1,679; core 22,038/1,420; min 10,584/1,259; full still at the static ceiling after the chart-byte carve |
+| 2026-10-23 | M7 damage/particles | 26,088 | 1,697 | `test_memory` P (chart + sonar + mine + current + damage/particle path, 616 B under 600 B target) | full; lean 24,096/1,680; core 22,394/1,421; min 10,586/1,259; ceiling raised to 1,700 B with 3 B headroom |
 
 ## Verification gates
 

@@ -6,6 +6,7 @@
 
 #if SH_FEATURE_STATIONS
 
+#include "damage.hpp"
 #include "game.hpp"
 #include "pilot.hpp"
 #include "world.hpp"
@@ -231,7 +232,8 @@ inline bool nearestDock(const State &state, uint8_t &settlementId) {
 inline void service(State &state) {
     state.air = kAirCapacity;
 #if SH_FEATURE_HULL_DAMAGE
-    state.hull = kHullMax;
+    // Clamp on repair: a hull already above kHullMax is brought back in range.
+    damage::repairFull(state);
 #endif
     state.ballast = static_cast<uint8_t>(neutralFor(state.cargo));
     state.ballastCarry = 0;

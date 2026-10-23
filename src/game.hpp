@@ -62,6 +62,13 @@ constexpr int16_t kMaxVxPerCargoQ8 = kTopSpeedPerCargo * kQ8One;
 // small velocities decaying to rest instead of sticking above zero.
 constexpr int16_t kDragDivisor = 50;
 
+// A blocked-axis speed at or above 16 px/s is a hard wall hit. That is well
+// under the 30 px/s base top speed but above a gentle nudge, so deliberate
+// collisions damage the hull and puff debris while scrapes stay free. Shared
+// by the damage rules and the particle spawn trigger so the two flags can be
+// compiled independently.
+constexpr int16_t kHardImpactSpeedQ8 = 16 * kQ8One;
+
 // ---------------------------------------------------------------------------
 // State
 // ---------------------------------------------------------------------------
@@ -72,6 +79,26 @@ struct Input {
     bool left;   // reverse thrust (weaker)
     bool right;  // forward thrust
 };
+
+#if SH_FEATURE_PARTICLES
+// Fixed debris pool: four particles, no heap, no per-particle velocity bytes.
+// Deltas are signed offsets from one shared anchor captured at the impact, so
+// each particle fits in three bytes; slot parity owns the fixed outward
+// diagonal. The pool is 4 B anchor + 4 x 3 B = 16 B, integer-only.
+constexpr uint8_t kParticleCount = 4;
+
+struct Particle {
+    int8_t dx;   // bounded pixel offset from the pool anchor
+    int8_t dy;
+    uint8_t life;   // 0 = slot inactive
+};
+
+struct ParticlePool {
+    int16_t x;   // spawn anchor in world pixels
+    int16_t y;
+    Particle particle[kParticleCount];
+};
+#endif
 
 #if SH_FEATURE_JOBS
 // Contract storage is fixed and integer-only. Offers are generated for the
@@ -138,6 +165,10 @@ struct State {
 #endif
 #if SH_FEATURE_HULL_DAMAGE
     uint8_t hull;            // 0..kHullMax, repaired at a station
+    uint8_t damageCooldown;  // flight ticks before another wall hit can damage
+#endif
+#if SH_FEATURE_PARTICLES
+    ParticlePool particles;  // fixed debris pool, 4 slots
 #endif
 #if SH_FEATURE_SONAR
     uint8_t sonarPings;      // saturating count of accepted pings this run
@@ -158,6 +189,13 @@ inline bool hasActiveJob(const State &state) {
     return state.activeJob.to != kJobNone;
 }
 #endif
+
+// True only for an x/y wall impact at or above the hard-hit speed. The impact
+// fields are latched by moveAxis(), so callers test this immediately after the
+// axis move that produced it; a mine hit uses impactAxis 3 and never matches.
+inline bool hardWallImpact(const State &state) {
+    return (state.impactAxis == 1 || state.impactAxis == 2) && state.impactSpeedQ8 >= kHardImpactSpeedQ8;
+}
 
 // ---------------------------------------------------------------------------
 // Pure helpers
@@ -262,6 +300,16 @@ inline void reset(State &state) {
 #endif
 #if SH_FEATURE_HULL_DAMAGE
     state.hull = kHullMax;
+    state.damageCooldown = 0;
+#endif
+#if SH_FEATURE_PARTICLES
+    state.particles.x = 0;
+    state.particles.y = 0;
+    for (uint8_t i = 0; i < kParticleCount; ++i) {
+        state.particles.particle[i].dx = 0;
+        state.particles.particle[i].dy = 0;
+        state.particles.particle[i].life = 0;
+    }
 #endif
 #if SH_FEATURE_SONAR
     state.sonarCooldown = 0;

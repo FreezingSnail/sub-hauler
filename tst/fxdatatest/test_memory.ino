@@ -11,8 +11,8 @@
 //   3. Fill [bssEnd + 1, paintTop] with 0xA5 with interrupts disabled.
 //   4. Re-enable interrupts and run kRepresentativeFrames of the normal
 //      poll/update/render/present path, including FX cart reads. The M6 chart
-//      and sonar paths and the M7 mine/current frames follow in the same
-//      measured window.
+//      and sonar paths and the M7 mine/current and damage/particle frames
+//      follow in the same measured window.
 //   5. Scan upward from bssEnd + 1 for the lowest byte that is no longer
 //      0xA5. That address is the stack high-water mark.
 //   6. reserve = highWater - bssEnd. Print one bare P when the reserve is at
@@ -50,6 +50,12 @@
 #include "src/cargo_screen.hpp"
 #include "src/cargo_view.hpp"
 #endif
+#if SH_FEATURE_HULL_DAMAGE
+#include "src/damage.hpp"
+#endif
+#if SH_FEATURE_PARTICLES
+#include "src/particles.hpp"
+#endif
 
 #ifndef SH_STACK_DIAG
 #define SH_STACK_DIAG 0
@@ -59,6 +65,12 @@
 extern "C" char __bss_end;
 
 Arduboy2 arduboy;
+
+#if SH_FEATURE_STATIONS && SH_FEATURE_JOBS && SH_FEATURE_CARGO_LOAD && SH_FEATURE_FOG_CHART && SH_FEATURE_SONAR && SH_FEATURE_MINES && SH_FEATURE_CURRENTS && SH_FEATURE_HULL_DAMAGE && SH_FEATURE_PARTICLES && SH_FEATURE_MULTI_HULL
+// The full AVR state budget is pinned here: M7 hazard state (71 B) plus the
+// one-byte damage cooldown and the 16-byte particle pool.
+static_assert(sizeof(game::State) == 88, "full game::State is 88 bytes on AVR");
+#endif
 
 #if SH_FEATURE_FOG_CHART
 // The firmware owns the persistent explored set statically. Keeping the probe's
@@ -71,9 +83,9 @@ chart::State probeChart;
 namespace {
 
 // Re-baselined from 800 B to 600 B on 2026-10-23, after the 258 B persistent
-// chart slice entered the full image. The chart+sonar+hazard probe measures
-// 641 B, so 600 B keeps a deliberate 41 B margin over the measurement while
-// remaining well above the measured stack depth.
+// chart slice entered the full image. The chart+sonar+hazard+damage/particle
+// probe measures 616 B, so 600 B keeps a deliberate 16 B margin over the
+// measurement while remaining well above the measured stack depth.
 constexpr uint16_t kReserveTarget = 600;   // bytes of stack reserve required
 constexpr uint8_t kFrameGuard = 64;        // active-frame headroom, never painted
 constexpr uint8_t kPattern = 0xA5;
@@ -169,7 +181,8 @@ __attribute__((noinline)) void runRepresentativePath() {
 
 #if SH_FEATURE_MINES
     // Mine path: place the hull on generated mine 0, step once to consume it,
-    // then draw the one-frame impact spark with the mine already removed.
+    // then draw the one-frame impact spark with the mine already removed. With
+    // PARTICLES on this step also spawns the debris pool.
     world::Mine mine;
     if (world::mineInfo(0, mine)) {
         state.x = mine.x;
@@ -184,7 +197,39 @@ __attribute__((noinline)) void runRepresentativePath() {
         view::frame(state, mineCamera, cache, tables);
         hud::draw(state);
         FX::display(CLEAR_BUFFER);
+
+#if SH_FEATURE_PARTICLES
+        // Let the pool age and draw through the real step/render path twice:
+        // this covers particle update, camera conversion, and clipping.
+        for (uint8_t frame = 0; frame < 2; ++frame) {
+            game::stepWorld(state, mineInput, tables, &cache);
+            const cave::Camera debrisCamera = pilot_view::cameraForState(state);
+            view::frame(state, debrisCamera, cache, tables);
+            hud::draw(state);
+            FX::display(CLEAR_BUFFER);
+        }
+#endif
     }
+#endif
+
+#if SH_FEATURE_HULL_DAMAGE || SH_FEATURE_PARTICLES
+    // Damage/particle path: latch a deterministic hard wall impact, apply the
+    // real damage rule and spawn/age the debris pool, then draw the pilot frame
+    // with the hull-edge flash and particles at the impact anchor.
+    state.impactAxis = 1;
+    state.impactSpeedQ8 = game::kHardImpactSpeedQ8;
+#if SH_FEATURE_HULL_DAMAGE
+    damage::resolveWallImpact(state);
+    damage::tick(state);
+#endif
+#if SH_FEATURE_PARTICLES
+    particles::spawn(state);
+    particles::tick(state);
+#endif
+    const cave::Camera damageCamera = pilot_view::cameraForState(state);
+    view::frame(state, damageCamera, cache, tables);
+    hud::draw(state);
+    FX::display(CLEAR_BUFFER);
 #endif
 
 #if SH_FEATURE_CARGO_LOAD

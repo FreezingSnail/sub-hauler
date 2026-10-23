@@ -3,6 +3,9 @@
 #include "cave.hpp"
 #include "cave_render.hpp"
 #include "common.hpp"
+#if SH_FEATURE_HULL_DAMAGE || SH_FEATURE_PARTICLES
+#include "damage_view.hpp"
+#endif
 #include "fxdata.h"
 #include "game.hpp"
 #if SH_FEATURE_MINES || SH_FEATURE_CURRENTS
@@ -38,6 +41,12 @@ inline void frame(const game::State &state, const cave::Camera &camera, world::T
     hazard_view::drawMines(Arduboy2Base::sBuffer, state, camera);
 #endif
     pilot_view::draw(Arduboy2Base::sBuffer, state, camera);
+#if SH_FEATURE_PARTICLES
+    damage_view::drawParticles(Arduboy2Base::sBuffer, state, camera);
+#endif
+#if SH_FEATURE_HULL_DAMAGE
+    damage_view::drawFlash(Arduboy2Base::sBuffer, state, camera);
+#endif
 #if SH_FEATURE_MINES
     hazard_view::drawImpact(Arduboy2Base::sBuffer, state, camera);
 #endif
