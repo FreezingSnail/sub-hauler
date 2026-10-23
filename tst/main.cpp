@@ -8,6 +8,11 @@
 #include "test.hpp"
 #include "world_test.hpp"
 
+#if SH_FEATURE_FOG_CHART
+#include "chart_test.hpp"
+#include "chart_view_test.hpp"
+#endif
+
 #if SH_FEATURE_CARGO_LOAD
 #include "cargo_screen_test.hpp"
 #include "cargo_view_test.hpp"
@@ -35,6 +40,10 @@ int main() {
     GameSuite(runner);
     PilotViewSuite(runner);
     WorldSuite(runner);
+#if SH_FEATURE_FOG_CHART
+    ChartSuite(runner);
+    ChartViewSuite(runner);
+#endif
 #if SH_FEATURE_STATIONS
     StationSuite(runner);
 #endif
