@@ -1,0 +1,657 @@
+#!/usr/bin/env python3
+"""Bake the fixed browser cave into raw 1-bit FX tables and metadata.
+
+The layout is a deterministic Python port of ``generateCave`` from
+``spike-trim/game.js`` with the shipped seed (4242). Generation has no Node,
+browser, or third-party dependency: only the Python standard library.
+
+Binary layout
+-------------
+``fxdata/tables/world.bin`` -- 6,400 B
+    320 x 160 tiles, 1 bit per tile, row-major.
+    40 bytes per row (320 / 8); bit ``x & 7`` of byte ``y * 40 + x // 8`` is
+    tile ``(x, y)``. Bit 1 = solid rock, bit 0 = open water. LSB is the
+    leftmost tile in the byte. There is no file header; the layout version and
+    dimensions live in ``src/generated/world.hpp``.
+
+``fxdata/tables/world-chart.bin`` -- 256 B
+    64 x 32 chart cells, 1 bit per cell, row-major.
+    8 bytes per row (64 / 8); bit ``x & 7`` of byte ``y * 8 + x // 8`` is chart
+    cell ``(x, y)``. Bit 1 = water, bit 0 = land. A chart cell covers exactly
+    5 x 5 world tiles and is water when at least one tile in that block is
+    open. This matches the browser chart's "any open tile" downsample.
+
+``src/generated/world.hpp`` -- generated symbolic constants and metadata only.
+    The header is pure C++ (only ``<stdint.h>``). It deliberately does not
+    include Arduino headers so host tests can include it. Any runtime-used
+    metadata array must move to FX/PROGMEM in M1.2/M1.3; see the warning in the
+    generated header.
+"""
+
+from __future__ import annotations
+
+import argparse
+import math
+from dataclasses import dataclass
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+
+WORLD_TILES_X = 320
+WORLD_TILES_Y = 160
+TILE_PIXELS = 8
+WORLD_PIXELS_X = WORLD_TILES_X * TILE_PIXELS
+WORLD_PIXELS_Y = WORLD_TILES_Y * TILE_PIXELS
+TILES_PER_BYTE = 8
+WORLD_ROW_BYTES = WORLD_TILES_X // TILES_PER_BYTE
+WORLD_BYTES = WORLD_ROW_BYTES * WORLD_TILES_Y
+
+CHART_TILES_X = 64
+CHART_TILES_Y = 32
+CHART_CELL_TILES = 5
+CHART_ROW_BYTES = CHART_TILES_X // TILES_PER_BYTE
+CHART_BYTES = CHART_ROW_BYTES * CHART_TILES_Y
+
+LAYOUT_VERSION = 1
+DEFAULT_SEED = 4242
+BORDER_TILES = 2
+SETTLEMENT_CLEAR_TILES = 6
+DOCK_CLEARANCE_PX = 42
+MINE_RADIUS_PX = 3
+
+# Browser constants that affect the baked geometry.
+HULL_WIDTH_PX = 26
+HULL_HEIGHT_PX = 8
+EMPTY_LOAD_HULL_HEIGHT_PX = HULL_HEIGHT_PX
+
+
+@dataclass(frozen=True)
+class Chamber:
+    x: float
+    y: float
+    r: float
+    name: str = ""
+    settlement: bool = False
+
+
+@dataclass(frozen=True)
+class Settlement:
+    id: int
+    name: str
+    tile_x: int
+    tile_y: int
+    pixel_x: int
+    pixel_y: int
+
+
+@dataclass(frozen=True)
+class Mine:
+    x: int
+    y: int
+
+
+@dataclass
+class World:
+    seed: int
+    grid: bytearray
+    chart: bytes
+    chambers: tuple[Chamber, ...]
+    settlements: tuple[Settlement, ...]
+    mines: tuple[Mine, ...]
+    spawn_tile_x: int
+    spawn_tile_y: int
+    spawn_pixel_x: int
+    spawn_pixel_y: int
+    spawn_sub_x: int
+    spawn_sub_y: int
+
+
+def _imul(a: int, b: int) -> int:
+    """JavaScript Math.imul: low 32 bits of a * b, as an unsigned value."""
+    return ((a & 0xFFFFFFFF) * (b & 0xFFFFFFFF)) & 0xFFFFFFFF
+
+
+def mulberry32(seed: int):
+    """Port of the browser's 32-bit PRNG; returns floats in [0, 1)."""
+    state = seed & 0xFFFFFFFF
+    mask = 0xFFFFFFFF
+
+    def rand() -> float:
+        nonlocal state
+        state = (state + 0x6D2B79F5) & mask
+        t = _imul((state ^ (state >> 15)) & mask, (1 | state) & mask)
+        t = ((t + _imul((t ^ (t >> 7)) & mask, (61 | t) & mask)) ^ t) & mask
+        return ((t ^ (t >> 14)) & mask) / 4294967296.0
+
+    return rand
+
+
+def _clamp(value, lo, hi):
+    return lo if value < lo else hi if value > hi else value
+
+
+def _carve_disk(grid: bytearray, cx: float, cy: float, radius: float) -> None:
+    first_x = max(0, math.floor(cx - radius))
+    last_x = min(WORLD_TILES_X - 1, math.ceil(cx + radius))
+    first_y = max(0, math.floor(cy - radius))
+    last_y = min(WORLD_TILES_Y - 1, math.ceil(cy + radius))
+    radius_sq = radius * radius
+    for y in range(first_y, last_y + 1):
+        row = y * WORLD_TILES_X
+        for x in range(first_x, last_x + 1):
+            dx = x - cx
+            dy = y - cy
+            if dx * dx + dy * dy <= radius_sq:
+                grid[row + x] = 0
+
+
+def _carve_segment(
+    grid: bytearray, ax: float, ay: float, bx: float, by: float, radius: float
+) -> None:
+    dx = bx - ax
+    dy = by - ay
+    distance = math.hypot(dx, dy)
+    steps = max(1, math.ceil(distance / 0.4))
+    for i in range(steps + 1):
+        t = i / steps
+        _carve_disk(grid, ax + dx * t, ay + dy * t, radius)
+
+
+def tile_solid(grid: bytearray, tx: int, ty: int) -> bool:
+    if tx < 0 or ty < 0 or tx >= WORLD_TILES_X or ty >= WORLD_TILES_Y:
+        return True
+    return grid[ty * WORLD_TILES_X + tx] == 1
+
+
+def solid_at(grid: bytearray, x: float, y: float) -> bool:
+    return tile_solid(grid, math.floor(x / TILE_PIXELS), math.floor(y / TILE_PIXELS))
+
+
+def generate_cave(seed: int = DEFAULT_SEED) -> World:
+    """Return the fixed cave for ``seed`` (4242 is the shipped layout)."""
+    rand = mulberry32((seed & 0xFFFFFFFF) or 1)
+    grid = bytearray([1]) * (WORLD_TILES_X * WORLD_TILES_Y)
+    chambers: list[Chamber] = []
+
+    def chamber(x, y, r, name="", is_settlement=False):
+        c = Chamber(
+            x=_clamp(x, r + 4, WORLD_TILES_X - r - 4),
+            y=_clamp(y, r + 4, WORLD_TILES_Y - r - 4),
+            r=r,
+            name=name,
+            settlement=is_settlement,
+        )
+        chambers.append(c)
+        return c
+
+    # Four settlements on a rough ring, joined by junction chambers.
+    tidewall = chamber(38, 48, 10, "TIDEWALL", True)
+    benthos = chamber(150, 30, 10, "BENTHOS", True)
+    cormorant = chamber(282, 62, 10, "CORMORANT", True)
+    deep_anchor = chamber(172, 132, 11, "DEEP ANCHOR", True)
+    j0 = chamber(91, 72, 6.5)
+    j1 = chamber(220, 32, 6.5)
+    j2 = chamber(252, 105, 7)
+    j3 = chamber(100, 138, 7)
+    s0 = chamber(72, 22, 5.5)
+    s1 = chamber(168, 72, 6.5)
+    s2 = chamber(292, 140, 5.5)
+    s3 = chamber(44, 108, 6)
+
+    for c in chambers:
+        _carve_disk(grid, c.x, c.y, c.r)
+
+    def link(a: Chamber, b: Chamber, radius: float, wiggle: float) -> None:
+        mx = _clamp(
+            (a.x + b.x) / 2 + (rand() * 2 - 1) * wiggle,
+            8,
+            WORLD_TILES_X - 8,
+        )
+        my = _clamp(
+            (a.y + b.y) / 2 + (rand() * 2 - 1) * wiggle,
+            8,
+            WORLD_TILES_Y - 8,
+        )
+        _carve_segment(grid, a.x, a.y, mx, my, radius)
+        _carve_segment(grid, mx, my, b.x, b.y, radius)
+
+    ring = [tidewall, j0, benthos, j1, cormorant, j2, deep_anchor, j3]
+    for i in range(len(ring)):
+        link(ring[i], ring[(i + 1) % len(ring)], 3.6, 7)
+
+    # Central shortcut plus three dead-end side chambers.
+    link(benthos, s1, 3.4, 4)
+    link(s1, j2, 3.4, 4)
+    link(j0, s0, 3.4, 3)
+    link(j2, s2, 3.4, 3)
+    link(j3, s3, 3.4, 3)
+
+    # Keep the world sealed after carving.
+    for y in range(WORLD_TILES_Y):
+        row = y * WORLD_TILES_X
+        for x in range(WORLD_TILES_X):
+            if (
+                x < BORDER_TILES
+                or y < BORDER_TILES
+                or x >= WORLD_TILES_X - BORDER_TILES
+                or y >= WORLD_TILES_Y - BORDER_TILES
+            ):
+                grid[row + x] = 1
+
+    settlements = tuple(
+        Settlement(
+            id=index,
+            name=entry.name,
+            tile_x=int(entry.x),
+            tile_y=int(entry.y),
+            pixel_x=int(entry.x) * TILE_PIXELS,
+            pixel_y=int(entry.y) * TILE_PIXELS,
+        )
+        for index, entry in enumerate(
+            (tidewall, benthos, cormorant, deep_anchor)
+        )
+    )
+
+    # Mine sites use the same PRNG stream and pull-back as the browser.
+    mine_chambers = [c for c in chambers if not c.settlement]
+    mines: list[Mine] = []
+    for i in range(8):
+        c = mine_chambers[i % len(mine_chambers)]
+        angle = rand() * math.pi * 2
+        distance = (c.r - 1.5) * TILE_PIXELS
+        x = c.x * TILE_PIXELS + math.cos(angle) * distance
+        y = c.y * TILE_PIXELS + math.sin(angle) * distance
+        for _ in range(12):
+            if not solid_at(grid, x, y):
+                break
+            x += (c.x * TILE_PIXELS - x) * 0.15
+            y += (c.y * TILE_PIXELS - y) * 0.15
+        if not solid_at(grid, x, y):
+            mines.append(Mine(x=int(round(x)), y=int(round(y))))
+
+    spawn = settlements[0]
+    spawn_sub_x = spawn.pixel_x - HULL_WIDTH_PX // 2
+    spawn_sub_y = spawn.pixel_y + EMPTY_LOAD_HULL_HEIGHT_PX // 2
+
+    chart = pack_chart(build_chart(grid))
+    world = World(
+        seed=seed,
+        grid=grid,
+        chart=chart,
+        chambers=tuple(chambers),
+        settlements=settlements,
+        mines=tuple(mines),
+        spawn_tile_x=spawn.tile_x,
+        spawn_tile_y=spawn.tile_y,
+        spawn_pixel_x=spawn.pixel_x,
+        spawn_pixel_y=spawn.pixel_y,
+        spawn_sub_x=spawn_sub_x,
+        spawn_sub_y=spawn_sub_y,
+    )
+    validate_world(world)
+    return world
+
+
+def pack_tiles(grid: bytearray) -> bytes:
+    """Pack a 320 x 160 tile grid into the 6,400 B flash ABI."""
+    if len(grid) != WORLD_TILES_X * WORLD_TILES_Y:
+        raise ValueError(
+            f"world grid must be {WORLD_TILES_X * WORLD_TILES_Y} tiles, "
+            f"got {len(grid)}"
+        )
+    out = bytearray(WORLD_BYTES)
+    for y in range(WORLD_TILES_Y):
+        row = y * WORLD_TILES_X
+        out_row = y * WORLD_ROW_BYTES
+        for x in range(WORLD_TILES_X):
+            if grid[row + x]:
+                out[out_row + (x >> 3)] |= 1 << (x & 7)
+    return bytes(out)
+
+
+def unpack_tiles(data: bytes) -> bytearray:
+    """Inverse of :func:`pack_tiles`; used by validation and tool tests."""
+    if len(data) != WORLD_BYTES:
+        raise ValueError(f"world table must be {WORLD_BYTES} B, got {len(data)}")
+    grid = bytearray(WORLD_TILES_X * WORLD_TILES_Y)
+    for y in range(WORLD_TILES_Y):
+        row = y * WORLD_TILES_X
+        data_row = y * WORLD_ROW_BYTES
+        for x in range(WORLD_TILES_X):
+            if data[data_row + (x >> 3)] & (1 << (x & 7)):
+                grid[row + x] = 1
+    return grid
+
+
+def build_chart(grid: bytearray) -> bytes:
+    """Downsample open tiles into the 64 x 32 chart water mask (unpacked)."""
+    if len(grid) != WORLD_TILES_X * WORLD_TILES_Y:
+        raise ValueError("chart input must be a 320 x 160 tile grid")
+    chart = bytearray(CHART_TILES_X * CHART_TILES_Y)
+    for cy in range(CHART_TILES_Y):
+        for cx in range(CHART_TILES_X):
+            water = 0
+            for ty in range(cy * CHART_CELL_TILES, (cy + 1) * CHART_CELL_TILES):
+                row = ty * WORLD_TILES_X
+                for tx in range(cx * CHART_CELL_TILES, (cx + 1) * CHART_CELL_TILES):
+                    if not grid[row + tx]:
+                        water = 1
+                        break
+                if water:
+                    break
+            chart[cy * CHART_TILES_X + cx] = water
+    return bytes(chart)
+
+
+def pack_chart(chart: bytes) -> bytes:
+    """Pack a 64 x 32 chart mask into the 256 B flash ABI."""
+    if len(chart) != CHART_TILES_X * CHART_TILES_Y:
+        raise ValueError(
+            f"chart mask must be {CHART_TILES_X * CHART_TILES_Y} cells, "
+            f"got {len(chart)}"
+        )
+    out = bytearray(CHART_BYTES)
+    for y in range(CHART_TILES_Y):
+        row = y * CHART_TILES_X
+        out_row = y * CHART_ROW_BYTES
+        for x in range(CHART_TILES_X):
+            if chart[row + x]:
+                out[out_row + (x >> 3)] |= 1 << (x & 7)
+    return bytes(out)
+
+
+def unpack_chart(data: bytes) -> bytes:
+    if len(data) != CHART_BYTES:
+        raise ValueError(f"chart table must be {CHART_BYTES} B, got {len(data)}")
+    chart = bytearray(CHART_TILES_X * CHART_TILES_Y)
+    for y in range(CHART_TILES_Y):
+        row = y * CHART_TILES_X
+        data_row = y * CHART_ROW_BYTES
+        for x in range(CHART_TILES_X):
+            if data[data_row + (x >> 3)] & (1 << (x & 7)):
+                chart[row + x] = 1
+    return bytes(chart)
+
+
+def _open_components(grid: bytearray) -> int:
+    seen = bytearray(len(grid))
+    components = 0
+    for start in range(len(grid)):
+        if grid[start] or seen[start]:
+            continue
+        components += 1
+        stack = [start]
+        seen[start] = 1
+        while stack:
+            index = stack.pop()
+            x = index % WORLD_TILES_X
+            y = index // WORLD_TILES_X
+            if x > 0:
+                n = index - 1
+                if not grid[n] and not seen[n]:
+                    seen[n] = 1
+                    stack.append(n)
+            if x + 1 < WORLD_TILES_X:
+                n = index + 1
+                if not grid[n] and not seen[n]:
+                    seen[n] = 1
+                    stack.append(n)
+            if y > 0:
+                n = index - WORLD_TILES_X
+                if not grid[n] and not seen[n]:
+                    seen[n] = 1
+                    stack.append(n)
+            if y + 1 < WORLD_TILES_Y:
+                n = index + WORLD_TILES_X
+                if not grid[n] and not seen[n]:
+                    seen[n] = 1
+                    stack.append(n)
+    return components
+
+
+def validate_world(world: World) -> None:
+    """Raise ``ValueError`` when the baked world breaks a device invariant."""
+    grid = world.grid
+    if len(grid) != WORLD_TILES_X * WORLD_TILES_Y:
+        raise ValueError("world dimensions are not 320 x 160 tiles")
+    if any(value not in (0, 1) for value in grid):
+        raise ValueError("world grid contains values other than 0 and 1")
+
+    # Sealed border: two solid tiles on every edge.
+    for y in range(WORLD_TILES_Y):
+        for x in range(WORLD_TILES_X):
+            if (
+                x < BORDER_TILES
+                or y < BORDER_TILES
+                or x >= WORLD_TILES_X - BORDER_TILES
+                or y >= WORLD_TILES_Y - BORDER_TILES
+            ) and not grid[y * WORLD_TILES_X + x]:
+                raise ValueError(f"sealed border broken at tile ({x}, {y})")
+
+    # Spawn: Tidewall dock center open and the empty-hull footprint clear.
+    if tile_solid(grid, world.spawn_tile_x, world.spawn_tile_y):
+        raise ValueError("spawn tile is solid")
+    first_x = math.floor(world.spawn_sub_x / TILE_PIXELS)
+    first_y = math.floor(world.spawn_sub_y / TILE_PIXELS)
+    last_x = math.floor((world.spawn_sub_x + HULL_WIDTH_PX - 0.001) / TILE_PIXELS)
+    last_y = math.floor(
+        (world.spawn_sub_y + EMPTY_LOAD_HULL_HEIGHT_PX - 0.001) / TILE_PIXELS
+    )
+    for ty in range(first_y, last_y + 1):
+        for tx in range(first_x, last_x + 1):
+            if tile_solid(grid, tx, ty):
+                raise ValueError(f"spawn footprint is solid at tile ({tx}, {ty})")
+
+    # All chambers, including dead-end branches, must be open and connected.
+    for chamber in world.chambers:
+        tx = int(chamber.x)
+        ty = int(chamber.y)
+        if tile_solid(grid, tx, ty):
+            raise ValueError(f"chamber center is solid at tile ({tx}, {ty})")
+    if _open_components(grid) != 1:
+        raise ValueError("open cave is not one connected component")
+
+    # Settlement centers are open and clear of walls.
+    for settlement in world.settlements:
+        radius = SETTLEMENT_CLEAR_TILES
+        for dy in range(-radius, radius + 1):
+            for dx in range(-radius, radius + 1):
+                if dx * dx + dy * dy > radius * radius:
+                    continue
+                tx = settlement.tile_x + dx
+                ty = settlement.tile_y + dy
+                if tile_solid(grid, tx, ty):
+                    raise ValueError(
+                        f"settlement {settlement.name} is blocked at "
+                        f"tile ({tx}, {ty})"
+                    )
+
+    # Mines sit in open water, away from every settlement's dock radius.
+    if not world.mines:
+        raise ValueError("world has no mine sites")
+    for index, mine in enumerate(world.mines):
+        if not (0 <= mine.x < WORLD_PIXELS_X and 0 <= mine.y < WORLD_PIXELS_Y):
+            raise ValueError(f"mine {index} is outside the world")
+        if solid_at(grid, mine.x, mine.y):
+            raise ValueError(f"mine {index} is inside rock at ({mine.x}, {mine.y})")
+        for settlement in world.settlements:
+            dx = mine.x - settlement.pixel_x
+            dy = mine.y - settlement.pixel_y
+            if math.hypot(dx, dy) < DOCK_CLEARANCE_PX:
+                raise ValueError(
+                    f"mine {index} is inside {settlement.name} dock clearance"
+                )
+
+    # Chart mask must be the documented any-open 5 x 5 downsample.
+    expected = build_chart(grid)
+    actual = unpack_chart(world.chart)
+    if actual != expected:
+        for index, (want, got) in enumerate(zip(expected, actual)):
+            if want != got:
+                raise ValueError(
+                    "chart mask disagrees with the tile grid at chart cell "
+                    f"({index % CHART_TILES_X}, {index // CHART_TILES_X})"
+                )
+        raise ValueError("chart mask disagrees with the tile grid")
+    for cy in range(CHART_TILES_Y):
+        for cx in range(CHART_TILES_X):
+            water = actual[cy * CHART_TILES_X + cx]
+            open_tiles = False
+            solid_tiles = True
+            for ty in range(cy * CHART_CELL_TILES, (cy + 1) * CHART_CELL_TILES):
+                for tx in range(cx * CHART_CELL_TILES, (cx + 1) * CHART_CELL_TILES):
+                    if not grid[ty * WORLD_TILES_X + tx]:
+                        open_tiles = True
+                        solid_tiles = False
+            if water and not open_tiles:
+                raise ValueError(f"chart water cell ({cx}, {cy}) has no open tiles")
+            if not water and not solid_tiles:
+                raise ValueError(f"chart land cell ({cx}, {cy}) has open tiles")
+
+
+def _cpp_bool(value: bool) -> str:
+    return "true" if value else "false"
+
+
+def render_header(world: World) -> str:
+    settlements = "\n".join(
+        "    {"
+        f"{s.id}, \"{s.name}\", {s.tile_x}, {s.tile_y}, "
+        f"{s.pixel_x}, {s.pixel_y}"
+        "},"
+        for s in world.settlements
+    )
+    mines = "\n".join(
+        f"    {{{mine.x}, {mine.y}}}," for mine in world.mines
+    )
+    return f"""// Generated by tools/gen_world.py. Do not edit.
+//
+// Baked world tables (M1). This header is metadata only and includes no
+// Arduino header; host tests may include it directly.
+//
+// Flash ABI:
+//   world.bin        {WORLD_BYTES} B, {WORLD_TILES_X}x{WORLD_TILES_Y} tiles, 1 bpp, 1 = solid
+//                    row-major, {WORLD_ROW_BYTES} B/row, LSB = leftmost tile
+//   world-chart.bin  {CHART_BYTES} B, {CHART_TILES_X}x{CHART_TILES_Y} cells, 1 bpp, 1 = water
+//                    cell = any open tile in a {CHART_CELL_TILES}x{CHART_CELL_TILES} block,
+//                    row-major, {CHART_ROW_BYTES} B/row, LSB = leftmost cell
+//
+// SRAM WARNING: on AVR a namespace-scope constexpr array that is odr-used can
+// be copied into SRAM by the startup code. These metadata arrays are not
+// claimed to live in flash. M1.2/M1.3 must relocate any runtime-used metadata
+// to the FX image or PROGMEM before it is included by device code.
+#pragma once
+
+#include <stdint.h>
+
+namespace world {{
+
+constexpr uint8_t  LAYOUT_VERSION    = {LAYOUT_VERSION};
+constexpr uint16_t SEED              = {world.seed};
+constexpr uint16_t TILES_X           = {WORLD_TILES_X};
+constexpr uint16_t TILES_Y           = {WORLD_TILES_Y};
+constexpr uint8_t  TILE_PIXELS       = {TILE_PIXELS};
+constexpr uint16_t PIXELS_X          = {WORLD_PIXELS_X};
+constexpr uint16_t PIXELS_Y          = {WORLD_PIXELS_Y};
+constexpr uint8_t  WORLD_ROW_BYTES   = {WORLD_ROW_BYTES};
+constexpr uint16_t WORLD_BYTES       = {WORLD_BYTES};
+constexpr uint8_t  CHART_TILES_X     = {CHART_TILES_X};
+constexpr uint8_t  CHART_TILES_Y     = {CHART_TILES_Y};
+constexpr uint8_t  CHART_CELL_TILES  = {CHART_CELL_TILES};
+constexpr uint8_t  CHART_ROW_BYTES   = {CHART_ROW_BYTES};
+constexpr uint16_t CHART_BYTES       = {CHART_BYTES};
+constexpr uint8_t  SETTLEMENT_COUNT  = {len(world.settlements)};
+constexpr uint8_t  MINE_COUNT        = {len(world.mines)};
+constexpr int16_t  DOCK_CLEARANCE_PX = {DOCK_CLEARANCE_PX};
+constexpr uint8_t  MINE_RADIUS_PX    = {MINE_RADIUS_PX};
+constexpr bool     CHART_ANY_OPEN    = {_cpp_bool(True)};
+
+constexpr int16_t SPAWN_TILE_X  = {world.spawn_tile_x};
+constexpr int16_t SPAWN_TILE_Y  = {world.spawn_tile_y};
+constexpr int16_t SPAWN_PIXEL_X = {world.spawn_pixel_x};
+constexpr int16_t SPAWN_PIXEL_Y = {world.spawn_pixel_y};
+constexpr int16_t SPAWN_SUB_X   = {world.spawn_sub_x};
+constexpr int16_t SPAWN_SUB_Y   = {world.spawn_sub_y};
+
+struct Settlement {{
+    uint8_t id;
+    const char* name;
+    int16_t tile_x;
+    int16_t tile_y;
+    int16_t pixel_x;
+    int16_t pixel_y;
+}};
+
+struct Mine {{
+    int16_t x;
+    int16_t y;
+}};
+
+// Warning: see the SRAM note above. These arrays are metadata, not flash data.
+constexpr Settlement SETTLEMENTS[SETTLEMENT_COUNT] = {{
+{settlements}
+}};
+
+constexpr Mine MINES[MINE_COUNT] = {{
+{mines}
+}};
+
+}}  // namespace world
+"""
+
+
+def write_world(
+    world: World,
+    world_path: Path = ROOT / "fxdata" / "tables" / "world.bin",
+    chart_path: Path = ROOT / "fxdata" / "tables" / "world-chart.bin",
+    header_path: Path = ROOT / "src" / "generated" / "world.hpp",
+) -> tuple[Path, Path, Path]:
+    """Write all three artifacts; returns the paths that were written."""
+    world_path = Path(world_path)
+    chart_path = Path(chart_path)
+    header_path = Path(header_path)
+    for path in (world_path, chart_path, header_path):
+        path.parent.mkdir(parents=True, exist_ok=True)
+    world_path.write_bytes(pack_tiles(world.grid))
+    chart_path.write_bytes(world.chart)
+    header_path.write_text(render_header(world), encoding="utf-8")
+    return world_path, chart_path, header_path
+
+
+def main(argv=None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--seed", type=int, default=DEFAULT_SEED)
+    parser.add_argument(
+        "--world",
+        type=Path,
+        default=ROOT / "fxdata" / "tables" / "world.bin",
+        help="output 320x160 1-bpp solidity plane",
+    )
+    parser.add_argument(
+        "--chart",
+        type=Path,
+        default=ROOT / "fxdata" / "tables" / "world-chart.bin",
+        help="output 64x32 1-bpp chart water mask",
+    )
+    parser.add_argument(
+        "--header",
+        type=Path,
+        default=ROOT / "src" / "generated" / "world.hpp",
+        help="output C++ metadata header",
+    )
+    args = parser.parse_args(argv)
+
+    world = generate_cave(args.seed)
+    paths = write_world(world, args.world, args.chart, args.header)
+    print(
+        "gen_world: "
+        f"seed={world.seed} world={paths[0].stat().st_size}B "
+        f"chart={paths[1].stat().st_size}B "
+        f"settlements={len(world.settlements)} mines={len(world.mines)} "
+        "validation=pass"
+    )
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
