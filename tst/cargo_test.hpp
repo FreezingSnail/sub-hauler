@@ -54,6 +54,34 @@ inline void loadAllHulls(FakeBank &bank) {
     bank.install(CARGO_LEVIATHAN_OFFSET, LEVIATHAN_RECORD, CARGO_LEVIATHAN_RECORD_BYTES);
 }
 
+// Install every required piece at its bank target. The generated target is
+// supported by the floor/structural hull/another target piece, so a few passes
+// in bank order settle every hull without a per-class order table. Bonus cargo
+// stays optional, matching the commit rule.
+inline bool solveRequired(cargo::CargoPuzzle &puzzle) {
+    uint8_t remaining = 0;
+    for (uint8_t i = 0; i < puzzle.pieceCount; ++i) {
+        if (!cargo::pieceBonus(puzzle.pieces[i]) && !cargo::piecePlaced(puzzle.pieces[i]))
+            ++remaining;
+    }
+
+    for (uint8_t pass = 0; pass < puzzle.pieceCount && remaining > 0; ++pass) {
+        bool progress = false;
+        for (uint8_t i = 0; i < puzzle.pieceCount; ++i) {
+            if (cargo::pieceBonus(puzzle.pieces[i]) || cargo::piecePlaced(puzzle.pieces[i]))
+                continue;
+            const cargo::CargoPiece &piece = puzzle.pieces[i];
+            if (!cargo::place(puzzle, i, piece.x, piece.y))
+                continue;
+            --remaining;
+            progress = true;
+        }
+        if (!progress)
+            break;
+    }
+    return remaining == 0;
+}
+
 }   // namespace cargo_test
 
 inline void CargoSuite(TestRunner &runner) {

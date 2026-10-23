@@ -26,7 +26,7 @@ Keep dated measurements in the checkpoint table instead of copying them around.
 | Resource | Limit | Measurement |
 | --- | --- | --- |
 | Program flash | 29,696 B | `.text` + `.data` from `make size` |
-| Flash planning ceiling | 29,000 B | raised from 28,000 B on 2026-10-23 for the M8 roster; 696 B under hardware |
+| Flash planning ceiling | 29,000 B | raised from 28,000 B on 2026-10-23 for the M8 roster; 886 B under hardware after the M8 holds |
 | SRAM | 2,560 B | `.data` + `.bss` static; the remainder is stack/locals |
 | Static SRAM planning ceiling | 1,700 B | dated whole-image target, raised from 1,680 B on 2026-10-23 |
 | Stack | explicit reserve | static free bytes alone do not prove stack fit |
@@ -36,9 +36,12 @@ LTO makes per-symbol size arithmetic misleading; only whole-image A/B
 measurements count. The 1,700 B static ceiling is a planning target with 11 B of
 headroom over the current 1,689 B full image. The M8 roster adds one state byte
 (`hullClass`), but removes the chart blink and cargo B-hold bytes and makes the
-stateless cargo reader local, so static RAM is 1 B below M7. Its title and class
-art are flash-only, and the `MULTI_HULL=0` build folds back to the HAULER-only
-image. The 600 B stack target did not change.
+stateless cargo reader local, so static RAM is 1 B below M7. The M8 holds are
+flash-only: the class cutaway reuses the existing shell and `cargo_screen::State`
+reuses its hull byte. The device loader reads folded scalar accessors instead
+of indexing `cargo::HULLS`, which would put 54 B of class specs in AVR `.data`;
+`MULTI_HULL=0` folds all of that back to HAULER. The 600 B stack target did not
+change.
 
 ## Stack measurement
 
@@ -71,9 +74,10 @@ Target: **at least 600 B of reserve above `__bss_end`** on the full profile.
 This is the 2026-10-23 re-baseline. The earlier 800 B target predated the 258 B
 persistent chart slice; the chart-inclusive probe measured **654 B**, the
 chart+sonar probe **649 B**, the M7 mine+current probe **641 B**, the M7
-damage+particle probe **616 B**, the M7 shop probe **606 B**, and the M8 roster
-probe **601 B**, so 600 B currently keeps only a 1 B margin. Do not relax this
-target further without a new dated measurement and an explicit note here.
+damage+particle probe **616 B**, the M7 shop probe **606 B**, the M8 roster
+probe **601 B**, and the M8 holds probe **619 B**, so 600 B currently keeps a
+19 B margin. Do not relax this target further without a new dated measurement
+and an explicit note here.
 
 Status: **passing 2026-10-23.** `test_memory` includes the M6 chart path: a
 static `chart::State` (the ownership the firmware uses), a spawn
@@ -90,12 +94,15 @@ and `damage::tick`, spawns/ages the four-particle pool, and draws a pilot frame
 with the edge brackets and debris. The M7 shop path docks, buys an air upgrade,
 and draws the three-row shop board. The M8 roster path draws all three title
 screens (name, playable silhouette, length stat), then flies the LEVIATHAN
-silhouette through the pilot frames. With `SH_STACK_DIAG=1` the probe measures
-**`stack_reserve=601`**; without diagnostics it prints a bare `P` at the 600 B
-target. The other three suites also print `P`. The probe measures the reserve,
-not the target: 601 B is the number of untouched bytes above `__bss_end` on the
-chart+sonar+hazard+damage+shop+title/roster path, and 600 B is the deliberate
-pass line below it.
+silhouette through the pilot frames. The M8 holds path loads and draws all
+three class cargo arrangements through the same local screen state, so the
+dynamic cutaway and class names are inside the measured window. With
+`SH_STACK_DIAG=1` the probe measures **`stack_reserve=619`**; without
+diagnostics it prints a bare `P` at the 600 B target. The other three suites
+also print `P`. The probe measures the reserve, not the target: 619 B is the
+number of untouched bytes above `__bss_end` on the
+chart+sonar+hazard+damage+shop+title/roster+holds path, and 600 B is the
+deliberate pass line below it.
 
 The firmware comparison is about **641 B** of reserve: the full image has
 **871 B** of static free SRAM and an estimated **230 B** stack depth (the
@@ -103,11 +110,14 @@ chart+sonar 222 B estimate plus roughly 8 B for the deeper hazard path). Do not
 subtract the probe's static locals from the firmware number: `game::State`,
 the cargo screen state, and the tile cache are stack locals in the probe but
 static in the firmware, so the earlier "451 B" arithmetic subtracted
-static-owned bytes twice. The probe's 601 B already charges that state to
+static-owned bytes twice. The probe's 619 B already charges that state to
 static, exactly like the shipped image.
 
 Static free SRAM is **871 B** and the full image is **1,689 B** static, 11 B
-under the raised 1,700 B planning ceiling. `game::State` is **92 B** on AVR in
+under the raised 1,700 B planning ceiling. The M8 holds add no persistent
+state: `cargo::CargoPuzzle` is **83 B** and `cargo_screen::State` is **88 B**
+on AVR, both stack locals inside the probe and static in the firmware's single
+`cargo_screen::State`. `game::State` is **92 B** on AVR in
 the full profile: the 71 B hazard state, the one-byte wall-hit cooldown, the
 16-byte four-particle pool, the three run-only shop level bytes, and the M8
 hull-class byte. Disabling `HULL_DAMAGE` removes the hull and cooldown bytes (2 B); disabling `PARTICLES`

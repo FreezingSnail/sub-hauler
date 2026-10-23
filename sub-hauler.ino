@@ -218,13 +218,20 @@ static void updateChart() {
 
 #if SH_FEATURE_STATIONS
 #if SH_FEATURE_CARGO_LOAD
-// Load HAULER arrangement 0 and switch to the cargo screen. The cart read
-// happens here in update, before the single display transaction. Failure
-// leaves the station board selected on LOAD CARGO so A retries.
+// Load the selected roster class's arrangement 0 and switch to the cargo
+// screen. The cart read happens here in update, before the single display
+// transaction. Failure leaves the station board selected on LOAD CARGO so A
+// retries. The class byte lives in game::State, so every reopen of LOAD CARGO
+// (accept or resume) selects the same hold and record set.
 static bool enterCargo() {
     // The reader is stateless; keep it local instead of charging a static byte.
     cargo::FxCargoReader reader;
-    if (!cargo_screen::load(s_cargo, reader))
+#if SH_FEATURE_MULTI_HULL
+    const uint8_t hull = cargo_screen::hullForClass(s_state.hullClass);
+#else
+    const uint8_t hull = cargo::HULL_HAULER;
+#endif
+    if (!cargo_screen::load(s_cargo, reader, hull, 0))
         return false;
     s_screen = Screen::Cargo;
     // Reuse the station row byte as the zeroed B-hold counter. Every cargo exit
