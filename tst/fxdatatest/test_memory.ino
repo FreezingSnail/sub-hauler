@@ -50,6 +50,10 @@
 #include "src/cargo_screen.hpp"
 #include "src/cargo_view.hpp"
 #endif
+#if SH_FEATURE_SHOP
+#include "src/shop.hpp"
+#include "src/shop_view.hpp"
+#endif
 #if SH_FEATURE_HULL_DAMAGE
 #include "src/damage.hpp"
 #endif
@@ -66,10 +70,11 @@ extern "C" char __bss_end;
 
 Arduboy2 arduboy;
 
-#if SH_FEATURE_STATIONS && SH_FEATURE_JOBS && SH_FEATURE_CARGO_LOAD && SH_FEATURE_FOG_CHART && SH_FEATURE_SONAR && SH_FEATURE_MINES && SH_FEATURE_CURRENTS && SH_FEATURE_HULL_DAMAGE && SH_FEATURE_PARTICLES && SH_FEATURE_MULTI_HULL
-// The full AVR state budget is pinned here: M7 hazard state (71 B) plus the
-// one-byte damage cooldown and the 16-byte particle pool.
-static_assert(sizeof(game::State) == 88, "full game::State is 88 bytes on AVR");
+#if SH_FEATURE_STATIONS && SH_FEATURE_JOBS && SH_FEATURE_CARGO_LOAD && SH_FEATURE_FOG_CHART && SH_FEATURE_SONAR && SH_FEATURE_MINES && SH_FEATURE_CURRENTS && SH_FEATURE_SHOP && SH_FEATURE_HULL_DAMAGE && SH_FEATURE_PARTICLES && SH_FEATURE_MULTI_HULL
+// The full AVR state budget is pinned here: M7 hazard state (71 B), the
+// one-byte damage cooldown, the 16-byte particle pool, and the three run-only
+// shop level bytes.
+static_assert(sizeof(game::State) == 91, "full game::State is 91 bytes on AVR");
 #endif
 
 #if SH_FEATURE_FOG_CHART
@@ -83,9 +88,9 @@ chart::State probeChart;
 namespace {
 
 // Re-baselined from 800 B to 600 B on 2026-10-23, after the 258 B persistent
-// chart slice entered the full image. The chart+sonar+hazard+damage/particle
-// probe measures 616 B, so 600 B keeps a deliberate 16 B margin over the
-// measurement while remaining well above the measured stack depth.
+// chart slice entered the full image. The chart+sonar+hazard+damage+shop probe
+// measures 606 B, so 600 B keeps a deliberate 6 B margin over the measurement
+// while remaining well above the measured stack depth.
 constexpr uint16_t kReserveTarget = 600;   // bytes of stack reserve required
 constexpr uint8_t kFrameGuard = 64;        // active-frame headroom, never painted
 constexpr uint8_t kPattern = 0xA5;
@@ -151,7 +156,11 @@ __attribute__((noinline)) void runRepresentativePath() {
     // and a pilot frame draws the expanding ring under the HAULER. The cart
     // reads stay inside view::frame, before the display transaction.
     game::Input sonarInput{};
+#if SH_FEATURE_SHOP
+    sonar::fire(state, probeChart, state.sonarLevel);
+#else
     sonar::fire(state, probeChart, 0);
+#endif
     game::stepWorld(state, sonarInput, tables, &cache);
     const cave::Camera sonarCamera = pilot_view::cameraForState(state);
     view::frame(state, sonarCamera, cache, tables);
@@ -229,6 +238,16 @@ __attribute__((noinline)) void runRepresentativePath() {
     const cave::Camera damageCamera = pilot_view::cameraForState(state);
     view::frame(state, damageCamera, cache, tables);
     hud::draw(state);
+    FX::display(CLEAR_BUFFER);
+#endif
+
+#if SH_FEATURE_SHOP
+    // Shop path: dock, buy the air tank through the real transaction, and draw
+    // the three-row board. No cart reads during the display transaction.
+    state.docked = 0;
+    state.credits = 500;
+    shop::buy(state, shop::kAir);
+    shop_view::draw(state, shop::kFirstItem);
     FX::display(CLEAR_BUFFER);
 #endif
 

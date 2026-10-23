@@ -30,17 +30,19 @@ Measured 2026-10-22 with the existing template:
 
 | Resource | Current | Planning ceiling | Hardware limit |
 | --- | ---: | ---: | ---: |
-| Flash | 6,636 B | 27,000 B | 29,696 B |
+| Flash | 6,636 B | 28,000 B | 29,696 B |
 | Static SRAM | 1,214 B | 1,700 B | 2,560 B |
 | Stack | unmeasured | ≥600 B reserve | remainder |
 
 The 1,700 B static ceiling is a planning target, not a hardware fact. It was
-raised from 1,680 B on 2026-10-23 at the M7 damage/particles checkpoint: the
-damage cooldown adds one byte and the four-particle pool adds sixteen, taking
-the full image from 1,680 B to **1,697 B static / 26,088 B flash**. The 3 B of
-headroom under 1,700 B is intentional slack for LTO rounding, not a licence for
-another state slice; the 600 B stack target is unchanged and still passes at
-616 B. Any future persistent feature beyond this needs a carve.
+raised from 1,680 B on 2026-10-23 at the M7 damage/particles checkpoint. At the
+M7 shop checkpoint the full image is **1,690 B static / 27,082 B flash**: the
+three run-only shop level bytes add 3 B, offset by a 10 B compiler jump-table
+saving from the station row-label if-chain. The 10 B of headroom under 1,700 B
+is intentional slack for LTO rounding, not a licence for another state slice;
+the 600 B stack target is unchanged and still passes at 606 B. The flash
+planning ceiling rises from 27,000 B to 28,000 B (918 B under the 29,696 B
+hardware limit). Any future persistent feature beyond this needs a carve.
 
 Whole-image measurements only: LTO makes per-symbol arithmetic misleading. Use
 `make size` and record profile A/B deltas.
@@ -371,11 +373,12 @@ point through `hazards::applyDamage()`.
   draws particles after the HAULER and the flash before the mine spark. No
   strings, no cart reads, no display access.
 - **Budget:** full `sizeof(game::State)` is **88 B** on AVR (71 B hazard state
-  + 1 B cooldown + 16 B pool). Whole-image A/B: hull damage **+464 B flash /
+  + 1 B cooldown + 16 B pool). Whole-image A/B: hull damage **+480 B flash /
   +2 B static** (the 2 B are the hull byte plus the new cooldown), particles
   **+398 B flash / +16 B static**; both enabled **+862 B flash / +18 B static**
-  against a both-disabled build. Against the M7 hazards checkpoint the full
-  image grows **+754 B flash / +17 B static**.
+  against a both-disabled build, with 16 B of the separate flash deltas
+  recovered by LTO folding. Against the M7 hazards checkpoint the full image
+  grows **+754 B flash / +17 B static**.
 
 The full image is **26,088 B / 1,697 B**; `lean` is **24,096 B / 1,680 B**
 (hull damage on, particles off); `core` is **22,394 B / 1,421 B**; `min` is
@@ -388,6 +391,52 @@ frame to the measured path: with diagnostics it reports
 **`stack_reserve=616`**, passing the unchanged **600 B** target with 16 B of
 margin; the production run prints a bare `P`. All four device suites print
 `P`. No screenshot or frame-rate claim.
+
+### M7 shop checkpoint — 2026-10-23
+
+`sub-hauler-m7-shop` adds the station credit sink. The transaction rules are
+pure; the sketch owns the screen, and no shop data is saved. Upgrades last for
+the current run only.
+
+- **Items and prices** live in `src/shop.hpp`: AIR TANK (60 credits, +30 max
+  air), HULL PLATE (70 credits, +1 max hull), and SONAR (50 credits, one ping
+  upgrade level). `shop::kMaxLevel` is 3 for every item, so the full set costs
+  540 credits, roughly seven four-crate deliveries at the generated distances.
+  `priceFor`, `canBuy`, `levelFor`, and `buy` are integer-only.
+- **Transactions are atomic.** `buy()` returns `kNoCredits`, `kSoldOut` (the
+  level cap), `kNotDocked`, or `kInvalidItem` without changing credits, levels,
+  or air. A successful air purchase refills to the new tank; a hull purchase
+  repairs to the new maximum; a sonar purchase only advances the level that
+  `sonar::fire(state, chart, state.sonarLevel)` already consumes.
+- **Capacities reuse the existing rules.** `game::airCapacity(state)` is
+  180 + 30/level and `game::hullCapacity(state)` is 6 + 1/level. Reset, station
+  SERVICE, the HUD air bar, and both station/shop status lines use the helpers.
+  With `SHOP=0` the helpers fold to the base constants and the level fields do
+  not exist.
+- **Board and screen.** The station board adds a SHOP row to both the no-job
+  and active shapes (five rows max): header/status through y=21, rows at
+  y=22+7*row, a 7 px invert, and the hint at y=57. `station::kActionShop` opens
+  `Screen::Shop`; the sketch reuses `s_stationRow` as the 0..2 item selection,
+  so there is no extra static byte. D-pad selects, A buys, B returns to the
+  SHOP row. The shop frame performs no world step and no cart reads.
+- **Feedback** is derived, not stored: each row shows its level and price (or
+  `MAX`), and the one-line hint becomes `LOW CREDITS` or `MAX LEVEL` for the
+  selected row. `SHOP=0` removes the state, rows, strings, include paths, and
+  transactions.
+- **Budget:** `sizeof(game::State)` is **91 B** on AVR (the three level bytes
+  over the 88 B damage/particle state). The full image is
+  **27,082 B flash / 1,690 B static**. A full A/B build with only `SHOP=0`
+  measures **26,088 B / 1,697 B**, so the shop is **+994 B flash / -7 B
+  static**: +3 B of state, offset by a 10 B compiler jump-table saving from
+  folding the station row-label switch into an if-chain. The image stays under
+  the 1,700 B ceiling and the 29,696 B flash limit.
+
+`lean` is unchanged at **24,096 B / 1,680 B**, `core` at
+**22,394 B / 1,421 B**, and `min` at **10,586 B / 1,259 B**. Host tests:
+**139** full, **106** lean, **87** core, **41** min. The stack probe includes a
+real shop purchase and draw frame: it reports **`stack_reserve=606`**, passing
+the **600 B** target with 6 B of margin, and prints a bare `P`. All four device
+suites print `P`. No screenshot or frame-rate claim.
 
 ### Harness sentinel proof — 2026-10-22
 
@@ -855,7 +904,7 @@ deltas against the same profile with the feature disabled.
 | sonar | +484 | +2 | 2026-10-23 | A-key ping: 6 air base (-1/level), 3+level cell reveal, 120-tick cooldown, 24-tick ring; 2 state bytes; full A/B |
 | mines | +730 | +1 | 2026-10-23 | 8 fixed positions, one mask byte, circle/hull hit, one-frame spark, optional hull hook; full A/B |
 | currents | +852 | +0 | 2026-10-23 | 8 generated 32x16 zones, Q8 acceleration, flow marks; metadata only; full A/B |
-| shop | — | — | — | |
+| shop | +994 | -7 | 2026-10-23 | AIR TANK 60 / HULL PLATE 70 / SONAR 50, max level 3, refill/repair on buy; +3 B state offset by a 10 B row-label jump-table saving; full A/B |
 | hull damage | +464 | +2 | 2026-10-23 | 16 px/s wall threshold, 24-tick cooldown, 12-tick edge flash, zero-hull valid, repair clamp; A/B with particles off; +2 B is the hull byte plus the cooldown |
 | particles | +398 | +16 | 2026-10-23 | fixed 4-slot pool (3 B/slot + 4 B anchor), deterministic corner spawn, 1 px/tick, ±24 px clamp, 14-tick max life; A/B with hull damage on |
 | multi-hull | — | — | — | |
@@ -865,11 +914,11 @@ The mine and current A/B deltas share 8 B of LTO folding: both enabled is
 mask (+1 B), so the hazard checkpoint stayed at the then-current 1,680 B
 ceiling.
 
-The M7 damage and particle A/B deltas are measured separately and sum exactly:
-+464 B + +398 B = +862 B flash, +2 B + +16 B = +18 B static. Each also removes
-its own state when disabled. Against the prior hazard checkpoint the full image
-grows +754 B flash / +17 B static because the hull byte was already present
-there; the damage A/B removes it.
+The M7 damage and particle A/B deltas share 16 B of LTO folding: both enabled
+is +862 B flash, not +878 B. Their static costs are additive (+18 B), and each
+also removes its own state when disabled. Against the prior hazard checkpoint
+the full image grows +754 B flash / +17 B static because the hull byte was
+already present there; the damage A/B removes it.
 
 Record the profile matrix separately:
 
@@ -881,6 +930,7 @@ Record the profile matrix separately:
 | 2026-10-23 | M6 sonar | 23,770 | 1,680 | `test_memory` P (chart + sonar path, 649 B under 600 B target) | full/lean identical; core 22,038/1,420; min 10,584/1,259; at the static ceiling |
 | 2026-10-23 | M7 hazards | 25,334 | 1,680 | `test_memory` P (chart + sonar + mine + current path, 641 B under 600 B target) | full; lean 23,760/1,679; core 22,038/1,420; min 10,584/1,259; full still at the static ceiling after the chart-byte carve |
 | 2026-10-23 | M7 damage/particles | 26,088 | 1,697 | `test_memory` P (chart + sonar + mine + current + damage/particle path, 616 B under 600 B target) | full; lean 24,096/1,680; core 22,394/1,421; min 10,586/1,259; ceiling raised to 1,700 B with 3 B headroom |
+| 2026-10-23 | M7 shop | 27,082 | 1,690 | `test_memory` P (chart + sonar + mine + current + damage/particle + shop path, 606 B under 600 B target) | full; SHOP=0 full 26,088/1,697; lean 24,096/1,680; core 22,394/1,421; min 10,586/1,259; flash ceiling raised to 28,000 B |
 
 ## Verification gates
 

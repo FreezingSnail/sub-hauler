@@ -121,6 +121,11 @@ inline void LoopSuite(TestRunner &runner) {
         uint8_t station = game::kJobNone;
         test.assertTrue(dockFromSpawn(state, fake, station), "spawn auto-docks without input");
         test.assertEqual(state.offerCount, game::kJobOffers, "first dock posts the full offer board");
+#if SH_FEATURE_SHOP
+        test.assertEqual(station::rowCount(state), 5, "shop board has five selectable rows");
+        test.assertEqual(station::rowKind(station::kShopRow, state), station::kRowShop, "SHOP sits before UNDOCK");
+        test.assertEqual(station::activate(station::kShopRow, state), station::kActionShop, "SHOP row opens the shop screen");
+#endif
 
         const game::JobOffer first = state.offers[0];
         test.assertEqual(station::activate(station::kFirstRow, state), station::kActionAccepted, "A accepts the first offer");
@@ -128,6 +133,14 @@ inline void LoopSuite(TestRunner &runner) {
         test.assertEqual(state.offerCount, game::kJobOffers - 1, "the accepted offer is consumed");
         test.assertEqual(station::rowCount(state), station::kActiveRowCount, "the board switches to the active shape");
         test.assertEqual(station::rowKind(station::kActiveSummaryRow, state), station::kRowJob, "summary row reports the contract");
+#if SH_FEATURE_SHOP
+#if SH_FEATURE_CARGO_LOAD
+        test.assertEqual(station::kActiveRowCount, 5, "active shop board has five rows");
+#endif
+        test.assertEqual(station::rowKind(station::kActiveShopRow, state), station::kRowShop, "active board keeps a SHOP row");
+        test.assertEqual(station::activate(station::kActiveShopRow, state), station::kActionShop, "active SHOP row opens the shop");
+        test.assertEqual(station::shopRow(state), station::kActiveShopRow, "active board returns to its SHOP row");
+#endif
         test.assertEqual(jobs::remainingTicks(state), state.activeJob.deadline, "the contract clock is frozen on the station");
 #if SH_FEATURE_CARGO_LOAD
         test.assertEqual(state.cargo, 0, "accept leaves the hold for the cargo screen");

@@ -39,15 +39,16 @@ inline void applyDamage(game::State &state, uint8_t amount) {
     state.hull = amount >= state.hull ? 0 : static_cast<uint8_t>(state.hull - amount);
 }
 
-// Add up to kHullMax. An out-of-range hull (for example a save from an older
-// tuning) is clamped down on the same call.
+// Add up to the current hull capacity. An out-of-range hull (for example a
+// save from an older tuning) is clamped down on the same call.
 inline void repair(game::State &state, uint8_t amount) {
+    const uint8_t capacity = game::hullCapacity(state);
     const uint16_t sum = static_cast<uint16_t>(state.hull) + amount;
-    state.hull = sum > game::kHullMax ? game::kHullMax : static_cast<uint8_t>(sum);
+    state.hull = sum > capacity ? capacity : static_cast<uint8_t>(sum);
 }
 
 inline void repairFull(game::State &state) {
-    state.hull = game::kHullMax;
+    state.hull = game::hullCapacity(state);
     state.damageCooldown = 0;
 }
 
