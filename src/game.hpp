@@ -73,6 +73,15 @@ struct State {
     uint8_t ballastCarry;    // 0..59 fractional ballast units
     uint8_t airBlowCarry;    // 0..59 fractional blown air units
     uint8_t airDrainTicks;   // 0..99 ticks toward the next drained unit
+
+    // Follow camera and collision feedback. The camera is owned by update, not
+    // render, so it can be reproduced by the host tests and stays independent
+    // of display timing.
+    int16_t cameraX;         // whole-pixel world offset
+    int16_t cameraY;
+    int16_t impactSpeedQ8;   // speed on the blocked axis before it was zeroed
+    uint8_t impactAxis;      // 0 none, 1 x, 2 y
+    uint8_t impacts;         // saturating count of blocked-axis contacts
 };
 
 // ---------------------------------------------------------------------------
@@ -162,9 +171,17 @@ inline void reset(State &state) {
     state.ballastCarry = 0;
     state.airBlowCarry = 0;
     state.airDrainTicks = 0;
+    state.cameraX = 0;
+    state.cameraY = 0;
+    state.impactSpeedQ8 = 0;
+    state.impactAxis = 0;
+    state.impacts = 0;
 }
 
-inline void step(State &state, const Input &input) {
+// Physics-only half of the fixed step. Callers that own collision use this
+// and then advance each axis through the world; step() below is the pure
+// open-water path used by the existing physics tests.
+inline void stepPhysics(State &state, const Input &input) {
     // Air always drains, even while holding or flooding.
     if (++state.airDrainTicks >= kAirDrainTicks) {
         state.airDrainTicks = 0;
@@ -228,10 +245,12 @@ inline void step(State &state, const Input &input) {
     const int16_t powerQ8 = static_cast<int16_t>(power * kQ8One / kStepHz);
     state.vxQ8 = clampI16(static_cast<int16_t>(state.vxQ8 + powerQ8 - dragStep(state.vxQ8)), -topSpeedQ8For(state.cargo),
                           topSpeedQ8For(state.cargo));
+}
 
+inline void step(State &state, const Input &input) {
+    stepPhysics(state, input);
     advanceAxis(state.x, state.xFrac, state.vxQ8);
     advanceAxis(state.y, state.yFrac, state.vyQ8);
-
     ++state.ticks;
 }
 
