@@ -151,6 +151,44 @@ screen. This avoids the roughly 0.5–0.7 KB generator working set.
 - Generate a larger candidate pool than needed, then keep visually distinct
   arrangements.
 
+## Baked world pipeline (M1)
+
+`tools/gen_world.py` is the single offline source of cave truth. It is a
+standard-library Python port of `generateCave` from `spike-trim/game.js` with
+seed `4242`; generation does not invoke Node or a browser. The PRNG, chamber
+list, tunnel wiggle, seal pass, and mine pull-back match the browser, so the
+baked bytes match the browser grid for the same seed.
+
+Artifacts:
+
+| File | Size | Meaning |
+| --- | ---: | --- |
+| `fxdata/tables/world.bin` | 6,400 B | 320×160 tiles, 1 bpp, 1 = solid |
+| `fxdata/tables/world-chart.bin` | 256 B | 64×32 cells, 1 bpp, 1 = water |
+| `src/generated/world.hpp` | small | constants + metadata, pure C++ |
+
+Layout is headerless and row-major. The tile plane uses 40 B per row and the
+chart plane uses 8 B per row; byte `y * row_bytes + x / 8` holds cell `x` in
+bit `x & 7`, LSB = leftmost. There is no per-file version byte: `LAYOUT_VERSION`
+and both sizes are generated in `world.hpp`. The chart cell covers the 5×5
+tile block at the same coordinates, so `world.bin` and `world-chart.bin` share
+one 1:5 downsample grid. A chart cell is water when any tile in its block is
+open; this matches the browser chart.
+
+The generator validates dimensions, the two-tile sealed border, the open spawn
+footprint, open and clear settlement chambers, a single connected open
+component (junctions and dead-end branches included), mines in open water
+outside every settlement's 42 px dock clearance, and exact chart-mask
+consistency. `tools/tests/test_gen_world.py` covers known bytes/bits, the
+downsample rule, determinism, and corrupt-input rejection.
+
+`world.hpp` currently exposes metadata as `constexpr` arrays. On AVR an
+odr-used namespace-scope `constexpr` array can be copied into SRAM; this header
+does not claim the arrays are in flash. M1.2/M1.3 must move any metadata used by
+runtime code into the FX image or PROGMEM before device code includes it.
+`fxdata/fxdata.txt` and `tools/gen.sh` are intentionally untouched here; M1.2
+owns the flash ABI wiring and `gen-check` coverage.
+
 ## Arduboy fit
 
 From `docs/platform.md`:
