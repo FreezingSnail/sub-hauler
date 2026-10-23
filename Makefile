@@ -43,7 +43,9 @@ AVR_SIZE      ?= $(firstword $(wildcard $(HOME)/Library/Arduino15/packages/ardui
 # Generation
 # ----------------------------------------------------------------------------
 IMAGES        := $(wildcard images/*.png)
-FX_INPUTS     := $(IMAGES) fxdata/fxdata.txt tools/gen.sh tools/gen_sprites.py tools/fxdata-build.py
+WORLD_TABLES  := fxdata/tables/world.bin fxdata/tables/world-chart.bin
+FX_INPUTS     := $(IMAGES) fxdata/fxdata.txt tools/gen.sh tools/gen_sprites.py \
+                 tools/gen_world.py $(WORLD_TABLES) tools/fxdata-build.py
 
 full: gen build
 
@@ -59,12 +61,18 @@ gen-check:
 	@cp fxdata/fxdata.bin $(BUILD_DIR)/gen-check/fxdata.bin
 	@cp fxdata/Sprites.txt $(BUILD_DIR)/gen-check/Sprites.txt
 	@cp src/generated/sprites.hpp $(BUILD_DIR)/gen-check/sprites.hpp
+	@cp fxdata/tables/world.bin $(BUILD_DIR)/gen-check/world.bin
+	@cp fxdata/tables/world-chart.bin $(BUILD_DIR)/gen-check/world-chart.bin
+	@cp src/generated/world.hpp $(BUILD_DIR)/gen-check/world.hpp
 	@$(MAKE) --no-print-directory gen
 	@cmp -s fxdata/fxdata.h src/fxdata.h || { echo "gen-check: src/fxdata.h is stale; run make gen" >&2; exit 1; }
 	@cmp -s fxdata/fxdata.h $(BUILD_DIR)/gen-check/fxdata.h || { echo "gen-check: fxdata header changed" >&2; exit 1; }
 	@cmp -s fxdata/fxdata.bin $(BUILD_DIR)/gen-check/fxdata.bin || { echo "gen-check: packed image changed" >&2; exit 1; }
 	@cmp -s fxdata/Sprites.txt $(BUILD_DIR)/gen-check/Sprites.txt || { echo "gen-check: sprite include changed" >&2; exit 1; }
 	@cmp -s src/generated/sprites.hpp $(BUILD_DIR)/gen-check/sprites.hpp || { echo "gen-check: sprite header changed" >&2; exit 1; }
+	@cmp -s fxdata/tables/world.bin $(BUILD_DIR)/gen-check/world.bin || { echo "gen-check: world table changed" >&2; exit 1; }
+	@cmp -s fxdata/tables/world-chart.bin $(BUILD_DIR)/gen-check/world-chart.bin || { echo "gen-check: world chart table changed" >&2; exit 1; }
+	@cmp -s src/generated/world.hpp $(BUILD_DIR)/gen-check/world.hpp || { echo "gen-check: world header changed" >&2; exit 1; }
 	@echo "gen-check: generated artifacts are deterministic"
 
 # Generation is a prerequisite of the firmware build, so a missing or stale
