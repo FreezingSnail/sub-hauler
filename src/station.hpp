@@ -49,10 +49,11 @@ constexpr uint8_t kUndockCooldown = 90;
 // Row extension point for M3 jobs. Offers occupy the leading rows; the
 // service and undock rows stay last so their actions never move when jobs are
 // compiled out. With an active contract the board instead shows a summary row
-// followed by ABANDON and UNDOCK, so the two board shapes are:
+// followed by the load/abandon/undock actions, so the board shapes are:
 //
-//   no job:  [offer 0] [offer 1] SERVICE UNDOCK
-//   active:  [summary] ABANDON UNDOCK
+//   no job:         [offer 0] [offer 1] SERVICE UNDOCK
+//   active, cargo:  [summary] LOAD CARGO ABANDON UNDOCK
+//   active, no cargo UI: [summary] ABANDON UNDOCK
 //
 // Only selectable rows participate in wrap-around; the summary row is inert.
 #if SH_FEATURE_JOBS
@@ -67,9 +68,16 @@ constexpr uint8_t kFirstRow = 0;
 
 #if SH_FEATURE_JOBS
 constexpr uint8_t kActiveSummaryRow = 0;
+#if SH_FEATURE_CARGO_LOAD
+constexpr uint8_t kLoadRow = 1;
+constexpr uint8_t kAbandonRow = 2;
+constexpr uint8_t kActiveUndockRow = 3;
+constexpr uint8_t kActiveRowCount = 4;
+#else
 constexpr uint8_t kAbandonRow = 1;
 constexpr uint8_t kActiveUndockRow = 2;
 constexpr uint8_t kActiveRowCount = 3;
+#endif
 #endif
 
 enum RowKind : uint8_t {
@@ -80,6 +88,10 @@ enum RowKind : uint8_t {
     ,
     kRowJob,
     kRowAbandon
+#if SH_FEATURE_CARGO_LOAD
+    ,
+    kRowLoad
+#endif
 #endif
 };
 
@@ -91,6 +103,10 @@ enum Action : uint8_t {
     ,
     kActionAccepted,
     kActionAbandoned
+#if SH_FEATURE_CARGO_LOAD
+    ,
+    kActionLoadCargo
+#endif
 #endif
 };
 
@@ -116,6 +132,10 @@ inline RowKind rowKind(uint8_t row, const State &state) {
     if (jobActive(state)) {
         if (row == kActiveSummaryRow)
             return kRowJob;
+#if SH_FEATURE_CARGO_LOAD
+        if (row == kLoadRow)
+            return kRowLoad;
+#endif
         if (row == kAbandonRow)
             return kRowAbandon;
         return kRowUndock;
@@ -128,12 +148,18 @@ inline RowKind rowKind(uint8_t row, const State &state) {
     return kRowUndock;
 }
 
-// First selectable row for a freshly docked boat: offer 0, or ABANDON when a
-// contract is already running (wrong-station dock).
+// First selectable row for a freshly docked boat: offer 0, or the safe load
+// row when a contract is already running (wrong-station dock). Without the
+// cargo screen the fallback lands on ABANDON instead.
 inline uint8_t initialRow(const State &state) {
 #if SH_FEATURE_JOBS
-    if (jobActive(state))
+    if (jobActive(state)) {
+#if SH_FEATURE_CARGO_LOAD
+        return kLoadRow;
+#else
         return kAbandonRow;
+#endif
+    }
 #endif
     return kFirstRow;
 }
@@ -141,7 +167,7 @@ inline uint8_t initialRow(const State &state) {
 inline uint8_t selectableCount(const State &state) {
 #if SH_FEATURE_JOBS
     if (jobActive(state))
-        return static_cast<uint8_t>(kActiveRowCount - kAbandonRow);
+        return static_cast<uint8_t>(kActiveRowCount - initialRow(state));
 #endif
     return kStationRowCount;
 }
@@ -279,8 +305,9 @@ template <typename Reader> inline bool stepFlight(State &state, const Input &inp
     return dock(state);
 }
 
-// A confirms the selected row. Offer rows accept the contract, ABANDON clears
-// it, SERVICE refills/repairs, and UNDOCK leaves the station.
+// A confirms the selected row. Offer rows accept the contract, LOAD CARGO
+// reopens the loading screen (the sketch owns that screen transition), ABANDON
+// clears the contract, SERVICE refills/repairs, and UNDOCK leaves the station.
 inline Action activate(uint8_t selected, State &state) {
     if (state.docked < 0 || selected >= rowCount(state))
         return kActionNone;
@@ -296,6 +323,10 @@ inline Action activate(uint8_t selected, State &state) {
         return jobs::accept(state, selected) ? kActionAccepted : kActionNone;
     case kRowAbandon:
         return jobs::abandon(state) ? kActionAbandoned : kActionNone;
+#if SH_FEATURE_CARGO_LOAD
+    case kRowLoad:
+        return jobActive(state) ? kActionLoadCargo : kActionNone;
+#endif
     case kRowJob:
         return kActionNone;
 #endif

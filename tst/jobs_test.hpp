@@ -11,7 +11,7 @@
 #include "test.hpp"
 #include "world_test.hpp"
 
-// Contract economy rules: deterministic offers, acceptance/auto-load,
+// Contract economy rules: deterministic offers, acceptance/load handoff,
 // abandonment, delivery outcomes, deadline pause, and board row selection.
 // Settlement ids come from the generated metadata walk, never a literal index.
 namespace jobs_test {
@@ -64,6 +64,19 @@ inline bool travelTo(game::State &state, uint8_t settlementId) {
 
 inline game::Input idle() {
     return game::Input{false, false, false, false};
+}
+
+// Simulate the cargo-screen commit for rule-level tests: with the loading UI
+// compiled, acceptance alone leaves the hold empty, so delivery fixtures must
+// load the contract hold explicitly. The CARGO_LOAD=0 build already auto-loads
+// inside accept(), so this is a no-op there.
+inline void loadContractHold(game::State &state) {
+#if SH_FEATURE_CARGO_LOAD
+    game::setCargo(state, state.activeJob.crates);
+    state.ballast = static_cast<uint8_t>(game::neutralFor(state.cargo));
+#else
+    (void)state;
+#endif
 }
 
 }   // namespace jobs_test
@@ -126,7 +139,7 @@ inline void JobsSuite(TestRunner &runner) {
     }
 
     {
-        Test test("acceptance clears cargo, consumes the offer, and auto-loads four units");
+        Test test("acceptance clears cargo, consumes the offer, and hands off the load");
         world::Settlement origin;
         test.assertTrue(anySettlement(origin), "settlement metadata loads");
 
@@ -148,8 +161,13 @@ inline void JobsSuite(TestRunner &runner) {
         test.assertEqual(state.activeJob.reward, chosen.reward, "reward is fixed at acceptance");
         test.assertEqual(state.activeJob.deadline, chosen.deadline, "deadline is stored in flight ticks");
         test.assertEqual(state.activeJob.acceptedAt, state.jobClock, "contract clock starts at acceptance");
-        test.assertEqual(state.cargo, game::kJobCrates, "hold is auto-loaded with four units");
+#if SH_FEATURE_CARGO_LOAD
+        test.assertEqual(state.cargo, 0, "accept leaves the hold empty for the cargo screen");
+        test.assertEqual(state.ballast, game::neutralFor(0), "empty hold starts at neutral trim");
+#else
+        test.assertEqual(state.cargo, game::kJobCrates, "fallback auto-loads four units");
         test.assertEqual(state.ballast, game::neutralFor(state.cargo), "trim is neutral for the auto-load");
+#endif
         test.assertEqual(state.offerCount, offersBefore - 1, "accepted offer is consumed");
         test.assertEqual(state.credits, creditsBefore, "acceptance pays nothing");
 
@@ -190,6 +208,7 @@ inline void JobsSuite(TestRunner &runner) {
         game::reset(state);
         test.assertTrue(dockAt(state, origin.id), "dock at origin");
         test.assertTrue(jobs::accept(state, 0), "contract accepted");
+        loadContractHold(state);
         const uint8_t destination = state.activeJob.to;
         const uint16_t reward = state.activeJob.reward;
 
@@ -254,6 +273,7 @@ inline void JobsSuite(TestRunner &runner) {
         game::reset(state);
         test.assertTrue(dockAt(state, origin.id), "dock at origin");
         test.assertTrue(jobs::accept(state, 0), "contract accepted");
+        loadContractHold(state);
         const uint8_t destination = state.activeJob.to;
 
         test.assertTrue(travelTo(state, origin.id), "dock back at the origin");
@@ -313,13 +333,19 @@ inline void JobsSuite(TestRunner &runner) {
         test.assertEqual(station::selectNext(station::kUndockRow, state), station::kFirstRow, "offer board wraps downward");
 
         test.assertTrue(jobs::accept(state, 0), "contract accepted");
-        test.assertEqual(station::rowCount(state), station::kActiveRowCount, "active board has summary, ABANDON, UNDOCK");
+        test.assertEqual(station::rowCount(state), station::kActiveRowCount, "active board has summary, load, ABANDON, UNDOCK");
         test.assertEqual(station::rowKind(station::kActiveSummaryRow, state), station::kRowJob, "summary row");
+#if SH_FEATURE_CARGO_LOAD
+        test.assertEqual(station::rowKind(station::kLoadRow, state), station::kRowLoad, "LOAD CARGO row");
+        test.assertEqual(station::initialRow(state), station::kLoadRow, "selection starts on LOAD CARGO");
+        test.assertEqual(station::activate(station::kLoadRow, state), station::kActionLoadCargo, "LOAD CARGO action reopens loading");
+#else
+        test.assertEqual(station::initialRow(state), station::kAbandonRow, "selection starts on ABANDON");
+#endif
         test.assertEqual(station::rowKind(station::kAbandonRow, state), station::kRowAbandon, "ABANDON row");
         test.assertEqual(station::rowKind(station::kActiveUndockRow, state), station::kRowUndock, "UNDOCK row");
-        test.assertEqual(station::initialRow(state), station::kAbandonRow, "selection starts on ABANDON");
-        test.assertEqual(station::selectPrevious(station::kAbandonRow, state), station::kActiveUndockRow, "active board wraps upward");
-        test.assertEqual(station::selectNext(station::kActiveUndockRow, state), station::kAbandonRow, "active board wraps downward");
+        test.assertEqual(station::selectPrevious(station::initialRow(state), state), station::kActiveUndockRow, "active board wraps upward");
+        test.assertEqual(station::selectNext(station::kActiveUndockRow, state), station::initialRow(state), "active board wraps downward");
         test.assertEqual(station::activate(station::kActiveSummaryRow, state), station::kActionNone, "summary row is inert");
         test.assertEqual(station::activate(station::kAbandonRow, state), station::kActionAbandoned, "ABANDON action works");
         test.assertEqual(station::rowCount(state), game::kJobOffers + 2, "board returns to offers after abandonment");

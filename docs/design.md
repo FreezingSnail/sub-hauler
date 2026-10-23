@@ -55,18 +55,27 @@ silhouettes inside the tunnel envelope; FLEET shows the full hull proportions.
 - The Arduino pad has no spare key, so device `R`/`N` are omitted; the pure
   `cargo_screen::restart` helper exists for a future pause menu. The browser
   slice keeps `R` reset and `N` reroll.
-- `LOAD & UNDOCK` checks the job crate requirement, sets the pilot load, and
-  starts travel; `CANCEL` or `Esc` returns to the station with the job open.
-  The device handoff is owned by the M5 integration bead, not the rules pass.
+- `A+B` while nothing is held is `LOAD & UNDOCK`. The prompt appears only when
+  the required pieces are placed and no crate is held; a short load is rejected
+  with `LOAD SHORT`. `A+B` cannot collide with pick/release (`A`), rotate/undo
+  (`B`), or the `B`+UP counter-clockwise modifier.
+- A successful commit checks the job crate requirement, sets the pilot load to
+  the contract's four units, neutralizes trim, clears the loading state,
+  auto-undocks, and returns to the pilot with the job still active. Holding `B`
+  (cancel/back) returns to the station board with the job open, selected on
+  `LOAD CARGO`; the board row reopens the screen.
+- With `SH_FEATURE_CARGO_LOAD=0` the loading screen, its strings, and the
+  handoff compile out. Acceptance then auto-loads the four units directly and
+  the M3 board shows summary, ABANDON, and UNDOCK.
 - The hold is schematic 128×64, 1-bit, and shown as one compartment inside the
   pressure hull. Cells scale per class (7 px MINNOW, 6 px HAULER, 5 px
   LEVIATHAN) so the bow cabin, engine room, and ballast remain visible without
   scrolling. The FX arrangement data is independent of this view scale.
 
 The browser views share one hull roster and selection (`spike-trim/subs.js`).
-The cargo view is the station loading step; `LOAD & UNDOCK` checks the contract
-requirement and maps its packed fraction to the pilot's four-unit cargo model.
-The FX arrangement bank remains the device path.
+The cargo view is the station loading step; the device `A+B` commit checks the
+contract requirement and maps the packed hold to the pilot's four-unit cargo
+model. The FX arrangement bank remains the device path.
 
 ## Random shape generation
 

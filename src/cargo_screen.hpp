@@ -18,6 +18,9 @@
 //          Release is refused without at least one supported bottom cell.
 //   B      rotate the held piece clockwise (counter-clockwise with UP as a
 //          modifier); with nothing held, undo the last placement.
+//   A+B    with nothing held, attempt LOAD & UNDOCK. cargo_handoff owns that
+//          rule; the app routes the gesture before cargo_screen::apply so it
+//          never collides with pick, release, rotate, or undo.
 //   HOLD B exits the screen (the sketch owns the hold timer).
 namespace cargo_screen {
 
@@ -35,6 +38,7 @@ enum class Message : uint8_t {
     NothingToUndo,
     NoCrate,
     Complete,
+    Incomplete,
 };
 
 struct State {
