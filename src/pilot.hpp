@@ -163,6 +163,12 @@ inline void stepWorld(State &state, const Input &input, Reader &reader, const wo
     moveAxis(state, reader, cache, false);
     updateCamera(state);
     ++state.ticks;
+#if SH_FEATURE_SONAR
+    // One flight tick, one cooldown tick. step() owns the pure-physics path;
+    // stepFlight calls this function exactly once per frame.
+    if (state.sonarCooldown > 0)
+        --state.sonarCooldown;
+#endif
 #if SH_FEATURE_JOBS
     // Flight tick for contract deadlines (docked frames never step the world).
     ++state.jobClock;

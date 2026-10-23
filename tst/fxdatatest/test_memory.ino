@@ -39,6 +39,9 @@
 #include "src/chart.hpp"
 #include "src/chart_view.hpp"
 #endif
+#if SH_FEATURE_SONAR
+#include "src/sonar.hpp"
+#endif
 #if SH_FEATURE_CARGO_LOAD
 #include "src/cargo_fx.hpp"
 #include "src/cargo_handoff.hpp"
@@ -126,6 +129,20 @@ __attribute__((noinline)) void runRepresentativePath() {
         chart_view::draw(Arduboy2Base::sBuffer, probeChart, state, tables, blink);
         FX::display(CLEAR_BUFFER);
     }
+#endif
+
+#if SH_FEATURE_SONAR
+    // Sonar path: a real ping spends air, reveals through the same probeChart
+    // (no duplicated chart state), the next world step decrements the cooldown,
+    // and a pilot frame draws the expanding ring under the HAULER. The cart
+    // reads stay inside view::frame, before the display transaction.
+    game::Input sonarInput{};
+    sonar::fire(state, probeChart, 0);
+    game::stepWorld(state, sonarInput, tables, &cache);
+    const cave::Camera sonarCamera = pilot_view::cameraForState(state);
+    view::frame(state, sonarCamera, cache, tables);
+    hud::draw(state);
+    FX::display(CLEAR_BUFFER);
 #endif
 
 #if SH_FEATURE_CARGO_LOAD
