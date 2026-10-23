@@ -6,6 +6,8 @@
 #include "features.hpp"
 #include "game_test.hpp"
 #include "pilot_view_test.hpp"
+#include "roster_test.hpp"
+#include "roster_view_test.hpp"
 #include "test.hpp"
 #include "world_test.hpp"
 
@@ -59,6 +61,10 @@ int main() {
     DamageSuite(runner);
     GameSuite(runner);
     PilotViewSuite(runner);
+    RosterSuite(runner);
+#if SH_FEATURE_MULTI_HULL
+    TitleSuite(runner);
+#endif
     WorldSuite(runner);
 #if SH_FEATURE_MINES
     HazardsSuite(runner);

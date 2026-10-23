@@ -6,13 +6,20 @@
 #include "cave_render.hpp"
 #include "game.hpp"
 #include "pilot.hpp"
+#include "roster.hpp"
 
-// HAULER pilot view: pure screen mapping and the 26x8 external silhouette.
+// Pilot view: pure screen mapping and the 26x8 external silhouettes.
 //
 // The cave renderer is tile-aligned, so the camera is derived by flooring the
 // pilot's whole-pixel camera offset to its containing tile. The sub is then
 // drawn at world position minus the visible tile origin; collision semantics
 // still use game::State.x/y and the 26x8 hull in pilot.hpp.
+//
+// Every hull class draws inside the same 26x8 footprint, so collision, damage
+// brackets, and camera framing stay class-independent. MINNOW is a 24x7
+// rounded shuttle, HAULER is the 26x8 flat-deck freighter, and LEVIATHAN is a
+// 26x8 fortress with three doors. With MULTI_HULL=0 only the HAULER body is
+// compiled.
 //
 // No Arduino headers: the host tests draw into a plain page-major buffer and
 // inspect exact pixels. Device code passes Arduboy2Base::sBuffer.
@@ -54,27 +61,16 @@ inline void fillLocal(uint8_t *buffer, int16_t left, int16_t top, bool mirror, i
     }
 }
 
-// Draw the flat-deck HAULER silhouette centred on the state position. The
-// 26x8 body matches the collision hull exactly: a narrow deckhouse over a
-// rounded flat deck, two cargo doors, a stern thruster notch, and a bow mark.
-// Cargo is internal mass: it only shows as the white stripe inside each door.
-// Nothing is drawn outside the collision footprint.
-inline void draw(uint8_t *buffer, const game::State &state, const cave::Camera &camera) {
-    const int16_t left = static_cast<int16_t>(screenX(state, camera) - game::kHullHalfW);
-    const int16_t top = static_cast<int16_t>(screenY(state, camera) - game::kHullHalfH);
-    if (!visible(left, top))
-        return;
-
-    const bool mirror = state.facingLeft;
-    const bool loaded = state.cargo > 0;
-
+// HAULER: flat-deck freighter. The 26x8 body matches the collision hull
+// exactly: a narrow deckhouse over a rounded flat deck, two cargo doors, a
+// stern thruster notch, and a bow mark. Cargo is internal mass: it only shows
+// as the white stripe inside each door.
+inline void drawHauler(uint8_t *buffer, int16_t left, int16_t top, bool mirror, bool loaded) {
     // Rounded flat-deck body. Rows 0-1 are the deckhouse; rows 2-7 are the
     // hull, with the deck widening to the full 26 px at rows 3-4.
-    fillLocal(buffer, left, top, mirror, 10, 0, 12, 1, true);
-    fillLocal(buffer, left, top, mirror, 10, 1, 12, 1, true);
+    fillLocal(buffer, left, top, mirror, 10, 0, 12, 2, true);
     fillLocal(buffer, left, top, mirror, 1, 2, 24, 1, true);
-    fillLocal(buffer, left, top, mirror, 0, 3, 26, 1, true);
-    fillLocal(buffer, left, top, mirror, 0, 4, 26, 1, true);
+    fillLocal(buffer, left, top, mirror, 0, 3, 26, 2, true);
     fillLocal(buffer, left, top, mirror, 1, 5, 24, 1, true);
     fillLocal(buffer, left, top, mirror, 2, 6, 22, 1, true);
     fillLocal(buffer, left, top, mirror, 3, 7, 20, 1, true);
@@ -104,6 +100,92 @@ inline void draw(uint8_t *buffer, const game::State &state, const cave::Camera &
     // direction of travel read at a glance.
     fillLocal(buffer, left, top, mirror, 1, 4, 1, 2, false);
     fillLocal(buffer, left, top, mirror, 23, 5, 2, 1, false);
+}
+
+#if SH_FEATURE_MULTI_HULL
+// MINNOW: 24x7 rounded shuttle. One door, a short offset sail, and a soft
+// teardrop hull keep it visibly smaller than HAULER without leaving the
+// shared collision footprint.
+inline void drawMinnow(uint8_t *buffer, int16_t left, int16_t top, bool mirror, bool loaded) {
+    fillLocal(buffer, left, top, mirror, 15, 1, 6, 1, true);
+    fillLocal(buffer, left, top, mirror, 8, 2, 11, 1, true);
+    fillLocal(buffer, left, top, mirror, 4, 3, 18, 2, true);
+    fillLocal(buffer, left, top, mirror, 1, 5, 24, 1, true);
+    fillLocal(buffer, left, top, mirror, 2, 6, 22, 1, true);
+    fillLocal(buffer, left, top, mirror, 6, 7, 14, 1, true);
+
+    // Sail window and a single cargo door with the same white load stripe.
+    fillLocal(buffer, left, top, mirror, 17, 1, 1, 1, false);
+    fillLocal(buffer, left, top, mirror, 8, 4, 6, 3, false);
+    if (loaded)
+        fillLocal(buffer, left, top, mirror, 10, 4, 1, 3, true);
+
+    // Stern notch.
+    fillLocal(buffer, left, top, mirror, 2, 5, 1, 2, false);
+}
+
+// LEVIATHAN: 26x8 fortress. A long armoured deckhouse, a deeper hull, three
+// doors, and a stern notch read heavier than HAULER while using the full box.
+inline void drawLeviathan(uint8_t *buffer, int16_t left, int16_t top, bool mirror, bool loaded) {
+    fillLocal(buffer, left, top, mirror, 9, 0, 14, 2, true);
+    fillLocal(buffer, left, top, mirror, 3, 2, 22, 1, true);
+    fillLocal(buffer, left, top, mirror, 0, 3, 26, 3, true);
+    fillLocal(buffer, left, top, mirror, 1, 6, 24, 1, true);
+    fillLocal(buffer, left, top, mirror, 2, 7, 22, 1, true);
+
+    // Armour seam and two bridge windows.
+    fillLocal(buffer, left, top, mirror, 3, 3, 20, 1, false);
+    fillLocal(buffer, left, top, mirror, 12, 0, 1, 2, false);
+    fillLocal(buffer, left, top, mirror, 18, 0, 1, 2, false);
+
+    // Two framed doors; each carries the white load stripe when loaded.
+    fillLocal(buffer, left, top, mirror, 2, 4, 5, 3, false);
+    fillLocal(buffer, left, top, mirror, 18, 4, 5, 3, false);
+    if (loaded) {
+        fillLocal(buffer, left, top, mirror, 4, 4, 1, 3, true);
+        fillLocal(buffer, left, top, mirror, 20, 4, 1, 3, true);
+    }
+
+    // Stern thruster notch.
+    fillLocal(buffer, left, top, mirror, 0, 4, 1, 2, false);
+}
+#endif
+
+// Draw one hull body at a footprint origin. Title and pilot share this exact
+// art, so a class silhouette is identical wherever it appears. Nothing is
+// drawn outside local x 0..25, y 0..7.
+inline void drawAt(uint8_t *buffer, int16_t left, int16_t top, bool mirror, bool loaded, roster::HullClass hull) {
+#if SH_FEATURE_MULTI_HULL
+    // if-chain, not switch: a three-case switch emits a RAM jump table.
+    if (hull == roster::kMinnow) {
+        drawMinnow(buffer, left, top, mirror, loaded);
+        return;
+    }
+    if (hull == roster::kLeviathan) {
+        drawLeviathan(buffer, left, top, mirror, loaded);
+        return;
+    }
+#else
+    (void)hull;
+#endif
+    drawHauler(buffer, left, top, mirror, loaded);
+}
+
+// Draw the selected class centred on the state position. The footprint is the
+// 26x8 collision hull for every class; class art only changes the pixels inside
+// it.
+inline void draw(uint8_t *buffer, const game::State &state, const cave::Camera &camera) {
+    const int16_t left = static_cast<int16_t>(screenX(state, camera) - game::kHullHalfW);
+    const int16_t top = static_cast<int16_t>(screenY(state, camera) - game::kHullHalfH);
+    if (!visible(left, top))
+        return;
+
+#if SH_FEATURE_MULTI_HULL
+    const roster::HullClass hull = roster::sanitize(static_cast<roster::HullClass>(state.hullClass));
+#else
+    const roster::HullClass hull = roster::kHauler;
+#endif
+    drawAt(buffer, left, top, state.facingLeft, state.cargo > 0, hull);
 }
 
 }   // namespace pilot_view

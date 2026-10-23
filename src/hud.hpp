@@ -2,8 +2,11 @@
 
 #include <stdint.h>
 
-#include "common.hpp"
 #include "game.hpp"
+
+#if defined(__AVR__)
+#include "common.hpp"
+#endif
 
 // Compact pilot HUD. Drawn after the cave and sub but before the one
 // FX::display transaction, so it never competes with cart reads.
@@ -36,6 +39,7 @@ constexpr uint8_t kCargoPip = 4;
 constexpr uint8_t kHintX = 3;
 constexpr uint8_t kHintY = 56;
 
+#if defined(__AVR__)
 inline void draw(const game::State &state) {
     // Air bar: outline plus a white fill proportional to the tank.
     arduboy.setCursor(kAirLabelX, kAirLabelY);
@@ -76,5 +80,7 @@ inline void draw(const game::State &state) {
     arduboy.setCursor(65, kHintY);
     arduboy.print(F("UP/DN TRIM"));
 }
+
+#endif   // __AVR__
 
 }   // namespace hud
