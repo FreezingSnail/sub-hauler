@@ -3,6 +3,7 @@
 #include <stdint.h>
 
 #include "cargo.hpp"
+#include "cargo_screen.hpp"
 #include "features.hpp"
 
 #if SH_FEATURE_CARGO_LOAD
@@ -70,9 +71,12 @@ constexpr uint8_t kStatusChars = 11; // "R 0/6 B 0/1"
 constexpr uint8_t kLoadX = 2;
 constexpr uint8_t kLoadY = 49;
 constexpr uint8_t kLoadChars = 10; // "LOAD 26/26"
+constexpr uint8_t kMessageX = 2;
+constexpr uint8_t kMessageY = 57;
+constexpr uint8_t kMessageChars = 14; // longest feedback: "NEEDS SUPPORT"
 constexpr uint8_t kPromptX = 90;
 constexpr uint8_t kPromptY = 57;
-constexpr uint8_t kPromptChars = 6; // "B BACK"
+constexpr uint8_t kPromptChars = 6; // "HOLD B"
 
 // Unplaced-piece tray: up to eight 8x8 slots.
 constexpr uint8_t kTrayX = 64;
@@ -99,6 +103,7 @@ static_assert(kPromptY + 7 <= kScreenH, "prompt fits the display");
 static_assert(kNameX + kNameChars * 6 < kStatusX, "header name clears the counters");
 static_assert(kStatusX + kStatusChars * 6 <= kScreenW - 2, "counters fit the display");
 static_assert(kLoadX + kLoadChars * 6 <= kTrayX, "load text clears the tray");
+static_assert(kMessageX + kMessageChars * 6 <= kPromptX, "feedback clears the exit hint");
 static_assert(kPromptX + kPromptChars * 6 <= kScreenW - 2, "prompt fits the display");
 
 // ---------------------------------------------------------------------------
@@ -278,7 +283,7 @@ inline bool insideHold(uint8_t col, uint8_t row) {
     return col < CARGO_HAULER_COLS && row < CARGO_HAULER_ROWS;
 }
 
-inline void drawInstalled(uint8_t *buffer, const cargo::CargoPuzzle &puzzle, uint8_t index) {
+inline void drawInstalled(uint8_t *buffer, const cargo::CargoPuzzle &puzzle, uint8_t index, bool selected) {
     const cargo::CargoPiece &piece = puzzle.pieces[index];
     const uint16_t mask = cargo::pieceMask(piece);
     const bool held = puzzle.held == static_cast<int8_t>(index);
@@ -318,6 +323,12 @@ inline void drawInstalled(uint8_t *buffer, const cargo::CargoPuzzle &puzzle, uin
                 vline(buffer, x, y, kCell, false);
             if (sx == 3 || (mask & (uint16_t(1) << (sy * 4 + (sx + 1)))) == 0)
                 vline(buffer, static_cast<int16_t>(x + kCell - 1), y, kCell, false);
+
+            // Installed selection: a black inset frame keeps the crate solid
+            // while making the active piece easy to find in a packed hold.
+            if (selected)
+                outlineRect(buffer, static_cast<int16_t>(x + 1), static_cast<int16_t>(y + 1),
+                            static_cast<int16_t>(kCell - 2), static_cast<int16_t>(kCell - 2), false);
         }
     }
 }
@@ -356,7 +367,7 @@ inline void drawFrame(const cargo::CargoPuzzle &puzzle, uint8_t selected, uint8_
 
     for (uint8_t i = 0; i < puzzle.pieceCount; ++i) {
         if (cargo::piecePlaced(puzzle.pieces[i]) || puzzle.held == static_cast<int8_t>(i))
-            drawInstalled(buffer, puzzle, i);
+            drawInstalled(buffer, puzzle, i, i == selected);
     }
     drawTray(buffer, puzzle, selected);
 }
@@ -385,7 +396,53 @@ inline void printLoad(const cargo::CargoPuzzle &puzzle) {
     arduboy.print(puzzle.load);
 }
 
-inline void draw(const cargo::CargoPuzzle &puzzle, uint8_t selected) {
+inline void printMessage(cargo_screen::Message message) {
+    arduboy.setCursor(kMessageX, kMessageY);
+    switch (message) {
+    case cargo_screen::Message::Picked:
+        arduboy.print(F("PICKED"));
+        break;
+    case cargo_screen::Message::Lifted:
+        arduboy.print(F("LIFTED"));
+        break;
+    case cargo_screen::Message::Released:
+        arduboy.print(F("RELEASED"));
+        break;
+    case cargo_screen::Message::Rotated:
+        arduboy.print(F("ROTATED"));
+        break;
+    case cargo_screen::Message::Undone:
+        arduboy.print(F("UNDONE"));
+        break;
+    case cargo_screen::Message::NeedsSupport:
+        arduboy.print(F("NEEDS SUPPORT"));
+        break;
+    case cargo_screen::Message::Blocked:
+        arduboy.print(F("BLOCKED"));
+        break;
+    case cargo_screen::Message::LiftBlocked:
+        arduboy.print(F("LIFT BLOCKED"));
+        break;
+    case cargo_screen::Message::NoRoom:
+        arduboy.print(F("NO ROOM"));
+        break;
+    case cargo_screen::Message::NothingToUndo:
+        arduboy.print(F("NO UNDO"));
+        break;
+    case cargo_screen::Message::NoCrate:
+        arduboy.print(F("NO CRATE"));
+        break;
+    case cargo_screen::Message::Complete:
+        arduboy.print(F("LOAD READY"));
+        break;
+    case cargo_screen::Message::None:
+    default:
+        arduboy.print(F("A LIFT B ROT"));
+        break;
+    }
+}
+
+inline void draw(const cargo::CargoPuzzle &puzzle, uint8_t selected, cargo_screen::Message message) {
     drawFrame(puzzle, selected, Arduboy2Base::sBuffer);
 
     arduboy.setTextColor(WHITE);
@@ -394,8 +451,9 @@ inline void draw(const cargo::CargoPuzzle &puzzle, uint8_t selected) {
     arduboy.print(F("HAULER"));
     printReqBonus(puzzle);
     printLoad(puzzle);
+    printMessage(message);
     arduboy.setCursor(kPromptX, kPromptY);
-    arduboy.print(F("B BACK"));
+    arduboy.print(F("HOLD B"));
 }
 
 #endif   // __AVR__

@@ -46,6 +46,8 @@ static uint8_t s_stationRow = station::kFirstRow;
 #if SH_FEATURE_CARGO_LOAD
 static cargo::FxCargoReader s_cargoReader;
 static cargo_screen::State s_cargo;
+static uint8_t s_cargoBHold = 0;
+constexpr uint8_t kCargoExitHold = 40; // 0.67 s at 60 fps
 #endif
 #endif
 
@@ -86,7 +88,8 @@ static void updateStation() {
     // alone still undocks, so the M3 loop is unchanged.
     if (arduboy.justPressed(B_BUTTON) && arduboy.pressed(LEFT_BUTTON) && cargo_screen::load(s_cargo, s_cargoReader)) {
         s_screen = Screen::Cargo;
-        cargo_view::draw(s_cargo.puzzle, s_cargo.selected);
+        s_cargoBHold = 0;
+        cargo_view::draw(s_cargo.puzzle, s_cargo.selected, s_cargo.message);
         return;
     }
 #endif
@@ -128,15 +131,38 @@ static void updateStation() {
 }
 
 #if SH_FEATURE_CARGO_LOAD
-// Cargo shell frame: fixed state is loaded once on entry, no world step, no
-// interaction yet. B returns to the station board so the M3 loop stays intact.
+// Cargo frame: fixed state is loaded once on entry, no world step. A/B and the
+// D-pad drive the pure cargo_screen rules. B taps rotate (or undo with nothing
+// held); holding B for kCargoExitHold returns to the station board. R/N are
+// omitted because the Arduino pad has no spare key.
 static void updateCargo() {
-    if (arduboy.justPressed(B_BUTTON)) {
+    if (arduboy.pressed(B_BUTTON)) {
+        if (s_cargoBHold < 255)
+            ++s_cargoBHold;
+    } else {
+        s_cargoBHold = 0;
+    }
+
+    if (s_cargoBHold >= kCargoExitHold) {
+        s_cargoBHold = 0;
         s_screen = Screen::Station;
         station_view::draw(s_state, s_stationRow);
         return;
     }
-    cargo_view::draw(s_cargo.puzzle, s_cargo.selected);
+
+    cargo_screen::Input input{};
+    input.up = arduboy.justPressed(UP_BUTTON);
+    input.down = arduboy.justPressed(DOWN_BUTTON);
+    input.left = arduboy.justPressed(LEFT_BUTTON);
+    input.right = arduboy.justPressed(RIGHT_BUTTON);
+    input.a = arduboy.justPressed(A_BUTTON);
+    input.b = arduboy.justPressed(B_BUTTON);
+    input.ccw = input.b && arduboy.pressed(UP_BUTTON);
+    if (input.ccw)
+        input.up = false; // UP is a rotation modifier on this frame
+    cargo_screen::apply(s_cargo, input);
+
+    cargo_view::draw(s_cargo.puzzle, s_cargo.selected, s_cargo.message);
 }
 #endif
 #endif

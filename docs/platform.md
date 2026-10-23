@@ -67,9 +67,11 @@ If a measured reserve is below 800 B, lower the static planning ceiling in
 
 Status: **passed 2026-10-22.** Ardens ran
 `make fxtest FXTEST_ONLY=test_memory` and the suite printed the bare `P`
-marker, so the measured reserve is at least the 800 B target. The probe does
-not print the exact high-water byte unless `SH_STACK_DIAG=1`; static free bytes
-are still not a stack measurement. The suite builds with
+marker, so the measured reserve is at least the 800 B target. The probe now
+loads a cargo arrangement and runs a few cargo input/render frames, so the
+cargo screen is inside the measured window. The probe does not print the exact
+high-water byte unless `SH_STACK_DIAG=1`; static free bytes are still not a
+stack measurement. The suite builds with
 `make fxtest-build FXTEST_ONLY=test_memory`; rerun it after render/state
 changes:
 
@@ -101,8 +103,10 @@ Dated whole-image numbers are evidence, not guaranteed headroom.
 | 2026-10-22 | 12,346 B | 1,276 B | M3 stations (auto-dock, station board, refill/repair/undock); full/core identical, min unchanged at 10,584 B / 1,259 B; no Ardens run |
 | 2026-10-22 | 14,410 B | 1,319 B | M3 jobs/loop (offers, deadlines, delivery/credits, auto-load hint); full/lean/core identical, min unchanged; device suites P |
 | 2026-10-22 | 18,892 B | 1,416 B | M5 cargo shell (HAULER cutaway, 11x3 hold, tray, status); full/core/lean identical, min unchanged; device suites P |
+| 2026-10-22 | 21,836 B | 1,418 B | M5 cargo rules (selection, pick/lift, move, support, rotation, undo, feedback); full/core identical, min unchanged at 10,584 B / 1,259 B; device suites P, stack probe includes the cargo path |
 
-Static free SRAM is 1,144 B at the latest checkpoint. The painted-stack probe
-reported `P` on 2026-10-22, so the pilot reserve is at least 800 B. The probe
-does not yet exercise the cargo screen; rerun it after M5 rules/integration and
-after further art or logic changes.
+Static free SRAM is 1,142 B at the latest checkpoint. The painted-stack probe
+reported `P` on 2026-10-22 after the cargo rules path was added to
+`test_memory`, so the measured reserve still covers the cargo screen at the
+800 B target. The probe does not print the exact high-water byte unless
+`SH_STACK_DIAG=1`; static free bytes are still not a stack measurement.

@@ -139,6 +139,17 @@ integration wire the job flow. All four device suites printed `P` with Ardens;
 the stack probe does not yet include the cargo screen. No screenshot or
 frame-rate claim.
 
+### M5 cargo rules checkpoint — 2026-10-22
+
+`sub-hauler-m5-rules` makes the HAULER hold playable: selection across tray and
+installed pieces, suspended movement, supported release, blocked cells,
+installed lift with above-cargo blocking, clockwise/CCW rotation, undo,
+restart helper, and short feedback. The stack probe now loads an arrangement
+and runs cargo input/render frames. Full/core measure **21,836 B flash /
+1,418 B static RAM**; `min` remains 10,584 B / 1,259 B. Device suites all
+printed `P`, including the cargo path. Job commit and auto-undock remain for
+M5 integration.
+
 ### Harness sentinel proof — 2026-10-22
 
 A temporary `SH_FEATURE_SENTINEL` block put a unique string
@@ -590,7 +601,7 @@ deltas against the same profile with the feature disabled.
 | cave view (M1) | +204 | +3 | 2026-10-22 | replaces walker/ground/hero/HUD; 128 B atlas + 36 B AVR metadata in flash; 32 B runtime state |
 | stations (M3) | +1,762 | +17 | 2026-10-22 | auto-dock, board, refill/repair; min compiles out |
 | jobs (M3) | +2,064 | +43 | 2026-10-22 | offers, deadlines, delivery, credits, active auto-load hint; M5 replaces fallback |
-| cargo load (M5 shell) | +4,482 | +97 | 2026-10-22 | cutaway, hold/tray, arrangement 0; interaction/commit pending |
+| cargo load (M5) | +7,426 | +99 | 2026-10-22 | cutaway, hold/tray, selection/move/support/rotate/undo; commit pending |
 | fog/chart | — | — | — | |
 | sonar | — | — | — | |
 | mines | — | — | — | |

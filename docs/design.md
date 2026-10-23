@@ -38,9 +38,13 @@ silhouettes inside the tunnel envelope; FLEET shows the full hull proportions.
 
 - Dock, accept a contract, and load the selected hull in the station loading
   screen. The screen opens automatically from the accepted job.
-- D-pad moves the suspended crate.
-- `A` picks up or releases.
-- `B` rotates a held crate; with nothing held it undoes the last placement.
+- Device D-pad: with nothing held it cycles the selection across tray and
+  installed cargo; while holding a crate it moves the suspended crate, clamped
+  to the open hold.
+- `A` picks up or lifts the selected crate, and releases the held crate.
+- `B` rotates a held crate clockwise (`B`+UP is counter-clockwise); with
+  nothing held it undoes the last placement. Holding `B` exits to the station
+  board so a manipulation tap never leaves the screen by accident.
 - A crate can only be released when at least one bottom cell rests on cargo or
   the floor. No mid-air placement. Structural mask cells are solid; on HAULER
   cargo cannot bridge or occupy the central split bulkhead.
@@ -48,9 +52,12 @@ silhouettes inside the tunnel envelope; FLEET shows the full hull proportions.
   under overhangs and into corners.
 - Installed crates stay in the tray. Select an installed piece and press `A`
   to lift it; cargo directly above blocks the lift.
-- `R` resets placement for the current load. `N` rerolls random cargo shapes.
+- The Arduino pad has no spare key, so device `R`/`N` are omitted; the pure
+  `cargo_screen::restart` helper exists for a future pause menu. The browser
+  slice keeps `R` reset and `N` reroll.
 - `LOAD & UNDOCK` checks the job crate requirement, sets the pilot load, and
   starts travel; `CANCEL` or `Esc` returns to the station with the job open.
+  The device handoff is owned by the M5 integration bead, not the rules pass.
 - The hold is schematic 128×64, 1-bit, and shown as one compartment inside the
   pressure hull. Cells scale per class (7 px MINNOW, 6 px HAULER, 5 px
   LEVIATHAN) so the bow cabin, engine room, and ballast remain visible without
