@@ -95,7 +95,8 @@ Dated whole-image numbers are evidence, not guaranteed headroom.
 | 2026-10-20 | 6,636 B | 1,214 B | arduino-cli 1.2.0; arduboy-homemade:avr 1.4.0; AVR-GCC 7.3.0-atmel3.6.1-arduino7; `make size` |
 | 2026-10-22 | 6,840 B | 1,217 B | M1 cave render (static camera, 16x8 visible window); full/lean/core/min identical; no Ardens run |
 | 2026-10-22 | 10,584 B | 1,259 B | M2 pilot view (world step, HAULER silhouette, HUD, D-pad input); full/min identical; no Ardens run |
+| 2026-10-22 | 12,346 B | 1,276 B | M3 stations (auto-dock, station board, refill/repair/undock); full/core identical, min unchanged at 10,584 B / 1,259 B; no Ardens run |
 
-Static free SRAM is 1,301 B at the latest checkpoint. No painted stack checkpoint yet: free bytes alone
+Static free SRAM is 1,284 B at the latest checkpoint. No painted stack checkpoint yet: free bytes alone
 do not prove stack fit, and the probe in `tst/fxdatatest/test_memory.ino` has
 not run on device. Re-measure after art or logic changes.

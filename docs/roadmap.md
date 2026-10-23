@@ -80,6 +80,15 @@ delta covers the M2 physics/collision commits plus this view slice because the
 last recorded checkpoint predates them. Ardens was unavailable, so there is no
 device frame-rate or screenshot claim.
 
+### M3 station checkpoint — 2026-10-22
+
+`sub-hauler-m3-station` adds auto-dock at the generated 42 px settlement rings,
+a 128x64 station board, refill/repair service, and B/row undock with a 1.5 s
+re-dock cooldown. Full/core measure **12,346 B flash / 1,276 B static RAM**
+(+1,762 B / +17 B over the M2 view checkpoint). `min` stays at 10,584 B /
+1,259 B because the station code and screen compile out. Ardens was
+unavailable; no device docking playtest or screenshot is claimed.
+
 ### Harness sentinel proof — 2026-10-22
 
 A temporary `SH_FEATURE_SENTINEL` block put a unique string
@@ -177,7 +186,7 @@ Default device hull: **HAULER**. It exercises the split bulkhead and the
 largest practical cargo screen before the easy hulls. Multi-hull selection is
 a late feature flag so it can be cut without touching the core loop.
 
-### 7. Input contract — D-pad flight, A/B reserved
+### 7. Input contract — D-pad flight, A/B reserved in flight
 
 Locked 2026-10-22 for M2, before any station rows or cargo UI depend on it:
 
@@ -198,6 +207,11 @@ slow inside a settlement ring remains the leading M3 option because it avoids
 a third button, but M3 must prove it in a playtest before station rows depend
 on it. If it fails, B becomes the docking/context action and chart moves to a
 later screen.
+
+M3 resolution (2026-10-22): auto-dock when slow inside a settlement ring is
+implemented and covered by host tests. Station rows use D-pad to select, A to
+confirm, and B to undock; flight A/B remain inert. No context-dock fallback is
+wired. Device playtest for auto-dock is still pending.
 
 ## Feature flags
 

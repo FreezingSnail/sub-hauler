@@ -2,6 +2,8 @@
 
 #include <stdint.h>
 
+#include "features.hpp"
+
 // Pure submarine rules. No Arduino headers: this file is compiled into the
 // host test binary and the firmware from the same source.
 //
@@ -28,6 +30,12 @@ constexpr int16_t kNeutralPerCargo = 5;  // neutral falls 5 per cargo unit
 
 constexpr int16_t kAirCapacity = 180;       // integer air units at full tank
 constexpr uint16_t kAirDrainTicks = 100;    // 0.6 units/s -> one unit per 100 ticks
+
+#if SH_FEATURE_HULL_DAMAGE
+// Browser startHp. Damage sources arrive with SH_FEATURE_HULL_DAMAGE (M7);
+// the station already repairs the value so the M3 board has a real readout.
+constexpr uint8_t kHullMax = 6;
+#endif
 constexpr uint8_t kBlowCarryStep = 3;       // 3.0 air units/s while blowing
 constexpr uint8_t kBallastCarryStep = 18;   // 18 ballast units/s blow or flood
 constexpr uint8_t kRateTicks = 60;          // carry denominator for per-second rates
@@ -82,6 +90,14 @@ struct State {
     int16_t impactSpeedQ8;   // speed on the blocked axis before it was zeroed
     uint8_t impactAxis;      // 0 none, 1 x, 2 y
     uint8_t impacts;         // saturating count of blocked-axis contacts
+
+#if SH_FEATURE_STATIONS
+    int8_t docked;           // -1 = free flight, else the settlement id
+    uint8_t dockCooldown;    // flight ticks before auto-dock is armed again
+#endif
+#if SH_FEATURE_HULL_DAMAGE
+    uint8_t hull;            // 0..kHullMax, repaired at a station
+#endif
 };
 
 // ---------------------------------------------------------------------------
@@ -176,6 +192,13 @@ inline void reset(State &state) {
     state.impactSpeedQ8 = 0;
     state.impactAxis = 0;
     state.impacts = 0;
+#if SH_FEATURE_STATIONS
+    state.docked = -1;
+    state.dockCooldown = 0;
+#endif
+#if SH_FEATURE_HULL_DAMAGE
+    state.hull = kHullMax;
+#endif
 }
 
 // Physics-only half of the fixed step. Callers that own collision use this

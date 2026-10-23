@@ -2,10 +2,15 @@
 #include "cargo_test.hpp"
 #include "cave_test.hpp"
 #include "collision_test.hpp"
+#include "features.hpp"
 #include "game_test.hpp"
 #include "pilot_view_test.hpp"
 #include "test.hpp"
 #include "world_test.hpp"
+
+#if SH_FEATURE_STATIONS
+#include "station_test.hpp"
+#endif
 
 int main() {
     TestRunner runner;
@@ -15,5 +20,8 @@ int main() {
     GameSuite(runner);
     PilotViewSuite(runner);
     WorldSuite(runner);
+#if SH_FEATURE_STATIONS
+    StationSuite(runner);
+#endif
     return runner.printSummary();
 }
