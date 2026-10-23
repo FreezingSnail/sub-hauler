@@ -8,6 +8,10 @@
 #include "test.hpp"
 #include "world_test.hpp"
 
+#if SH_FEATURE_CARGO_LOAD
+#include "cargo_view_test.hpp"
+#endif
+
 #if SH_FEATURE_STATIONS
 #include "station_test.hpp"
 #endif
@@ -21,6 +25,9 @@
 int main() {
     TestRunner runner;
     CargoSuite(runner);
+#if SH_FEATURE_CARGO_LOAD
+    CargoViewSuite(runner);
+#endif
     CaveSuite(runner);
     CollisionSuite(runner);
     GameSuite(runner);
