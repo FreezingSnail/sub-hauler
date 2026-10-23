@@ -16,9 +16,11 @@
 //   host  constexpr records including settlement names.
 // A namespace-scope constexpr array that is odr-used is copied into SRAM by the
 // AVR startup code, and name pointers would drag their string literals along
-// with it. Device code therefore never references SETTLEMENTS/MINES; it reads
-// the small PROGMEM copy through settlementMeta()/mineMeta(). Names stay
-// host-only so no string literal is linked into the device image.
+// with it. Device code therefore never references SETTLEMENTS/MINES/CURRENTS;
+// it reads the small PROGMEM copy through settlementMeta()/mineMeta()/
+// currentMeta(). Names stay host-only so no string literal is linked into the
+// device image. Current zones are metadata only: they do not change the FX
+// table ABI.
 #pragma once
 
 #include <stdint.h>
@@ -44,6 +46,7 @@ constexpr uint8_t  CHART_ROW_BYTES   = 8;
 constexpr uint16_t CHART_BYTES       = 256;
 constexpr uint8_t  SETTLEMENT_COUNT  = 4;
 constexpr uint8_t  MINE_COUNT        = 8;
+constexpr uint8_t  CURRENT_COUNT     = 8;
 constexpr int16_t  DOCK_CLEARANCE_PX = 42;
 constexpr uint8_t  MINE_RADIUS_PX    = 3;
 constexpr bool     CHART_ANY_OPEN    = true;
@@ -69,9 +72,20 @@ struct Mine {
     int16_t y;
 };
 
+// Current zone: a pixel rectangle and a signed Q8.8 acceleration. Exactly one
+// acceleration axis is non-zero for the generated set.
+struct Current {
+    int16_t x;
+    int16_t y;
+    uint8_t w;
+    uint8_t h;
+    int16_t ax_q8;
+    int16_t ay_q8;
+};
+
 #if defined(__AVR__)
 
-// Position-only copy: 4 * 9 B + 8 * 4 B in program flash.
+// Position-only copy: 4 * 9 B + 8 * 4 B + 8 * 10 B in program flash.
 struct SettlementMeta {
     uint8_t id;
     int16_t tile_x;
@@ -98,6 +112,17 @@ const Mine MINE_META[MINE_COUNT] PROGMEM = {
     {374, 835},
 };
 
+const Current CURRENT_META[CURRENT_COUNT] PROGMEM = {
+    {712, 568, 32, 16, 4096, 0},
+    {1744, 248, 32, 16, 0, 4096},
+    {2000, 832, 32, 16, -4096, 0},
+    {784, 1096, 32, 16, 0, -4096},
+    {560, 168, 32, 16, 4096, 0},
+    {1328, 568, 32, 16, 0, 4096},
+    {2320, 1112, 32, 16, -4096, 0},
+    {336, 856, 32, 16, 0, -4096},
+};
+
 inline bool settlementMeta(uint8_t id, Settlement &out) {
     if (id >= SETTLEMENT_COUNT)
         return false;
@@ -115,6 +140,18 @@ inline bool mineMeta(uint8_t id, Mine &out) {
         return false;
     out.x = static_cast<int16_t>(pgm_read_word(&MINE_META[id].x));
     out.y = static_cast<int16_t>(pgm_read_word(&MINE_META[id].y));
+    return true;
+}
+
+inline bool currentMeta(uint8_t id, Current &out) {
+    if (id >= CURRENT_COUNT)
+        return false;
+    out.x = static_cast<int16_t>(pgm_read_word(&CURRENT_META[id].x));
+    out.y = static_cast<int16_t>(pgm_read_word(&CURRENT_META[id].y));
+    out.w = pgm_read_byte(&CURRENT_META[id].w);
+    out.h = pgm_read_byte(&CURRENT_META[id].h);
+    out.ax_q8 = static_cast<int16_t>(pgm_read_word(&CURRENT_META[id].ax_q8));
+    out.ay_q8 = static_cast<int16_t>(pgm_read_word(&CURRENT_META[id].ay_q8));
     return true;
 }
 
@@ -138,6 +175,17 @@ constexpr Mine MINES[MINE_COUNT] = {
     {374, 835},
 };
 
+constexpr Current CURRENTS[CURRENT_COUNT] = {
+    {712, 568, 32, 16, 4096, 0},
+    {1744, 248, 32, 16, 0, 4096},
+    {2000, 832, 32, 16, -4096, 0},
+    {784, 1096, 32, 16, 0, -4096},
+    {560, 168, 32, 16, 4096, 0},
+    {1328, 568, 32, 16, 0, 4096},
+    {2320, 1112, 32, 16, -4096, 0},
+    {336, 856, 32, 16, 0, -4096},
+};
+
 inline bool settlementMeta(uint8_t id, Settlement &out) {
     if (id >= SETTLEMENT_COUNT)
         return false;
@@ -149,6 +197,13 @@ inline bool mineMeta(uint8_t id, Mine &out) {
     if (id >= MINE_COUNT)
         return false;
     out = MINES[id];
+    return true;
+}
+
+inline bool currentMeta(uint8_t id, Current &out) {
+    if (id >= CURRENT_COUNT)
+        return false;
+    out = CURRENTS[id];
     return true;
 }
 

@@ -36,8 +36,10 @@ Measured 2026-10-22 with the existing template:
 
 The 1,680 B static ceiling is a planning target, not a hardware fact. It was
 lowered from 1,700 B at the M6 chart checkpoint, where the full image reached
-1,678 B. The ceiling stays at 1,680 B: the chart-inclusive stack probe now
-passes at 654 B under a 600 B reserve target, and any further persistent static
+1,678 B. The ceiling stays at 1,680 B through M7 hazards: the full image is
+25,334 B flash / 1,680 B static after carving the chart `initialised` byte to
+pay for the one-byte mine mask, and the chart+sonar+mine+current stack probe
+passes at 641 B under a 600 B reserve target. Any further persistent static
 feature has to carve existing state first.
 
 Whole-image measurements only: LTO makes per-symbol arithmetic misleading. Use
@@ -187,9 +189,11 @@ stack probe still passed its 800 B reserve (the target was re-baselined to
 `sub-hauler-m6-chart` adds persistent 64x32 fog exploration and the paused
 128x64 chart; sonar, save, and hazards remain out of this slice:
 
-- `chart::State` is **257 B**: `explored[world::CHART_BYTES]` (256 B) plus one
-  `initialised` byte so the spawn reveal is idempotent. The sketch adds one
-  1 B blink counter, so the whole-image static delta is **+258 B**.
+- `chart::State` is **257 B** at M6: `explored[world::CHART_BYTES]` (256 B)
+  plus one `initialised` byte so the spawn reveal is idempotent. The sketch
+  adds one 1 B blink counter, so the whole-image static delta is **+258 B**.
+  The M7 hazard slice carves that byte (the spawn reveal runs once from
+  `setup()`), returning `chart::State` to 256 B.
 - Pixel/tile cell mapping is bounds-safe and floor-based; a square reveal
   radius clips at the world border. The spawn reveal is radius 1 and the
   movement reveal is radius 1 every 30 flight ticks, driven by `state.ticks`.
@@ -278,6 +282,56 @@ the existing `probeChart`, so no chart state is duplicated). With diagnostics
 enabled it measures **`stack_reserve=649`** and passes the **600 B** target
 with 49 B of margin; the production run prints a bare `P`. No screenshot or
 frame-rate claim.
+
+### M7 hazards checkpoint — 2026-10-23
+
+`sub-hauler-m7-hazards` adds deterministic mines and current zones from
+generated metadata. Damage, particles, and the shop stay in their later M7
+beads; the mine hit calls a one-point `hazards::applyDamage()` hook under
+`SH_FEATURE_HULL_DAMAGE` and nothing else.
+
+- **Mines** are the eight existing `MINE_META` positions. `src/hazards.hpp`
+  owns a single `uint8_t minesAlive` mask in `game::State`; no per-mine array
+  exists in SRAM. The hit test is a circle (`MINE_RADIUS_PX`) against the 26x8
+  HAULER hull, using squared integer distance. `collide()` consumes at most one
+  armed mine per step, records `impactAxis = kMineImpactAxis` (3) and
+  `impactSpeedQ8` for a one-frame pilot-view spark, and clears that spark at
+  the start of the next world step. A hit cannot fire twice; `reset()` re-arms
+  the generated mask.
+- Mines are consumed only after the free-flight world step. `stepWorld()`
+  guards the hazard pass with the same `docked < 0` test the station path
+  already enforces; the chart and cargo screens never call `stepWorld()`.
+- **Currents** are eight generated 32x16 px zones (one per non-settlement
+  chamber), stored as `{x, y, w, h, ax_q8, ay_q8}` metadata in
+  `src/generated/world.hpp`. `src/currents.hpp` applies `ax_q8 / 60` or
+  `ay_q8 / 60` to the Q8.8 velocity before the same axis-separated collision
+  walk, capped at +/-32 px/s. No current state is stored: outside a zone the
+  velocity is untouched, and a docked boat is never pushed.
+- `tools/gen_world.py` validates every zone: positive size, non-zero
+  acceleration, inside the world, every overlapped tile open, and at least
+  42 px (nearest-point distance) from every settlement/spawn dock centre. The
+  zones consume no PRNG and no FX table/ABI bytes; only the generated header
+  grows.
+- `src/hazard_view.hpp` draws mine glyphs and animated flow marks before the
+  HAULER silhouette, and the one-frame impact spark after it. All drawing is
+  clipped by `cave::setPixel`; there are no new strings.
+- `MINES` and `CURRENTS` are independent flags. `full` has both, `lean`,
+  `core`, and `min` have both off, so their state, tables, calls, includes,
+  and render paths compile out. The current metadata constants/records still
+  exist in the header, but no runtime code references them when the flag is
+  off.
+
+Budget: `sizeof(game::State)` is **71 B** on AVR with `MINES=1` (70 B with
+`MINES=0`); `chart::State` drops from 257 B to exactly **256 B** by removing
+the `initialised` byte, so the full image stays at **1,680 B static**, exactly
+the ceiling. Whole-image A/B: mines **+730 B flash / +1 B static**, currents
+**+852 B flash / +0 B static**, both together **+1,574 B flash / +1 B static**.
+The full image is **25,334 B / 1,680 B**; `lean` is **23,760 B / 1,679 B**;
+`core` is unchanged at **22,038 B / 1,420 B**; `min` is unchanged at
+**10,584 B / 1,259 B**. The stack probe with the mine and current frames
+measures **`stack_reserve=641`**, passing the 600 B target with 41 B of
+margin. Host tests: 111 full, 97 lean, 78 core, 40 min; `make test-tools`
+passes 75. All four device suites print `P`.
 
 ### Harness sentinel proof — 2026-10-22
 
@@ -741,14 +795,18 @@ deltas against the same profile with the feature disabled.
 | stations (M3) | +1,762 | +17 | 2026-10-22 | auto-dock, board, refill/repair; min compiles out |
 | jobs (M3) | +2,064 | +43 | 2026-10-22 | offers, deadlines, delivery, credits, active auto-load hint; M5 replaces fallback |
 | cargo load (M5) | +7,628 | +101 | 2026-10-22 | cutaway, hold/tray, rules, job handoff, auto-undock |
-| fog/chart | +1,248 | +258 | 2026-10-23 | 64x32 explored set (256 B) + initialised byte + blink; paused chart, reveal, markers; full A/B |
+| fog/chart | +1,248 | +258 | 2026-10-23 | 64x32 explored set (256 B) + initialised byte + blink; paused chart, reveal, markers; full A/B; M7 carved the initialised byte |
 | sonar | +484 | +2 | 2026-10-23 | A-key ping: 6 air base (-1/level), 3+level cell reveal, 120-tick cooldown, 24-tick ring; 2 state bytes; full A/B |
-| mines | — | — | — | |
-| currents | — | — | — | |
+| mines | +730 | +1 | 2026-10-23 | 8 fixed positions, one mask byte, circle/hull hit, one-frame spark, optional hull hook; full A/B |
+| currents | +852 | +0 | 2026-10-23 | 8 generated 32x16 zones, Q8 acceleration, flow marks; metadata only; full A/B |
 | shop | — | — | — | |
 | hull damage | — | — | — | |
 | particles | — | — | — | |
 | multi-hull | — | — | — | |
+
+The mine and current A/B deltas share 8 B of LTO folding: both enabled is
++1,574 B, not +1,582 B. The chart `initialised` carve (-1 B) offsets the mine
+mask (+1 B), so the full image remains at the 1,680 B ceiling.
 
 Record the profile matrix separately:
 
@@ -758,6 +816,7 @@ Record the profile matrix separately:
 | 2026-10-22 | M1 cave render | 6,840 | 1,217 | none (Ardens unavailable) | full/lean/core/min identical |
 | 2026-10-23 | M6 chart | 23,286 | 1,678 | `test_memory` P (chart path, 654 B under 600 B target) | full/lean identical; core 22,038/1,420; min 10,584/1,259 |
 | 2026-10-23 | M6 sonar | 23,770 | 1,680 | `test_memory` P (chart + sonar path, 649 B under 600 B target) | full/lean identical; core 22,038/1,420; min 10,584/1,259; at the static ceiling |
+| 2026-10-23 | M7 hazards | 25,334 | 1,680 | `test_memory` P (chart + sonar + mine + current path, 641 B under 600 B target) | full; lean 23,760/1,679; core 22,038/1,420; min 10,584/1,259; full still at the static ceiling after the chart-byte carve |
 
 ## Verification gates
 

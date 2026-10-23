@@ -42,7 +42,7 @@ struct FakeReader {
 }   // namespace chart_test
 
 inline void ChartSuite(TestRunner &runner) {
-    static_assert(sizeof(chart::State) == world::CHART_BYTES + 1, "state is 256 B explored plus one metadata byte");
+    static_assert(sizeof(chart::State) == world::CHART_BYTES, "state is exactly the 256 B explored set");
     static_assert(chart::kCellPixels == 40, "one chart cell covers 40x40 pixels");
 
     {
@@ -79,7 +79,6 @@ inline void ChartSuite(TestRunner &runner) {
         Test test("square reveal radius, bounds clipping, and persistence");
         chart::State state;
         chart::reset(state);
-        test.assertEqual(state.initialised, 0, "reset clears the metadata byte");
 
         test.assertEqual(chart::revealAtPixels(state, 0, 0, 0), 1, "radius 0 reveals only the centre");
         test.assertTrue(chart::isExplored(state, 0, 0), "centre is explored");
@@ -119,7 +118,6 @@ inline void ChartSuite(TestRunner &runner) {
         chart::State state;
         chart::reset(state);
         chart::revealInitial(state, gameState);
-        test.assertEqual(state.initialised, 1, "spawn reveal marks initialised");
         test.assertTrue(chart::isExplored(state, 7, 9), "spawn cell is explored");
         test.assertTrue(chart::isExplored(state, 8, 9), "spawn reveal radius reaches a neighbour");
 
@@ -135,7 +133,8 @@ inline void ChartSuite(TestRunner &runner) {
         test.assertTrue(chart::isExplored(state, 24, 20), "movement reveal radius is one cell");
 
         chart::revealInitial(state, gameState);
-        test.assertTrue(!chart::isExplored(state, 30, 20), "a second initial reveal cannot wipe or move the map");
+        test.assertTrue(chart::isExplored(state, 7, 9), "a later spawn reveal cannot wipe the map");
+        test.assertTrue(!chart::isExplored(state, 30, 20), "the later reveal only adds cells around the current position");
 
         gameState.x = 1200;
         gameState.y = 840;

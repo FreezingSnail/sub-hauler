@@ -10,7 +10,9 @@
 //      frame and one interrupt frame of headroom are never painted.
 //   3. Fill [bssEnd + 1, paintTop] with 0xA5 with interrupts disabled.
 //   4. Re-enable interrupts and run kRepresentativeFrames of the normal
-//      poll/update/render/present path, including FX cart reads.
+//      poll/update/render/present path, including FX cart reads. The M6 chart
+//      and sonar paths and the M7 mine/current frames follow in the same
+//      measured window.
 //   5. Scan upward from bssEnd + 1 for the lowest byte that is no longer
 //      0xA5. That address is the stack high-water mark.
 //   6. reserve = highWater - bssEnd. Print one bare P when the reserve is at
@@ -69,9 +71,9 @@ chart::State probeChart;
 namespace {
 
 // Re-baselined from 800 B to 600 B on 2026-10-23, after the 258 B persistent
-// chart slice entered the full image. The chart-inclusive probe measures 654 B,
-// so 600 B keeps a deliberate 54 B margin over the measurement while remaining
-// ~381 B above the measured 219 B stack depth.
+// chart slice entered the full image. The chart+sonar+hazard probe measures
+// 641 B, so 600 B keeps a deliberate 41 B margin over the measurement while
+// remaining well above the measured stack depth.
 constexpr uint16_t kReserveTarget = 600;   // bytes of stack reserve required
 constexpr uint8_t kFrameGuard = 64;        // active-frame headroom, never painted
 constexpr uint8_t kPattern = 0xA5;
@@ -143,6 +145,46 @@ __attribute__((noinline)) void runRepresentativePath() {
     view::frame(state, sonarCamera, cache, tables);
     hud::draw(state);
     FX::display(CLEAR_BUFFER);
+#endif
+
+#if SH_FEATURE_CURRENTS
+    // Current path: stand in the first generated zone and run the real step so
+    // its acceleration and flow marks enter the measured path.
+    world::Current current;
+    if (world::currentInfo(0, current)) {
+        state.x = static_cast<int16_t>(current.x + current.w / 2);
+        state.y = static_cast<int16_t>(current.y + current.h / 2);
+        state.xFrac = 0;
+        state.yFrac = 0;
+        state.vxQ8 = 0;
+        state.vyQ8 = 0;
+        game::Input currentInput{};
+        game::stepWorld(state, currentInput, tables, &cache);
+        const cave::Camera currentCamera = pilot_view::cameraForState(state);
+        view::frame(state, currentCamera, cache, tables);
+        hud::draw(state);
+        FX::display(CLEAR_BUFFER);
+    }
+#endif
+
+#if SH_FEATURE_MINES
+    // Mine path: place the hull on generated mine 0, step once to consume it,
+    // then draw the one-frame impact spark with the mine already removed.
+    world::Mine mine;
+    if (world::mineInfo(0, mine)) {
+        state.x = mine.x;
+        state.y = mine.y;
+        state.xFrac = 0;
+        state.yFrac = 0;
+        state.vxQ8 = 0;
+        state.vyQ8 = 0;
+        game::Input mineInput{};
+        game::stepWorld(state, mineInput, tables, &cache);
+        const cave::Camera mineCamera = pilot_view::cameraForState(state);
+        view::frame(state, mineCamera, cache, tables);
+        hud::draw(state);
+        FX::display(CLEAR_BUFFER);
+    }
 #endif
 
 #if SH_FEATURE_CARGO_LOAD

@@ -92,6 +92,22 @@ class GenWorldTest(unittest.TestCase):
             ],
         )
         self.assertEqual((self.world.spawn_sub_x, self.world.spawn_sub_y), (291, 388))
+        self.assertEqual(
+            [
+                (c.x, c.y, c.w, c.h, c.ax_q8, c.ay_q8)
+                for c in self.world.currents
+            ],
+            [
+                (712, 568, 32, 16, 4096, 0),
+                (1744, 248, 32, 16, 0, 4096),
+                (2000, 832, 32, 16, -4096, 0),
+                (784, 1096, 32, 16, 0, -4096),
+                (560, 168, 32, 16, 4096, 0),
+                (1328, 568, 32, 16, 0, 4096),
+                (2320, 1112, 32, 16, -4096, 0),
+                (336, 856, 32, 16, 0, -4096),
+            ],
+        )
 
     def test_known_chart_samples(self):
         chart = gen_world.unpack_chart(self.world.chart)
@@ -132,6 +148,7 @@ class GenWorldTest(unittest.TestCase):
         self.assertEqual(gen_world.pack_tiles(first.grid), gen_world.pack_tiles(second.grid))
         self.assertEqual(first.chart, second.chart)
         self.assertEqual(first.mines, second.mines)
+        self.assertEqual(first.currents, second.currents)
 
     def test_cli_writes_byte_identical_outputs(self):
         out = ROOT / "build" / "tests" / "world"
@@ -172,9 +189,12 @@ class GenWorldTest(unittest.TestCase):
         self.assertIn("#include <avr/pgmspace.h>", header)
         self.assertIn("SETTLEMENT_META[SETTLEMENT_COUNT] PROGMEM", header)
         self.assertIn("MINE_META[MINE_COUNT] PROGMEM", header)
+        self.assertIn("CURRENT_META[CURRENT_COUNT] PROGMEM", header)
         self.assertIn("constexpr Settlement SETTLEMENTS", header)
+        self.assertIn("constexpr Current CURRENTS", header)
         self.assertIn("inline bool settlementMeta", header)
         self.assertIn("inline bool mineMeta", header)
+        self.assertIn("inline bool currentMeta", header)
 
         # AVR metadata is position-only: the guarded branch must not reference
         # settlement name literals, which would otherwise land in .rodata and
@@ -192,6 +212,7 @@ class GenWorldTest(unittest.TestCase):
             "SPAWN_TILE_X",
             "SETTLEMENT_COUNT",
             "MINE_COUNT",
+            "CURRENT_COUNT",
         ):
             self.assertIn(symbol, header)
 
@@ -258,6 +279,36 @@ class GenWorldTest(unittest.TestCase):
         bad = self.corrupt()
         bad.mines = ()
         with self.assertRaisesRegex(ValueError, "no mine sites"):
+            gen_world.validate_world(bad)
+
+    def test_rejects_current_in_rock(self):
+        bad = self.corrupt()
+        bad.currents = (gen_world.Current(0, 0, 32, 16, 4096, 0),) + bad.currents[1:]
+        with self.assertRaisesRegex(ValueError, "inside rock"):
+            gen_world.validate_world(bad)
+
+    def test_rejects_current_inside_dock_clearance(self):
+        bad = self.corrupt()
+        settlement = bad.settlements[0]
+        bad.currents = (
+            gen_world.Current(settlement.pixel_x - 8, settlement.pixel_y - 8, 32, 16, 4096, 0),
+        ) + bad.currents[1:]
+        with self.assertRaisesRegex(ValueError, "dock clearance"):
+            gen_world.validate_world(bad)
+
+    def test_rejects_current_without_acceleration(self):
+        bad = self.corrupt()
+        first = bad.currents[0]
+        bad.currents = (
+            gen_world.Current(first.x, first.y, first.w, first.h, 0, 0),
+        ) + bad.currents[1:]
+        with self.assertRaisesRegex(ValueError, "no acceleration"):
+            gen_world.validate_world(bad)
+
+    def test_rejects_missing_currents(self):
+        bad = self.corrupt()
+        bad.currents = ()
+        with self.assertRaisesRegex(ValueError, "no current zones"):
             gen_world.validate_world(bad)
 
     def test_rejects_chart_mask_drift(self):

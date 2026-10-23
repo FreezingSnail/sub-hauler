@@ -5,6 +5,9 @@
 #include "common.hpp"
 #include "fxdata.h"
 #include "game.hpp"
+#if SH_FEATURE_MINES || SH_FEATURE_CURRENTS
+#include "hazard_view.hpp"
+#endif
 #include "pilot_view.hpp"
 #if SH_FEATURE_SONAR
 #include "sonar_view.hpp"
@@ -28,7 +31,16 @@ inline void frame(const game::State &state, const cave::Camera &camera, world::T
     // Ring first: the filled HAULER silhouette stays solid and readable.
     sonar_view::draw(Arduboy2Base::sBuffer, state, camera);
 #endif
+#if SH_FEATURE_CURRENTS
+    hazard_view::drawCurrents(Arduboy2Base::sBuffer, state, camera);
+#endif
+#if SH_FEATURE_MINES
+    hazard_view::drawMines(Arduboy2Base::sBuffer, state, camera);
+#endif
     pilot_view::draw(Arduboy2Base::sBuffer, state, camera);
+#if SH_FEATURE_MINES
+    hazard_view::drawImpact(Arduboy2Base::sBuffer, state, camera);
+#endif
 }
 
 }   // namespace view

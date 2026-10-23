@@ -23,6 +23,13 @@ constexpr int16_t kSubpixelOne = 4096;   // Q12 sub-pixel one
 constexpr int16_t kSpawnX = 64;
 constexpr int16_t kSpawnY = 32;
 
+// HAULER hull footprint, shared by world collision and hazard collision.
+// The 26x8 hull is centred on the whole-pixel state position.
+constexpr int16_t kHullHalfW = 13;
+constexpr int16_t kHullHalfH = 4;
+constexpr int16_t kHullW = kHullHalfW * 2;
+constexpr int16_t kHullH = kHullHalfH * 2;
+
 constexpr uint8_t kCargoMax = 4;
 constexpr int16_t kBallastMax = 100;
 constexpr int16_t kNeutralBase = 50;     // ballast at zero cargo
@@ -119,8 +126,11 @@ struct State {
     int16_t cameraX;         // whole-pixel world offset
     int16_t cameraY;
     int16_t impactSpeedQ8;   // speed on the blocked axis before it was zeroed
-    uint8_t impactAxis;      // 0 none, 1 x, 2 y
+    uint8_t impactAxis;      // 0 none, 1 x, 2 y, 3 mine hit (one frame)
     uint8_t impacts;         // saturating count of blocked-axis contacts
+#if SH_FEATURE_MINES
+    uint8_t minesAlive;      // one bit per generated mine, 1 = still armed
+#endif
 
 #if SH_FEATURE_STATIONS
     int8_t docked;           // -1 = free flight, else the settlement id
@@ -241,6 +251,11 @@ inline void reset(State &state) {
     state.impactSpeedQ8 = 0;
     state.impactAxis = 0;
     state.impacts = 0;
+#if SH_FEATURE_MINES
+    // The generated world ships MINE_COUNT = 8, so all bits start armed.
+    // hazards::reset() masks this to MINE_COUNT for callers that need it.
+    state.minesAlive = 0xFF;
+#endif
 #if SH_FEATURE_STATIONS
     state.docked = -1;
     state.dockCooldown = 0;

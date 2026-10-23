@@ -3,6 +3,13 @@
 #include "game.hpp"
 #include "world.hpp"
 
+#if SH_FEATURE_CURRENTS
+#include "currents.hpp"
+#endif
+#if SH_FEATURE_MINES
+#include "hazards.hpp"
+#endif
+
 // World-aware pilot rules: the pure submarine from game.hpp, moved through the
 // baked cave with axis-separated collision and an integer follow camera.
 //
@@ -10,12 +17,6 @@
 // Reader::tileByte may perform FX cart reads, so call stepWorld() from update
 // only, never from inside an FX::display transaction. game.hpp stays pure.
 namespace game {
-
-// 26x8 hull centred on the state position.
-constexpr int16_t kHullHalfW = 13;
-constexpr int16_t kHullHalfH = 4;
-constexpr int16_t kHullW = kHullHalfW * 2;
-constexpr int16_t kHullH = kHullHalfH * 2;
 
 constexpr int16_t kViewW = 128;
 constexpr int16_t kViewH = 64;
@@ -158,9 +159,31 @@ inline void moveAxis(State &state, Reader &reader, const world::TileCache *cache
 // the cave. X moves first, then Y, matching the browser order.
 template <typename Reader>
 inline void stepWorld(State &state, const Input &input, Reader &reader, const world::TileCache *cache = nullptr) {
+#if SH_FEATURE_MINES
+    // A mine spark is a one-frame cue; clear it before the next step so it can
+    // never be mistaken for a wall impact.
+    hazards::clearImpact(state);
+#endif
+#if SH_FEATURE_STATIONS
+    const bool freeFlight = state.docked < 0;
+#else
+    const bool freeFlight = true;
+#endif
     stepPhysics(state, input);
+#if SH_FEATURE_CURRENTS
+    // Currents add acceleration before collision resolves, so the same
+    // screen-step cannot push the hull through rock or out of the world.
+    if (freeFlight)
+        currents::apply(state);
+#endif
     moveAxis(state, reader, cache, true);
     moveAxis(state, reader, cache, false);
+#if SH_FEATURE_MINES
+    // Free-flight hazard pass after movement. Docked/chart/cargo screens never
+    // reach stepWorld, so they cannot consume a mine.
+    if (freeFlight)
+        hazards::collide(state);
+#endif
     updateCamera(state);
     ++state.ticks;
 #if SH_FEATURE_SONAR
