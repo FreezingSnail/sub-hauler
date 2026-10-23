@@ -65,10 +65,13 @@ Target: **at least 800 B of reserve above `__bss_end`** on the full profile.
 If a measured reserve is below 800 B, lower the static planning ceiling in
 `docs/roadmap.md` instead of relaxing the target.
 
-Status: **pending device run.** Ardens is unavailable in this environment, so
-no high-water number has been recorded and static free bytes are not a stack
-measurement. The suite builds with
-`make fxtest-build FXTEST_ONLY=test_memory`; run it where Ardens exists:
+Status: **passed 2026-10-22.** Ardens ran
+`make fxtest FXTEST_ONLY=test_memory` and the suite printed the bare `P`
+marker, so the measured reserve is at least the 800 B target. The probe does
+not print the exact high-water byte unless `SH_STACK_DIAG=1`; static free bytes
+are still not a stack measurement. The suite builds with
+`make fxtest-build FXTEST_ONLY=test_memory`; rerun it after render/state
+changes:
 
 ```sh
 make fxtest FXTEST_ONLY=test_memory
@@ -98,6 +101,6 @@ Dated whole-image numbers are evidence, not guaranteed headroom.
 | 2026-10-22 | 12,346 B | 1,276 B | M3 stations (auto-dock, station board, refill/repair/undock); full/core identical, min unchanged at 10,584 B / 1,259 B; no Ardens run |
 | 2026-10-22 | 14,378 B | 1,319 B | M3 jobs (two offers, deadlines, delivery/credits, auto-load fallback); full/lean/core identical, min unchanged; no Ardens run |
 
-Static free SRAM is 1,241 B at the latest checkpoint. No painted stack checkpoint yet: free bytes alone
-do not prove stack fit, and the probe in `tst/fxdatatest/test_memory.ino` has
-not run on device. Re-measure after art or logic changes.
+Static free SRAM is 1,241 B at the latest checkpoint. The painted-stack probe
+reported `P` on 2026-10-22, so the reserve is at least 800 B. Free bytes alone
+still do not prove stack fit; rerun the probe after art or logic changes.
