@@ -163,6 +163,10 @@ inline void stepWorld(State &state, const Input &input, Reader &reader, const wo
     moveAxis(state, reader, cache, false);
     updateCamera(state);
     ++state.ticks;
+#if SH_FEATURE_JOBS
+    // Flight tick for contract deadlines (docked frames never step the world).
+    ++state.jobClock;
+#endif
 }
 
 }   // namespace game

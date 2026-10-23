@@ -8,6 +8,9 @@
 
 #include "game.hpp"
 #include "station.hpp"
+#if SH_FEATURE_JOBS
+#include "jobs.hpp"
+#endif
 
 // Station board, 128x64. The layout is pure and host-checkable; the draw
 // function is device-only because it prints through the Arduboy font with
@@ -21,18 +24,19 @@ namespace station_view {
 
 constexpr uint8_t kNameX = 2;
 constexpr uint8_t kHeaderY = 2;
-constexpr uint8_t kCreditsX = 96;
+constexpr uint8_t kCreditsX = 80;
 constexpr uint8_t kDividerY = 11;
 constexpr uint8_t kStatusX = 2;
 constexpr uint8_t kHullX = 72;
 constexpr uint8_t kStatusY = 15;
 constexpr uint8_t kRowX = 4;
-constexpr uint8_t kRowY0 = 29;
-constexpr uint8_t kRowStep = 12;
-constexpr uint8_t kRowInsetY = 2;
-constexpr uint8_t kRowInvertH = 10;
+constexpr uint8_t kRowY0 = 24;
+constexpr uint8_t kRowStep = 8;
+constexpr uint8_t kRowInsetY = 1;
+constexpr uint8_t kRowInvertH = 8;
 constexpr uint8_t kHintX = 3;
 constexpr uint8_t kHintY = 56;
+constexpr uint8_t kOfferChars = 20; // "DEEP ANCHOR 240 5:32"
 
 // Row i's text baseline is rowY(i); the invert bar extends kRowInsetY above
 // it. Keep the last row clear of the hint and the hint inside the display.
@@ -41,10 +45,13 @@ constexpr uint8_t rowY(uint8_t row) {
 }
 
 static_assert(station::kStationRowCount > 0, "station board needs at least one row");
-static_assert(rowY(0) > kStatusY + 7, "rows start below the status line");
+static_assert(rowY(0) - kRowInsetY > kStatusY + 7, "rows start below the status line");
 static_assert(rowY(static_cast<uint8_t>(station::kStationRowCount - 1)) + 7 < kHintY, "last row clears the hint");
 static_assert(kHintY + 7 < 64, "hint stays on screen");
-static_assert(kCreditsX + 4 * 6 <= 128, "CR 0 fits at the right edge");
+#if SH_FEATURE_JOBS
+static_assert(kCreditsX + 8 * 6 <= 128, "CR 65535 fits at the right edge");
+#endif
+static_assert(kRowX + kOfferChars * 6 <= 128, "offer text fits inside 128 columns");
 
 #if defined(__AVR__)
 
@@ -67,16 +74,64 @@ inline const __FlashStringHelper *nameFor(uint8_t id) {
     }
 }
 
-inline const __FlashStringHelper *rowLabel(uint8_t row) {
-    switch (station::rowKind(row)) {
+inline const __FlashStringHelper *rowLabel(uint8_t row, const game::State &state) {
+    switch (station::rowKind(row, state)) {
     case station::kRowService:
         return F("SERVICE");
     case station::kRowUndock:
         return F("UNDOCK");
+#if SH_FEATURE_JOBS
+    case station::kRowAbandon:
+        return F("ABANDON");
+#endif
     default:
-        return F("OFFER");
+        return nullptr;
     }
 }
+
+#if SH_FEATURE_JOBS
+inline void printClock(uint16_t ticks) {
+    const uint16_t seconds = static_cast<uint16_t>(ticks / game::kStepHz);
+    arduboy.print(static_cast<uint16_t>(seconds / 60));
+    arduboy.print(':');
+    const uint8_t rest = static_cast<uint8_t>(seconds % 60);
+    if (rest < 10)
+        arduboy.print('0');
+    arduboy.print(rest);
+}
+
+inline void printDestination(uint8_t toId, uint16_t reward, uint16_t ticks) {
+    arduboy.print(nameFor(toId));
+    arduboy.print(' ');
+    arduboy.print(reward);
+    arduboy.print(' ');
+    printClock(ticks);
+}
+
+inline void printRow(uint8_t row, const game::State &state) {
+    switch (station::rowKind(row, state)) {
+    case station::kRowOffer:
+        if (row < state.offerCount)
+            printDestination(state.offers[row].to, state.offers[row].reward, state.offers[row].deadline);
+        else
+            arduboy.print(F("OFFER"));
+        break;
+    case station::kRowJob:
+        printDestination(state.activeJob.to, state.activeJob.reward, jobs::remainingTicks(state));
+        break;
+    case station::kRowAbandon:
+        arduboy.print(F("ABANDON"));
+        break;
+    default:
+        arduboy.print(rowLabel(row, state));
+        break;
+    }
+}
+#else
+inline void printRow(uint8_t row, const game::State &state) {
+    arduboy.print(rowLabel(row, state));
+}
+#endif
 
 inline void draw(const game::State &state, uint8_t selected) {
     if (state.docked < 0)
@@ -85,9 +140,11 @@ inline void draw(const game::State &state, uint8_t selected) {
     arduboy.setCursor(kNameX, kHeaderY);
     arduboy.print(nameFor(static_cast<uint8_t>(state.docked)));
 
-    // Credits are a placeholder until M3 jobs lands the economy.
+#if SH_FEATURE_JOBS
     arduboy.setCursor(kCreditsX, kHeaderY);
-    arduboy.print(F("CR 0"));
+    arduboy.print(F("CR "));
+    arduboy.print(state.credits);
+#endif
 
     arduboy.drawFastHLine(0, kDividerY, 128, WHITE);
 
@@ -105,7 +162,8 @@ inline void draw(const game::State &state, uint8_t selected) {
     arduboy.print(game::kHullMax);
 #endif
 
-    for (uint8_t row = 0; row < station::kStationRowCount; ++row) {
+    const uint8_t rowCount = station::rowCount(state);
+    for (uint8_t row = 0; row < rowCount; ++row) {
         const uint8_t y = rowY(row);
         const bool chosen = row == selected;
 
@@ -119,7 +177,7 @@ inline void draw(const game::State &state, uint8_t selected) {
         }
 
         arduboy.setCursor(kRowX, y);
-        arduboy.print(rowLabel(row));
+        printRow(row, state);
     }
     arduboy.setTextColor(WHITE);
     arduboy.setTextBackground(BLACK);

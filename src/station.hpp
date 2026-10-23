@@ -9,6 +9,9 @@
 #include "game.hpp"
 #include "pilot.hpp"
 #include "world.hpp"
+#if SH_FEATURE_JOBS
+#include "jobs.hpp"
+#endif
 
 // Docking, station service, and station-row rules. Pure C++: no Arduino
 // headers, no cart reads here, and no display access. The sketch owns the
@@ -43,27 +46,81 @@ constexpr int32_t kDockSpeedSq = static_cast<int32_t>(kDockSpeedQ8) * kDockSpeed
 // player a short window to thrust clear of the ring; this is 1.5 s at 60 Hz.
 constexpr uint8_t kUndockCooldown = 90;
 
-// Row extension point for M3 jobs. Offers will occupy the leading rows; the
-// service and undock rows stay last so their actions never move.
+// Row extension point for M3 jobs. Offers occupy the leading rows; the
+// service and undock rows stay last so their actions never move when jobs are
+// compiled out. With an active contract the board instead shows a summary row
+// followed by ABANDON and UNDOCK, so the two board shapes are:
+//
+//   no job:  [offer 0] [offer 1] SERVICE UNDOCK
+//   active:  [summary] ABANDON UNDOCK
+//
+// Only selectable rows participate in wrap-around; the summary row is inert.
+#if SH_FEATURE_JOBS
+constexpr uint8_t kOfferRows = game::kJobOffers;
+#else
 constexpr uint8_t kOfferRows = 0;
+#endif
 constexpr uint8_t kServiceRow = kOfferRows;
 constexpr uint8_t kUndockRow = static_cast<uint8_t>(kOfferRows + 1);
 constexpr uint8_t kStationRowCount = static_cast<uint8_t>(kOfferRows + 2);
 constexpr uint8_t kFirstRow = 0;
 
+#if SH_FEATURE_JOBS
+constexpr uint8_t kActiveSummaryRow = 0;
+constexpr uint8_t kAbandonRow = 1;
+constexpr uint8_t kActiveUndockRow = 2;
+constexpr uint8_t kActiveRowCount = 3;
+#endif
+
 enum RowKind : uint8_t {
     kRowOffer,
     kRowService,
     kRowUndock
+#if SH_FEATURE_JOBS
+    ,
+    kRowJob,
+    kRowAbandon
+#endif
 };
 
 enum Action : uint8_t {
     kActionNone,
     kActionServiced,
     kActionUndocked
+#if SH_FEATURE_JOBS
+    ,
+    kActionAccepted,
+    kActionAbandoned
+#endif
 };
 
-inline RowKind rowKind(uint8_t row) {
+inline bool jobActive(const State &state) {
+#if SH_FEATURE_JOBS
+    return game::hasActiveJob(state);
+#else
+    (void)state;
+    return false;
+#endif
+}
+
+inline uint8_t rowCount(const State &state) {
+#if SH_FEATURE_JOBS
+    if (jobActive(state))
+        return kActiveRowCount;
+#endif
+    return kStationRowCount;
+}
+
+inline RowKind rowKind(uint8_t row, const State &state) {
+#if SH_FEATURE_JOBS
+    if (jobActive(state)) {
+        if (row == kActiveSummaryRow)
+            return kRowJob;
+        if (row == kAbandonRow)
+            return kRowAbandon;
+        return kRowUndock;
+    }
+#endif
     if (row < kOfferRows)
         return kRowOffer;
     if (row == kServiceRow)
@@ -71,15 +128,40 @@ inline RowKind rowKind(uint8_t row) {
     return kRowUndock;
 }
 
-// Selection wraps so a two-row board never dead-ends. Both functions assume
-// the caller keeps the selected row in range; the app initializes to
-// kFirstRow and only moves through these.
-inline uint8_t selectPrevious(uint8_t selected) {
-    return selected == 0 ? static_cast<uint8_t>(kStationRowCount - 1) : static_cast<uint8_t>(selected - 1);
+// First selectable row for a freshly docked boat: offer 0, or ABANDON when a
+// contract is already running (wrong-station dock).
+inline uint8_t initialRow(const State &state) {
+#if SH_FEATURE_JOBS
+    if (jobActive(state))
+        return kAbandonRow;
+#endif
+    return kFirstRow;
 }
 
-inline uint8_t selectNext(uint8_t selected) {
-    return static_cast<uint8_t>((selected + 1) % kStationRowCount);
+inline uint8_t selectableCount(const State &state) {
+#if SH_FEATURE_JOBS
+    if (jobActive(state))
+        return static_cast<uint8_t>(kActiveRowCount - kAbandonRow);
+#endif
+    return kStationRowCount;
+}
+
+// Selection wraps across selectable rows only, so a two-row active board never
+// dead-ends. The caller keeps the selected row in range via initialRow().
+inline uint8_t selectPrevious(uint8_t selected, const State &state) {
+    const uint8_t first = initialRow(state);
+    const uint8_t last = static_cast<uint8_t>(first + selectableCount(state) - 1);
+    if (selected <= first || selected > last)
+        return last;
+    return static_cast<uint8_t>(selected - 1);
+}
+
+inline uint8_t selectNext(uint8_t selected, const State &state) {
+    const uint8_t first = initialRow(state);
+    const uint8_t last = static_cast<uint8_t>(first + selectableCount(state) - 1);
+    if (selected < first || selected >= last)
+        return first;
+    return static_cast<uint8_t>(selected + 1);
 }
 
 // Squared speed in Q8.8 units. Two int16 velocities squared fit in int32.
@@ -158,6 +240,10 @@ inline bool dock(State &state) {
     state.vyQ8 = 0;
 
     service(state);
+#if SH_FEATURE_JOBS
+    // Resolve a contract ending at this station (if any), then restock offers.
+    jobs::onDock(state, settlementId);
+#endif
     snapCamera(state);
     return true;
 }
@@ -193,17 +279,26 @@ template <typename Reader> inline bool stepFlight(State &state, const Input &inp
     return dock(state);
 }
 
-// A confirms the selected row. Offers are inert until M3 jobs adds them.
+// A confirms the selected row. Offer rows accept the contract, ABANDON clears
+// it, SERVICE refills/repairs, and UNDOCK leaves the station.
 inline Action activate(uint8_t selected, State &state) {
-    if (state.docked < 0 || selected >= kStationRowCount)
+    if (state.docked < 0 || selected >= rowCount(state))
         return kActionNone;
 
-    switch (rowKind(selected)) {
+    switch (rowKind(selected, state)) {
     case kRowService:
         service(state);
         return kActionServiced;
     case kRowUndock:
         return undock(state) ? kActionUndocked : kActionNone;
+#if SH_FEATURE_JOBS
+    case kRowOffer:
+        return jobs::accept(state, selected) ? kActionAccepted : kActionNone;
+    case kRowAbandon:
+        return jobs::abandon(state) ? kActionAbandoned : kActionNone;
+    case kRowJob:
+        return kActionNone;
+#endif
     default:
         return kActionNone;
     }

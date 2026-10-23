@@ -53,7 +53,7 @@ static void updateFlight() {
 #if SH_FEATURE_STATIONS
     if (station::stepFlight(s_state, input, s_tables, &s_cache)) {
         s_screen = Screen::Station;
-        s_stationRow = station::kFirstRow;
+        s_stationRow = station::initialRow(s_state);
         station_view::draw(s_state, s_stationRow);
         return;
     }
@@ -69,15 +69,22 @@ static void updateFlight() {
 // D-pad moves the selection, A confirms, B always undocks.
 static void updateStation() {
     if (arduboy.justPressed(UP_BUTTON))
-        s_stationRow = station::selectPrevious(s_stationRow);
+        s_stationRow = station::selectPrevious(s_stationRow, s_state);
     if (arduboy.justPressed(DOWN_BUTTON))
-        s_stationRow = station::selectNext(s_stationRow);
+        s_stationRow = station::selectNext(s_stationRow, s_state);
 
     if (arduboy.justPressed(A_BUTTON)) {
-        if (station::activate(s_stationRow, s_state) == station::kActionUndocked) {
+        const station::Action action = station::activate(s_stationRow, s_state);
+        if (action == station::kActionUndocked) {
             s_screen = Screen::Pilot;
             s_stationRow = station::kFirstRow;
         }
+#if SH_FEATURE_JOBS
+        else if (action == station::kActionAccepted || action == station::kActionAbandoned) {
+            // The board shape changed: offers -> summary or summary -> offers.
+            s_stationRow = station::initialRow(s_state);
+        }
+#endif
     }
 
     if (arduboy.justPressed(B_BUTTON)) {

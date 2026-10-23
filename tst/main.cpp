@@ -11,6 +11,9 @@
 #if SH_FEATURE_STATIONS
 #include "station_test.hpp"
 #endif
+#if SH_FEATURE_JOBS
+#include "jobs_test.hpp"
+#endif
 
 int main() {
     TestRunner runner;
@@ -22,6 +25,9 @@ int main() {
     WorldSuite(runner);
 #if SH_FEATURE_STATIONS
     StationSuite(runner);
+#endif
+#if SH_FEATURE_JOBS
+    JobsSuite(runner);
 #endif
     return runner.printSummary();
 }
