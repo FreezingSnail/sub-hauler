@@ -2,9 +2,10 @@
 //
 // M3 station slice: world-aware submarine, HAULER silhouette, compact HUD, and
 // the D-pad flight contract. Slow boats inside a settlement ring dock; the
-// station board refills, repairs, and undocks. The sketch owns pilot state,
-// the FX table reader, the visible-window cache, and the screen state machine;
-// rules and drawing stay in src/ headers.
+// station board refills, repairs, and undocks. M6 adds a paused B-key chart
+// with persistent fog exploration. The sketch owns pilot state, the FX table
+// reader, the visible-window cache, and the screen state machine; rules and
+// drawing stay in src/ headers.
 
 #include <Arduboy2.h>
 #include <ArduboyFX.h>
@@ -26,6 +27,10 @@
 #include "src/cargo_screen.hpp"
 #include "src/cargo_view.hpp"
 #endif
+#if SH_FEATURE_FOG_CHART
+#include "src/chart.hpp"
+#include "src/chart_view.hpp"
+#endif
 
 decltype(arduboy) arduboy;
 
@@ -33,16 +38,27 @@ static game::State s_state;
 static world::FxTables s_tables;
 static world::TileCache s_cache;
 
-#if SH_FEATURE_STATIONS
+// The screen tag exists whenever a second screen can be reached. With both
+// station and chart features off the pilot frame is the only path, matching the
+// pre-feature image exactly.
+#if SH_FEATURE_STATIONS || SH_FEATURE_FOG_CHART
 enum class Screen : uint8_t {
     Pilot,
+#if SH_FEATURE_STATIONS
     Station,
+#endif
 #if SH_FEATURE_CARGO_LOAD
-    Cargo
+    Cargo,
+#endif
+#if SH_FEATURE_FOG_CHART
+    Chart,
 #endif
 };
 
 static Screen s_screen = Screen::Pilot;
+#endif
+
+#if SH_FEATURE_STATIONS
 static uint8_t s_stationRow = station::kFirstRow;
 #if SH_FEATURE_CARGO_LOAD
 static cargo::FxCargoReader s_cargoReader;
@@ -52,32 +68,88 @@ constexpr uint8_t kCargoExitHold = 40; // 0.67 s at 60 fps
 #endif
 #endif
 
+#if SH_FEATURE_FOG_CHART
+static chart::State s_chart;
+static uint8_t s_chartBlink = 0;
+#endif
+
 static void drawPilot() {
     const cave::Camera camera = pilot_view::cameraForState(s_state);
     view::frame(s_state, camera, s_cache, s_tables);
     hud::draw(s_state);
 }
 
+#if SH_FEATURE_FOG_CHART
+// The chart is a paused map: cart water reads happen here, before the single
+// display transaction, and no world step runs.
+static void drawChart() {
+    chart_view::draw(Arduboy2Base::sBuffer, s_chart, s_state, s_tables, s_chartBlink);
+}
+#endif
+
 // Flight frame: step once, then either redraw the cave or switch to the
 // station board on the frame that docked.
 static void updateFlight() {
+#if SH_FEATURE_FOG_CHART
+    // B only opens the chart in free flight. Consume the edge before sampling
+    // flight input so travel, air, and ballast do not tick on that frame.
+    if (arduboy.justPressed(B_BUTTON)) {
+        s_chartBlink = 0;
+        s_screen = Screen::Chart;
+        drawChart();
+        return;
+    }
+#endif
+
     // D-pad only: left/right thrust, up blows ballast (rise), down floods
     // (sink). A/B stay free for station actions once docked.
     const game::Input input{arduboy.pressed(UP_BUTTON), arduboy.pressed(DOWN_BUTTON), arduboy.pressed(LEFT_BUTTON), arduboy.pressed(RIGHT_BUTTON)};
 
 #if SH_FEATURE_STATIONS
-    if (station::stepFlight(s_state, input, s_tables, &s_cache)) {
+#if SH_FEATURE_FOG_CHART
+    const bool docked = station::stepFlight(s_state, input, s_tables, &s_cache);
+    // Coarse reveal rides flight ticks, including the step that docked.
+    chart::revealOnStep(s_chart, s_state);
+    if (docked) {
         s_screen = Screen::Station;
         s_stationRow = station::initialRow(s_state);
         station_view::draw(s_state, s_stationRow);
         return;
     }
 #else
+    if (station::stepFlight(s_state, input, s_tables, &s_cache)) {
+        s_screen = Screen::Station;
+        s_stationRow = station::initialRow(s_state);
+        station_view::draw(s_state, s_stationRow);
+        return;
+    }
+#endif
+#else
     game::stepWorld(s_state, input, s_tables, &s_cache);
+#if SH_FEATURE_FOG_CHART
+    // Coarse reveal rides flight ticks.
+    chart::revealOnStep(s_chart, s_state);
+#endif
 #endif
 
     drawPilot();
 }
+
+#if SH_FEATURE_FOG_CHART
+// Chart frame: no world step, so travel time/air/ballast/jobClock are frozen
+// and D-pad/A are contained. B closes. The blink counter is frame-owned
+// because game::State.ticks cannot advance while the chart is open.
+static void updateChart() {
+    if (arduboy.justPressed(B_BUTTON)) {
+        s_screen = Screen::Pilot;
+        drawPilot();
+        return;
+    }
+
+    ++s_chartBlink;
+    drawChart();
+}
+#endif
 
 #if SH_FEATURE_STATIONS
 #if SH_FEATURE_CARGO_LOAD
@@ -213,6 +285,10 @@ void setup() {
 
     world::clearCache(s_cache);
     game::resetWorld(s_state);
+#if SH_FEATURE_FOG_CHART
+    chart::reset(s_chart);
+    chart::revealInitial(s_chart, s_state);
+#endif
 }
 
 void loop() {
@@ -220,6 +296,22 @@ void loop() {
         return;
     arduboy.pollButtons();
 
+#if SH_FEATURE_FOG_CHART
+    // Chart is a pilot sub-screen, so the dispatch gains one branch while the
+    // station/cargo chain keeps its shape.
+    if (s_screen == Screen::Pilot)
+        updateFlight();
+#if SH_FEATURE_STATIONS
+    else if (s_screen == Screen::Station)
+        updateStation();
+#endif
+#if SH_FEATURE_CARGO_LOAD
+    else if (s_screen == Screen::Cargo)
+        updateCargo();
+#endif
+    else if (s_screen == Screen::Chart)
+        updateChart();
+#else
 #if SH_FEATURE_STATIONS
     if (s_screen == Screen::Station)
         updateStation();
@@ -231,6 +323,7 @@ void loop() {
         updateFlight();
 #else
     updateFlight();
+#endif
 #endif
 
     // The OLED and the FX cart share SPI: all cart reads above happen before
