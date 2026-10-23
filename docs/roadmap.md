@@ -68,6 +68,18 @@ atlas is 128 B `PROGMEM` and the AVR settlement metadata 36 B `PROGMEM`; name
 strings are host-only. Ardens was unavailable, so this is build/static
 evidence, not a device frame-rate measurement.
 
+### M2 pilot view checkpoint — 2026-10-22
+
+`sub-hauler-m2-view` wires the world-aware pilot into firmware: D-pad input,
+fixed-step `stepWorld` against the tile cache, camera derived by flooring the
+pilot camera to a tile, the 26×8 HAULER silhouette, and the compact HUD.
+`full` and `min` both measure **10,584 B flash / 1,259 B static RAM**
+(`.text` 10,534, `.data` 50, `.bss` 1,209). Against `fa0df2e` (6,840 B /
+1,217 B) the whole-image delta is **+3,744 B flash, +42 B static RAM**; the
+delta covers the M2 physics/collision commits plus this view slice because the
+last recorded checkpoint predates them. Ardens was unavailable, so there is no
+device frame-rate or screenshot claim.
+
 ### Harness sentinel proof — 2026-10-22
 
 A temporary `SH_FEATURE_SENTINEL` block put a unique string
@@ -164,6 +176,28 @@ active job, upgrades, explored chart.
 Default device hull: **HAULER**. It exercises the split bulkhead and the
 largest practical cargo screen before the easy hulls. Multi-hull selection is
 a late feature flag so it can be cut without touching the core loop.
+
+### 7. Input contract — D-pad flight, A/B reserved
+
+Locked 2026-10-22 for M2, before any station rows or cargo UI depend on it:
+
+| Input | M2 action |
+| --- | --- |
+| D-pad left / right | propeller thrust / reverse |
+| D-pad up | blow ballast (rise; spends air) |
+| D-pad down | flood ballast (sink; free) |
+| A | reserved; no action in M2 |
+| B | reserved; no action in M2 |
+
+Releasing up/down closes the valves and holds the current ballast. There is no
+auto-forward and no context action yet.
+
+Change from the earlier candidate: A (sonar/context) and B (chart) are not
+wired in M2, and auto-dock is not implemented or validated. Auto-dock when
+slow inside a settlement ring remains the leading M3 option because it avoids
+a third button, but M3 must prove it in a playtest before station rows depend
+on it. If it fails, B becomes the docking/context action and chart moves to a
+later screen.
 
 ## Feature flags
 
@@ -329,14 +363,13 @@ Tasks:
 - Add host tests for trim, clamping, collision, camera bounds, and air.
 - Establish the input contract for flight.
 
-Candidate input map (lock during this milestone):
+Input map (locked 2026-10-22; see "Input contract — D-pad flight, A/B
+reserved" above):
 
 - D-pad: thrust left/right; blow/flood up/down.
-- A: sonar when enabled, otherwise context action.
-- B: chart when enabled; dock/undock behaviour TBD.
-- Auto-dock when slow inside a settlement ring is the leading option because it
-  avoids a third button and keeps A/B for sonar/chart. Validate in a short
-  playtest before station UI depends on it.
+- A and B: reserved with no action in M2.
+- Auto-dock when slow inside a settlement ring is the leading M3 option so a
+  third button is not consumed; playtest it before station rows depend on it.
 
 Acceptance:
 
@@ -344,6 +377,7 @@ Acceptance:
 - Collision never tunnels at expected speeds.
 - `PROFILE=min` builds and flies.
 - Whole-image delta recorded; static stays under target.
+- D-pad control contract documented for M3.
 
 ### M3 — Stations, contracts, economy shell
 

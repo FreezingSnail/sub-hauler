@@ -1,21 +1,23 @@
 // Sub-hauler — Arduboy FX.
 //
-// M1 debug view: render the baked cave around the spawn settlement with a
-// static camera. Pilot physics, HUD, stations, and cargo arrive later; this
-// sketch only owns hardware setup and the one presentation transaction.
+// M2 pilot slice: world-aware submarine, HAULER silhouette, compact HUD, and
+// the D-pad flight contract. The sketch owns pilot state, the FX table reader,
+// and the visible-window cache; rules and drawing stay in src/ headers.
 
 #include <Arduboy2.h>
 #include <ArduboyFX.h>
-#include "src/cave.hpp"
 #include "src/common.hpp"
+#include "src/game.hpp"
+#include "src/hud.hpp"
+#include "src/pilot.hpp"
 #include "src/render.hpp"
 #include "src/world_fx.hpp"
 
 decltype(arduboy) arduboy;
 
+static game::State s_state;
 static world::FxTables s_tables;
 static world::TileCache s_cache;
-static cave::Camera s_camera;
 
 void setup() {
     arduboy.boot();
@@ -24,9 +26,7 @@ void setup() {
     FX::setCursorRange(0, 32767);
 
     world::clearCache(s_cache);
-    // Static debug camera centred on the sub spawn at TIDEWALL. The cache
-    // window and the 16x8 view derive from this tile position.
-    s_camera = cave::cameraCenteredAtPixel(world::SPAWN_SUB_X, world::SPAWN_SUB_Y);
+    game::resetWorld(s_state);
 }
 
 void loop() {
@@ -34,7 +34,15 @@ void loop() {
         return;
     arduboy.pollButtons();
 
-    view::frame(s_camera, s_cache, s_tables);
+    // D-pad only: left/right thrust, up blows ballast (rise), down floods
+    // (sink). A/B stay reserved for later context actions.
+    const game::Input input{arduboy.pressed(UP_BUTTON), arduboy.pressed(DOWN_BUTTON), arduboy.pressed(LEFT_BUTTON), arduboy.pressed(RIGHT_BUTTON)};
+
+    game::stepWorld(s_state, input, s_tables, &s_cache);
+
+    const cave::Camera camera = pilot_view::cameraForState(s_state);
+    view::frame(s_state, camera, s_cache, s_tables);
+    hud::draw(s_state);
 
     // The OLED and the FX cart share SPI: all cart reads above happen before
     // this single buffered display transaction.

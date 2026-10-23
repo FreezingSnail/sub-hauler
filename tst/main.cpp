@@ -3,6 +3,7 @@
 #include "cave_test.hpp"
 #include "collision_test.hpp"
 #include "game_test.hpp"
+#include "pilot_view_test.hpp"
 #include "test.hpp"
 #include "world_test.hpp"
 
@@ -12,6 +13,7 @@ int main() {
     CaveSuite(runner);
     CollisionSuite(runner);
     GameSuite(runner);
+    PilotViewSuite(runner);
     WorldSuite(runner);
     return runner.printSummary();
 }
