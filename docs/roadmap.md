@@ -116,9 +116,9 @@ The auto-load remains unconditional in M3, including with
 `SH_FEATURE_CARGO_LOAD=0`; the loader screen does not exist yet, so the
 fallback has to keep every profile playable until M5 replaces it.
 
-No firmware code or strings changed in this checkpoint (only fallback
-comments), so the measurements stand: `full`, `core`, and `lean` are
-**14,378 B flash / 1,319 B static RAM**; `min` is **10,584 B / 1,259 B**.
+The checkpoint adds one active-board hint string; `full`, `core`, and `lean`
+measure **14,410 B flash / 1,319 B static RAM**; `min` is **10,584 B /
+1,259 B**.
 Ardens was available at the end of this checkpoint: all four device suites
 (`test_boot`, `test_cargo`, `test_memory`, `test_world`) printed `P`. The stack
 probe confirms at least 800 B reserve. No manual end-to-end playtest,
@@ -574,7 +574,7 @@ deltas against the same profile with the feature disabled.
 | baseline template | 6,636 | 1,214 | 2026-10-22 | current firmware |
 | cave view (M1) | +204 | +3 | 2026-10-22 | replaces walker/ground/hero/HUD; 128 B atlas + 36 B AVR metadata in flash; 32 B runtime state |
 | stations (M3) | +1,762 | +17 | 2026-10-22 | auto-dock, board, refill/repair; min compiles out |
-| jobs (M3) | +2,032 | +43 | 2026-10-22 | offers, deadlines, delivery, credits; auto-load fallback until M5 |
+| jobs (M3) | +2,064 | +43 | 2026-10-22 | offers, deadlines, delivery, credits, active auto-load hint; M5 replaces fallback |
 | cargo load | — | — | — | |
 | fog/chart | — | — | — | |
 | sonar | — | — | — | |

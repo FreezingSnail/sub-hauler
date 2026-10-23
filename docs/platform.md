@@ -99,7 +99,7 @@ Dated whole-image numbers are evidence, not guaranteed headroom.
 | 2026-10-22 | 6,840 B | 1,217 B | M1 cave render (static camera, 16x8 visible window); full/lean/core/min identical; no Ardens run |
 | 2026-10-22 | 10,584 B | 1,259 B | M2 pilot view (world step, HAULER silhouette, HUD, D-pad input); full/min identical; no Ardens run |
 | 2026-10-22 | 12,346 B | 1,276 B | M3 stations (auto-dock, station board, refill/repair/undock); full/core identical, min unchanged at 10,584 B / 1,259 B; no Ardens run |
-| 2026-10-22 | 14,378 B | 1,319 B | M3 jobs (two offers, deadlines, delivery/credits, auto-load fallback); full/lean/core identical, min unchanged; no Ardens run |
+| 2026-10-22 | 14,410 B | 1,319 B | M3 jobs/loop (offers, deadlines, delivery/credits, auto-load hint); full/lean/core identical, min unchanged; device suites P |
 
 Static free SRAM is 1,241 B at the latest checkpoint. The painted-stack probe
 reported `P` on 2026-10-22, so the reserve is at least 800 B. Free bytes alone

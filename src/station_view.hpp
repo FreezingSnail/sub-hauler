@@ -18,8 +18,10 @@
 //
 // Header: settlement name and the credits placeholder.
 // Status: current air and hull.
-// Rows:   SERVICE then UNDOCK, one inverted selection bar.
-// Hint:   A confirms the row, B always undocks.
+// Rows:   offers then SERVICE/UNDOCK, or summary/ABANDON/UNDOCK when a
+//         contract is active. One inverted selection bar.
+// Hint:   A confirms the row and B always undocks. The active board also
+//         reports the M3 fallback auto-load until M5 owns the cargo screen.
 namespace station_view {
 
 constexpr uint8_t kNameX = 2;
@@ -183,7 +185,16 @@ inline void draw(const game::State &state, uint8_t selected) {
     arduboy.setTextBackground(BLACK);
 
     arduboy.setCursor(kHintX, kHintY);
+#if SH_FEATURE_JOBS
+    // The M3 fallback fills the hold on acceptance. Say so on the board that
+    // shows the active contract; M5 replaces this with the cargo screen.
+    if (station::jobActive(state))
+        arduboy.print(F("AUTO-LOAD  B OUT"));
+    else
+        arduboy.print(F("UP/DN A OK B OUT"));
+#else
     arduboy.print(F("UP/DN A OK B OUT"));
+#endif
 }
 
 #endif   // __AVR__
