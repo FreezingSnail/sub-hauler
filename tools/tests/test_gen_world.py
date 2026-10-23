@@ -161,13 +161,30 @@ class GenWorldTest(unittest.TestCase):
         self.assertEqual(paths[0][0].stat().st_size, 6400)
         self.assertEqual(paths[0][1].stat().st_size, 256)
 
-    def test_header_is_metadata_only(self):
+    def test_header_metadata_representation(self):
         header = gen_world.render_header(self.world)
         self.assertIn("#pragma once", header)
         self.assertIn("#include <stdint.h>", header)
         self.assertNotIn("Arduino.h", header)
-        self.assertNotIn("avr/", header)
-        self.assertIn("M1.2/M1.3 must relocate", header)
+        # The PROGMEM include and records must stay AVR-guarded so host tests
+        # compile the pure-C++ branch.
+        self.assertIn("#if defined(__AVR__)", header)
+        self.assertIn("#include <avr/pgmspace.h>", header)
+        self.assertIn("SETTLEMENT_META[SETTLEMENT_COUNT] PROGMEM", header)
+        self.assertIn("MINE_META[MINE_COUNT] PROGMEM", header)
+        self.assertIn("constexpr Settlement SETTLEMENTS", header)
+        self.assertIn("inline bool settlementMeta", header)
+        self.assertIn("inline bool mineMeta", header)
+
+        # AVR metadata is position-only: the guarded branch must not reference
+        # settlement name literals, which would otherwise land in .rodata and
+        # be copied into SRAM.
+        device_start = header.index("#if defined(__AVR__)", header.index("struct Mine"))
+        device_end = header.index("#else", device_start)
+        device_section = header[device_start:device_end]
+        for name in ("TIDEWALL", "BENTHOS", "CORMORANT", "DEEP ANCHOR"):
+            self.assertNotIn(name, device_section)
+
         for symbol in (
             "LAYOUT_VERSION",
             "WORLD_BYTES",

@@ -45,6 +45,21 @@ void setup() {
     ok = ok && !world::refreshCache(cache, tables, 30, 44);
     ok = ok && world::refreshCache(cache, tables, 31, 44);
 
+    // Settlement and mine metadata read the AVR PROGMEM copy, not a
+    // constexpr array that startup would copy into SRAM. Names are host-only;
+    // positions must match the generated host records.
+    world::Settlement settlement;
+    ok = ok && world::settlementInfo(0, settlement);
+    ok = ok && settlement.id == 0 && settlement.tile_x == 38 && settlement.tile_y == 48;
+    ok = ok && settlement.pixel_x == 304 && settlement.pixel_y == 384;
+    ok = ok && world::settlementInfo(3, settlement);
+    ok = ok && settlement.pixel_x == 1376 && settlement.pixel_y == 1056;
+    ok = ok && !world::settlementInfo(4, settlement);
+
+    world::Mine mine;
+    ok = ok && world::mineInfo(1, mine) && mine.x == 1724 && mine.y == 273;
+    ok = ok && !world::mineInfo(8, mine);
+
     Serial.println(ok ? F("P") : F("F"));
 }
 

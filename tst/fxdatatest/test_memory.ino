@@ -28,9 +28,10 @@
 #include <avr/io.h>
 #include <Arduboy2.h>
 #include <ArduboyFX.h>
+#include "src/cave.hpp"
 #include "src/common.hpp"
-#include "src/game.hpp"
 #include "src/render.hpp"
+#include "src/world_fx.hpp"
 
 #ifndef SH_STACK_DIAG
 #define SH_STACK_DIAG 0
@@ -56,23 +57,19 @@ inline uint16_t readStackPointer() {
     return static_cast<uint16_t>(low) | (static_cast<uint16_t>(high) << 8);
 }
 
-// The deepest stack user in the current game: input sampling, rules, render,
-// cart reads, and the buffered display transaction. Kept noinline so the
-// probe sees a real call frame instead of a flattened one.
+// The deepest stack user in the current game: input sampling, cave render
+// with FX cart reads, and the buffered display transaction. Kept noinline so
+// the probe sees a real call frame instead of a flattened one.
 __attribute__((noinline)) void runRepresentativePath() {
-    game::State state;
-    game::reset(state);
+    world::FxTables tables;
+    world::TileCache cache;
+    world::clearCache(cache);
+    const cave::Camera camera =
+        cave::cameraCenteredAtPixel(world::SPAWN_SUB_X, world::SPAWN_SUB_Y);
 
     for (uint16_t frame = 0; frame < kRepresentativeFrames; ++frame) {
         arduboy.pollButtons();
-
-        game::Input input;
-        input.left = false;
-        input.right = true;
-        input.jump = (frame % 4) == 0;
-
-        game::step(state, input);
-        view::frame(state);
+        view::frame(camera, cache, tables);
         FX::display(CLEAR_BUFFER);
     }
 }
