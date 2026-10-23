@@ -2,75 +2,237 @@
 
 #include <stdint.h>
 
-#include "features.hpp"
-
-// Pure game state and rules. No Arduino headers: this file is compiled into
-// the host test binary and the firmware from the same source.
+// Pure submarine rules. No Arduino headers: this file is compiled into the
+// host test binary and the firmware from the same source.
+//
+// Fixed step: one step() call is exactly 1/60 s. There is no dt argument, no
+// float/double, and no heap or dynamic container. Positions are whole pixels
+// plus a Q12 sub-pixel remainder; velocities are Q8.8 pixels per second.
 namespace game {
 
-constexpr int16_t kScreenWidth = 128;
-constexpr int16_t kScreenHeight = 64;
-constexpr int16_t kGroundY = 56;
-constexpr int16_t kHalfWidth = 8;
-constexpr int16_t kHalfHeight = 16;
+// ---------------------------------------------------------------------------
+// Tuning (all integer; units documented)
+// ---------------------------------------------------------------------------
+
+constexpr int16_t kStepHz = 60;
+constexpr int16_t kQ8One = 256;          // Q8.8 one pixel per second
+constexpr int16_t kSubpixelOne = 4096;   // Q12 sub-pixel one
+
+constexpr int16_t kSpawnX = 64;
+constexpr int16_t kSpawnY = 32;
+
+constexpr uint8_t kCargoMax = 4;
+constexpr int16_t kBallastMax = 100;
+constexpr int16_t kNeutralBase = 50;     // ballast at zero cargo
+constexpr int16_t kNeutralPerCargo = 5;  // neutral falls 5 per cargo unit
+
+constexpr int16_t kAirCapacity = 180;       // integer air units at full tank
+constexpr uint16_t kAirDrainTicks = 100;    // 0.6 units/s -> one unit per 100 ticks
+constexpr uint8_t kBlowCarryStep = 3;       // 3.0 air units/s while blowing
+constexpr uint8_t kBallastCarryStep = 18;   // 18 ballast units/s blow or flood
+constexpr uint8_t kRateTicks = 60;          // carry denominator for per-second rates
+
+constexpr int16_t kBallastDriveMax = 35;    // ballast units -> drive clamp
+constexpr int16_t kBallastAccelQ8 = 128;    // 0.5 px/s^2, in Q8.8
+constexpr int16_t kMaxVyQ8 = 20 * kQ8One;   // 20 px/s down (browser maxVy)
+
+constexpr int16_t kThrustAccel = 34;        // px/s^2 at zero cargo
+constexpr int16_t kThrustAccelPerCargo = 3;// px/s^2 lost per cargo unit
+constexpr int16_t kTopSpeedBase = 30;       // px/s at zero cargo
+constexpr int16_t kTopSpeedPerCargo = 3;    // px/s lost per cargo unit
+constexpr int16_t kMaxVxBaseQ8 = kTopSpeedBase * kQ8One;
+constexpr int16_t kMaxVxPerCargoQ8 = kTopSpeedPerCargo * kQ8One;
+
+// 1.2 s^-1 drag at 60 Hz is 2% of velocity per tick. A one-unit minimum keeps
+// small velocities decaying to rest instead of sticking above zero.
+constexpr int16_t kDragDivisor = 50;
+
+// ---------------------------------------------------------------------------
+// State
+// ---------------------------------------------------------------------------
 
 struct Input {
-    bool left;
-    bool right;
-    bool jump;
+    bool up;     // blow ballast (rise); spends air
+    bool down;   // flood ballast (sink); free
+    bool left;   // reverse thrust (weaker)
+    bool right;  // forward thrust
 };
 
 struct State {
-    int16_t x;
+    int16_t x;          // whole-pixel world position
     int16_t y;
-    int8_t velocity;
-    uint8_t frame;
-    bool grounded;
+    int16_t xFrac;      // Q12 sub-pixel remainder, 0..4095
+    int16_t yFrac;
+    int16_t vxQ8;       // Q8.8 pixels per second
+    int16_t vyQ8;       // positive is down
+    uint8_t ballast;    // 0..100
+    int16_t air;        // integer units, 0..kAirCapacity
+    uint8_t cargo;      // 0..4
     bool facingLeft;
     uint16_t ticks;
+    uint8_t ballastCarry;    // 0..59 fractional ballast units
+    uint8_t airBlowCarry;    // 0..59 fractional blown air units
+    uint8_t airDrainTicks;   // 0..99 ticks toward the next drained unit
 };
 
+// ---------------------------------------------------------------------------
+// Pure helpers
+// ---------------------------------------------------------------------------
+
+inline int16_t clampI16(int16_t value, int16_t lo, int16_t hi) {
+    if (value < lo)
+        return lo;
+    if (value > hi)
+        return hi;
+    return value;
+}
+
+inline uint8_t clampCargo(int16_t cargo) {
+    if (cargo < 0)
+        return 0;
+    if (cargo > kCargoMax)
+        return kCargoMax;
+    return static_cast<uint8_t>(cargo);
+}
+
+// Trim target: heavier cargo lowers neutral ballast, so the same ballast
+// setting makes a loaded boat sink.
+inline int16_t neutralFor(int16_t cargo) {
+    const int16_t value = static_cast<int16_t>(kNeutralBase - kNeutralPerCargo * clampCargo(cargo));
+    return clampI16(value, 0, kBallastMax);
+}
+
+inline int16_t thrustAccelFor(uint8_t cargo) {
+    const uint8_t n = clampCargo(cargo);
+    return static_cast<int16_t>(kThrustAccel - kThrustAccelPerCargo * n);
+}
+
+inline int16_t topSpeedQ8For(uint8_t cargo) {
+    const uint8_t n = clampCargo(cargo);
+    return static_cast<int16_t>(kMaxVxBaseQ8 - kMaxVxPerCargoQ8 * n);
+}
+
+// Cargo changes mass and trim but never silently moves ballast: the player
+// must re-trim after loading.
+inline void setCargo(State &state, int16_t cargo) {
+    state.cargo = clampCargo(cargo);
+}
+
+// ---------------------------------------------------------------------------
+// Motion integration
+// ---------------------------------------------------------------------------
+
+inline int16_t dragStep(int16_t velocityQ8) {
+    const int16_t drop = static_cast<int16_t>(velocityQ8 / kDragDivisor);
+    if (drop == 0 && velocityQ8 > 0)
+        return 1;
+    if (drop == 0 && velocityQ8 < 0)
+        return -1;
+    return drop;
+}
+
+// Advance one axis by velocityQ8 * (1/60) s. The Q12 remainder keeps slow
+// velocities moving smoothly instead of dead-zoning below one Q8 unit.
+inline void advanceAxis(int16_t &position, int16_t &fracQ12, int16_t velocityQ8) {
+    const int32_t stepQ12 = static_cast<int32_t>(velocityQ8) * kSubpixelOne / (kQ8One * kStepHz);
+    const int32_t accumulated = static_cast<int32_t>(fracQ12) + stepQ12;
+    int32_t whole = accumulated / kSubpixelOne;
+    if (accumulated < 0 && accumulated % kSubpixelOne != 0)
+        --whole;
+    position = static_cast<int16_t>(position + whole);
+    fracQ12 = static_cast<int16_t>(accumulated - whole * kSubpixelOne);
+}
+
+// ---------------------------------------------------------------------------
+// Rules
+// ---------------------------------------------------------------------------
+
 inline void reset(State &state) {
-    state.x = kScreenWidth / 2;
-    state.y = kGroundY;
-    state.velocity = 0;
-    state.frame = 0;
-    state.grounded = true;
+    state.x = kSpawnX;
+    state.y = kSpawnY;
+    state.xFrac = 0;
+    state.yFrac = 0;
+    state.vxQ8 = 0;
+    state.vyQ8 = 0;
+    state.ballast = static_cast<uint8_t>(neutralFor(0));
+    state.air = kAirCapacity;
+    state.cargo = 0;
     state.facingLeft = false;
     state.ticks = 0;
+    state.ballastCarry = 0;
+    state.airBlowCarry = 0;
+    state.airDrainTicks = 0;
 }
 
 inline void step(State &state, const Input &input) {
-    const int8_t direction = static_cast<int8_t>(input.right) - static_cast<int8_t>(input.left);
-    state.x += direction * 2;
-    if (direction != 0) {
-        state.facingLeft = direction < 0;
-        state.frame = static_cast<uint8_t>((state.frame + 1) % 3);
-    } else {
-        state.frame = 0;
+    // Air always drains, even while holding or flooding.
+    if (++state.airDrainTicks >= kAirDrainTicks) {
+        state.airDrainTicks = 0;
+        if (state.air > 0)
+            --state.air;
     }
 
-    if (state.x < kHalfWidth)
-        state.x = kHalfWidth;
-    if (state.x > kScreenWidth - kHalfWidth)
-        state.x = kScreenWidth - kHalfWidth;
+    const bool blow = input.up && !input.down;
+    const bool flood = input.down && !input.up;
 
-    if (input.jump && state.grounded) {
-        state.velocity = -4;
-        state.grounded = false;
-    }
-
-    if (!state.grounded) {
-        state.y += state.velocity;
-        state.velocity++;
-        if (state.y >= kGroundY) {
-            state.y = kGroundY;
-            state.velocity = 0;
-            state.grounded = true;
+    if (blow && state.air > 0) {
+        // Blowing spends air and lightens the boat.
+        state.airBlowCarry = static_cast<uint8_t>(state.airBlowCarry + kBlowCarryStep);
+        if (state.airBlowCarry >= kRateTicks) {
+            state.airBlowCarry = static_cast<uint8_t>(state.airBlowCarry - kRateTicks);
+            --state.air;
         }
+
+        if (state.ballast > 0) {
+            state.ballastCarry = static_cast<uint8_t>(state.ballastCarry + kBallastCarryStep);
+            if (state.ballastCarry >= kRateTicks) {
+                state.ballastCarry = static_cast<uint8_t>(state.ballastCarry - kRateTicks);
+                --state.ballast;
+            }
+        } else {
+            state.ballastCarry = 0;
+        }
+    } else if (flood) {
+        // Flooding is free: no air cost.
+        if (state.ballast < kBallastMax) {
+            state.ballastCarry = static_cast<uint8_t>(state.ballastCarry + kBallastCarryStep);
+            if (state.ballastCarry >= kRateTicks) {
+                state.ballastCarry = static_cast<uint8_t>(state.ballastCarry - kRateTicks);
+                ++state.ballast;
+            }
+        } else {
+            state.ballastCarry = 0;
+        }
+    } else {
+        // Release holds the current ballast.
+        state.ballastCarry = 0;
     }
 
-    state.ticks++;
+    // Vertical drive: positive ballast difference is heavier and sinks.
+    const int16_t neutral = neutralFor(state.cargo);
+    const int16_t drive = clampI16(static_cast<int16_t>(state.ballast - neutral), -kBallastDriveMax, kBallastDriveMax);
+    const int16_t accelQ8 = static_cast<int16_t>(drive * kBallastAccelQ8 / kStepHz);
+    state.vyQ8 = clampI16(static_cast<int16_t>(state.vyQ8 + accelQ8 - dragStep(state.vyQ8)), -kMaxVyQ8, kMaxVyQ8);
+
+    // Horizontal thrust: forward is full, reverse is half. Cargo lowers both
+    // acceleration and the clamp speed.
+    const int16_t direction = static_cast<int16_t>(input.right) - static_cast<int16_t>(input.left);
+    int16_t power = 0;
+    if (direction > 0) {
+        power = thrustAccelFor(state.cargo);
+        state.facingLeft = false;
+    } else if (direction < 0) {
+        power = static_cast<int16_t>(-(thrustAccelFor(state.cargo) / 2));
+        state.facingLeft = true;
+    }
+    const int16_t powerQ8 = static_cast<int16_t>(power * kQ8One / kStepHz);
+    state.vxQ8 = clampI16(static_cast<int16_t>(state.vxQ8 + powerQ8 - dragStep(state.vxQ8)), -topSpeedQ8For(state.cargo),
+                          topSpeedQ8For(state.cargo));
+
+    advanceAxis(state.x, state.xFrac, state.vxQ8);
+    advanceAxis(state.y, state.yFrac, state.vyQ8);
+
+    ++state.ticks;
 }
 
 }   // namespace game
