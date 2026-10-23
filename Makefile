@@ -18,9 +18,16 @@ PROFILES      := $(shell $(FEATURES_PY) --list 2>/dev/null)
 FEATURE_FLAGS := $(shell $(FEATURES_PY) --profile "$(PROFILE)" --flags 2>/dev/null)
 BUILD_DIR     ?= build/$(PROFILE)
 DIST_DIR      ?= dist/$(PROFILE)
-ARDENS        ?= $(firstword $(wildcard \
-                 $(HOME)/code/Ardens/build/Ardens.app/Contents/MacOS/Ardens \
-                 $(HOME)/code/arduboy/Ardens/build/Ardens.app/Contents/MacOS/Ardens))
+ARDENS_DEFAULT := $(firstword $(wildcard \
+                 ../Ardens/build/Ardens.app/Contents/MacOS/Ardens \
+                 $(HOME)/code/arduboy/Ardens/build/Ardens.app/Contents/MacOS/Ardens \
+                 $(HOME)/code/Ardens/build/Ardens.app/Contents/MacOS/Ardens))
+ARDENS        ?= $(ARDENS_DEFAULT)
+# A stale exported ARDENS must not force fxtest to skip when the sibling
+# checkout is present. Keep a valid explicit override, otherwise fall back.
+ifeq ($(wildcard $(ARDENS)),)
+ARDENS := $(ARDENS_DEFAULT)
+endif
 
 FXDATA_BIN    ?= fxdata/fxdata.bin
 FXTEST_MS     ?= 3000
