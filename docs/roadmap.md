@@ -98,6 +98,32 @@ four-unit auto-load handoff. Full/lean/core measure **14,378 B flash /
 remains 10,584 B / 1,259 B because station/job code and strings compile out.
 Ardens was unavailable; no device contract-loop playtest is claimed.
 
+### M3 loop checkpoint — 2026-10-22
+
+`sub-hauler-m3-loop` closes the fallback economy loop without adding cargo
+loading UI. The permanent host integration suite (`tst/loop_test.hpp`) drives
+the same station and flight transitions the sketch uses:
+
+- spawn -> idle `stepFlight` -> auto-dock -> two offers;
+- accept -> four-unit auto-load -> active summary, ABANDON, UNDOCK board;
+- undock -> cooldown -> destination auto-dock -> on-time delivery paid ->
+  destination offers -> a second contract accepted, delivered, and paid;
+- accept -> flight past the deadline -> destination dock -> contract failed,
+  cleared, and offers restored;
+- accept -> ABANDON -> hold cleared -> offers restored and acceptable.
+
+The auto-load remains unconditional in M3, including with
+`SH_FEATURE_CARGO_LOAD=0`; the loader screen does not exist yet, so the
+fallback has to keep every profile playable until M5 replaces it.
+
+No firmware code or strings changed in this checkpoint (only fallback
+comments), so the measurements stand: `full`, `core`, and `lean` are
+**14,378 B flash / 1,319 B static RAM**; `min` is **10,584 B / 1,259 B**.
+Ardens was available at the end of this checkpoint: all four device suites
+(`test_boot`, `test_cargo`, `test_memory`, `test_world`) printed `P`. The stack
+probe confirms at least 800 B reserve. No manual end-to-end playtest,
+frame-rate, or screenshot claim is made.
+
 ### Harness sentinel proof — 2026-10-22
 
 A temporary `SH_FEATURE_SENTINEL` block put a unique string
