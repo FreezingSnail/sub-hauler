@@ -28,8 +28,10 @@
 #include <avr/io.h>
 #include <Arduboy2.h>
 #include <ArduboyFX.h>
-#include "src/cave.hpp"
 #include "src/common.hpp"
+#include "src/game.hpp"
+#include "src/hud.hpp"
+#include "src/pilot.hpp"
 #include "src/render.hpp"
 #include "src/world_fx.hpp"
 
@@ -44,8 +46,8 @@ Arduboy2 arduboy;
 
 namespace {
 
-constexpr uint16_t kReserveTarget = 800;  // bytes of stack reserve required
-constexpr uint8_t kFrameGuard = 64;       // active-frame headroom, never painted
+constexpr uint16_t kReserveTarget = 800;   // bytes of stack reserve required
+constexpr uint8_t kFrameGuard = 64;        // active-frame headroom, never painted
 constexpr uint8_t kPattern = 0xA5;
 constexpr uint16_t kRepresentativeFrames = 8;
 
@@ -57,19 +59,27 @@ inline uint16_t readStackPointer() {
     return static_cast<uint16_t>(low) | (static_cast<uint16_t>(high) << 8);
 }
 
-// The deepest stack user in the current game: input sampling, cave render
-// with FX cart reads, and the buffered display transaction. Kept noinline so
-// the probe sees a real call frame instead of a flattened one.
+// The deepest stack user in the current game: input sampling, world-aware
+// pilot update, cave/pilot render with FX cart reads, and the buffered display
+// transaction. Kept noinline so the probe sees a real call frame.
 __attribute__((noinline)) void runRepresentativePath() {
+    game::State state;
     world::FxTables tables;
     world::TileCache cache;
     world::clearCache(cache);
-    const cave::Camera camera =
-        cave::cameraCenteredAtPixel(world::SPAWN_SUB_X, world::SPAWN_SUB_Y);
+    game::resetWorld(state);
 
     for (uint16_t frame = 0; frame < kRepresentativeFrames; ++frame) {
         arduboy.pollButtons();
-        view::frame(camera, cache, tables);
+        game::Input input;
+        input.up = false;
+        input.down = false;
+        input.left = false;
+        input.right = (frame % 4) == 0;
+        game::stepWorld(state, input, tables, &cache);
+        const cave::Camera camera = pilot_view::cameraForState(state);
+        view::frame(state, camera, cache, tables);
+        hud::draw(state);
         FX::display(CLEAR_BUFFER);
     }
 }
@@ -110,7 +120,7 @@ __attribute__((noinline)) uint16_t measureStackReserve() {
     return static_cast<uint16_t>(highWater - bssEnd);
 }
 
-}  // namespace
+}   // namespace
 
 void setup() {
     Serial.begin(9600);
