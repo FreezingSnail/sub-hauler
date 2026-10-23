@@ -66,6 +66,31 @@ struct Input {
     bool right;  // forward thrust
 };
 
+#if SH_FEATURE_JOBS
+// Contract storage is fixed and integer-only. Offers are generated for the
+// station the boat is docked at; the active job keeps the deadline as a flight
+// tick duration so docking pauses it with the rest of the world.
+constexpr uint8_t kJobOffers = 2;
+constexpr uint8_t kJobCrates = 4;
+constexpr uint8_t kJobNone = 0xFF;
+
+struct JobOffer {
+    uint8_t from;      // origin settlement id
+    uint8_t to;        // destination settlement id
+    uint8_t crates;    // required cargo units
+    uint16_t reward;   // credits, a multiple of 5
+    uint16_t deadline; // allowed flight ticks from acceptance
+};
+
+struct ActiveJob {
+    uint8_t to;
+    uint8_t crates;
+    uint16_t reward;
+    uint16_t deadline;   // allowed flight ticks from acceptance
+    uint32_t acceptedAt; // jobClock at acceptance
+};
+#endif
+
 struct State {
     int16_t x;          // whole-pixel world position
     int16_t y;
@@ -98,7 +123,22 @@ struct State {
 #if SH_FEATURE_HULL_DAMAGE
     uint8_t hull;            // 0..kHullMax, repaired at a station
 #endif
+#if SH_FEATURE_JOBS
+    uint16_t credits;
+    uint16_t deliveries;
+    uint16_t offerSerial;    // deterministic offer generator cursor
+    uint32_t jobClock;       // flight ticks; paused while docked
+    uint8_t offerCount;      // 0..kJobOffers valid entries in offers
+    JobOffer offers[kJobOffers];
+    ActiveJob activeJob;     // activeJob.to == kJobNone means no contract
+#endif
 };
+
+#if SH_FEATURE_JOBS
+inline bool hasActiveJob(const State &state) {
+    return state.activeJob.to != kJobNone;
+}
+#endif
 
 // ---------------------------------------------------------------------------
 // Pure helpers
@@ -199,6 +239,25 @@ inline void reset(State &state) {
 #if SH_FEATURE_HULL_DAMAGE
     state.hull = kHullMax;
 #endif
+#if SH_FEATURE_JOBS
+    state.credits = 0;
+    state.deliveries = 0;
+    state.offerSerial = 0;
+    state.jobClock = 0;
+    state.offerCount = 0;
+    for (uint8_t i = 0; i < kJobOffers; ++i) {
+        state.offers[i].from = 0;
+        state.offers[i].to = kJobNone;
+        state.offers[i].crates = 0;
+        state.offers[i].reward = 0;
+        state.offers[i].deadline = 0;
+    }
+    state.activeJob.to = kJobNone;
+    state.activeJob.crates = 0;
+    state.activeJob.reward = 0;
+    state.activeJob.deadline = 0;
+    state.activeJob.acceptedAt = 0;
+#endif
 }
 
 // Physics-only half of the fixed step. Callers that own collision use this
@@ -275,6 +334,11 @@ inline void step(State &state, const Input &input) {
     advanceAxis(state.x, state.xFrac, state.vxQ8);
     advanceAxis(state.y, state.yFrac, state.vyQ8);
     ++state.ticks;
+#if SH_FEATURE_JOBS
+    // Job deadlines measure flight ticks; the docked station screen never
+    // reaches a world step, so this clock pauses with the rest of the world.
+    ++state.jobClock;
+#endif
 }
 
 }   // namespace game

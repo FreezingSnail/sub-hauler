@@ -89,6 +89,15 @@ re-dock cooldown. Full/core measure **12,346 B flash / 1,276 B static RAM**
 1,259 B because the station code and screen compile out. Ardens was
 unavailable; no device docking playtest or screenshot is claimed.
 
+### M3 jobs checkpoint — 2026-10-22
+
+`sub-hauler-m3-jobs` adds deterministic two-offer boards, acceptance,
+abandonment, flight-tick deadlines, delivery/credits, and the temporary
+four-unit auto-load handoff. Full/lean/core measure **14,372 B flash /
+1,319 B static RAM** (+2,026 B / +43 B over the station checkpoint). `min`
+remains 10,584 B / 1,259 B because station/job code and strings compile out.
+Ardens was unavailable; no device contract-loop playtest is claimed.
+
 ### Harness sentinel proof — 2026-10-22
 
 A temporary `SH_FEATURE_SENTINEL` block put a unique string
@@ -538,8 +547,8 @@ deltas against the same profile with the feature disabled.
 | --- | ---: | ---: | --- | --- |
 | baseline template | 6,636 | 1,214 | 2026-10-22 | current firmware |
 | cave view (M1) | +204 | +3 | 2026-10-22 | replaces walker/ground/hero/HUD; 128 B atlas + 36 B AVR metadata in flash; 32 B runtime state |
-| stations | — | — | — | |
-| jobs | — | — | — | |
+| stations (M3) | +1,762 | +17 | 2026-10-22 | auto-dock, board, refill/repair; min compiles out |
+| jobs (M3) | +2,026 | +43 | 2026-10-22 | offers, deadlines, delivery, credits; auto-load fallback until M5 |
 | cargo load | — | — | — | |
 | fog/chart | — | — | — | |
 | sonar | — | — | — | |

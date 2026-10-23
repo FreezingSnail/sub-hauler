@@ -254,11 +254,24 @@ inline void StationSuite(TestRunner &runner) {
         world::Settlement settlement;
         test.assertTrue(anySettlement(settlement), "settlement metadata loads");
 
-        test.assertEqual(station::kStationRowCount, 2, "service and undock rows are present");
-        test.assertEqual(station::rowKind(station::kFirstRow), station::kRowService, "first row is SERVICE");
-        test.assertEqual(station::rowKind(station::kUndockRow), station::kRowUndock, "last row is UNDOCK");
-        test.assertEqual(station::selectNext(station::kUndockRow), station::kFirstRow, "down wraps to the first row");
-        test.assertEqual(station::selectPrevious(station::kFirstRow), station::kUndockRow, "up wraps to the last row");
+        test.assertEqual(station::kStationRowCount,
+#if SH_FEATURE_JOBS
+                         game::kJobOffers + 2,
+#else
+                         2,
+#endif
+                         "offer/action rows are present");
+        game::State board;
+        game::reset(board);
+#if SH_FEATURE_JOBS
+        test.assertEqual(station::rowKind(station::kFirstRow, board), station::kRowOffer, "first row is an OFFER");
+        test.assertEqual(station::rowKind(station::kServiceRow, board), station::kRowService, "SERVICE follows the offers");
+#else
+        test.assertEqual(station::rowKind(station::kFirstRow, board), station::kRowService, "first row is SERVICE");
+#endif
+        test.assertEqual(station::rowKind(station::kUndockRow, board), station::kRowUndock, "last row is UNDOCK");
+        test.assertEqual(station::selectNext(station::kUndockRow, board), station::kFirstRow, "down wraps to the first row");
+        test.assertEqual(station::selectPrevious(station::kFirstRow, board), station::kUndockRow, "up wraps to the last row");
 
         game::State state;
         game::reset(state);
