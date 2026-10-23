@@ -29,11 +29,17 @@
 #include <Arduboy2.h>
 #include <ArduboyFX.h>
 #include "src/common.hpp"
+#include "src/features.hpp"
 #include "src/game.hpp"
 #include "src/hud.hpp"
 #include "src/pilot.hpp"
 #include "src/render.hpp"
 #include "src/world_fx.hpp"
+#if SH_FEATURE_CARGO_LOAD
+#include "src/cargo_fx.hpp"
+#include "src/cargo_screen.hpp"
+#include "src/cargo_view.hpp"
+#endif
 
 #ifndef SH_STACK_DIAG
 #define SH_STACK_DIAG 0
@@ -82,6 +88,38 @@ __attribute__((noinline)) void runRepresentativePath() {
         hud::draw(state);
         FX::display(CLEAR_BUFFER);
     }
+
+#if SH_FEATURE_CARGO_LOAD
+    // Cargo path: one arrangement load plus a few real input edges and renders.
+    // The cart read happens in update, never during FX::display.
+    cargo::FxCargoReader reader;
+    cargo_screen::State cargo;
+    if (cargo_screen::load(cargo, reader)) {
+        for (uint8_t frame = 0; frame < 5; ++frame) {
+            cargo_screen::Input input{};
+            switch (frame) {
+            case 0:
+                input.left = true;
+                break;
+            case 1:
+                input.a = true;
+                break;
+            case 2:
+                input.right = true;
+                break;
+            case 3:
+                input.b = true;
+                break;
+            default:
+                input.left = true;
+                break;
+            }
+            cargo_screen::apply(cargo, input);
+            cargo_view::draw(cargo.puzzle, cargo.selected, cargo.message);
+            FX::display(CLEAR_BUFFER);
+        }
+    }
+#endif
 }
 
 // Returns the number of untouched bytes between __bss_end and the lowest

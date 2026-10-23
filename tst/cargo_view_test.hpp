@@ -165,10 +165,35 @@ inline void CargoViewSuite(TestRunner &runner) {
     }
 
     {
+        Test test("selected installed crate gets an inset frame");
+        cargo::CargoPuzzle puzzle = shell.puzzle;
+        test.assertTrue(cargo::place(puzzle, 3, 0, 2), "install the bottom-left single crate");
+
+        const int16_t x = cargo_view::kHoldX;
+        const int16_t y = static_cast<int16_t>(cargo_view::kHoldY + 2 * cargo_view::kCell);
+
+        uint8_t unselected[cargo_view::kBufferBytes];
+        cargo_view::drawFrame(puzzle, 0, unselected);
+        test.assertEqual(pixel(unselected, static_cast<int16_t>(x + 1), static_cast<int16_t>(y + 1)), 1u,
+                         "unselected crate keeps a solid cell");
+
+        uint8_t selected[cargo_view::kBufferBytes];
+        cargo_view::drawFrame(puzzle, 3, selected);
+        test.assertEqual(pixel(selected, static_cast<int16_t>(x + 1), static_cast<int16_t>(y + 1)), 0u,
+                         "selected crate inset frame is black");
+        test.assertEqual(pixel(selected, static_cast<int16_t>(x + 2), static_cast<int16_t>(y + 2)), 1u,
+                         "selected crate centre stays solid");
+        test.assertTrue(memcmp(unselected, selected, cargo_view::kBufferBytes) != 0, "selection changes installed art");
+        runner.add(test);
+    }
+
+    {
         Test test("status text slots fit the 5x7 device font");
         test.assertTrue(cargo_view::kNameX + cargo_view::kNameChars * 6 < cargo_view::kStatusX, "name clears counters");
         test.assertTrue(cargo_view::kStatusX + cargo_view::kStatusChars * 6 <= cargo_view::kScreenW - 2, "counters fit");
         test.assertTrue(cargo_view::kLoadX + cargo_view::kLoadChars * 6 <= cargo_view::kTrayX, "load status clears the tray");
+        test.assertTrue(cargo_view::kMessageX + cargo_view::kMessageChars * 6 <= cargo_view::kPromptX,
+                        "feedback clears the exit hint");
         test.assertTrue(cargo_view::kPromptX + cargo_view::kPromptChars * 6 <= cargo_view::kScreenW - 2, "prompt fits");
         test.assertEqual(cargo_view::kPromptY + 7, cargo_view::kScreenH, "prompt baseline sits on the bottom edge");
         test.assertTrue(cargo_view::kTrayY + cargo_view::kTraySlot <= cargo_view::kPromptY, "tray clears the prompt");
