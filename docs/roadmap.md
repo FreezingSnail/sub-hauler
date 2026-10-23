@@ -228,6 +228,57 @@ line 54 B below the measurement and about 381 B above the measured stack depth.
 `core` remains **22,038 B / 1,420 B** and `min` **10,584 B / 1,259 B**; neither
 profile changed. No screenshot or frame-rate claim.
 
+### M6 sonar checkpoint — 2026-10-23
+
+`sub-hauler-m6-sonar` adds the A-key ping as a navigation and chart tool. No
+shop upgrade is wired; the pure rule already takes the level the M7 shop will
+supply:
+
+- `src/sonar.hpp` owns tuning and rules: base cost 6 air, one air unit cheaper
+  per level (floor 1), base reveal radius 3 chart cells, one cell larger per
+  level (cap 12), 120 flight ticks of cooldown, and a 24-tick ring window.
+  `fire(state, chart, level)` returns `kFired`, `kNoAir`, `kCooldown`, or
+  `kDocked` and is atomic: a rejected ping spends no air, reveals nothing, and
+  does not increment `sonarPings`.
+- `game::State` gains exactly two bytes under `SONAR`, in order:
+  `sonarCooldown` then `sonarPings`. On AVR `sizeof(game::State)` is **70 B**
+  (68 + 2; the host layout reports 80 B because of its alignment holes). The
+  whole-image static delta is **+2 B**, taking the full image from 1,678 B to
+  exactly the **1,680 B** planning ceiling. No other static state, string, or
+  table was added.
+- `sonarCooldown` decrements once per flight tick in both `game::step` and
+  `game::stepWorld` (the two entry points are never nested), and `game::reset`
+  clears both fields. The station screen never steps the world and the chart
+  screen is paused, so neither ticks the cooldown; a host test pins that an
+  open chart frame leaves the cooldown, ticks, and air unchanged.
+- `src/sonar_view.hpp` is presentation-only: a midpoint circle centred on the
+  sub's pilot-view position, radius derived solely from `sonarCooldown`
+  (4..20 px over the 24-tick window), clipped by `cave::setPixel`. `view::frame`
+  draws it before the HAULER silhouette so the boat stays solid. There is no
+  extra animation state and no cart read.
+- The sketch fires level 0 on `A` just-pressed after the world step and after
+  the docking branch returns, and before the single `FX::display`. `SONAR=0`
+  removes the fields, action, ring, include, and tests; `FOG_CHART=0` forces
+  `SONAR=0` through the existing dependency error.
+- Host tests add 11 suites entries: level cost/radius, reveal radius and cell
+  count, no-air atomicity, cooldown rejection and expiry, docked rejection,
+  once-per-step decrement on both paths, reset, ring phase/radius, hidden and
+  deterministic ring, edge clipping with guard bytes, and chart-pause proof.
+  `make test` passes **97** on full, **78** on core, and **40** on min.
+
+`full`/`lean` measure **23,770 B flash / 1,680 B static RAM**; an A/B full build
+with only `SONAR=0` measures **23,286 B / 1,678 B**, so the sonar slice is
+**+484 B flash / +2 B static**. `core` stays **22,038 B / 1,420 B** and `min`
+**10,584 B / 1,259 B**. There is now no static headroom under the ceiling; the
+next persistent byte has to carve existing state.
+
+All four device suites print `P`. `test_memory` adds one real ping, one world
+step, and a pilot frame with the ring to the measured path (the probe reuses
+the existing `probeChart`, so no chart state is duplicated). With diagnostics
+enabled it measures **`stack_reserve=649`** and passes the **600 B** target
+with 49 B of margin; the production run prints a bare `P`. No screenshot or
+frame-rate claim.
+
 ### Harness sentinel proof — 2026-10-22
 
 A temporary `SH_FEATURE_SENTINEL` block put a unique string
@@ -351,6 +402,14 @@ M3 resolution (2026-10-22): auto-dock when slow inside a settlement ring is
 implemented and covered by host tests. Station rows use D-pad to select, A to
 confirm, and B to undock; flight A/B remain inert. No context-dock fallback is
 wired. Device playtest for auto-dock is still pending.
+
+M6 resolution (2026-10-23): in free flight `B` opens the paused chart and `A`
+fires the sonar ping. Both edges are consumed before the flight step, so the
+frame that opens the chart does not tick travel/air/ballast and the ping does
+not also count as a station action. The chart, station, and cargo screens never
+route A to the sonar. A docked boat is rejected by the pure rule even if a
+future screen calls it. Station A remains SELECT/confirm and B remains UNDOCK;
+cargo keeps its `A+B` commit.
 
 ## Feature flags
 
@@ -610,6 +669,8 @@ Acceptance:
 
 - Chart opens/closes without burning travel time.
 - Unexplored water stays black; explored water draws.
+- Sonar spends air, reveals its chart radius, and honours its cooldown; a
+  docked boat or an open chart cannot ping.
 - 256 B static cost is in the ledger.
 - `FOG_CHART=0` removes chart, sonar, and their strings.
 
@@ -681,7 +742,7 @@ deltas against the same profile with the feature disabled.
 | jobs (M3) | +2,064 | +43 | 2026-10-22 | offers, deadlines, delivery, credits, active auto-load hint; M5 replaces fallback |
 | cargo load (M5) | +7,628 | +101 | 2026-10-22 | cutaway, hold/tray, rules, job handoff, auto-undock |
 | fog/chart | +1,248 | +258 | 2026-10-23 | 64x32 explored set (256 B) + initialised byte + blink; paused chart, reveal, markers; full A/B |
-| sonar | — | — | — | |
+| sonar | +484 | +2 | 2026-10-23 | A-key ping: 6 air base (-1/level), 3+level cell reveal, 120-tick cooldown, 24-tick ring; 2 state bytes; full A/B |
 | mines | — | — | — | |
 | currents | — | — | — | |
 | shop | — | — | — | |
@@ -696,6 +757,7 @@ Record the profile matrix separately:
 | 2026-10-22 | template | 6,636 | 1,214 | none | pre-port baseline |
 | 2026-10-22 | M1 cave render | 6,840 | 1,217 | none (Ardens unavailable) | full/lean/core/min identical |
 | 2026-10-23 | M6 chart | 23,286 | 1,678 | `test_memory` P (chart path, 654 B under 600 B target) | full/lean identical; core 22,038/1,420; min 10,584/1,259 |
+| 2026-10-23 | M6 sonar | 23,770 | 1,680 | `test_memory` P (chart + sonar path, 649 B under 600 B target) | full/lean identical; core 22,038/1,420; min 10,584/1,259; at the static ceiling |
 
 ## Verification gates
 

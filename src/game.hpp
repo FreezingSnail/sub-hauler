@@ -99,6 +99,12 @@ struct State {
     int16_t vxQ8;       // Q8.8 pixels per second
     int16_t vyQ8;       // positive is down
     uint8_t ballast;    // 0..100
+#if SH_FEATURE_SONAR
+    // Sonar state is two bytes total. The host build files these into existing
+    // alignment holes; the AVR layout is byte-packed, so the device image grows
+    // by exactly these two bytes (1,678 -> 1,680 B).
+    uint8_t sonarCooldown;   // flight ticks until the next ping is allowed
+#endif
     int16_t air;        // integer units, 0..kAirCapacity
     uint8_t cargo;      // 0..4
     bool facingLeft;
@@ -122,6 +128,9 @@ struct State {
 #endif
 #if SH_FEATURE_HULL_DAMAGE
     uint8_t hull;            // 0..kHullMax, repaired at a station
+#endif
+#if SH_FEATURE_SONAR
+    uint8_t sonarPings;      // saturating count of accepted pings this run
 #endif
 #if SH_FEATURE_JOBS
     uint16_t credits;
@@ -239,6 +248,10 @@ inline void reset(State &state) {
 #if SH_FEATURE_HULL_DAMAGE
     state.hull = kHullMax;
 #endif
+#if SH_FEATURE_SONAR
+    state.sonarCooldown = 0;
+    state.sonarPings = 0;
+#endif
 #if SH_FEATURE_JOBS
     state.credits = 0;
     state.deliveries = 0;
@@ -334,6 +347,11 @@ inline void step(State &state, const Input &input) {
     advanceAxis(state.x, state.xFrac, state.vxQ8);
     advanceAxis(state.y, state.yFrac, state.vyQ8);
     ++state.ticks;
+#if SH_FEATURE_SONAR
+    // One flight tick, one cooldown tick. stepWorld below owns the other path.
+    if (state.sonarCooldown > 0)
+        --state.sonarCooldown;
+#endif
 #if SH_FEATURE_JOBS
     // Job deadlines measure flight ticks; the docked station screen never
     // reaches a world step, so this clock pauses with the rest of the world.

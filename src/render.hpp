@@ -6,6 +6,9 @@
 #include "fxdata.h"
 #include "game.hpp"
 #include "pilot_view.hpp"
+#if SH_FEATURE_SONAR
+#include "sonar_view.hpp"
+#endif
 #include "world.hpp"
 #include "world_fx.hpp"
 
@@ -21,6 +24,10 @@ namespace view {
 inline void frame(const game::State &state, const cave::Camera &camera, world::TileCache &cache, world::FxTables &tables) {
     world::refreshCache(cache, tables, cave::cacheOriginTileX(camera), cave::cacheOriginTileY(camera));
     cave::composeFrame(camera, cache, Arduboy2Base::sBuffer);
+#if SH_FEATURE_SONAR
+    // Ring first: the filled HAULER silhouette stays solid and readable.
+    sonar_view::draw(Arduboy2Base::sBuffer, state, camera);
+#endif
     pilot_view::draw(Arduboy2Base::sBuffer, state, camera);
 }
 

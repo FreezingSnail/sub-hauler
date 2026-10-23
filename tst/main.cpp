@@ -13,6 +13,11 @@
 #include "chart_view_test.hpp"
 #endif
 
+#if SH_FEATURE_SONAR
+#include "sonar_test.hpp"
+#include "sonar_view_test.hpp"
+#endif
+
 #if SH_FEATURE_CARGO_LOAD
 #include "cargo_screen_test.hpp"
 #include "cargo_view_test.hpp"
@@ -43,6 +48,10 @@ int main() {
 #if SH_FEATURE_FOG_CHART
     ChartSuite(runner);
     ChartViewSuite(runner);
+#endif
+#if SH_FEATURE_SONAR
+    SonarSuite(runner);
+    SonarViewSuite(runner);
 #endif
 #if SH_FEATURE_STATIONS
     StationSuite(runner);

@@ -3,9 +3,9 @@
 // M3 station slice: world-aware submarine, HAULER silhouette, compact HUD, and
 // the D-pad flight contract. Slow boats inside a settlement ring dock; the
 // station board refills, repairs, and undocks. M6 adds a paused B-key chart
-// with persistent fog exploration. The sketch owns pilot state, the FX table
-// reader, the visible-window cache, and the screen state machine; rules and
-// drawing stay in src/ headers.
+// with persistent fog exploration and the A-key sonar ping. The sketch owns
+// pilot state, the FX table reader, the visible-window cache, and the screen
+// state machine; rules and drawing stay in src/ headers.
 
 #include <Arduboy2.h>
 #include <ArduboyFX.h>
@@ -30,6 +30,9 @@
 #if SH_FEATURE_FOG_CHART
 #include "src/chart.hpp"
 #include "src/chart_view.hpp"
+#endif
+#if SH_FEATURE_SONAR
+#include "src/sonar.hpp"
 #endif
 
 decltype(arduboy) arduboy;
@@ -130,6 +133,14 @@ static void updateFlight() {
     // Coarse reveal rides flight ticks.
     chart::revealOnStep(s_chart, s_state);
 #endif
+#endif
+
+#if SH_FEATURE_SONAR
+    // A is the free-flight sonar ping. The chart branch above returns before
+    // this point and a docking step returns before this point; fire() rejects
+    // a docked state as well, so the action stays out of both screens.
+    if (arduboy.justPressed(A_BUTTON))
+        sonar::fire(s_state, s_chart, 0);
 #endif
 
     drawPilot();
