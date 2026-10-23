@@ -37,6 +37,7 @@
 #include "src/world_fx.hpp"
 #if SH_FEATURE_CARGO_LOAD
 #include "src/cargo_fx.hpp"
+#include "src/cargo_handoff.hpp"
 #include "src/cargo_screen.hpp"
 #include "src/cargo_view.hpp"
 #endif
@@ -117,6 +118,23 @@ __attribute__((noinline)) void runRepresentativePath() {
             cargo_screen::apply(cargo, input);
             cargo_view::draw(cargo.puzzle, cargo.selected, cargo.message);
             FX::display(CLEAR_BUFFER);
+        }
+
+        // Commit path: solve the known required arrangement and run the real
+        // handoff, including station::undock, so the probe covers the deepest
+        // M5 integration frame.
+        const uint8_t order[6] = {4, 5, 0, 1, 2, 3};
+        bool solved = true;
+        for (uint8_t i = 0; i < 6; ++i) {
+            const cargo::CargoPiece &piece = cargo.puzzle.pieces[order[i]];
+            if (!cargo::place(cargo.puzzle, order[i], piece.x, piece.y))
+                solved = false;
+        }
+        if (solved) {
+            state.docked = 0;
+            state.activeJob.to = 0;
+            state.activeJob.crates = game::kJobCrates;
+            cargo_handoff::commit(state, cargo);
         }
     }
 #endif

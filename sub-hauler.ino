@@ -22,6 +22,7 @@
 #endif
 #if SH_FEATURE_CARGO_LOAD
 #include "src/cargo_fx.hpp"
+#include "src/cargo_handoff.hpp"
 #include "src/cargo_screen.hpp"
 #include "src/cargo_view.hpp"
 #endif
@@ -79,21 +80,23 @@ static void updateFlight() {
 }
 
 #if SH_FEATURE_STATIONS
+#if SH_FEATURE_CARGO_LOAD
+// Load HAULER arrangement 0 and switch to the cargo screen. The cart read
+// happens here in update, before the single display transaction. Failure
+// leaves the station board selected on LOAD CARGO so A retries.
+static bool enterCargo() {
+    if (!cargo_screen::load(s_cargo, s_cargoReader))
+        return false;
+    s_screen = Screen::Cargo;
+    s_cargoBHold = 0;
+    cargo_view::draw(s_cargo.puzzle, s_cargo.selected, s_cargo.message);
+    return true;
+}
+#endif
+
 // Station frame: no world step, so travel time, air, and ballast are frozen.
 // D-pad moves the selection, A confirms, B always undocks.
 static void updateStation() {
-#if SH_FEATURE_CARGO_LOAD
-    // Dev entry for the M5 shell: B+LEFT while docked opens the HAULER
-    // cutaway. Interaction and the job commit belong to the next bead; B
-    // alone still undocks, so the M3 loop is unchanged.
-    if (arduboy.justPressed(B_BUTTON) && arduboy.pressed(LEFT_BUTTON) && cargo_screen::load(s_cargo, s_cargoReader)) {
-        s_screen = Screen::Cargo;
-        s_cargoBHold = 0;
-        cargo_view::draw(s_cargo.puzzle, s_cargo.selected, s_cargo.message);
-        return;
-    }
-#endif
-
     if (arduboy.justPressed(UP_BUTTON))
         s_stationRow = station::selectPrevious(s_stationRow, s_state);
     if (arduboy.justPressed(DOWN_BUTTON))
@@ -106,10 +109,23 @@ static void updateStation() {
             s_stationRow = station::kFirstRow;
         }
 #if SH_FEATURE_JOBS
-        else if (action == station::kActionAccepted || action == station::kActionAbandoned) {
-            // The board shape changed: offers -> summary or summary -> offers.
+        else if (action == station::kActionAbandoned) {
+            // The board shape changed: summary -> offers.
             s_stationRow = station::initialRow(s_state);
         }
+#if SH_FEATURE_CARGO_LOAD
+        else if (action == station::kActionAccepted || action == station::kActionLoadCargo) {
+            // Acceptance opens the loading screen with an empty hold; LOAD
+            // CARGO reopens it for an already-active contract.
+            if (enterCargo())
+                return;
+            s_stationRow = station::kLoadRow;
+        }
+#else
+        else if (action == station::kActionAccepted) {
+            s_stationRow = station::initialRow(s_state);
+        }
+#endif
 #endif
     }
 
@@ -133,8 +149,9 @@ static void updateStation() {
 #if SH_FEATURE_CARGO_LOAD
 // Cargo frame: fixed state is loaded once on entry, no world step. A/B and the
 // D-pad drive the pure cargo_screen rules. B taps rotate (or undo with nothing
-// held); holding B for kCargoExitHold returns to the station board. R/N are
-// omitted because the Arduino pad has no spare key.
+// held); holding B for kCargoExitHold returns to the station board with the job
+// open. A+B with nothing held is LOAD & UNDOCK. R/N are omitted because the
+// Arduino pad has no spare key.
 static void updateCargo() {
     if (arduboy.pressed(B_BUTTON)) {
         if (s_cargoBHold < 255)
@@ -146,6 +163,8 @@ static void updateCargo() {
     if (s_cargoBHold >= kCargoExitHold) {
         s_cargoBHold = 0;
         s_screen = Screen::Station;
+        // Back/cancel leaves the job open and selects the safe LOAD CARGO row.
+        s_stationRow = station::initialRow(s_state);
         station_view::draw(s_state, s_stationRow);
         return;
     }
@@ -160,6 +179,25 @@ static void updateCargo() {
     input.ccw = input.b && arduboy.pressed(UP_BUTTON);
     if (input.ccw)
         input.up = false; // UP is a rotation modifier on this frame
+
+    // LOAD & UNDOCK: A+B with nothing held. Routed before cargo_screen::apply
+    // so it cannot be mistaken for pick/release/rotate/undo. A short load is
+    // rejected with LOAD SHORT and the job stays open.
+    if (cargo_handoff::commitPressed(input) && s_cargo.puzzle.held < 0) {
+        const cargo_handoff::Result result = cargo_handoff::commit(s_state, s_cargo);
+        if (result == cargo_handoff::kCommitted) {
+            s_cargoBHold = 0;
+            s_screen = Screen::Pilot;
+            s_stationRow = station::kFirstRow;
+            drawPilot();
+            return;
+        }
+        if (result == cargo_handoff::kIncomplete) {
+            cargo_view::draw(s_cargo.puzzle, s_cargo.selected, s_cargo.message);
+            return;
+        }
+    }
+
     cargo_screen::apply(s_cargo, input);
 
     cargo_view::draw(s_cargo.puzzle, s_cargo.selected, s_cargo.message);

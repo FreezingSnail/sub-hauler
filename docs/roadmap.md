@@ -150,6 +150,35 @@ and runs cargo input/render frames. Full/core measure **21,836 B flash /
 printed `P`, including the cargo path. Job commit and auto-undock remain for
 M5 integration.
 
+### M5 cargo integration checkpoint — 2026-10-22
+
+`sub-hauler-m5-integration` connects the accepted contract to the loading
+screen and removes the temporary dev entry:
+
+- `jobs::accept` clears the hold under `SH_FEATURE_CARGO_LOAD` and leaves the
+  four-unit fill to the handoff; with `CARGO_LOAD=0` it keeps the M3 auto-load.
+- The active board is `[summary] LOAD CARGO ABANDON UNDOCK`, starts on the safe
+  `LOAD CARGO` row, and wraps over selectable rows only. Acceptance opens the
+  HAULER arrangement; `LOAD CARGO` reopens it.
+- `A+B` with nothing held is `LOAD & UNDOCK`; the prompt replaces the feedback
+  slot only when `cargo::requiredComplete` is true. A short attempt reports
+  `LOAD SHORT` and keeps the job and berth. Success sets four pilot units,
+  neutral trim, clears the loading state, and auto-undocks. Holding `B` returns
+  to the station with the job open.
+- The board layout still fits 128x64 (four rows, last baseline 48, hint at 56).
+
+`tst/loop_test.hpp` now runs the full `CARGO_LOAD` loop accept -> cargo screen
+-> required packing -> commit -> auto-undock -> deliver, plus rejection,
+cancel-with-job-open, and the `CARGO_LOAD=0` auto-load fallback. The device
+stack probe includes the commit/undock path.
+
+Full/lean/core measure **22,038 B flash / 1,420 B static RAM** (+202 B / +2 B
+over the M5 rules checkpoint); `min` remains **10,584 B / 1,259 B**. Host tests:
+78 passed on full/core, 40 on min, and a separate 63-test `CARGO_LOAD=0` run
+passed. `make test-tools` passed 71 tests. Ardens ran all four device suites
+(`test_boot`, `test_cargo`, `test_memory`, `test_world`), each printed `P`; the
+stack probe still passes its 800 B reserve. No screenshot or frame-rate claim.
+
 ### Harness sentinel proof — 2026-10-22
 
 A temporary `SH_FEATURE_SENTINEL` block put a unique string
@@ -505,8 +534,8 @@ Tasks:
 
 - Draw 128×64 cutaway with HAULER cell scale.
 - Add `CARGO_LOAD` flag and compile-out fallback.
-- Lock the cargo commit gesture. Leading option: hold A when nothing is held and
-  the required load is met; show the prompt only when valid.
+- Lock the cargo commit gesture: `A+B` with nothing held, shown only when the
+  required load is met. The station `LOAD CARGO` row reopens the screen.
 - Add host tests for placement, support, block, rotate, and undo.
 - Add device test for a known arrangement.
 
@@ -601,7 +630,7 @@ deltas against the same profile with the feature disabled.
 | cave view (M1) | +204 | +3 | 2026-10-22 | replaces walker/ground/hero/HUD; 128 B atlas + 36 B AVR metadata in flash; 32 B runtime state |
 | stations (M3) | +1,762 | +17 | 2026-10-22 | auto-dock, board, refill/repair; min compiles out |
 | jobs (M3) | +2,064 | +43 | 2026-10-22 | offers, deadlines, delivery, credits, active auto-load hint; M5 replaces fallback |
-| cargo load (M5) | +7,426 | +99 | 2026-10-22 | cutaway, hold/tray, selection/move/support/rotate/undo; commit pending |
+| cargo load (M5) | +7,628 | +101 | 2026-10-22 | cutaway, hold/tray, rules, job handoff, auto-undock |
 | fog/chart | — | — | — | |
 | sonar | — | — | — | |
 | mines | — | — | — | |
@@ -657,7 +686,8 @@ Before content freeze:
 ## Open decisions
 
 - Auto-dock versus a button dock action.
-- Cargo commit gesture (hold A, A+B, or a menu row).
+- Cargo commit gesture: resolved to `A+B` with nothing held, prompted only when
+  the required load is complete.
 - Whether job holds stay full four units or support partial holds.
 - Number of cave layouts; one fixed layout initially.
 - Hull selection location (title, drydock, or station row).

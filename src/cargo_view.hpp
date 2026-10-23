@@ -77,6 +77,11 @@ constexpr uint8_t kMessageChars = 14; // longest feedback: "NEEDS SUPPORT"
 constexpr uint8_t kPromptX = 90;
 constexpr uint8_t kPromptY = 57;
 constexpr uint8_t kPromptChars = 6; // "HOLD B"
+// Commit prompt replaces the feedback slot only while the required load is
+// complete and nothing is held, so it never competes with a longer message.
+constexpr uint8_t kCommitPromptX = kMessageX;
+constexpr uint8_t kCommitPromptY = kMessageY;
+constexpr uint8_t kCommitPromptChars = 8; // "A+B LOAD"
 
 // Unplaced-piece tray: up to eight 8x8 slots.
 constexpr uint8_t kTrayX = 64;
@@ -104,6 +109,7 @@ static_assert(kNameX + kNameChars * 6 < kStatusX, "header name clears the counte
 static_assert(kStatusX + kStatusChars * 6 <= kScreenW - 2, "counters fit the display");
 static_assert(kLoadX + kLoadChars * 6 <= kTrayX, "load text clears the tray");
 static_assert(kMessageX + kMessageChars * 6 <= kPromptX, "feedback clears the exit hint");
+static_assert(kCommitPromptX + kCommitPromptChars * 6 <= kScreenW - 2, "commit prompt fits the display");
 static_assert(kPromptX + kPromptChars * 6 <= kScreenW - 2, "prompt fits the display");
 
 // ---------------------------------------------------------------------------
@@ -435,6 +441,9 @@ inline void printMessage(cargo_screen::Message message) {
     case cargo_screen::Message::Complete:
         arduboy.print(F("LOAD READY"));
         break;
+    case cargo_screen::Message::Incomplete:
+        arduboy.print(F("LOAD SHORT"));
+        break;
     case cargo_screen::Message::None:
     default:
         arduboy.print(F("A LIFT B ROT"));
@@ -451,7 +460,17 @@ inline void draw(const cargo::CargoPuzzle &puzzle, uint8_t selected, cargo_scree
     arduboy.print(F("HAULER"));
     printReqBonus(puzzle);
     printLoad(puzzle);
-    printMessage(message);
+
+    // The commit prompt is shown only when the required packing is complete
+    // and nothing is held. Otherwise the normal feedback line stays visible.
+    const bool commitReady = puzzle.held < 0 && cargo::requiredComplete(puzzle);
+    if (commitReady) {
+        arduboy.setCursor(kCommitPromptX, kCommitPromptY);
+        arduboy.print(F("A+B LOAD"));
+    } else {
+        printMessage(message);
+    }
+
     arduboy.setCursor(kPromptX, kPromptY);
     arduboy.print(F("HOLD B"));
 }

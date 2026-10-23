@@ -301,6 +301,10 @@ inline void StationSuite(TestRunner &runner) {
         test.assertEqual(station_view::rowY(station::kFirstRow), station_view::kRowY0, "first row uses the layout origin");
         test.assertTrue(station_view::rowY(station::kFirstRow) - station_view::kRowInsetY > station_view::kStatusY + 7, "first invert bar clears status");
         test.assertTrue(station_view::rowY(lastRow) + 7 < station_view::kHintY, "last row clears the hint");
+#if SH_FEATURE_JOBS
+        test.assertTrue(station_view::rowY(static_cast<uint8_t>(station::kActiveRowCount - 1)) + 7 < station_view::kHintY,
+                        "active board's last row clears the hint");
+#endif
         test.assertTrue(station_view::kHintY + 7 < 64, "hint fits inside 64 rows");
         test.assertTrue(station_view::kRowX + 6 * 6 < 128, "row labels fit inside 128 columns");
         runner.add(test);

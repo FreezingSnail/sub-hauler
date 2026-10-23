@@ -104,9 +104,10 @@ Dated whole-image numbers are evidence, not guaranteed headroom.
 | 2026-10-22 | 14,410 B | 1,319 B | M3 jobs/loop (offers, deadlines, delivery/credits, auto-load hint); full/lean/core identical, min unchanged; device suites P |
 | 2026-10-22 | 18,892 B | 1,416 B | M5 cargo shell (HAULER cutaway, 11x3 hold, tray, status); full/core/lean identical, min unchanged; device suites P |
 | 2026-10-22 | 21,836 B | 1,418 B | M5 cargo rules (selection, pick/lift, move, support, rotation, undo, feedback); full/core identical, min unchanged at 10,584 B / 1,259 B; device suites P, stack probe includes the cargo path |
+| 2026-10-22 | 22,038 B | 1,420 B | M5 cargo integration (job handoff, A+B commit, auto-undock, fallback, LOAD CARGO row); full/core/lean identical, min unchanged; device suites P, stack probe includes commit/undock |
 
-Static free SRAM is 1,142 B at the latest checkpoint. The painted-stack probe
-reported `P` on 2026-10-22 after the cargo rules path was added to
-`test_memory`, so the measured reserve still covers the cargo screen at the
+Static free SRAM is 1,140 B at the latest checkpoint. The painted-stack probe
+reported `P` on 2026-10-22 after the cargo commit/undock path was added to
+`test_memory`, so the measured reserve still covers the M5 integration at the
 800 B target. The probe does not print the exact high-water byte unless
 `SH_STACK_DIAG=1`; static free bytes are still not a stack measurement.

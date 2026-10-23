@@ -194,9 +194,10 @@ inline uint16_t remainingTicks(const State &state) {
     return static_cast<uint16_t>(state.activeJob.deadline - elapsed);
 }
 
-// Accept an offer row. Clears the hold, starts the contract clock, consumes the
-// offer, and auto-loads the required four units until the M5 cargo screen owns
-// loading.
+// Accept an offer row. Clears the hold, starts the contract clock, and consumes
+// the offer. With SH_FEATURE_CARGO_LOAD the app opens the cargo screen and the
+// hold stays empty until cargo_handoff::commit() succeeds; without it the M3
+// fallback fills the required four units immediately.
 inline bool accept(State &state, uint8_t offerIndex) {
     if (state.docked < 0 || game::hasActiveJob(state) || offerIndex >= state.offerCount)
         return false;
@@ -214,13 +215,16 @@ inline bool accept(State &state, uint8_t offerIndex) {
     state.activeJob.deadline = offer.deadline;
     state.activeJob.acceptedAt = state.jobClock;
 
-    // MILESTONE FALLBACK: auto-load the contract hold. This is deliberately
-    // unconditional for M3, including with SH_FEATURE_CARGO_LOAD=0: the loader
-    // screen does not exist yet, so the fallback must keep the contract loop
-    // playable in every profile. M5 replaces this with the loading-screen
-    // handoff and then the flag can gate the fill.
+#if SH_FEATURE_CARGO_LOAD
+    // M5 handoff: the accepted contract owns an empty hold until the cargo
+    // screen completes the required packing and commits LOAD & UNDOCK.
+    state.ballast = static_cast<uint8_t>(game::neutralFor(state.cargo));
+#else
+    // M3 fallback (also the whole CARGO_LOAD=0 build): auto-load the contract
+    // hold so the economy loop stays playable without the loader screen.
     game::setCargo(state, offer.crates);
     state.ballast = static_cast<uint8_t>(game::neutralFor(state.cargo));
+#endif
 
     for (uint8_t i = offerIndex; i + 1 < state.offerCount; ++i)
         state.offers[i] = state.offers[i + 1];

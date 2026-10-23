@@ -18,10 +18,10 @@
 //
 // Header: settlement name and the credits placeholder.
 // Status: current air and hull.
-// Rows:   offers then SERVICE/UNDOCK, or summary/ABANDON/UNDOCK when a
-//         contract is active. One inverted selection bar.
-// Hint:   A confirms the row and B always undocks. The active board also
-//         reports the M3 fallback auto-load until M5 owns the cargo screen.
+// Rows:   offers then SERVICE/UNDOCK, or summary/LOAD CARGO/ABANDON/UNDOCK
+//         when a contract is active. One inverted selection bar.
+// Hint:   A confirms the row and B always undocks. With SH_FEATURE_JOBS the
+//         active board reopens the cargo screen from LOAD CARGO.
 namespace station_view {
 
 constexpr uint8_t kNameX = 2;
@@ -49,6 +49,9 @@ constexpr uint8_t rowY(uint8_t row) {
 static_assert(station::kStationRowCount > 0, "station board needs at least one row");
 static_assert(rowY(0) - kRowInsetY > kStatusY + 7, "rows start below the status line");
 static_assert(rowY(static_cast<uint8_t>(station::kStationRowCount - 1)) + 7 < kHintY, "last row clears the hint");
+#if SH_FEATURE_JOBS
+static_assert(rowY(static_cast<uint8_t>(station::kActiveRowCount - 1)) + 7 < kHintY, "active board clears the hint");
+#endif
 static_assert(kHintY + 7 < 64, "hint stays on screen");
 #if SH_FEATURE_JOBS
 static_assert(kCreditsX + 8 * 6 <= 128, "CR 65535 fits at the right edge");
@@ -85,6 +88,10 @@ inline const __FlashStringHelper *rowLabel(uint8_t row, const game::State &state
 #if SH_FEATURE_JOBS
     case station::kRowAbandon:
         return F("ABANDON");
+#if SH_FEATURE_CARGO_LOAD
+    case station::kRowLoad:
+        return F("LOAD CARGO");
+#endif
 #endif
     default:
         return nullptr;
@@ -186,12 +193,17 @@ inline void draw(const game::State &state, uint8_t selected) {
 
     arduboy.setCursor(kHintX, kHintY);
 #if SH_FEATURE_JOBS
-    // The M3 fallback fills the hold on acceptance. Say so on the board that
-    // shows the active contract; M5 replaces this with the cargo screen.
+#if SH_FEATURE_CARGO_LOAD
+    // The M5 board reopens the cargo screen from LOAD CARGO, so the same row
+    // hint works for offer and active shapes.
+    arduboy.print(F("UP/DN A OK B OUT"));
+#else
+    // CARGO_LOAD=0 keeps the M3 fallback: acceptance already fills the hold.
     if (station::jobActive(state))
         arduboy.print(F("AUTO-LOAD  B OUT"));
     else
         arduboy.print(F("UP/DN A OK B OUT"));
+#endif
 #else
     arduboy.print(F("UP/DN A OK B OUT"));
 #endif
