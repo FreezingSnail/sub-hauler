@@ -20,6 +20,11 @@
 #include "src/station.hpp"
 #include "src/station_view.hpp"
 #endif
+#if SH_FEATURE_CARGO_LOAD
+#include "src/cargo_fx.hpp"
+#include "src/cargo_screen.hpp"
+#include "src/cargo_view.hpp"
+#endif
 
 decltype(arduboy) arduboy;
 
@@ -30,11 +35,18 @@ static world::TileCache s_cache;
 #if SH_FEATURE_STATIONS
 enum class Screen : uint8_t {
     Pilot,
-    Station
+    Station,
+#if SH_FEATURE_CARGO_LOAD
+    Cargo
+#endif
 };
 
 static Screen s_screen = Screen::Pilot;
 static uint8_t s_stationRow = station::kFirstRow;
+#if SH_FEATURE_CARGO_LOAD
+static cargo::FxCargoReader s_cargoReader;
+static cargo_screen::State s_cargo;
+#endif
 #endif
 
 static void drawPilot() {
@@ -68,6 +80,17 @@ static void updateFlight() {
 // Station frame: no world step, so travel time, air, and ballast are frozen.
 // D-pad moves the selection, A confirms, B always undocks.
 static void updateStation() {
+#if SH_FEATURE_CARGO_LOAD
+    // Dev entry for the M5 shell: B+LEFT while docked opens the HAULER
+    // cutaway. Interaction and the job commit belong to the next bead; B
+    // alone still undocks, so the M3 loop is unchanged.
+    if (arduboy.justPressed(B_BUTTON) && arduboy.pressed(LEFT_BUTTON) && cargo_screen::load(s_cargo, s_cargoReader)) {
+        s_screen = Screen::Cargo;
+        cargo_view::draw(s_cargo.puzzle, s_cargo.selected);
+        return;
+    }
+#endif
+
     if (arduboy.justPressed(UP_BUTTON))
         s_stationRow = station::selectPrevious(s_stationRow, s_state);
     if (arduboy.justPressed(DOWN_BUTTON))
@@ -103,6 +126,19 @@ static void updateStation() {
     // stepping, so the first visible frame after undock is the station berth.
     drawPilot();
 }
+
+#if SH_FEATURE_CARGO_LOAD
+// Cargo shell frame: fixed state is loaded once on entry, no world step, no
+// interaction yet. B returns to the station board so the M3 loop stays intact.
+static void updateCargo() {
+    if (arduboy.justPressed(B_BUTTON)) {
+        s_screen = Screen::Station;
+        station_view::draw(s_state, s_stationRow);
+        return;
+    }
+    cargo_view::draw(s_cargo.puzzle, s_cargo.selected);
+}
+#endif
 #endif
 
 void setup() {
@@ -123,6 +159,10 @@ void loop() {
 #if SH_FEATURE_STATIONS
     if (s_screen == Screen::Station)
         updateStation();
+#if SH_FEATURE_CARGO_LOAD
+    else if (s_screen == Screen::Cargo)
+        updateCargo();
+#endif
     else
         updateFlight();
 #else

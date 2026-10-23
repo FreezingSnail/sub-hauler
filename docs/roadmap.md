@@ -124,6 +124,21 @@ Ardens was available at the end of this checkpoint: all four device suites
 probe confirms at least 800 B reserve. No manual end-to-end playtest,
 frame-rate, or screenshot claim is made.
 
+### M5 cargo shell checkpoint — 2026-10-22
+
+`sub-hauler-m5-shell` adds the 128x64 HAULER cutaway, 11x3 hold at 6 px cells,
+structural bulkhead/notch marks, solid installed crates, held/tray cues, and
+status slots. The shell loads HAULER arrangement 0 through the fixed
+`cargo_screen::State` (104 B) and `cargo::loadArrangement`. All code, data, and
+strings are inside `SH_FEATURE_CARGO_LOAD`; the `min` image is unchanged.
+
+Full/core/lean now measure **18,892 B flash / 1,416 B static RAM**
+(+4,482 B / +97 B over the M3 loop checkpoint); `min` remains 10,584 B /
+1,259 B. A dock-only dev entry (`B+LEFT`) shows the shell until M5 rules and
+integration wire the job flow. All four device suites printed `P` with Ardens;
+the stack probe does not yet include the cargo screen. No screenshot or
+frame-rate claim.
+
 ### Harness sentinel proof — 2026-10-22
 
 A temporary `SH_FEATURE_SENTINEL` block put a unique string
@@ -575,7 +590,7 @@ deltas against the same profile with the feature disabled.
 | cave view (M1) | +204 | +3 | 2026-10-22 | replaces walker/ground/hero/HUD; 128 B atlas + 36 B AVR metadata in flash; 32 B runtime state |
 | stations (M3) | +1,762 | +17 | 2026-10-22 | auto-dock, board, refill/repair; min compiles out |
 | jobs (M3) | +2,064 | +43 | 2026-10-22 | offers, deadlines, delivery, credits, active auto-load hint; M5 replaces fallback |
-| cargo load | — | — | — | |
+| cargo load (M5 shell) | +4,482 | +97 | 2026-10-22 | cutaway, hold/tray, arrangement 0; interaction/commit pending |
 | fog/chart | — | — | — | |
 | sonar | — | — | — | |
 | mines | — | — | — | |
