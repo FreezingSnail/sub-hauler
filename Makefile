@@ -44,8 +44,10 @@ AVR_SIZE      ?= $(firstword $(wildcard $(HOME)/Library/Arduino15/packages/ardui
 # ----------------------------------------------------------------------------
 IMAGES        := $(wildcard images/*.png)
 WORLD_TABLES  := fxdata/tables/world.bin fxdata/tables/world-chart.bin
+CARGO_TABLES  := fxdata/tables/cargo.bin
 FX_INPUTS     := $(IMAGES) fxdata/fxdata.txt tools/gen.sh tools/gen_sprites.py \
-                 tools/gen_world.py $(WORLD_TABLES) tools/fxdata-build.py
+                 tools/gen_world.py tools/gen_cargo.py $(WORLD_TABLES) \
+                 $(CARGO_TABLES) tools/fxdata-build.py
 
 full: gen build
 
@@ -64,6 +66,8 @@ gen-check:
 	@cp fxdata/tables/world.bin $(BUILD_DIR)/gen-check/world.bin
 	@cp fxdata/tables/world-chart.bin $(BUILD_DIR)/gen-check/world-chart.bin
 	@cp src/generated/world.hpp $(BUILD_DIR)/gen-check/world.hpp
+	@cp fxdata/tables/cargo.bin $(BUILD_DIR)/gen-check/cargo.bin
+	@cp src/generated/cargo.hpp $(BUILD_DIR)/gen-check/cargo.hpp
 	@$(MAKE) --no-print-directory gen
 	@cmp -s fxdata/fxdata.h src/fxdata.h || { echo "gen-check: src/fxdata.h is stale; run make gen" >&2; exit 1; }
 	@cmp -s fxdata/fxdata.h $(BUILD_DIR)/gen-check/fxdata.h || { echo "gen-check: fxdata header changed" >&2; exit 1; }
@@ -73,6 +77,8 @@ gen-check:
 	@cmp -s fxdata/tables/world.bin $(BUILD_DIR)/gen-check/world.bin || { echo "gen-check: world table changed" >&2; exit 1; }
 	@cmp -s fxdata/tables/world-chart.bin $(BUILD_DIR)/gen-check/world-chart.bin || { echo "gen-check: world chart table changed" >&2; exit 1; }
 	@cmp -s src/generated/world.hpp $(BUILD_DIR)/gen-check/world.hpp || { echo "gen-check: world header changed" >&2; exit 1; }
+	@cmp -s fxdata/tables/cargo.bin $(BUILD_DIR)/gen-check/cargo.bin || { echo "gen-check: cargo table changed" >&2; exit 1; }
+	@cmp -s src/generated/cargo.hpp $(BUILD_DIR)/gen-check/cargo.hpp || { echo "gen-check: cargo header changed" >&2; exit 1; }
 	@echo "gen-check: generated artifacts are deterministic"
 
 # Generation is a prerequisite of the firmware build, so a missing or stale

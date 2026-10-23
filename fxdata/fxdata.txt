@@ -17,3 +17,10 @@ include "Sprites.txt"
 raw_t worldTiles = "../fxdata/tables/world.bin"
 // 256 B: 64x32 chart cells, 1 bpp, bit 1 = water, 8 B/row (LSB = leftmost).
 raw_t worldChart = "../fxdata/tables/world-chart.bin"
+
+// Precomputed cargo arrangement bank (M4). Appended after the shipped world
+// tables; offsets are flash ABI from this point on. Hull blocks follow roster
+// order (MINNOW, HAULER, LEVIATHAN) with 64 arrangements each and no
+// per-arrangement header. Fixed counts/offsets live in src/generated/cargo.hpp.
+// 3,648 B: 3-byte pieces, 12/21/24 B per arrangement, required then bonus.
+raw_t cargo = "../fxdata/tables/cargo.bin"
