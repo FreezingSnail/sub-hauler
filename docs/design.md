@@ -1,0 +1,191 @@
+# Design — sub-hauler
+
+Status: working design. The browser slices in `spike-trim/` are one flow:
+pilot travel, station loading, and fleet reference. The precomputed cargo-table
+plan below is the intended device path.
+
+## Direction
+
+- The cutaway is the identity of the game. The external sub is the travel view;
+  the inside is where cargo, ballast, air, engine, and crew live.
+- Cargo belongs inside the hull. The pilot now uses the selected round external
+  hull and no longer stacks crates above it; cargo is represented by internal
+  mass, trim, acceleration, and top speed. The station loading screen's LOAD &
+  UNDOCK action feeds the pilot's coarse four-unit load model from the hold.
+- The internal view should be used at stations and for damage/repair work, not
+  as a second full-time flight view.
+- Feel is slow, heavy, deliberate. Packing is a planning puzzle, not a twitch
+  minigame.
+
+## Sub classes
+
+| Class | Hull | Hold | Cargo load | Pieces |
+| --- | ---: | ---: | ---: | ---: |
+| MINNOW | 64 px | 6×3 hex bay | 12/14 cells | 4 (3 required + 1 bonus) |
+| HAULER | 94 px | 11×3 split/notched bay | 26/28 cells | 7 (6 required + 1 bonus) |
+| LEVIATHAN | 118 px | 14×4 twin-spine bay | 40/44 cells | 8 (6 required + 2 bonus) |
+
+The `FLEET` view shows three round hulls, external and cutaway:
+- MINNOW: TADPOLE rounded shuttle with bow viewport and landing skids.
+- HAULER: FLATBED rounded freighter with deckhouse and cargo doors.
+- LEVIATHAN: FORTRESS rounded heavy with outrigger pods and deckhouse/gantry.
+
+Hold masks are fixed per class; only the arrangement and random cargo shapes
+vary. Hull studies do not change the hold capacity. PILOT draws playable-scale
+silhouettes inside the tunnel envelope; FLEET shows the full hull proportions.
+
+## Cargo packing loop
+
+- Dock, accept a contract, and load the selected hull in the station loading
+  screen. The screen opens automatically from the accepted job.
+- D-pad moves the suspended crate.
+- `A` picks up or releases.
+- `B` rotates a held crate; with nothing held it undoes the last placement.
+- A crate can only be released when at least one bottom cell rests on cargo or
+  the floor. No mid-air placement. Structural mask cells are solid; on HAULER
+  cargo cannot bridge or occupy the central split bulkhead.
+- Crates can be moved sideways/up/down while suspended, so they can be tucked
+  under overhangs and into corners.
+- Installed crates stay in the tray. Select an installed piece and press `A`
+  to lift it; cargo directly above blocks the lift.
+- `R` resets placement for the current load. `N` rerolls random cargo shapes.
+- `LOAD & UNDOCK` checks the job crate requirement, sets the pilot load, and
+  starts travel; `CANCEL` or `Esc` returns to the station with the job open.
+- The hold is schematic 128×64, 1-bit, and shown as one compartment inside the
+  pressure hull. Cells scale per class (7 px MINNOW, 6 px HAULER, 5 px
+  LEVIATHAN) so the bow cabin, engine room, and ballast remain visible without
+  scrolling. The FX arrangement data is independent of this view scale.
+
+The browser views share one hull roster and selection (`spike-trim/subs.js`).
+The cargo view is the station loading step; `LOAD & UNDOCK` checks the contract
+requirement and maps its packed fraction to the pilot's four-unit cargo model.
+The FX arrangement bank remains the device path.
+
+## Random shape generation
+
+Browser-only generator, used to produce candidate loads:
+
+1. Choose a bottom-filled target region:
+   - base fill per column, plus random extra cells in the top row(s);
+   - total occupied cells equals the hull load (12 / 26 / 40) inside the hull's open hold mask.
+2. Start with one cluster per occupied cell.
+3. Repeatedly merge orthogonally adjacent clusters while the cluster count is
+   above the hull piece count:
+   - reject merges over the hull's max area/bounding box;
+   - prefer merges among the smallest candidates, with random choice;
+   - update area, bbox, and owner map.
+4. Normalize each cluster into a connected polyomino.
+   - Max 4×4 bounding box, max 8 cells.
+   - Randomly assign required/bonus kinds.
+   - Store the target placement as the known solution.
+5. If random merging stalls, retry. After a bounded number of retries, fall
+   back to splitting target columns into connected groups.
+
+This constructs a packing rather than solving arbitrary shapes, so every
+generated load has a full arrangement by construction.
+
+The JS generator uses `Math.random`, `Set`, `Array.sort`, `filter`, object
+arrays, and dynamic allocation. It is not portable as-is. Do not port the
+runtime generator to AVR unless it is rewritten with fixed arrays.
+
+## Device plan: precomputed FX arrangements
+
+Recommended Arduboy path: precompute arrangements offline and store them in the
+FX cart. At runtime, select one arrangement and copy it into SRAM.
+
+### Piece record
+
+```c
+struct CargoPieceRecord {
+    uint16_t mask;   // 4x4 normalized shape, bit set = filled cell
+    uint8_t  posKind;// x: 0-3, y: 4-5, bonus: 6, spare: 7
+};
+```
+
+- 3 bytes per piece.
+- Shape area and bbox derive from `mask`.
+- Target orientation is in the mask; player rotation is runtime bit logic.
+- Required pieces can be first in the record, so the bonus bit is optional.
+- Target position is the known solution placement.
+
+### Arrangement sizes
+
+| Hull | Per arrangement | 32 | 64 | 128 |
+| --- | ---: | ---: | ---: | ---: |
+| MINNOW | 12 B | 384 B | 768 B | 1,536 B |
+| HAULER | 21 B | 672 B | 1,344 B | 2,688 B |
+| LEVIATHAN | 24 B | 768 B | 1,536 B | 3,072 B |
+| **Total** | | **1.8 KB** | **3.6 KB** | **7.3 KB** |
+
+Use 64 arrangements per hull initially. Add a table header with format version
+and count, or carry fixed counts/offsets in `src/fxdata.h`.
+
+### Runtime
+
+- Pick an arrangement index with a small seeded PRNG or a shuffle bag.
+- Use `FX::seekData(tableBase + index * recordBytes)`.
+- Read 12–24 bytes with `FX::readPendingUInt8`.
+- Call `FX::readEnd`.
+- Copy piece masks/positions into a fixed `CargoPiece[8]` array.
+- Keep only the selected arrangement and puzzle state in SRAM.
+- Read cart data in update/render, never during the OLED transaction.
+- No runtime generator, retries, owner grid, cluster metadata, or heap.
+
+Suggested SRAM state: under ~100 B for the selected arrangement plus the cargo
+screen. This avoids the roughly 0.5–0.7 KB generator working set.
+
+### Generation and ABI
+
+- Add generated raw tables to `fxdata/fxdata.txt` with `raw_t` entries.
+- Append tables only; declaration order is flash ABI.
+- Generate the `.bin` tables with a tool called from `make gen`; never hand-edit
+  packed tables.
+- Put counts/offsets in the generated `src/fxdata.h`.
+- Run `make gen-check` to prove reproducibility.
+- Offline validation must reject:
+  - disconnected shapes;
+  - overlap/out-of-bounds target positions;
+  - cells over the max 4×4/8-cell shape;
+  - wrong load or required/bonus counts;
+  - target arrangements without support/stability.
+- Generate a larger candidate pool than needed, then keep visually distinct
+  arrangements.
+
+## Arduboy fit
+
+From `docs/platform.md`:
+
+- 128×64 SSD1306, 1,024 B framebuffer.
+- 2,560 B SRAM; 1,346 B static free at the last checkpoint.
+- 29,696 B flash; current image 6,636 B flash / 1,214 B static RAM.
+- No floats, no heap in device code, no cart reads during display.
+
+The arrangement tables live in external FX flash, so they do not consume
+program flash or static SRAM. The remaining work is the in-device cargo screen,
+input, and state. Measure with `make size` after adding it; do not assume the
+current headroom survives the UI.
+
+## Browser reference
+
+- `spike-trim/index.html` — PILOT and FLEET views, plus the station loading screen.
+- `spike-trim/subs.js` — shared MINNOW / HAULER / LEVIATHAN roster and selection.
+- `PILOT` — external sim, stations, contracts, shop. Draws the selected round
+  hull; cargo is internal mass, not a stack above the hull.
+- Loading screen — opens from the station when a contract is accepted; playable
+  internal hold with crane, random shapes, support, lifting, and LOAD & UNDOCK.
+- `FLEET` — external and cutaway profiles for the same selected hull.
+
+The browser cargo generator is for experimentation; the FX arrangement bank is
+the device plan.
+
+## Open questions
+
+- How many arrangements per hull before the loads feel repetitive? Start 64.
+- Add horizontal mirror/rotation of whole arrangements for variety?
+- Any-bottom support vs full-bottom support for release?
+- How exactly cargo cell area maps to mass/neutral trim once cargo is internal.
+- Do bonus crates affect payout, capacity, or only fill?
+- Jobs currently require a full four-unit hold so the loading screen has a
+  clear pass/fail. Revisit partial-hold jobs and how their crate count should
+  size the required packed region.
+- Whether arrangement index persists in save data or is rerolled per dock.

@@ -1,0 +1,9 @@
+build/
+dist/
+.DS_Store
+*.o
+*.hex
+*.eep
+*.elf
+__pycache__/
+tools/tests/__pycache__/

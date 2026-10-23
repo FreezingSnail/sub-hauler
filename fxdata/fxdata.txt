@@ -1,0 +1,12 @@
+// Template FX layout. Declaration order is flash ABI: append entries, never
+// reorder or remove one after it has shipped. fxdata-build.py resolves every
+// symbol to a byte offset in one 16 MB image.
+
+include "Sprites.txt"
+
+// 1-bit images are authored at their native size and packed with image_t.
+// image_t font_5x6 = "../images/font_5x6.png"
+
+// Packed tables (records, level data, strings) are authored by a generator and
+// included as raw bytes:
+// raw_t levelData = "../fxdata/tables/levels.bin"

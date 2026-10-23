@@ -1,0 +1,406 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Sub-hauler — pilot, loading flow &amp; fleet</title>
+    <style>
+        :root {
+            color-scheme: dark;
+        }
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: grid;
+            place-items: center;
+            background: #0b0d0c;
+            color: #d7ded7;
+            font: 13px/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        }
+        main {
+            display: flex;
+            gap: 24px;
+            align-items: flex-start;
+            flex-wrap: wrap;
+            padding: 24px;
+            max-width: 1120px;
+        }
+        .tabs {
+            flex: 1 0 100%;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        .tabs.hidden {
+            display: none;
+        }
+        .tab {
+            padding: 5px 10px;
+            border: 1px solid #222b24;
+            background: #111612;
+            color: #8a9a8c;
+            font: inherit;
+            letter-spacing: 0.08em;
+            cursor: pointer;
+        }
+        .tab.active {
+            border-color: #38443a;
+            background: #1a221b;
+            color: #fff;
+        }
+        .mode {
+            display: flex;
+            flex: 1 0 100%;
+            gap: 24px;
+            align-items: flex-start;
+            flex-wrap: wrap;
+        }
+        .mode.hidden {
+            display: none;
+        }
+        .sub-select {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            margin: 0 0 14px;
+        }
+        .sub-button {
+            padding: 4px 8px;
+            border: 1px solid #222b24;
+            background: #111612;
+            color: #8a9a8c;
+            font: inherit;
+            letter-spacing: 0.06em;
+            cursor: pointer;
+        }
+        .sub-button.active {
+            border-color: #38443a;
+            background: #1a221b;
+            color: #fff;
+        }
+        .screen {
+            position: relative;
+            flex: 0 1 768px;
+            min-width: 320px;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: auto;
+            aspect-ratio: 2 / 1;
+            background: #000;
+            border: 1px solid #2a332b;
+            image-rendering: pixelated;
+        }
+        .side {
+            flex: 1 1 290px;
+            min-width: 260px;
+        }
+        h1 {
+            margin: 0 0 4px;
+            font-size: 16px;
+            letter-spacing: 0.12em;
+            font-weight: 600;
+        }
+        .subtitle {
+            margin: 0 0 16px;
+            color: #7f8d81;
+        }
+        a {
+            color: #cfe0d0;
+        }
+        pre {
+            margin: 0 0 16px;
+            padding: 12px;
+            min-height: 168px;
+            background: #111612;
+            border: 1px solid #222b24;
+            color: #cfe0d0;
+            white-space: pre-wrap;
+        }
+        h2 {
+            margin: 0 0 6px;
+            font-size: 12px;
+            letter-spacing: 0.1em;
+            color: #8a9a8c;
+            font-weight: 600;
+        }
+        ul {
+            margin: 0;
+            padding-left: 18px;
+            color: #aeb9af;
+        }
+        li {
+            margin: 3px 0;
+        }
+        p {
+            color: #aeb9af;
+        }
+        kbd {
+            padding: 0 4px;
+            border: 1px solid #38443a;
+            border-bottom-width: 2px;
+            border-radius: 3px;
+            background: #151b16;
+            color: #e3ece3;
+            font: inherit;
+        }
+        .overlay {
+            position: absolute;
+            inset: 0;
+            display: grid;
+            place-items: center;
+            padding: 24px;
+            text-align: center;
+            background: #000;
+        }
+        .overlay.hidden {
+            display: none;
+        }
+        .overlay h2 {
+            margin: 0 0 10px;
+            font-size: 22px;
+            letter-spacing: 0.2em;
+            color: #fff;
+        }
+        .overlay p {
+            margin: 4px 0;
+            color: #cfd9cf;
+        }
+        .overlay .hint {
+            margin-top: 14px;
+            color: #7f8d81;
+            font-size: 11px;
+        }
+        .hintbar {
+            position: absolute;
+            left: 50%;
+            bottom: 10px;
+            transform: translateX(-50%);
+            padding: 3px 8px;
+            background: rgba(0, 0, 0, 0.84);
+            border: 1px solid #38443a;
+            color: #fff;
+            font-size: 10px;
+            letter-spacing: 0.08em;
+            line-height: 1.45;
+            text-align: center;
+            white-space: pre;
+            pointer-events: none;
+        }
+        .hintbar.hidden {
+            display: none;
+        }
+        @media (max-width: 760px) {
+            main {
+                padding: 12px;
+            }
+            .overlay h2 {
+                font-size: 16px;
+            }
+            .overlay p {
+                font-size: 11px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <main>
+        <nav class="tabs" aria-label="Views">
+            <button class="tab active" data-mode-tab="pilot">PILOT</button>
+            <button class="tab" data-mode-tab="fleet">FLEET</button>
+        </nav>
+        <section class="mode" data-mode-panel="pilot">
+        <div class="screen">
+            <canvas id="game" width="128" height="64" aria-label="Sub-hauler trim sandbox with stations game screen"></canvas>
+            <div id="overlay" class="overlay hidden">
+                <div id="overlayText"></div>
+            </div>
+            <div id="hint" class="hintbar hidden"></div>
+        </div>
+        <div class="side">
+            <h1>SUB-HAULER</h1>
+            <p class="subtitle">trim sandbox · one hull across pilot, loading &amp; fleet</p>
+            <div class="sub-select" aria-label="Pilot hull">
+                <button class="sub-button" data-pilot-sub="0">MINNOW</button>
+                <button class="sub-button active" data-pilot-sub="1">HAULER</button>
+                <button class="sub-button" data-pilot-sub="2">LEVIATHAN</button>
+            </div>
+            <pre id="debug">boot</pre>
+            <h2>CONTROLS</h2>
+            <ul>
+                <li><kbd>←</kbd>/<kbd>→</kbd> or <kbd>A</kbd>/<kbd>D</kbd> — thrust / reverse</li>
+                <li><kbd>↑</kbd>/<kbd>↓</kbd> or <kbd>W</kbd>/<kbd>S</kbd> — blow / flood ballast</li>
+                <li><kbd>1</kbd>/<kbd>2</kbd>/<kbd>3</kbd> — switch MINNOW / HAULER / LEVIATHAN</li>
+                <li><kbd>E</kbd> — dock / undock at a station</li>
+                <li><kbd>↑</kbd>/<kbd>↓</kbd> — select a station or shop row</li>
+                <li><kbd>Z</kbd> — A: select / accept / buy in menus</li>
+                <li><kbd>X</kbd> — B: back / undock in menus; abandon is a row</li>
+                <li><kbd>Space</kbd> — sonar ping while piloting (costs air)</li>
+                <li><kbd>M</kbd> — chart (pauses)</li>
+                <li><kbd>C</kbd> — toggle current</li>
+                <li><kbd>R</kbd> reset · <kbd>N</kbd> new cave</li>
+                <li><kbd>G</kbd> — debug: reveal the whole chart</li>
+            </ul>
+            <h2>INSTRUMENTS</h2>
+            <ul>
+                <li>Left gauge = ballast. Above the notch: heavy, sinks. Below: light, rises.</li>
+                <li>The notch moves with cargo. Adding cargo makes you heavy until re-trimmed.</li>
+                <li>Top-left bar = air. Time, sonar, and blowing spend it.</li>
+                <li>Top-right pips = hull.</li>
+                <li>Dock frame = settlement. Stop inside it and press <kbd>E</kbd>.</li>
+                <li><kbd>M</kbd> chart shows explored water and known settlements. Sonar reveals a larger area.</li>
+                <li>Chart crosses: TIDEWALL NW, BENTHOS N, CORMORANT E, DEEP ANCHOR S.</li>
+                <li>Job codes: TIDE, BENT, CORM, DEEP.</li>
+                <li>Station board and shop are 128 × 64 1-bit screens with a 5 × 7 bitmap font.</li>
+                <li>Menus use A/B labels; browser keys are <kbd>Z</kbd>/<kbd>X</kbd> as in Ardens.</li>
+            </ul>
+            <h2>SCOPE</h2>
+            <ul>
+                <li>2,560 × 1,280 cave, four settlements, ring tunnels and side branches.</li>
+                <li>Dock to refill air, repair, take contracts, and buy upgrades.</li>
+                <li>Station board and shop use the device screen budget: 128 × 64, 1-bit, 5 × 7 font.</li>
+                <li>No finish or broader economy yet.</li>
+                <li>Find the trim: stop, hover, cross a tunnel, re-trim after cargo.</li>
+                <li>Flow: dock → accept a contract → pack the hold → LOAD &amp; UNDOCK → deliver.</li>
+                <li>The selected hull is shared by PILOT, the loading screen, and FLEET. Cargo rides inside the hull; it is no longer stacked above it.</li>
+            </ul>
+        </div>
+        </section>
+        <section class="mode hidden" data-mode-panel="cargo">
+            <div class="screen">
+                <canvas id="cargoGame" width="128" height="64" aria-label="Cargo packing slice game screen"></canvas>
+            </div>
+            <div class="side">
+                <h1 id="cargoTitle">LOAD CARGO</h1>
+                <p class="subtitle" id="cargoSubtitle">selected hull · pack the hold</p>
+                <div class="sub-select" aria-label="Cargo hull">
+                    <button class="sub-button" data-cargo-sub="0">MINNOW</button>
+                    <button class="sub-button active" data-cargo-sub="1">HAULER</button>
+                    <button class="sub-button" data-cargo-sub="2">LEVIATHAN</button>
+                    <button class="sub-button" id="cargoLoad">LOAD &amp; UNDOCK</button>
+                    <button class="sub-button" id="cargoCancel">CANCEL</button>
+                </div>
+                <pre id="cargoDebug">boot</pre>
+
+                <h2>GOAL</h2>
+                <ul>
+                    <li>Packing opens automatically after you accept a station contract. Pack enough for the contract's crates; bonus pieces fill the hold.</li>
+                    <li>Crate shapes are randomized for each load. Press N to roll a new cargo set.</li>
+                    <li>MINNOW: 6×3 hex hold, 3 required + 1 bonus, 12/14 cells.</li>
+                    <li>HAULER: 11×3 split/notched hold, 6 required + 1 bonus, 26/28 cells.</li>
+                    <li>LEVIATHAN: 14×4 twin-spine hold, 6 required + 2 bonus, 40/44 cells.</li>
+                    <li>Lower crates manually. Slide them sideways or up to tuck under overhangs.</li>
+                    <li>Release only when the bottom touches cargo or the floor. No floating.</li>
+                    <li>Installed crates stay in the tray as hollow icons. Select one and press A to lift it back onto the crane.</li>
+                    <li>Cargo directly above blocks lifting; clear the top layer first.</li>
+                    <li>No timer. Undo and rearrange until it fits.</li>
+                    <li><b>LOAD &amp; UNDOCK</b> checks the contract requirement, sends the packed hold into the pilot cargo/trim model, and returns to travel. <b>CANCEL</b> or Esc returns to the station.</li>
+                </ul>
+
+                <h2>CONTROLS</h2>
+                <ul>
+                    <li><kbd>1</kbd>/<kbd>2</kbd>/<kbd>3</kbd> or the hull buttons — switch hull</li>
+                    <li><kbd>←</kbd>/<kbd>→</kbd> — select tray crate, or slide the suspended crate</li>
+                    <li><kbd>↑</kbd>/<kbd>↓</kbd> — lower / raise the suspended crate</li>
+                    <li><kbd>Z</kbd> — A: pick up / release (needs support below); select installed tray icons to rearrange</li>
+                    <li><kbd>X</kbd> — B: rotate suspended crate; with no crate, undo last</li>
+                    <li><kbd>R</kbd> — reset the current hold · <kbd>N</kbd> — new random cargo</li>
+                    <li><kbd>Enter</kbd> / <kbd>L</kbd> — load &amp; undock · <kbd>Esc</kbd> — cancel</li>
+                </ul>
+
+                <h2>NOTES</h2>
+                <ul>
+                    <li>Piece sets scale with the hull: 4 pieces / 7 pieces / 8 pieces.</li>
+                    <li>Shapes are random each load; switching hull also rolls a new load.</li>
+                    <li>The hold screen is 128 × 64, 1-bit, 5×7 bitmap text.</li>
+                    <li>The hold is a compartment inside the pressure hull: cells scale 7/6/5 px per class so the bow cabin, engine room, and ballast stay visible. No scrolling.</li>
+                    <li>Blocked cells are structural and solid: cargo cannot enter the HAULER split bulkhead or the corner notches.</li>
+                    <li>Pilot time, air, and the contract clock are paused while loading.</li>
+                </ul>
+            </div>
+        </section>
+        <section class="mode hidden" data-mode-panel="fleet">
+            <div class="screen">
+                <canvas id="fleetGame" width="128" height="64" aria-label="Fleet external and cutaway mockups"></canvas>
+            </div>
+            <div class="side">
+                <h1>FLEET MOCKUPS</h1>
+                <p class="subtitle">same selected hull · external &amp; cutaway</p>
+                <pre id="fleetDebug">boot</pre>
+
+                <h2>CONTROLS</h2>
+                <ul>
+                    <li><kbd>←</kbd>/<kbd>→</kbd> — hull size</li>
+                    <li><kbd>Z</kbd> — A: external / cutaway</li>
+                </ul>
+
+                <h2>NOTES</h2>
+                <ul>
+                    <li>Three round hulls: MINNOW TADPOLE, HAULER FLATBED, LEVIATHAN FORTRESS.</li>
+                    <li><kbd>←</kbd>/<kbd>→</kbd> cycles hulls.</li>
+                    <li>HULLS 6×3 hex / 11×3 split+notch / 14×4 twin spine; loads 12/14, 26/28, 40/44.</li>
+                    <li>MINNOW: rounded shuttle with viewport and skids. HAULER: rounded deckhouse freighter. LEVIATHAN: rounded heavy with outrigger pods and gantry. Holds stay class-specific.</li>
+                    <li>Schematic mockups, not playable. The loading screen opens from the station after accepting a contract.</li>
+                    <li>All views are 128 × 64, 1-bit.</li>
+                </ul>
+            </div>
+        </section>
+    </main>
+
+    <script src="subs.js"></script>
+    <script src="game.js"></script>
+    <script src="main.js"></script>
+    <script src="cargo.js"></script>
+    <script src="fleet.js"></script>
+    <script>
+        (function () {
+            window.__uiMode = 'pilot';
+            const tabs = Array.from(
+                document.querySelectorAll('[data-mode-tab]')
+            );
+            const panels = Array.from(
+                document.querySelectorAll('[data-mode-panel]')
+            );
+            const nav = document.querySelector('.tabs');
+            function setMode(mode) {
+                window.__uiMode = mode;
+                for (const tab of tabs) {
+                    tab.classList.toggle(
+                        'active',
+                        tab.dataset.modeTab === mode
+                    );
+                }
+                for (const panel of panels) {
+                    panel.classList.toggle(
+                        'hidden',
+                        panel.dataset.modePanel !== mode
+                    );
+                }
+                if (nav)
+                    nav.classList.toggle(
+                        'hidden',
+                        mode === 'cargo'
+                    );
+                if (
+                    window.subHaulerTrim &&
+                    window.subHaulerTrim.setPaused
+                )
+                    window.subHaulerTrim.setPaused(
+                        mode !== 'pilot'
+                    );
+            }
+            window.subHaulerSetMode = setMode;
+            for (const tab of tabs) {
+                tab.addEventListener('click', () => {
+                    setMode(tab.dataset.modeTab);
+                });
+            }
+            setMode('pilot');
+        })();
+    </script>
+</body>
+</html>
