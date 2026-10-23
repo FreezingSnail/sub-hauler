@@ -11,8 +11,8 @@
 //   3. Fill [bssEnd + 1, paintTop] with 0xA5 with interrupts disabled.
 //   4. Re-enable interrupts and run kRepresentativeFrames of the normal
 //      poll/update/render/present path, including FX cart reads. The M6 chart
-//      and sonar paths and the M7 mine/current and damage/particle frames
-//      follow in the same measured window.
+//      and sonar paths, the M7 mine/current, damage/particle, and shop frames,
+//      and the M8 title/all-hull art path follow in the same measured window.
 //   5. Scan upward from bssEnd + 1 for the lowest byte that is no longer
 //      0xA5. That address is the stack high-water mark.
 //   6. reserve = highWater - bssEnd. Print one bare P when the reserve is at
@@ -60,6 +60,9 @@
 #if SH_FEATURE_PARTICLES
 #include "src/particles.hpp"
 #endif
+#if SH_FEATURE_MULTI_HULL
+#include "src/roster_view.hpp"
+#endif
 
 #ifndef SH_STACK_DIAG
 #define SH_STACK_DIAG 0
@@ -72,9 +75,9 @@ Arduboy2 arduboy;
 
 #if SH_FEATURE_STATIONS && SH_FEATURE_JOBS && SH_FEATURE_CARGO_LOAD && SH_FEATURE_FOG_CHART && SH_FEATURE_SONAR && SH_FEATURE_MINES && SH_FEATURE_CURRENTS && SH_FEATURE_SHOP && SH_FEATURE_HULL_DAMAGE && SH_FEATURE_PARTICLES && SH_FEATURE_MULTI_HULL
 // The full AVR state budget is pinned here: M7 hazard state (71 B), the
-// one-byte damage cooldown, the 16-byte particle pool, and the three run-only
-// shop level bytes.
-static_assert(sizeof(game::State) == 91, "full game::State is 91 bytes on AVR");
+// one-byte damage cooldown, the 16-byte particle pool, the three run-only shop
+// level bytes, and the M8 hull-class byte.
+static_assert(sizeof(game::State) == 92, "full game::State is 92 bytes on AVR");
 #endif
 
 #if SH_FEATURE_FOG_CHART
@@ -88,9 +91,8 @@ chart::State probeChart;
 namespace {
 
 // Re-baselined from 800 B to 600 B on 2026-10-23, after the 258 B persistent
-// chart slice entered the full image. The chart+sonar+hazard+damage+shop probe
-// measures 606 B, so 600 B keeps a deliberate 6 B margin over the measurement
-// while remaining well above the measured stack depth.
+// chart slice entered the full image. The chart+sonar+hazard+damage+shop+title
+// probe measures 601 B, so 600 B stays the pass line with 1 B of margin.
 constexpr uint16_t kReserveTarget = 600;   // bytes of stack reserve required
 constexpr uint8_t kFrameGuard = 64;        // active-frame headroom, never painted
 constexpr uint8_t kPattern = 0xA5;
@@ -113,6 +115,16 @@ __attribute__((noinline)) void runRepresentativePath() {
     world::TileCache cache;
     world::clearCache(cache);
     game::resetWorld(state);
+
+#if SH_FEATURE_MULTI_HULL
+    // Title path: draw every class silhouette through the real selection screen
+    // (no cart reads), then fly the largest body for the pilot frames below.
+    for (uint8_t index = 0; index < roster::kClassCount; ++index) {
+        roster_view::draw(static_cast<uint8_t>(roster::classAt(index)));
+        FX::display(CLEAR_BUFFER);
+    }
+    state.hullClass = static_cast<uint8_t>(roster::kLeviathan);
+#endif
 
     for (uint16_t frame = 0; frame < kRepresentativeFrames; ++frame) {
         arduboy.pollButtons();

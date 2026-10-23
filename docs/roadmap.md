@@ -26,23 +26,26 @@ rewriting the game.
 
 ## Current baseline
 
-Measured 2026-10-22 with the existing template:
+Measured 2026-10-23 at the M8 roster checkpoint:
 
 | Resource | Current | Planning ceiling | Hardware limit |
 | --- | ---: | ---: | ---: |
-| Flash | 6,636 B | 28,000 B | 29,696 B |
-| Static SRAM | 1,214 B | 1,700 B | 2,560 B |
-| Stack | unmeasured | ≥600 B reserve | remainder |
+| Flash | 27,962 B | 29,000 B | 29,696 B |
+| Static SRAM | 1,689 B | 1,700 B | 2,560 B |
+| Stack | 601 B probe reserve | ≥600 B reserve | remainder |
 
 The 1,700 B static ceiling is a planning target, not a hardware fact. It was
-raised from 1,680 B on 2026-10-23 at the M7 damage/particles checkpoint. At the
-M7 shop checkpoint the full image is **1,690 B static / 27,082 B flash**: the
-three run-only shop level bytes add 3 B, offset by a 10 B compiler jump-table
-saving from the station row-label if-chain. The 10 B of headroom under 1,700 B
-is intentional slack for LTO rounding, not a licence for another state slice;
-the 600 B stack target is unchanged and still passes at 606 B. The flash
-planning ceiling rises from 27,000 B to 28,000 B (918 B under the 29,696 B
-hardware limit). Any future persistent feature beyond this needs a carve.
+raised from 1,680 B on 2026-10-23 at the M7 damage/particles checkpoint. The M8
+roster adds one hull-class byte but removes the chart blink and cargo B-hold
+bytes and makes the stateless cargo reader local, so static RAM moves from
+1,690 B to **1,689 B**. The 11 B of headroom under 1,700 B is intentional slack
+for LTO rounding, not a licence for another state slice; the 600 B stack target
+is unchanged and the roster-inclusive probe measures **601 B**, a 1 B margin.
+
+The flash planning ceiling rises from 28,000 B to **29,000 B** on 2026-10-23
+for the M8 roster and its title/art slice (696 B under the 29,696 B hardware
+limit). The full image measures **27,962 B**, just 38 B under the old 28,000 B
+line before the raise. Any future persistent feature still needs a carve.
 
 Whole-image measurements only: LTO makes per-symbol arithmetic misleading. Use
 `make size` and record profile A/B deltas.
@@ -438,6 +441,59 @@ real shop purchase and draw frame: it reports **`stack_reserve=606`**, passing
 the **600 B** target with 6 B of margin, and prints a bare `P`. All four device
 suites print `P`. No screenshot or frame-rate claim.
 
+### M8 roster checkpoint — 2026-10-23
+
+`sub-hauler-m8-roster` adds the boot title selection and the three class pilot
+silhouettes. Holds, cargo scales, and per-class arrangements remain the
+`m8-holds` task; the cargo screen still loads HAULER arrangement 0.
+
+- **Roster record** lives in `src/roster.hpp` as pure ids and constexpr
+  helpers: MINNOW 64x16 / 24x7 pilot, HAULER 94x22 / 26x8 pilot, LEVIATHAN
+  118x30 / 26x8 pilot. Display-name widths, one-letter codes, wrap order, and
+  `sanitize()` are host-testable. HAULER is the default in every build.
+- **Title screen** is `src/roster_view.hpp`: class name at y=6, playable
+  silhouette at x=51/y=18, `LEN <n>` at y=34, and `D-PAD HULL  A GO` at y=54.
+  All geometry is inside 128x64 and clears the stat/hint lines. The device
+  draw path owns the three `F()` names; host-only names are compiled out on
+  AVR.
+- **Input:** left/right cycle the roster with wrap, A confirms and draws the
+  first pilot frame, and B backs out to the HAULER default. The title has no
+  world step and no cart reads. The selection is stored in
+  `game::State.hullClass`, so it survives every dock/undock for the run.
+- **Art** is shared between title and pilot through
+  `pilot_view::drawAt()`. Every class stays inside the shared 26x8 collision
+  footprint, keeps a cargo stripe when loaded, and mirrors for facing. MINNOW
+  is a 24x7 shuttle; HAULER and LEVIATHAN are 26x8. Adjacent fill rows and an
+  if-chain (instead of a three-case switch) keep the art and dispatch cheap
+  without changing any silhouette or layout.
+- **`MULTI_HULL=0`** removes the title `Screen` value, the hull-class byte, the
+  state/reset field, the title strings, and both extra art functions. The
+  build boots directly to Pilot. The linked binary for the A/B build contains
+  no `MINNOW`/`LEVIATHAN` strings and no `drawMinnow`/`drawLeviathan` symbols.
+
+Budget: `sizeof(game::State)` is **92 B** on AVR in the full profile (91 B
+plus `hullClass`). The full image is **27,962 B flash / 1,689 B static**.
+A full A/B build with only `MULTI_HULL=0` measures **27,042 B / 1,688 B**, so
+the roster is **+920 B flash / +1 B static**. Against the M7 shop checkpoint
+the full image grows **+880 B flash and shrinks 1 B static**: the hull-class
+byte is offset by removing `s_chartBlink`, removing `s_cargoBHold` (the cargo
+screen reuses `s_stationRow`), and making the stateless cargo reader local.
+
+`lean` measures **24,962 B / 1,679 B** (`MULTI_HULL=1`), `core`
+**22,368 B / 1,420 B**, and `min` **10,568 B / 1,259 B** (both `MULTI_HULL=0`;
+the HAULER-only art/fill rework also trims the older profiles). The flash
+planning ceiling rises from 28,000 B to **29,000 B** with 696 B still under the
+29,696 B hardware limit; static stays under the **1,700 B** ceiling with 11 B
+of headroom.
+
+Host tests: **147** full, **114** lean, **90** core, **44** min;
+`make test-tools` passes **75**. `make gen-check` is deterministic. The full
+device suite (`test_boot`, `test_cargo`, `test_memory`, `test_world`) prints
+`P`. `test_memory` now draws all three title screens and flies the LEVIATHAN
+silhouette through the measured pilot frames; with `SH_STACK_DIAG=1` it reports
+**`stack_reserve=601`**, passing the unchanged **600 B** target with a 1 B
+margin. No screenshot or frame-rate claim.
+
 ### Harness sentinel proof — 2026-10-22
 
 A temporary `SH_FEATURE_SENTINEL` block put a unique string
@@ -569,6 +625,17 @@ not also count as a station action. The chart, station, and cargo screens never
 route A to the sonar. A docked boat is rejected by the pure rule even if a
 future screen calls it. Station A remains SELECT/confirm and B remains UNDOCK;
 cargo keeps its `A+B` commit.
+
+M8 roster resolution (2026-10-23): the boot title is the selection screen.
+Left/right cycles MINNOW/HAULER/LEVIATHAN with wrap, A confirms, and B backs
+out to the HAULER default; the title root has no previous screen. The
+selection persists in `game::State.hullClass` across every dock/undock for the
+run. HAULER remains the default. All three classes share the 26x8 collision
+footprint and draw a 24-26 px pilot silhouette inside it (MINNOW 24x7, HAULER
+26x8, LEVIATHAN 26x8); cargo stripes and facing mirroring are preserved. With
+`MULTI_HULL=0` the title, class strings, art, and state byte compile out and the
+build boots straight to Pilot. Holds, scales, and arrangements remain the
+`m8-holds` task; the cargo screen still loads HAULER arrangement 0.
 
 ## Feature flags
 
@@ -907,7 +974,7 @@ deltas against the same profile with the feature disabled.
 | shop | +994 | -7 | 2026-10-23 | AIR TANK 60 / HULL PLATE 70 / SONAR 50, max level 3, refill/repair on buy; +3 B state offset by a 10 B row-label jump-table saving; full A/B |
 | hull damage | +464 | +2 | 2026-10-23 | 16 px/s wall threshold, 24-tick cooldown, 12-tick edge flash, zero-hull valid, repair clamp; A/B with particles off; +2 B is the hull byte plus the cooldown |
 | particles | +398 | +16 | 2026-10-23 | fixed 4-slot pool (3 B/slot + 4 B anchor), deterministic corner spawn, 1 px/tick, ±24 px clamp, 14-tick max life; A/B with hull damage on |
-| multi-hull | — | — | — | |
+| multi-hull | +920 | +1 | 2026-10-23 | boot title with left/right selection, A confirm, B back-to-default; MINNOW/HAULER/LEVIATHAN 24-26 px pilot art, hull-class byte; full A/B (`MULTI_HULL=0` 27,042 B / 1,688 B); `sizeof(game::State)` 92 B; title/class strings and art compile out; linked binary clean |
 
 The mine and current A/B deltas share 8 B of LTO folding: both enabled is
 +1,574 B, not +1,582 B. The chart `initialised` carve (-1 B) offsets the mine
@@ -931,6 +998,7 @@ Record the profile matrix separately:
 | 2026-10-23 | M7 hazards | 25,334 | 1,680 | `test_memory` P (chart + sonar + mine + current path, 641 B under 600 B target) | full; lean 23,760/1,679; core 22,038/1,420; min 10,584/1,259; full still at the static ceiling after the chart-byte carve |
 | 2026-10-23 | M7 damage/particles | 26,088 | 1,697 | `test_memory` P (chart + sonar + mine + current + damage/particle path, 616 B under 600 B target) | full; lean 24,096/1,680; core 22,394/1,421; min 10,586/1,259; ceiling raised to 1,700 B with 3 B headroom |
 | 2026-10-23 | M7 shop | 27,082 | 1,690 | `test_memory` P (chart + sonar + mine + current + damage/particle + shop path, 606 B under 600 B target) | full; SHOP=0 full 26,088/1,697; lean 24,096/1,680; core 22,394/1,421; min 10,586/1,259; flash ceiling raised to 28,000 B |
+| 2026-10-23 | M8 roster | 27,962 | 1,689 | `test_memory` P (chart + sonar + mine + current + damage/particle + shop + title/all-hull art path, 601 B under 600 B target) | full; `MULTI_HULL=0` full 27,042/1,688; lean 24,962/1,679; core 22,368/1,420; min 10,568/1,259; `sizeof(game::State)` 92 B; flash ceiling raised to 29,000 B with 696 B hardware headroom; static 11 B under 1,700 B |
 
 ## Verification gates
 
@@ -975,7 +1043,8 @@ Before content freeze:
   the required load is complete.
 - Whether job holds stay full four units or support partial holds.
 - Number of cave layouts; one fixed layout initially.
-- Hull selection location (title, drydock, or station row).
+- Hull selection location: resolved to the boot title screen (left/right
+  cycles, A confirms); drydock rows remain reserved for cargo holds.
 - Chart save in v1; currently deferred.
 - Final flash/static ceilings after stack measurement.
 

@@ -17,6 +17,10 @@
 #include "src/render.hpp"
 #include "src/world_fx.hpp"
 
+#if SH_FEATURE_MULTI_HULL
+#include "src/roster_view.hpp"
+#endif
+
 #if SH_FEATURE_STATIONS
 #include "src/station.hpp"
 #include "src/station_view.hpp"
@@ -45,11 +49,14 @@ static game::State s_state;
 static world::FxTables s_tables;
 static world::TileCache s_cache;
 
-// The screen tag exists whenever a second screen can be reached. With both
-// station and chart features off the pilot frame is the only path, matching the
-// pre-feature image exactly.
-#if SH_FEATURE_STATIONS || SH_FEATURE_FOG_CHART
+// The screen tag exists whenever more than one screen can be reached. With
+// stations, chart, and multi-hull all off the pilot frame is the only path,
+// matching the pre-feature image exactly.
+#if SH_FEATURE_STATIONS || SH_FEATURE_FOG_CHART || SH_FEATURE_MULTI_HULL
 enum class Screen : uint8_t {
+#if SH_FEATURE_MULTI_HULL
+    Title,
+#endif
     Pilot,
 #if SH_FEATURE_STATIONS
     Station,
@@ -65,22 +72,26 @@ enum class Screen : uint8_t {
 #endif
 };
 
+#if SH_FEATURE_MULTI_HULL
+static Screen s_screen = Screen::Title;
+#else
 static Screen s_screen = Screen::Pilot;
+#endif
 #endif
 
 #if SH_FEATURE_STATIONS
+// The station row byte is screen-owned: station/shop use it for row selection;
+// the cargo screen reuses it as its B-hold counter while that screen is active.
+// Cargo returns always restore a valid station row, so there is no extra timer.
 static uint8_t s_stationRow = station::kFirstRow;
 #if SH_FEATURE_CARGO_LOAD
-static cargo::FxCargoReader s_cargoReader;
 static cargo_screen::State s_cargo;
-static uint8_t s_cargoBHold = 0;
 constexpr uint8_t kCargoExitHold = 40; // 0.67 s at 60 fps
 #endif
 #endif
 
 #if SH_FEATURE_FOG_CHART
 static chart::State s_chart;
-static uint8_t s_chartBlink = 0;
 #endif
 
 static void drawPilot() {
@@ -89,11 +100,43 @@ static void drawPilot() {
     hud::draw(s_state);
 }
 
+#if SH_FEATURE_MULTI_HULL
+// Title frame: no world step and no cart reads. Left/right cycles the roster,
+// A confirms and draws the first pilot frame, and B backs to the HAULER
+// default. The selection lives in game::State, so it survives every
+// dock/undock for the rest of the run.
+static void updateTitle() {
+    roster::HullClass hull = roster::sanitize(static_cast<roster::HullClass>(s_state.hullClass));
+
+    if (arduboy.justPressed(LEFT_BUTTON))
+        hull = roster::previous(hull);
+    if (arduboy.justPressed(RIGHT_BUTTON))
+        hull = roster::next(hull);
+    // B backs out of a non-default choice. Title is the root screen, so the
+    // only sensible back target is the safe HAULER default.
+    if (arduboy.justPressed(B_BUTTON))
+        hull = roster::kDefault;
+
+    s_state.hullClass = static_cast<uint8_t>(hull);
+
+    if (arduboy.justPressed(A_BUTTON)) {
+        s_screen = Screen::Pilot;
+        drawPilot();
+        return;
+    }
+
+    roster_view::draw(s_state.hullClass);
+}
+#endif
+
 #if SH_FEATURE_FOG_CHART
 // The chart is a paused map: cart water reads happen here, before the single
 // display transaction, and no world step runs.
 static void drawChart() {
-    chart_view::draw(Arduboy2Base::sBuffer, s_chart, s_state, s_tables, s_chartBlink);
+    // The frame counter is the blink phase: no extra state, and a paused chart
+    // still redraws deterministically from the frame number rather than the
+    // frozen simulation clock.
+    chart_view::draw(Arduboy2Base::sBuffer, s_chart, s_state, s_tables, static_cast<uint8_t>(Arduboy2Base::frameCount));
 }
 #endif
 
@@ -104,7 +147,6 @@ static void updateFlight() {
     // B only opens the chart in free flight. Consume the edge before sampling
     // flight input so travel, air, and ballast do not tick on that frame.
     if (arduboy.justPressed(B_BUTTON)) {
-        s_chartBlink = 0;
         s_screen = Screen::Chart;
         drawChart();
         return;
@@ -161,8 +203,8 @@ static void updateFlight() {
 
 #if SH_FEATURE_FOG_CHART
 // Chart frame: no world step, so travel time/air/ballast/jobClock are frozen
-// and D-pad/A are contained. B closes. The blink counter is frame-owned
-// because game::State.ticks cannot advance while the chart is open.
+// and D-pad/A are contained. B closes. The destination X blinks from the
+// Arduboy frame counter because game::State.ticks cannot advance here.
 static void updateChart() {
     if (arduboy.justPressed(B_BUTTON)) {
         s_screen = Screen::Pilot;
@@ -170,7 +212,6 @@ static void updateChart() {
         return;
     }
 
-    ++s_chartBlink;
     drawChart();
 }
 #endif
@@ -181,10 +222,14 @@ static void updateChart() {
 // happens here in update, before the single display transaction. Failure
 // leaves the station board selected on LOAD CARGO so A retries.
 static bool enterCargo() {
-    if (!cargo_screen::load(s_cargo, s_cargoReader))
+    // The reader is stateless; keep it local instead of charging a static byte.
+    cargo::FxCargoReader reader;
+    if (!cargo_screen::load(s_cargo, reader))
         return false;
     s_screen = Screen::Cargo;
-    s_cargoBHold = 0;
+    // Reuse the station row byte as the zeroed B-hold counter. Every cargo exit
+    // restores the station row before the station screen is drawn again.
+    s_stationRow = 0;
     cargo_view::draw(s_cargo.puzzle, s_cargo.selected, s_cargo.message);
     return true;
 }
@@ -282,15 +327,16 @@ static void updateShop() {
 // open. A+B with nothing held is LOAD & UNDOCK. R/N are omitted because the
 // Arduino pad has no spare key.
 static void updateCargo() {
+    // s_stationRow doubles as the B-hold counter only while this screen is
+    // active. The station row is not read here, and both exits restore it.
     if (arduboy.pressed(B_BUTTON)) {
-        if (s_cargoBHold < 255)
-            ++s_cargoBHold;
+        if (s_stationRow < 255)
+            ++s_stationRow;
     } else {
-        s_cargoBHold = 0;
+        s_stationRow = 0;
     }
 
-    if (s_cargoBHold >= kCargoExitHold) {
-        s_cargoBHold = 0;
+    if (s_stationRow >= kCargoExitHold) {
         s_screen = Screen::Station;
         // Back/cancel leaves the job open and selects the safe LOAD CARGO row.
         s_stationRow = station::initialRow(s_state);
@@ -315,7 +361,6 @@ static void updateCargo() {
     if (cargo_handoff::commitPressed(input) && s_cargo.puzzle.held < 0) {
         const cargo_handoff::Result result = cargo_handoff::commit(s_state, s_cargo);
         if (result == cargo_handoff::kCommitted) {
-            s_cargoBHold = 0;
             s_screen = Screen::Pilot;
             s_stationRow = station::kFirstRow;
             drawPilot();
@@ -353,6 +398,13 @@ void loop() {
         return;
     arduboy.pollButtons();
 
+#if SH_FEATURE_MULTI_HULL
+    // Title boots the run and owns hull selection. It has no world step and no
+    // cart reads; A draws the first pilot frame before the display transaction.
+    if (s_screen == Screen::Title)
+        updateTitle();
+    else
+#endif
 #if SH_FEATURE_FOG_CHART
     // Chart is a pilot sub-screen, so the dispatch gains one branch while the
     // station/cargo chain keeps its shape.

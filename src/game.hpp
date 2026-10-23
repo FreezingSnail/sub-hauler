@@ -3,6 +3,7 @@
 #include <stdint.h>
 
 #include "features.hpp"
+#include "roster.hpp"
 
 // Pure submarine rules. No Arduino headers: this file is compiled into the
 // host test binary and the firmware from the same source.
@@ -147,6 +148,11 @@ struct State {
 #endif
     int16_t air;        // integer units, 0..airCapacity(state)
     uint8_t cargo;      // 0..4
+#if SH_FEATURE_MULTI_HULL
+    // Selected roster class, owned by the title screen and kept across
+    // dock/undock. One byte; the damage hull byte above is unrelated.
+    uint8_t hullClass;
+#endif
     bool facingLeft;
     uint16_t ticks;
     uint8_t ballastCarry;    // 0..59 fractional ballast units
@@ -320,6 +326,9 @@ inline void reset(State &state) {
 #endif
     state.air = airCapacity(state);
     state.cargo = 0;
+#if SH_FEATURE_MULTI_HULL
+    state.hullClass = roster::kDefault;
+#endif
     state.facingLeft = false;
     state.ticks = 0;
     state.ballastCarry = 0;
