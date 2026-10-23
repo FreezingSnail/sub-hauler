@@ -42,7 +42,7 @@ inline void draw(const game::State &state) {
     arduboy.print(F("AIR"));
     arduboy.drawRect(kAirX, kAirY, kAirW, kAirH, WHITE);
     const uint8_t airInnerW = static_cast<uint8_t>(kAirW - 2);
-    const uint8_t airFill = static_cast<uint8_t>(static_cast<uint16_t>(state.air) * airInnerW / game::kAirCapacity);
+    const uint8_t airFill = static_cast<uint8_t>(static_cast<uint16_t>(state.air) * airInnerW / game::airCapacity(state));
     if (airFill > 0)
         arduboy.fillRect(static_cast<int16_t>(kAirX + 1), static_cast<int16_t>(kAirY + 1), airFill, static_cast<uint8_t>(kAirH - 2), WHITE);
 

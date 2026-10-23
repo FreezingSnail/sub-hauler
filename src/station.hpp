@@ -25,13 +25,13 @@
 namespace station {
 
 using game::Input;
-using game::kAirCapacity;
+using game::airCapacity;
 using game::kQ8One;
 using game::neutralFor;
 using game::snapCamera;
 using game::State;
 #if SH_FEATURE_HULL_DAMAGE
-using game::kHullMax;
+using game::hullCapacity;
 #endif
 
 // The generated dock ring is the single source of truth for both the drawn
@@ -47,24 +47,32 @@ constexpr int32_t kDockSpeedSq = static_cast<int32_t>(kDockSpeedQ8) * kDockSpeed
 // player a short window to thrust clear of the ring; this is 1.5 s at 60 Hz.
 constexpr uint8_t kUndockCooldown = 90;
 
-// Row extension point for M3 jobs. Offers occupy the leading rows; the
-// service and undock rows stay last so their actions never move when jobs are
-// compiled out. With an active contract the board instead shows a summary row
-// followed by the load/abandon/undock actions, so the board shapes are:
+// Row extension point for M3 jobs and the M7 shop. Offers occupy the leading
+// rows; SERVICE and the shop follow, and UNDOCK stays last so its action never
+// moves when jobs or the shop are compiled out. With an active contract the
+// board instead shows a summary row followed by the load/abandon/shop/undock
+// actions, so the board shapes are:
 //
-//   no job:         [offer 0] [offer 1] SERVICE UNDOCK
-//   active, cargo:  [summary] LOAD CARGO ABANDON UNDOCK
-//   active, no cargo UI: [summary] ABANDON UNDOCK
+//   no job:         [offer 0] [offer 1] SERVICE SHOP UNDOCK
+//   active, cargo:  [summary] LOAD CARGO ABANDON SHOP UNDOCK
+//   active, no cargo UI: [summary] ABANDON SHOP UNDOCK
 //
-// Only selectable rows participate in wrap-around; the summary row is inert.
+// A SHOP=0 build drops the SHOP row and leaves the M3 shapes untouched. Only
+// selectable rows participate in wrap-around; the summary row is inert.
 #if SH_FEATURE_JOBS
 constexpr uint8_t kOfferRows = game::kJobOffers;
 #else
 constexpr uint8_t kOfferRows = 0;
 #endif
 constexpr uint8_t kServiceRow = kOfferRows;
+#if SH_FEATURE_SHOP
+constexpr uint8_t kShopRow = static_cast<uint8_t>(kOfferRows + 1);
+constexpr uint8_t kUndockRow = static_cast<uint8_t>(kOfferRows + 2);
+constexpr uint8_t kStationRowCount = static_cast<uint8_t>(kOfferRows + 3);
+#else
 constexpr uint8_t kUndockRow = static_cast<uint8_t>(kOfferRows + 1);
 constexpr uint8_t kStationRowCount = static_cast<uint8_t>(kOfferRows + 2);
+#endif
 constexpr uint8_t kFirstRow = 0;
 
 #if SH_FEATURE_JOBS
@@ -72,18 +80,33 @@ constexpr uint8_t kActiveSummaryRow = 0;
 #if SH_FEATURE_CARGO_LOAD
 constexpr uint8_t kLoadRow = 1;
 constexpr uint8_t kAbandonRow = 2;
+#if SH_FEATURE_SHOP
+constexpr uint8_t kActiveShopRow = 3;
+constexpr uint8_t kActiveUndockRow = 4;
+constexpr uint8_t kActiveRowCount = 5;
+#else
+constexpr uint8_t kActiveUndockRow = 3;
+constexpr uint8_t kActiveRowCount = 4;
+#endif
+#else
+constexpr uint8_t kAbandonRow = 1;
+#if SH_FEATURE_SHOP
+constexpr uint8_t kActiveShopRow = 2;
 constexpr uint8_t kActiveUndockRow = 3;
 constexpr uint8_t kActiveRowCount = 4;
 #else
-constexpr uint8_t kAbandonRow = 1;
 constexpr uint8_t kActiveUndockRow = 2;
 constexpr uint8_t kActiveRowCount = 3;
+#endif
 #endif
 #endif
 
 enum RowKind : uint8_t {
     kRowOffer,
     kRowService,
+#if SH_FEATURE_SHOP
+    kRowShop,
+#endif
     kRowUndock
 #if SH_FEATURE_JOBS
     ,
@@ -100,6 +123,10 @@ enum Action : uint8_t {
     kActionNone,
     kActionServiced,
     kActionUndocked
+#if SH_FEATURE_SHOP
+    ,
+    kActionShop
+#endif
 #if SH_FEATURE_JOBS
     ,
     kActionAccepted,
@@ -139,6 +166,10 @@ inline RowKind rowKind(uint8_t row, const State &state) {
 #endif
         if (row == kAbandonRow)
             return kRowAbandon;
+#if SH_FEATURE_SHOP
+        if (row == kActiveShopRow)
+            return kRowShop;
+#endif
         return kRowUndock;
     }
 #endif
@@ -146,6 +177,10 @@ inline RowKind rowKind(uint8_t row, const State &state) {
         return kRowOffer;
     if (row == kServiceRow)
         return kRowService;
+#if SH_FEATURE_SHOP
+    if (row == kShopRow)
+        return kRowShop;
+#endif
     return kRowUndock;
 }
 
@@ -164,6 +199,19 @@ inline uint8_t initialRow(const State &state) {
 #endif
     return kFirstRow;
 }
+
+#if SH_FEATURE_SHOP
+// The SHOP row index depends on the board shape. The sketch uses this when B
+// backs out of the shop, so a CARGO_LOAD=0 active board returns to SHOP rather
+// than the UNDOCK row that shares the no-job index.
+inline uint8_t shopRow(const State &state) {
+#if SH_FEATURE_JOBS
+    if (jobActive(state))
+        return kActiveShopRow;
+#endif
+    return kShopRow;
+}
+#endif
 
 inline uint8_t selectableCount(const State &state) {
 #if SH_FEATURE_JOBS
@@ -230,9 +278,10 @@ inline bool nearestDock(const State &state, uint8_t &settlementId) {
 // Full tank, full hull, and neutral trim. Carries are cleared so a held valve
 // cannot move the boat on the first frame after undocking.
 inline void service(State &state) {
-    state.air = kAirCapacity;
+    state.air = airCapacity(state);
 #if SH_FEATURE_HULL_DAMAGE
-    // Clamp on repair: a hull already above kHullMax is brought back in range.
+    // Clamp on repair: a hull already above the current capacity is brought
+    // back in range, including the run's hull-plate upgrades.
     damage::repairFull(state);
 #endif
     state.ballast = static_cast<uint8_t>(neutralFor(state.cargo));
@@ -309,7 +358,8 @@ template <typename Reader> inline bool stepFlight(State &state, const Input &inp
 
 // A confirms the selected row. Offer rows accept the contract, LOAD CARGO
 // reopens the loading screen (the sketch owns that screen transition), ABANDON
-// clears the contract, SERVICE refills/repairs, and UNDOCK leaves the station.
+// clears the contract, SHOP opens the shop screen (the sketch owns it),
+// SERVICE refills/repairs, and UNDOCK leaves the station.
 inline Action activate(uint8_t selected, State &state) {
     if (state.docked < 0 || selected >= rowCount(state))
         return kActionNone;
@@ -318,6 +368,10 @@ inline Action activate(uint8_t selected, State &state) {
     case kRowService:
         service(state);
         return kActionServiced;
+#if SH_FEATURE_SHOP
+    case kRowShop:
+        return kActionShop;
+#endif
     case kRowUndock:
         return undock(state) ? kActionUndocked : kActionNone;
 #if SH_FEATURE_JOBS

@@ -21,6 +21,10 @@
 #include "src/station.hpp"
 #include "src/station_view.hpp"
 #endif
+#if SH_FEATURE_SHOP
+#include "src/shop.hpp"
+#include "src/shop_view.hpp"
+#endif
 #if SH_FEATURE_CARGO_LOAD
 #include "src/cargo_fx.hpp"
 #include "src/cargo_handoff.hpp"
@@ -49,6 +53,9 @@ enum class Screen : uint8_t {
     Pilot,
 #if SH_FEATURE_STATIONS
     Station,
+#endif
+#if SH_FEATURE_SHOP
+    Shop,
 #endif
 #if SH_FEATURE_CARGO_LOAD
     Cargo,
@@ -138,9 +145,15 @@ static void updateFlight() {
 #if SH_FEATURE_SONAR
     // A is the free-flight sonar ping. The chart branch above returns before
     // this point and a docking step returns before this point; fire() rejects
-    // a docked state as well, so the action stays out of both screens.
+    // a docked state as well, so the action stays out of both screens. The
+    // shop passes the purchased level; a SHOP=0 build passes 0.
+#if SH_FEATURE_SHOP
+    const uint8_t sonarLevel = s_state.sonarLevel;
+#else
+    const uint8_t sonarLevel = 0;
+#endif
     if (arduboy.justPressed(A_BUTTON))
-        sonar::fire(s_state, s_chart, 0);
+        sonar::fire(s_state, s_chart, sonarLevel);
 #endif
 
     drawPilot();
@@ -191,6 +204,15 @@ static void updateStation() {
             s_screen = Screen::Pilot;
             s_stationRow = station::kFirstRow;
         }
+#if SH_FEATURE_SHOP
+        else if (action == station::kActionShop) {
+            // The shop borrows s_stationRow as its 0..2 item selection.
+            s_screen = Screen::Shop;
+            s_stationRow = shop::kFirstItem;
+            shop_view::draw(s_state, s_stationRow);
+            return;
+        }
+#endif
 #if SH_FEATURE_JOBS
         else if (action == station::kActionAbandoned) {
             // The board shape changed: summary -> offers.
@@ -228,6 +250,30 @@ static void updateStation() {
     // stepping, so the first visible frame after undock is the station berth.
     drawPilot();
 }
+
+#if SH_FEATURE_SHOP
+// Shop frame: no world step and no cart reads. D-pad selects an item, A buys
+// through the pure transaction, and B backs to the station board. The selected
+// row is the reused station row byte; the shop has no other static state.
+static void updateShop() {
+    if (arduboy.justPressed(UP_BUTTON))
+        s_stationRow = shop::selectPrevious(s_stationRow);
+    if (arduboy.justPressed(DOWN_BUTTON))
+        s_stationRow = shop::selectNext(s_stationRow);
+
+    if (arduboy.justPressed(A_BUTTON))
+        shop::buy(s_state, static_cast<shop::Item>(s_stationRow));
+
+    if (arduboy.justPressed(B_BUTTON)) {
+        s_screen = Screen::Station;
+        s_stationRow = station::shopRow(s_state);
+        station_view::draw(s_state, s_stationRow);
+        return;
+    }
+
+    shop_view::draw(s_state, s_stationRow);
+}
+#endif
 
 #if SH_FEATURE_CARGO_LOAD
 // Cargo frame: fixed state is loaded once on entry, no world step. A/B and the
@@ -316,6 +362,10 @@ void loop() {
     else if (s_screen == Screen::Station)
         updateStation();
 #endif
+#if SH_FEATURE_SHOP
+    else if (s_screen == Screen::Shop)
+        updateShop();
+#endif
 #if SH_FEATURE_CARGO_LOAD
     else if (s_screen == Screen::Cargo)
         updateCargo();
@@ -326,6 +376,10 @@ void loop() {
 #if SH_FEATURE_STATIONS
     if (s_screen == Screen::Station)
         updateStation();
+#if SH_FEATURE_SHOP
+    else if (s_screen == Screen::Shop)
+        updateShop();
+#endif
 #if SH_FEATURE_CARGO_LOAD
     else if (s_screen == Screen::Cargo)
         updateCargo();

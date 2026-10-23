@@ -325,7 +325,7 @@ inline void JobsSuite(TestRunner &runner) {
         game::State state;
         game::reset(state);
         test.assertTrue(dockAt(state, origin.id), "dock at origin");
-        test.assertEqual(station::rowCount(state), game::kJobOffers + 2, "offer board shows offers, SERVICE, UNDOCK");
+        test.assertEqual(station::rowCount(state), station::kStationRowCount, "offer board shows offers, SERVICE, SHOP, UNDOCK");
         test.assertEqual(station::rowKind(station::kFirstRow, state), station::kRowOffer, "first row is an offer");
         test.assertEqual(station::rowKind(station::kServiceRow, state), station::kRowService, "SERVICE row");
         test.assertEqual(station::rowKind(station::kUndockRow, state), station::kRowUndock, "UNDOCK row");
@@ -333,7 +333,7 @@ inline void JobsSuite(TestRunner &runner) {
         test.assertEqual(station::selectNext(station::kUndockRow, state), station::kFirstRow, "offer board wraps downward");
 
         test.assertTrue(jobs::accept(state, 0), "contract accepted");
-        test.assertEqual(station::rowCount(state), station::kActiveRowCount, "active board has summary, load, ABANDON, UNDOCK");
+        test.assertEqual(station::rowCount(state), station::kActiveRowCount, "active board has summary, load, ABANDON, SHOP, UNDOCK");
         test.assertEqual(station::rowKind(station::kActiveSummaryRow, state), station::kRowJob, "summary row");
 #if SH_FEATURE_CARGO_LOAD
         test.assertEqual(station::rowKind(station::kLoadRow, state), station::kRowLoad, "LOAD CARGO row");
@@ -348,7 +348,7 @@ inline void JobsSuite(TestRunner &runner) {
         test.assertEqual(station::selectNext(station::kActiveUndockRow, state), station::initialRow(state), "active board wraps downward");
         test.assertEqual(station::activate(station::kActiveSummaryRow, state), station::kActionNone, "summary row is inert");
         test.assertEqual(station::activate(station::kAbandonRow, state), station::kActionAbandoned, "ABANDON action works");
-        test.assertEqual(station::rowCount(state), game::kJobOffers + 2, "board returns to offers after abandonment");
+        test.assertEqual(station::rowCount(state), station::kStationRowCount, "board returns to offers after abandonment");
         runner.add(test);
     }
 }

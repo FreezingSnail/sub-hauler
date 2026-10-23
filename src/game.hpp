@@ -37,11 +37,17 @@ constexpr int16_t kNeutralPerCargo = 5;  // neutral falls 5 per cargo unit
 
 constexpr int16_t kAirCapacity = 180;       // integer air units at full tank
 constexpr uint16_t kAirDrainTicks = 100;    // 0.6 units/s -> one unit per 100 ticks
+#if SH_FEATURE_SHOP
+constexpr int16_t kAirCapacityPerLevel = 30;    // air-tank upgrade step
+#endif
 
 #if SH_FEATURE_HULL_DAMAGE
 // Browser startHp. Damage sources arrive with SH_FEATURE_HULL_DAMAGE (M7);
 // the station already repairs the value so the M3 board has a real readout.
 constexpr uint8_t kHullMax = 6;
+#if SH_FEATURE_SHOP
+constexpr uint8_t kHullCapacityPerLevel = 1;    // hull-plate upgrade step
+#endif
 #endif
 constexpr uint8_t kBlowCarryStep = 3;       // 3.0 air units/s while blowing
 constexpr uint8_t kBallastCarryStep = 18;   // 18 ballast units/s blow or flood
@@ -139,7 +145,7 @@ struct State {
     // by exactly these two bytes (1,678 -> 1,680 B).
     uint8_t sonarCooldown;   // flight ticks until the next ping is allowed
 #endif
-    int16_t air;        // integer units, 0..kAirCapacity
+    int16_t air;        // integer units, 0..airCapacity(state)
     uint8_t cargo;      // 0..4
     bool facingLeft;
     uint16_t ticks;
@@ -164,7 +170,7 @@ struct State {
     uint8_t dockCooldown;    // flight ticks before auto-dock is armed again
 #endif
 #if SH_FEATURE_HULL_DAMAGE
-    uint8_t hull;            // 0..kHullMax, repaired at a station
+    uint8_t hull;            // 0..hullCapacity(state), repaired at a station
     uint8_t damageCooldown;  // flight ticks before another wall hit can damage
 #endif
 #if SH_FEATURE_PARTICLES
@@ -181,6 +187,12 @@ struct State {
     uint8_t offerCount;      // 0..kJobOffers valid entries in offers
     JobOffer offers[kJobOffers];
     ActiveJob activeJob;     // activeJob.to == kJobNone means no contract
+#endif
+#if SH_FEATURE_SHOP
+    // Run-only shop levels: three bytes, no save field, no extra UI state.
+    uint8_t airLevel;
+    uint8_t hullLevel;
+    uint8_t sonarLevel;
 #endif
 };
 
@@ -240,6 +252,29 @@ inline void setCargo(State &state, int16_t cargo) {
     state.cargo = clampCargo(cargo);
 }
 
+// Tank and hull limits include the run-only shop upgrades. With SHOP=0 the
+// level fields do not exist and both helpers fold to the base constants, so
+// the lean/core/min paths keep their original values and code shape.
+inline int16_t airCapacity(const State &state) {
+#if SH_FEATURE_SHOP
+    return static_cast<int16_t>(kAirCapacity + kAirCapacityPerLevel * state.airLevel);
+#else
+    (void)state;
+    return kAirCapacity;
+#endif
+}
+
+#if SH_FEATURE_HULL_DAMAGE
+inline uint8_t hullCapacity(const State &state) {
+#if SH_FEATURE_SHOP
+    return static_cast<uint8_t>(kHullMax + kHullCapacityPerLevel * state.hullLevel);
+#else
+    (void)state;
+    return kHullMax;
+#endif
+}
+#endif
+
 // ---------------------------------------------------------------------------
 // Motion integration
 // ---------------------------------------------------------------------------
@@ -277,7 +312,13 @@ inline void reset(State &state) {
     state.vxQ8 = 0;
     state.vyQ8 = 0;
     state.ballast = static_cast<uint8_t>(neutralFor(0));
-    state.air = kAirCapacity;
+#if SH_FEATURE_SHOP
+    // Levels first: the capacity helpers below read them.
+    state.airLevel = 0;
+    state.hullLevel = 0;
+    state.sonarLevel = 0;
+#endif
+    state.air = airCapacity(state);
     state.cargo = 0;
     state.facingLeft = false;
     state.ticks = 0;
@@ -299,7 +340,7 @@ inline void reset(State &state) {
     state.dockCooldown = 0;
 #endif
 #if SH_FEATURE_HULL_DAMAGE
-    state.hull = kHullMax;
+    state.hull = hullCapacity(state);
     state.damageCooldown = 0;
 #endif
 #if SH_FEATURE_PARTICLES

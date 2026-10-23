@@ -17,9 +17,10 @@
 // PROGMEM strings.
 //
 // Header: settlement name and the credits placeholder.
-// Status: current air and hull.
-// Rows:   offers then SERVICE/UNDOCK, or summary/LOAD CARGO/ABANDON/UNDOCK
-//         when a contract is active. One inverted selection bar.
+// Status: current air and hull, including run-only shop upgrades.
+// Rows:   offers then SERVICE/SHOP/UNDOCK, or summary/LOAD
+//         CARGO/ABANDON/SHOP/UNDOCK when a contract is active. One inverted
+//         selection bar. The SHOP row opens the shop screen; B there returns.
 // Hint:   A confirms the row and B always undocks. With SH_FEATURE_JOBS the
 //         active board reopens the cargo screen from LOAD CARGO.
 namespace station_view {
@@ -32,12 +33,23 @@ constexpr uint8_t kStatusX = 2;
 constexpr uint8_t kHullX = 72;
 constexpr uint8_t kStatusY = 15;
 constexpr uint8_t kRowX = 4;
+#if SH_FEATURE_SHOP
+// Five rows (two offers + SERVICE + SHOP + UNDOCK) must fit above the hint:
+// header/status end at y=21, rows are 22+7*row, and the hint starts at 57.
+constexpr uint8_t kRowY0 = 22;
+constexpr uint8_t kRowStep = 7;
+constexpr uint8_t kRowInsetY = 0;
+constexpr uint8_t kRowInvertH = 7;
+constexpr uint8_t kHintX = 3;
+constexpr uint8_t kHintY = 57;
+#else
 constexpr uint8_t kRowY0 = 24;
 constexpr uint8_t kRowStep = 8;
 constexpr uint8_t kRowInsetY = 1;
 constexpr uint8_t kRowInvertH = 8;
 constexpr uint8_t kHintX = 3;
 constexpr uint8_t kHintY = 56;
+#endif
 constexpr uint8_t kOfferChars = 20; // "DEEP ANCHOR 240 5:32"
 
 // Row i's text baseline is rowY(i); the invert bar extends kRowInsetY above
@@ -47,12 +59,12 @@ constexpr uint8_t rowY(uint8_t row) {
 }
 
 static_assert(station::kStationRowCount > 0, "station board needs at least one row");
-static_assert(rowY(0) - kRowInsetY > kStatusY + 7, "rows start below the status line");
-static_assert(rowY(static_cast<uint8_t>(station::kStationRowCount - 1)) + 7 < kHintY, "last row clears the hint");
+static_assert(rowY(0) - kRowInsetY >= kStatusY + 7, "rows start below the status line");
+static_assert(rowY(static_cast<uint8_t>(station::kStationRowCount - 1)) + kRowInvertH <= kHintY, "last row clears the hint");
 #if SH_FEATURE_JOBS
-static_assert(rowY(static_cast<uint8_t>(station::kActiveRowCount - 1)) + 7 < kHintY, "active board clears the hint");
+static_assert(rowY(static_cast<uint8_t>(station::kActiveRowCount - 1)) + kRowInvertH <= kHintY, "active board clears the hint");
 #endif
-static_assert(kHintY + 7 < 64, "hint stays on screen");
+static_assert(kHintY + 7 <= 64, "hint stays on screen");
 #if SH_FEATURE_JOBS
 static_assert(kCreditsX + 8 * 6 <= 128, "CR 65535 fits at the right edge");
 #endif
@@ -80,7 +92,27 @@ inline const __FlashStringHelper *nameFor(uint8_t id) {
 }
 
 inline const __FlashStringHelper *rowLabel(uint8_t row, const game::State &state) {
-    switch (station::rowKind(row, state)) {
+    const station::RowKind kind = station::rowKind(row, state);
+#if SH_FEATURE_SHOP
+    // The shop label is folded into an if-chain instead of the switch: adding a
+    // sixth RowKind would widen the compiler's jump table by two bytes of RAM.
+    if (kind == station::kRowService)
+        return F("SERVICE");
+    if (kind == station::kRowShop)
+        return F("SHOP");
+    if (kind == station::kRowUndock)
+        return F("UNDOCK");
+#if SH_FEATURE_JOBS
+    if (kind == station::kRowAbandon)
+        return F("ABANDON");
+#if SH_FEATURE_CARGO_LOAD
+    if (kind == station::kRowLoad)
+        return F("LOAD CARGO");
+#endif
+#endif
+    return nullptr;
+#else
+    switch (kind) {
     case station::kRowService:
         return F("SERVICE");
     case station::kRowUndock:
@@ -96,6 +128,7 @@ inline const __FlashStringHelper *rowLabel(uint8_t row, const game::State &state
     default:
         return nullptr;
     }
+#endif
 }
 
 #if SH_FEATURE_JOBS
@@ -161,14 +194,14 @@ inline void draw(const game::State &state, uint8_t selected) {
     arduboy.print(F("AIR "));
     arduboy.print(state.air);
     arduboy.print('/');
-    arduboy.print(game::kAirCapacity);
+    arduboy.print(game::airCapacity(state));
 
 #if SH_FEATURE_HULL_DAMAGE
     arduboy.setCursor(kHullX, kStatusY);
     arduboy.print(F("HULL "));
     arduboy.print(state.hull);
     arduboy.print('/');
-    arduboy.print(game::kHullMax);
+    arduboy.print(game::hullCapacity(state));
 #endif
 
     const uint8_t rowCount = station::rowCount(state);

@@ -37,6 +37,9 @@
 #if SH_FEATURE_STATIONS
 #include "station_test.hpp"
 #endif
+#if SH_FEATURE_SHOP
+#include "shop_test.hpp"
+#endif
 #if SH_FEATURE_JOBS
 #include "jobs_test.hpp"
 #endif
@@ -76,6 +79,9 @@ int main() {
 #endif
 #if SH_FEATURE_STATIONS
     StationSuite(runner);
+#endif
+#if SH_FEATURE_SHOP
+    ShopSuite(runner);
 #endif
 #if SH_FEATURE_JOBS
     JobsSuite(runner);
