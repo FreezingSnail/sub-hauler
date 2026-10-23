@@ -58,6 +58,16 @@ feature code: the template has no feature-specific strings, tables, state, or
 calls yet. The matrix is the comparison baseline for every later milestone; a
 profile that fails to shrink when its features land is a harness regression.
 
+### M1 render checkpoint — 2026-10-22
+
+`sub-hauler-m1-render` replaces the template walker with the cave view:
+full/lean/core/min all measure **6,840 B flash / 1,217 B static RAM**. The
+static-only delta is +32 B of cave state (28 B `TileCache`, 4 B camera) offset
+by the removed `game::State`, so the whole-image static delta is +3 B. The tile
+atlas is 128 B `PROGMEM` and the AVR settlement metadata 36 B `PROGMEM`; name
+strings are host-only. Ardens was unavailable, so this is build/static
+evidence, not a device frame-rate measurement.
+
 ### Harness sentinel proof — 2026-10-22
 
 A temporary `SH_FEATURE_SENTINEL` block put a unique string
@@ -479,6 +489,7 @@ deltas against the same profile with the feature disabled.
 | Feature | Flash Δ | Static Δ | Measured on | Notes |
 | --- | ---: | ---: | --- | --- |
 | baseline template | 6,636 | 1,214 | 2026-10-22 | current firmware |
+| cave view (M1) | +204 | +3 | 2026-10-22 | replaces walker/ground/hero/HUD; 128 B atlas + 36 B AVR metadata in flash; 32 B runtime state |
 | stations | — | — | — | |
 | jobs | — | — | — | |
 | cargo load | — | — | — | |
@@ -496,6 +507,7 @@ Record the profile matrix separately:
 | Date | Profile | Flash | Static | Stack evidence | Notes |
 | --- | --- | ---: | ---: | --- | --- |
 | 2026-10-22 | template | 6,636 | 1,214 | none | pre-port baseline |
+| 2026-10-22 | M1 cave render | 6,840 | 1,217 | none (Ardens unavailable) | full/lean/core/min identical |
 
 ## Verification gates
 

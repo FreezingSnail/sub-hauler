@@ -165,7 +165,7 @@ Artifacts:
 | --- | ---: | --- |
 | `fxdata/tables/world.bin` | 6,400 B | 320×160 tiles, 1 bpp, 1 = solid |
 | `fxdata/tables/world-chart.bin` | 256 B | 64×32 cells, 1 bpp, 1 = water |
-| `src/generated/world.hpp` | small | constants + metadata, pure C++ |
+| `src/generated/world.hpp` | small | constants + metadata (host `constexpr`; AVR position-only `PROGMEM`) |
 
 Layout is headerless and row-major. The tile plane uses 40 B per row and the
 chart plane uses 8 B per row; byte `y * row_bytes + x / 8` holds cell `x` in
@@ -182,12 +182,53 @@ outside every settlement's 42 px dock clearance, and exact chart-mask
 consistency. `tools/tests/test_gen_world.py` covers known bytes/bits, the
 downsample rule, determinism, and corrupt-input rejection.
 
-`world.hpp` currently exposes metadata as `constexpr` arrays. On AVR an
-odr-used namespace-scope `constexpr` array can be copied into SRAM; this header
-does not claim the arrays are in flash. M1.2/M1.3 must move any metadata used by
-runtime code into the FX image or PROGMEM before device code includes it.
-`fxdata/fxdata.txt` and `tools/gen.sh` are intentionally untouched here; M1.2
-owns the flash ABI wiring and `gen-check` coverage.
+`world.hpp` metadata is split by target. Host tests get full `constexpr`
+records including settlement names. AVR code never references those arrays:
+`src/generated/world.hpp` also emits position-only `SETTLEMENT_META` and
+`MINE_META` records in `PROGMEM`, and `world::settlementInfo()`/`mineInfo()`
+read them with `pgm_read_byte`/`pgm_read_word`. This keeps both costs off SRAM:
+an odr-used namespace-scope `constexpr` array is copied into SRAM by the AVR
+startup code, and name pointers would drag their string literals along with it.
+`Settlement::name` is therefore null on device. The metadata copy is 36 B of
+program flash for four settlements; `MINE_META` is only linked when a device
+test uses it.
+
+### Cave view and visible window (M1.4)
+
+`src/cave.hpp` holds the window math and tile atlas, `src/cave_render.hpp`
+composes a frame, and `src/render.hpp` is the device entry. The view is native
+1-bit and integer-only: no float, anti-aliasing, greyscale, or scrolling.
+
+- The camera is a tile-aligned 16×8 window. `cave::cameraCenteredAtPixel()`
+  centres it and clamps the top-left tile to `[0, 304] × [0, 152]`, so the
+  window always covers exactly 128×64 pixels inside the baked map, including
+  at the origin and both far edges.
+- `world::refreshCache(cache, reader, cameraTileX - 1, cameraTileY - 1)` fills
+  the 18×10 tile cache one tile before the window. The extra ring is what makes
+  every visible tile's four neighbours available for edge selection without a
+  second cart pass.
+- Rendering walks only the 16×8 = 128 visible tiles. Nothing loops over the
+  320×160 map, and no world-sized buffer exists.
+- The 8×8 atlas is 16 tiles × 8 bytes, one byte per column in display page
+  order: **128 B in program flash, 0 B SRAM**. Index is a four-bit open-neighbour
+  mask; each open side is trimmed by one pixel and two open adjacent sides add a
+  45-degree chamfer, which rounds the rock silhouette. Interior rock gets one
+  deterministic dark pixel per tile as texture.
+- Settlements are drawn by iterating the generated ids and reading the PROGMEM
+  metadata: a station body, beam, dock ring, and clamps centred on the
+  settlement `pixel_x/pixel_y`. No name and no second position table.
+- The camera is static in M1. `refreshCache()` therefore reads the 18×10 window
+  (180 bytes, one FX transaction each) on the first frame and performs no cart
+  reads afterwards. Steady state is 128 atlas copies and the gantry rectangles,
+  composed into the display buffer before the single `FX::display(CLEAR_BUFFER)`.
+
+Measured 2026-10-22: whole image **6,840 B flash / 1,217 B static RAM**, versus
+6,636 B / 1,214 B for the template. The delta includes removing the walker,
+ground, hero, and HUD: the atlas is 128 B flash, AVR settlement metadata 36 B
+flash, and the runtime cave state is a 28 B `TileCache` plus 4 B camera. The
+static delta is only +3 B because the removed `game::State` offsets most of that
+32 B. 60 fps is not device-measured here; Ardens is unavailable, so the
+checkpoint records build/static evidence only.
 
 ## Arduboy fit
 

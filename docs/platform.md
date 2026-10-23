@@ -47,8 +47,8 @@ Method:
    64 B guard keeps the active frame and one interrupt frame out of the paint.
 3. Fill `[__bss_end + 1, paintTop]` with `0xA5` with interrupts disabled.
 4. Re-enable interrupts and run 8 frames of the real path:
-   `pollButtons` -> `game::step` -> `view::frame` (background, hero blit with FX
-   cart reads, HUD) -> `FX::display(CLEAR_BUFFER)`.
+   `pollButtons` -> `view::frame` (cave composition, FX cart reads on the first
+   frame only) -> `FX::display(CLEAR_BUFFER)`.
 5. Scan upward for the first byte that is no longer `0xA5`; that address is the
    stack high-water mark.
 6. `reserve = highWater - __bss_end`. The suite prints exactly one bare `P` when
@@ -93,7 +93,8 @@ Dated whole-image numbers are evidence, not guaranteed headroom.
 | Date | Flash | Static RAM | Toolchain / notes |
 | --- | --- | --- | --- |
 | 2026-10-20 | 6,636 B | 1,214 B | arduino-cli 1.2.0; arduboy-homemade:avr 1.4.0; AVR-GCC 7.3.0-atmel3.6.1-arduino7; `make size` |
+| 2026-10-22 | 6,840 B | 1,217 B | M1 cave render (static camera, 16x8 visible window); full/lean/core/min identical; no Ardens run |
 
-Static free SRAM is 1,346 B. No painted stack checkpoint yet: free bytes alone
+Static free SRAM is 1,343 B at the latest checkpoint. No painted stack checkpoint yet: free bytes alone
 do not prove stack fit, and the probe in `tst/fxdatatest/test_memory.ino` has
 not run on device. Re-measure after art or logic changes.

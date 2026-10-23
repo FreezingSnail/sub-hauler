@@ -225,23 +225,16 @@ inline int16_t spawnTileY() {
     return SPAWN_TILE_Y;
 }
 
-// Metadata stays in the generated header for now. These accessors copy one
-// record out; the current firmware does not call them, so the generated
-// constexpr arrays are not odr-used on device. Move the records to PROGMEM or
-// the FX image before device rendering starts calling them (see the SRAM
-// warning in generated/world.hpp).
+// Metadata accessors. The generated header owns the representation: host
+// builds copy from constexpr records, AVR builds read position-only PROGMEM
+// records (Settlement::name is null on device). Both paths return the same
+// values for the same id, and neither one drags a world-sized table into SRAM.
 inline bool settlementInfo(uint8_t id, Settlement &out) {
-    if (id >= SETTLEMENT_COUNT)
-        return false;
-    out = SETTLEMENTS[id];
-    return true;
+    return settlementMeta(id, out);
 }
 
 inline bool mineInfo(uint8_t id, Mine &out) {
-    if (id >= MINE_COUNT)
-        return false;
-    out = MINES[id];
-    return true;
+    return mineMeta(id, out);
 }
 
 static_assert(CACHE_BITS == 180, "18x10 tile cache must hold 180 tiles");
