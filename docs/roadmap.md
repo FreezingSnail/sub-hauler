@@ -1,8 +1,10 @@
 # Roadmap — Arduboy device port
 
-Status: planning. `spike-trim/` is the behavioural reference; the firmware is
-still the walking/jumping template. This document sequences the port so each
-milestone leaves a playable or testable device build.
+Status: **M9 release, content frozen 2026-10-23** at commit `4f66830`.
+`spike-trim/` remains the behavioural reference; the device firmware now
+implements the full dock → accept → load → travel → deliver loop across three
+hulls. This document sequences the port so each milestone leaves a playable or
+testable device build.
 
 ## Goal
 
@@ -26,7 +28,8 @@ rewriting the game.
 
 ## Current baseline
 
-Measured 2026-10-23 at the M9 polish checkpoint:
+Measured 2026-10-23 at the M9 release checkpoint (full profile, default
+`SAVE_CHART=0`):
 
 | Resource | Current | Planning ceiling | Hardware limit |
 | --- | ---: | ---: | ---: |
@@ -46,6 +49,12 @@ hardware limit; the M9 image is 208 B under the planning line). The aggregate
 `game::reset()` rewrite more than pays for the pause/failure/delivery code, so
 the full image is 18 B below the M8 holds checkpoint. Any future persistent
 feature still needs a carve.
+
+The release matrix is full **28,792 B / 1,690 B**, lean **25,800 B / 1,680 B**,
+core **22,244 B / 1,421 B**, min **10,456 B / 1,259 B**. The default
+`SAVE_CHART=0` image is unchanged from HEAD; the measured `SAVE_CHART=1`
+variant is **29,352 B / 1,690 B**, 344 B under hardware but 352 B over the
+planning ceiling, so the flag remains off and the overage is a recorded risk.
 
 Whole-image measurements only: LTO makes per-symbol arithmetic misleading. Use
 `make size` and record profile A/B deltas.
@@ -653,6 +662,46 @@ and all four default device suites print `P`. The save-inclusive
 `test_memory` probe reports **`stack_reserve=620`** (feature-off remains
 **624**), both above the 600 B target. No screenshot or frame-rate claim.
 
+### M9 release checkpoint — 2026-10-23
+
+`sub-hauler-m9-release` is the final gate and content freeze at HEAD
+`4f66830`. No gameplay, balance, or feature code changed; the only edits are
+this release record, `README.md`, and the stale "Arduboy fit" numbers in
+`docs/design.md`. No commit was made.
+
+- **Gate:** `make gen-check` is deterministic (no generated diff);
+  `make test` passes **156** full / **123** lean / **99** core / **46** min;
+  `make test-tools` passes **75**; `make fxtest` runs `test_boot`,
+  `test_cargo`, `test_memory`, and `test_world`, each printing `P`;
+  `make size`, `make size-matrix`, and `make mini PROFILE=full` all pass.
+- **Final matrix:** full **28,792 B flash / 1,690 B static** (`.text` 28,722 B,
+  `.data` 70 B, `.bss` 1,620 B); lean **25,800 B / 1,680 B**; core
+  **22,244 B / 1,421 B**; min **10,456 B / 1,259 B**. Mini full is the same
+  **28,792 B / 1,690 B**.
+- **Carve report:** flash is **904 B** under the 29,696 B hardware limit and
+  **208 B** under the 29,000 B planning ceiling; static is **10 B** under the
+  1,700 B planning ceiling with **870 B** of static free SRAM. The stack probe
+  reports **`stack_reserve=624`** against the **600 B** target (24 B margin).
+  `SAVE_CHART=1` is **29,352 B / 1,690 B**, 344 B under hardware but **352 B
+  over the 29,000 B planning ceiling**; it stays default **0**.
+- **Soak scope:** the permanent host loop integration exercises all three hulls
+  through accept → load a generated class arrangement → commit → auto-undock →
+  destination dock → deliver, and the existing contract/late/abandon/handoff
+  loop tests pass. Device evidence is the four-suite smoke run only. This is
+  **automated host soak plus device-suite smoke, not a manual interactive
+  playthrough**; no manual device soak is claimed.
+- **Default image:** `SAVE_CHART=0` remains the shipped default. The release
+  diff is docs-only, so the firmware inputs are unchanged from HEAD; the default
+  FX `.hex` rebuilds deterministically at SHA-256
+  `ab3929ac43e952b987dfb0391eee54e77eeda75f0811bb9765cd04a5a530e5b0`
+  (28,792 B / 1,690 B). `avr-nm` finds no float/double or heap symbols in the
+  full device ELF. The worktree has no uncommitted generated half-set.
+- **Risks carried into release:** the 10 B static headroom blocks any new
+  persistent byte-class state without a carve; the 208 B flash planning margin
+  is not enough for save; `SAVE_CHART=1` needs a ~352 B carve, a raised planning
+  ceiling under the hardware limit, or direct avr-libc EEPROM calls; and the
+  release has no manual playthrough evidence (host plus device smoke only).
+
 ### Harness sentinel proof — 2026-10-22
 
 A temporary `SH_FEATURE_SENTINEL` block put a unique string
@@ -1167,6 +1216,7 @@ Record the profile matrix separately:
 | 2026-10-23 | M8 holds | 28,810 | 1,689 | `test_memory` P (chart + sonar + mine + current + damage/particle + shop + title + all three class cargo holds, 619 B under 600 B target) | full; `MULTI_HULL=0` full 26,914/1,688; lean 25,874/1,679; core 22,242/1,420; min 10,568/1,259; `sizeof(cargo::CargoPuzzle)` 83 B, `sizeof(cargo_screen::State)` 88 B; flash 190 B under 29,000 B ceiling; static 11 B under 1,700 B |
 | 2026-10-23 | M9 polish | 28,792 | 1,690 | `test_memory` P (chart + sonar + mine + current + damage/particle + shop + title + all three class cargo holds + aggregate reset, 624 B under 600 B target) | full; lean 25,800/1,680; core 22,244/1,421; min 10,456/1,259; `sizeof(game::State)` 93 B; pause/failure screens, `lastDelivery` byte; flash 208 B under 29,000 B ceiling; static 10 B under 1,700 B |
 | 2026-10-23 | M9 chart save (`SAVE_CHART=1`) | 29,352 | 1,690 | `test_memory` P (save path included, 620 B under 600 B target); feature-off probe remains 624 B | full variant; lean 26,238/1,680; default profiles untouched at full 28,792/1,690, lean 25,800/1,680, core 22,244/1,421, min 10,456/1,259; 260 B EEPROM block, no static cost; 344 B under hardware but 352 B over the 29,000 B planning ceiling, so flag stays 0 |
+| 2026-10-23 | M9 release (freeze) | 28,792 | 1,690 | `test_memory` P, diagnostics `stack_reserve=624` (600 B target, 24 B margin) | full; lean 25,800/1,680; core 22,244/1,421; min 10,456/1,259; mini full 28,792/1,690; 904 B hardware flash free, 208 B under 29,000 B planning ceiling, 10 B static headroom, 870 B static free; all four device suites P; 156/123/99/46 host tests, 75 tool tests; no manual playthrough |
 
 ## Verification gates
 
@@ -1202,7 +1252,8 @@ Before content freeze:
 | Cargo puzzle parity drift | validate generated records and test known fixtures, not JS runtime |
 | Art flash growth | tile atlas + small pilot sprites; measure per asset; no FLEET art |
 | Scope creep from browser | browser remains reference only; no DOM/objects/localStorage ports |
-| Save complexity | default off; 260 B internal-EEPROM block adds 0 B static and writes only on chart close; enabled variant is measured separately (+560 B flash) and stays out of shipped profiles |
+| Save complexity | default off; 260 B internal-EEPROM block adds 0 B static and writes only on chart close; the measured `SAVE_CHART=1` variant is 29,352 B / 1,690 B, 344 B under hardware but 352 B over the 29,000 B planning ceiling, so it stays out of shipped profiles until a carve or ceiling decision |
+| Release planning headroom | final full image is 208 B under the 29,000 B planning ceiling and 10 B under the 1,700 B static ceiling; any new persistent state or save enablement needs a carve, not a silent ceiling raise |
 
 ## Open decisions
 
