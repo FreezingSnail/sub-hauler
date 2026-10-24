@@ -1,8 +1,8 @@
 # Design — sub-hauler
 
-Status: working design. The browser slices in `spike-trim/` are one flow:
-pilot travel, station loading, and fleet reference. The precomputed cargo-table
-plan below is the intended device path.
+Status: released design (M9 freeze, 2026-10-23). The browser slices in
+`spike-trim/` are one flow: pilot travel, station loading, and fleet reference.
+The precomputed cargo-table plan below is the shipped device path.
 
 ## Direction
 
@@ -251,14 +251,17 @@ checkpoint records build/static evidence only.
 From `docs/platform.md`:
 
 - 128×64 SSD1306, 1,024 B framebuffer.
-- 2,560 B SRAM; 1,346 B static free at the last checkpoint.
-- 29,696 B flash; current image 6,636 B flash / 1,214 B static RAM.
+- 2,560 B SRAM; **870 B** static free at the M9 release checkpoint.
+- 29,696 B flash; final image **28,792 B flash / 1,690 B static RAM**
+  (904 B flash free, 208 B under the 29,000 B planning ceiling, 10 B static
+  headroom; `test_memory` reserve **624 B** against a 600 B target).
 - No floats, no heap in device code, no cart reads during display.
 
 The arrangement tables live in external FX flash, so they do not consume
-program flash or static SRAM. The remaining work is the in-device cargo screen,
-input, and state. Measure with `make size` after adding it; do not assume the
-current headroom survives the UI.
+program flash or static SRAM. The in-device cargo screen, input, and persistent
+state are complete: 64 arrangements per hull, class holds, and the four-unit
+job handoff. Measure every future change with `make size` and `make size-matrix`;
+do not assume the remaining headroom survives another feature.
 
 ## Browser reference
 

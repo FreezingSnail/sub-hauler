@@ -26,7 +26,7 @@ Keep dated measurements in the checkpoint table instead of copying them around.
 | Resource | Limit | Measurement |
 | --- | --- | --- |
 | Program flash | 29,696 B | `.text` + `.data` from `make size` |
-| Flash planning ceiling | 29,000 B | raised from 28,000 B on 2026-10-23 for the M8 roster; 904 B under hardware after the M9 polish |
+| Flash planning ceiling | 29,000 B | raised from 28,000 B on 2026-10-23 for the M8 roster; the M9 release image has 904 B of hardware headroom and 208 B under this planning line |
 | SRAM | 2,560 B | `.data` + `.bss` static; the remainder is stack/locals |
 | Static SRAM planning ceiling | 1,700 B | dated whole-image target, raised from 1,680 B on 2026-10-23 |
 | Stack | explicit reserve | static free bytes alone do not prove stack fit |
@@ -203,6 +203,7 @@ Dated whole-image numbers are evidence, not guaranteed headroom.
 | 2026-10-23 | 27,962 B | 1,689 B | M8 roster (title selection, MINNOW/LEVIATHAN 24-26 px pilot art, one hull-class byte); full; `MULTI_HULL=0` full 27,042 B / 1,688 B, lean 24,962 B / 1,679 B, core 22,368 B / 1,420 B, min 10,568 B / 1,259 B; `sizeof(game::State)` 92 B; `test_memory` P at 601 B under the 600 B target (title + all hull art paths), other suites P |
 | 2026-10-23 | 28,792 B | 1,690 B | M9 polish (pause/failure screens, one `lastDelivery` byte, LATE/SHORT board note, aggregate `game::reset()`); full; lean 25,800 B / 1,680 B, core 22,244 B / 1,421 B, min 10,456 B / 1,259 B; `sizeof(game::State)` 93 B; `test_memory` P with `stack_reserve=624` under the 600 B target (reset path included), other suites P |
 | 2026-10-23 | 28,792 B | 1,690 B | M9 chart save default off; feature-off image is byte-identical to the M9 polish image (`.text` 28,722 B, `.data` 70 B, SHA-256 of `.hex` unchanged); `SAVE_CHART=1` full variant 29,352 B / 1,690 B (+560 B flash, +0 B static), lean variant 26,238 B / 1,680 B (+438 B); `test_memory` with save path P at 620 B for the variant and 624 B with the flag off; 75 tool tests; full/lean/core/min device suites P |
+| 2026-10-23 | 28,792 B | 1,690 B | M9 release freeze at `4f66830`: full gate passes; full/lean/core/min **28,792 / 25,800 / 22,244 / 10,456 B** flash and **1,690 / 1,680 / 1,421 / 1,259 B** static; mini full 28,792 B / 1,690 B; 156/123/99/46 host tests, 75 tool tests, four device suites P; `test_memory` diagnostics `stack_reserve=624` (600 B target, 24 B margin); 904 B hardware flash free, 208 B under 29,000 B, 10 B static headroom; default `SAVE_CHART=0` FX `.hex` rebuild SHA-256 `ab3929ac43e952b987dfb0391eee54e77eeda75f0811bb9765cd04a5a530e5b0` (deterministic across two builds; docs-only diff from HEAD); no manual playthrough |
 
 Static free SRAM is **870 B** at the latest checkpoint. `chart::State` is
 256 B, the sonar fields add 2 B, the mine mask adds 1 B, the damage cooldown

@@ -11,16 +11,51 @@ live in [`docs/design.md`](docs/design.md). The device-port sequence and
 compile-time feature-flag plan live in
 [`docs/roadmap.md`](docs/roadmap.md).
 
+## Release status — 2026-10-23
+
+Content is frozen at commit `4f66830` (`sub-hauler-m9-save`). The M9 release
+gate passes with every profile building, all host/tool tests green, and all
+four device suites printing `P` through Ardens. No manual interactive
+playthrough or manual device soak was run; the soak evidence is the permanent
+host loop test across all three hulls plus the device-suite smoke run.
+
+| Profile | Flash | Static RAM | Notes |
+| --- | ---: | ---: | --- |
+| `full` | 28,792 B | 1,690 B | 904 B under hardware; 208 B under the 29,000 B planning ceiling |
+| `lean` | 25,800 B | 1,680 B | no currents, mines, particles, shop, or save |
+| `core` | 22,244 B | 1,421 B | single HAULER, no fog/sonar/multi-hull |
+| `min` | 10,456 B | 1,259 B | pilot + cave only |
+
+Flash hardware limit is **29,696 B**; static planning ceiling is **1,700 B**
+with **10 B** headroom and **870 B** of static free SRAM. The stack probe
+(`test_memory`, full profile) reports **`stack_reserve=624`** against the
+unchanged **600 B** target. `make mini PROFILE=full` builds the same
+28,792 B / 1,690 B image for the Arduboy Mini.
+
+`SH_FEATURE_SAVE_CHART` remains default **0** and is inactive in every shipped
+profile; the release diff is docs-only, so the firmware inputs — and the
+default `.hex` and size — are unchanged from HEAD. The measured
+`SAVE_CHART=1` variant is 29,352 B / 1,690 B, which fits hardware (344 B free)
+but is 352 B over the 29,000 B planning ceiling, so enabling it requires a
+recorded carve or an explicit release-ceiling decision.
+
 ## Walkthrough
 
 ```sh
 make gen          # images/*.png -> fxdata/Sprites.txt + fxdata.bin + headers
+make gen-check    # regeneration must be byte-identical
 make build        # dist/<profile>/<project>.ino.hex + .elf
-make test         # host rules tests
-make fxtest       # device smoke test through Ardens
-make run          # Ardens with the ELF + FX image
+make test         # host rules tests (156 full / 123 lean / 99 core / 46 min)
+make test-tools   # Python tooling tests (75)
+make fxtest       # device smoke test through Ardens (4 suites, each P)
 make size         # flash/RAM headroom
+make size-matrix  # build and report full, lean, core, min
+make mini         # Arduboy Mini firmware for the selected profile
+make run          # Ardens with the ELF + FX image
 ```
+
+Full release gate: `make gen-check`, `make test`, `make test-tools`,
+`make fxtest`, `make size`, `make size-matrix`, and `make mini PROFILE=full`.
 
 ## Feature profiles
 
