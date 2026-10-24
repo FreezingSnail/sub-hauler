@@ -226,6 +226,14 @@ inline void draw(const game::State &state, uint8_t selected) {
 
     arduboy.setCursor(kHintX, kHintY);
 #if SH_FEATURE_JOBS
+    // A failed delivery replaces the control hint until the next accept or
+    // abandon. Treat it as a transient board note, not a permanent flag.
+    if (jobs::deliveryFailed(state)) {
+        arduboy.print(F("LATE/SHORT"));
+        return;
+    }
+#endif
+#if SH_FEATURE_JOBS
 #if SH_FEATURE_CARGO_LOAD
     // The M5 board reopens the cargo screen from LOAD CARGO, so the same row
     // hint works for offer and active shapes.

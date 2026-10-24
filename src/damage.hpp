@@ -34,6 +34,20 @@ inline bool hardWallSpeed(int16_t speedQ8) {
     return speedQ8 >= kWallDamageSpeedQ8;
 }
 
+// Zero hull is the failure trigger. The sketch checks this only in free flight;
+// a docked boat is serviced before the screen sees it.
+inline bool lost(const game::State &state) {
+    return state.hull == 0;
+}
+
+inline bool lostInFlight(const game::State &state) {
+#if SH_FEATURE_STATIONS
+    return lost(state) && state.docked < 0;
+#else
+    return lost(state);
+#endif
+}
+
 // Subtract at most the remaining hull. Repeated calls are safe and never wrap.
 inline void applyDamage(game::State &state, uint8_t amount) {
     state.hull = amount >= state.hull ? 0 : static_cast<uint8_t>(state.hull - amount);

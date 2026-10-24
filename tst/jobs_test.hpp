@@ -8,6 +8,9 @@
 #include "../src/jobs.hpp"
 #include "../src/station.hpp"
 #include "../src/world.hpp"
+#if SH_FEATURE_SHOP
+#include "../src/shop.hpp"
+#endif
 #include "test.hpp"
 #include "world_test.hpp"
 
@@ -147,6 +150,7 @@ inline void JobsSuite(TestRunner &runner) {
         game::reset(state);
         test.assertTrue(dockAt(state, origin.id), "dock at the offer station");
         test.assertTrue(!station::jobActive(state), "no contract at a fresh dock");
+        test.assertEqual(state.lastDelivery, jobs::kDeliveryNone, "a fresh run has no delivery note");
 
         const uint16_t creditsBefore = state.credits;
         const uint8_t offersBefore = state.offerCount;
@@ -189,6 +193,7 @@ inline void JobsSuite(TestRunner &runner) {
         test.assertTrue(dockAt(state, origin.id), "dock succeeds");
         test.assertTrue(!jobs::abandon(state), "abandon is inert without a contract");
         test.assertTrue(jobs::accept(state, 0), "contract accepted");
+        state.lastDelivery = jobs::kDeliveryFailed; // simulate a stale note before abandon
 
         const uint16_t credits = state.credits;
         test.assertEqual(station::activate(station::kAbandonRow, state), station::kActionAbandoned, "A on ABANDON clears the contract");
@@ -196,6 +201,7 @@ inline void JobsSuite(TestRunner &runner) {
         test.assertEqual(state.cargo, 0, "hold is cleared");
         test.assertEqual(state.offerCount, game::kJobOffers, "offers are refreshed");
         test.assertEqual(state.credits, credits, "abandonment pays nothing");
+        test.assertEqual(state.lastDelivery, jobs::kDeliveryNone, "abandon clears the delivery note");
         runner.add(test);
     }
 
@@ -219,6 +225,8 @@ inline void JobsSuite(TestRunner &runner) {
         test.assertTrue(!station::jobActive(state), "contract is cleared after delivery");
         test.assertEqual(state.cargo, 0, "delivered hold is cleared");
         test.assertEqual(state.offerCount, game::kJobOffers, "destination offers are refreshed");
+        test.assertEqual(state.lastDelivery, jobs::kDeliveryPaid, "paid delivery records success");
+        test.assertTrue(!jobs::deliveryFailed(state), "a paid delivery has no failure note");
         runner.add(test);
     }
 
@@ -241,6 +249,10 @@ inline void JobsSuite(TestRunner &runner) {
         test.assertTrue(!station::jobActive(state), "late contract is cleared");
         test.assertEqual(state.cargo, 0, "late hold is cleared");
         test.assertEqual(state.offerCount, game::kJobOffers, "offers are refreshed");
+        test.assertEqual(state.lastDelivery, jobs::kDeliveryFailed, "late delivery records the failure");
+        test.assertTrue(jobs::deliveryFailed(state), "late delivery shows the LATE/SHORT note");
+        test.assertEqual(station::activate(station::kFirstRow, state), station::kActionAccepted, "acceptance clears the note");
+        test.assertTrue(!jobs::deliveryFailed(state), "the note does not outlive acceptance");
         runner.add(test);
     }
 
@@ -261,6 +273,8 @@ inline void JobsSuite(TestRunner &runner) {
         test.assertEqual(state.deliveries, 0, "a short hold does not count");
         test.assertTrue(!station::jobActive(state), "failed contract is cleared");
         test.assertEqual(state.cargo, 0, "failed hold is cleared");
+        test.assertEqual(state.lastDelivery, jobs::kDeliveryFailed, "short hold records the failure");
+        test.assertTrue(jobs::deliveryFailed(state), "short hold shows the LATE/SHORT note");
         runner.add(test);
     }
 
@@ -314,6 +328,47 @@ inline void JobsSuite(TestRunner &runner) {
         for (uint8_t i = 0; i < 10; ++i)
             station::stepFlight(state, idle(), fake);
         test.assertEqual(state.jobClock, static_cast<uint32_t>(flightClock + 10), "job clock advances one tick per flight step");
+        runner.add(test);
+    }
+
+    {
+        Test test("balance: every contract is reachable on one tank and pays for an upgrade");
+        game::State fresh;
+        game::reset(fresh);
+        test.assertTrue(fresh.air > 0, "a fresh run starts with air");
+#if SH_FEATURE_HULL_DAMAGE
+        test.assertTrue(fresh.hull > 0, "a fresh run starts with hull");
+#endif
+
+        for (uint8_t originId = 0; originId < world::settlementCount(); ++originId) {
+            world::Settlement origin;
+            test.assertTrue(world::settlementInfo(originId, origin), "origin metadata loads");
+
+            game::State state;
+            game::reset(state);
+            test.assertTrue(jobs::refreshOffers(state, originId), "offers generate for the balance check");
+
+            for (uint8_t i = 0; i < state.offerCount; ++i) {
+                world::Settlement destination;
+                test.assertTrue(world::settlementInfo(state.offers[i].to, destination), "destination metadata loads");
+
+                const int32_t dx = static_cast<int32_t>(destination.pixel_x) - origin.pixel_x;
+                const int32_t dy = static_cast<int32_t>(destination.pixel_y) - origin.pixel_y;
+                const uint16_t distancePixels = jobs::isqrt32(static_cast<uint32_t>(dx * dx + dy * dy));
+                const uint16_t loadedSpeed = static_cast<uint16_t>(game::topSpeedQ8For(game::kJobCrates) / game::kQ8One);
+                const uint32_t straightTicks = static_cast<uint32_t>(distancePixels) * game::kStepHz / loadedSpeed;
+                const uint32_t airTicks = static_cast<uint32_t>(game::kAirCapacity) * game::kAirDrainTicks;
+
+                test.assertTrue(loadedSpeed > 0, "a loaded boat still moves");
+                test.assertTrue(state.offers[i].deadline > straightTicks, "deadline exceeds straight-line travel");
+                test.assertTrue(state.offers[i].deadline <= airTicks, "a full tank covers the whole deadline");
+#if SH_FEATURE_SHOP
+                test.assertTrue(state.offers[i].reward >= shop::kSonarPrice, "a contract pays for the cheapest upgrade");
+                test.assertTrue(state.offers[i].reward >= shop::kAirPrice, "a contract pays for an air tank");
+                test.assertTrue(state.offers[i].reward >= shop::kHullPrice, "a contract pays for a hull plate");
+#endif
+            }
+        }
         runner.add(test);
     }
 

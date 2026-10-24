@@ -188,6 +188,7 @@ struct State {
 #if SH_FEATURE_JOBS
     uint16_t credits;
     uint16_t deliveries;
+    uint8_t lastDelivery;    // jobs::DeliveryResult from the last resolved contract
     uint16_t offerSerial;    // deterministic offer generator cursor
     uint32_t jobClock;       // flight ticks; paused while docked
     uint8_t offerCount;      // 0..kJobOffers valid entries in offers
@@ -311,34 +312,17 @@ inline void advanceAxis(int16_t &position, int16_t &fracQ12, int16_t velocityQ8)
 // ---------------------------------------------------------------------------
 
 inline void reset(State &state) {
+    // Zero the whole aggregate first, then restore the non-zero defaults. This
+    // keeps every byte (including inactive feature state) deterministic without
+    // a long field-by-field clear in the device image.
+    state = State{};
     state.x = kSpawnX;
     state.y = kSpawnY;
-    state.xFrac = 0;
-    state.yFrac = 0;
-    state.vxQ8 = 0;
-    state.vyQ8 = 0;
     state.ballast = static_cast<uint8_t>(neutralFor(0));
-#if SH_FEATURE_SHOP
-    // Levels first: the capacity helpers below read them.
-    state.airLevel = 0;
-    state.hullLevel = 0;
-    state.sonarLevel = 0;
-#endif
     state.air = airCapacity(state);
-    state.cargo = 0;
 #if SH_FEATURE_MULTI_HULL
     state.hullClass = roster::kDefault;
 #endif
-    state.facingLeft = false;
-    state.ticks = 0;
-    state.ballastCarry = 0;
-    state.airBlowCarry = 0;
-    state.airDrainTicks = 0;
-    state.cameraX = 0;
-    state.cameraY = 0;
-    state.impactSpeedQ8 = 0;
-    state.impactAxis = 0;
-    state.impacts = 0;
 #if SH_FEATURE_MINES
     // The generated world ships MINE_COUNT = 8, so all bits start armed.
     // hazards::reset() masks this to MINE_COUNT for callers that need it.
@@ -346,43 +330,12 @@ inline void reset(State &state) {
 #endif
 #if SH_FEATURE_STATIONS
     state.docked = -1;
-    state.dockCooldown = 0;
 #endif
 #if SH_FEATURE_HULL_DAMAGE
     state.hull = hullCapacity(state);
-    state.damageCooldown = 0;
-#endif
-#if SH_FEATURE_PARTICLES
-    state.particles.x = 0;
-    state.particles.y = 0;
-    for (uint8_t i = 0; i < kParticleCount; ++i) {
-        state.particles.particle[i].dx = 0;
-        state.particles.particle[i].dy = 0;
-        state.particles.particle[i].life = 0;
-    }
-#endif
-#if SH_FEATURE_SONAR
-    state.sonarCooldown = 0;
-    state.sonarPings = 0;
 #endif
 #if SH_FEATURE_JOBS
-    state.credits = 0;
-    state.deliveries = 0;
-    state.offerSerial = 0;
-    state.jobClock = 0;
-    state.offerCount = 0;
-    for (uint8_t i = 0; i < kJobOffers; ++i) {
-        state.offers[i].from = 0;
-        state.offers[i].to = kJobNone;
-        state.offers[i].crates = 0;
-        state.offers[i].reward = 0;
-        state.offers[i].deadline = 0;
-    }
     state.activeJob.to = kJobNone;
-    state.activeJob.crates = 0;
-    state.activeJob.reward = 0;
-    state.activeJob.deadline = 0;
-    state.activeJob.acceptedAt = 0;
 #endif
 }
 

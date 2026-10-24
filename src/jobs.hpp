@@ -52,6 +52,12 @@ enum DeliveryResult : uint8_t {
     kDeliveryFailed
 };
 
+// True only for the most recent failed delivery, so the station board can show
+// its one-line LATE/SHORT note. Accepting or abandoning clears it.
+inline bool deliveryFailed(const State &state) {
+    return state.lastDelivery == kDeliveryFailed;
+}
+
 // Integer square root. World distances fit comfortably in 16 bits, but the
 // squared numerator uses 32-bit arithmetic to avoid overflow.
 inline uint16_t isqrt32(uint32_t value) {
@@ -214,6 +220,7 @@ inline bool accept(State &state, uint8_t offerIndex) {
     state.activeJob.reward = offer.reward;
     state.activeJob.deadline = offer.deadline;
     state.activeJob.acceptedAt = state.jobClock;
+    state.lastDelivery = kDeliveryNone;
 
 #if SH_FEATURE_CARGO_LOAD
     // M5 handoff: the accepted contract owns an empty hold until the cargo
@@ -246,6 +253,7 @@ inline bool abandon(State &state) {
     clearActive(state);
     game::setCargo(state, 0);
     state.ballast = static_cast<uint8_t>(game::neutralFor(state.cargo));
+    state.lastDelivery = kDeliveryNone;
     refreshOffers(state, static_cast<uint8_t>(state.docked));
     return true;
 }
@@ -272,6 +280,7 @@ inline DeliveryResult deliver(State &state, uint8_t stationId) {
     clearActive(state);
     game::setCargo(state, 0);
     state.ballast = static_cast<uint8_t>(game::neutralFor(state.cargo));
+    state.lastDelivery = paid ? kDeliveryPaid : kDeliveryFailed;
     return paid ? kDeliveryPaid : kDeliveryFailed;
 }
 

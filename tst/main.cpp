@@ -5,6 +5,7 @@
 #include "damage_test.hpp"
 #include "features.hpp"
 #include "game_test.hpp"
+#include "pause_test.hpp"
 #include "pilot_view_test.hpp"
 #include "roster_test.hpp"
 #include "roster_view_test.hpp"
@@ -59,6 +60,7 @@ int main() {
     CaveSuite(runner);
     CollisionSuite(runner);
     DamageSuite(runner);
+    PauseSuite(runner);
     GameSuite(runner);
     PilotViewSuite(runner);
     RosterSuite(runner);
