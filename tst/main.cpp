@@ -26,6 +26,7 @@
 #include "chart_test.hpp"
 #include "chart_view_test.hpp"
 #endif
+#include "chart_save_test.hpp"
 
 #if SH_FEATURE_SONAR
 #include "sonar_test.hpp"
@@ -81,6 +82,7 @@ int main() {
     ChartSuite(runner);
     ChartViewSuite(runner);
 #endif
+    ChartSaveSuite(runner);
 #if SH_FEATURE_SONAR
     SonarSuite(runner);
     SonarViewSuite(runner);

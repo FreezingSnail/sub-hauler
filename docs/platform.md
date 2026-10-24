@@ -123,8 +123,10 @@ hull-class byte, and the M9 last-delivery byte. Disabling `HULL_DAMAGE` removes
 the hull and cooldown bytes (2 B); disabling `PARTICLES`
 removes the 16 B pool; disabling `SHOP` removes the three level bytes and,
 through the row-label if-chain, saves a further 10 B of compiler jump table.
-Any further persistent state needs a carve of existing state first; there is no
-room for another 256 B-class feature.
+Any further **SRAM** persistent state needs a carve of existing state first;
+there is no room for another 256 B-class feature. The optional chart save is
+not SRAM: its 260 B block lives in EEPROM, so it is the one M9 addition that
+does not consume the 10 B static headroom.
 
 The suite builds with `make fxtest-build FXTEST_ONLY=test_memory`; rerun it
 after render/state changes:
@@ -142,8 +144,42 @@ dated high-water result in the checkpoint table after that run.
 - Cart reads happen in update/render, never during an OLED transaction.
 - Normal presents once per frame with `FX::display(CLEAR_BUFFER)` after
   rendering; that call is the display transaction.
-- `FX::begin(FX_DATA_PAGE)` opens the cart image. Use `FX_SAVE_PAGE` when a save
-  partition is added.
+- `FX::begin(FX_DATA_PAGE)` opens the cart image. Use `FX_SAVE_PAGE` only if a
+  future cart-partition save is added; the M9 chart save uses the internal
+  EEPROM and needs no cart-page change.
+
+## Save data
+
+`SH_FEATURE_SAVE_CHART` (default `0`, requires `SH_FEATURE_FOG_CHART`) persists
+the explored chart in the ATmega32u4's internal 1,024 B EEPROM. Internal EEPROM
+is the right fit for this slice: the block is only 260 B, it needs no cart-page
+allocation or FX layout regeneration, and it does not add SPI traffic. The
+`FX_SAVE_PAGE` guidance above applies only if a future save grows past the
+internal EEPROM or needs cart-sized state.
+
+Layout, frozen as version 1 with no migration:
+
+| Offset | Bytes | Meaning |
+| --- | ---: | --- |
+| 0 | 1 | magic `'S'` (0x53) |
+| 1 | 1 | magic `'H'` (0x48) |
+| 2 | 1 | version `1` |
+| 3 | 1 | CRC-8/ATM (poly 0x07, init 0) over the 256 explored bytes |
+| 4 | 256 | explored mask, identical to `chart::State.explored` |
+
+`chart_save::load()` validates magic, version, and the whole checksum before
+copying, so a blank EEPROM (`0xFF`), corrupt block, or wrong version is ignored
+and the reset chart stays empty; there is no partial load. The sketch calls it
+once in `setup()` after `resetRun()`, and calls `chart_save::save()` only on the
+chart-close transition (B while the paused chart is open). No flight, station,
+cargo, display, or per-frame path writes EEPROM.
+
+The device adapter is `chart_save::EepromStorage`, wrapping `EEPROM.read()` and
+`EEPROM.update()`. `update()` skips unchanged bytes, so a repeat close pays only
+for newly explored cells. The first save after a blank EEPROM writes all 260
+bytes; at the AVR's ~3.3 ms per byte that is a one-time ~0.86 s pause at the
+chart-close transition, not in the frame loop. The save adds **0 B of static
+SRAM**: the adapter is a stateless stack object and the block lives in EEPROM.
 
 ## Measurement checkpoints
 
@@ -166,29 +202,38 @@ Dated whole-image numbers are evidence, not guaranteed headroom.
 | 2026-10-23 | 27,082 B | 1,690 B | M7 shop (AIR TANK 60, HULL PLATE 70, SONAR 50, max level 3, refill/repair on buy, SHOP station row, Screen::Shop); full; SHOP=0 full 26,088 B / 1,697 B, lean 24,096 B / 1,680 B, core 22,394 B / 1,421 B, min 10,586 B / 1,259 B; `sizeof(game::State)` 91 B; `test_memory` P at 606 B under the 600 B target (chart + sonar + mine + current + damage/particle + shop in probe), other suites P |
 | 2026-10-23 | 27,962 B | 1,689 B | M8 roster (title selection, MINNOW/LEVIATHAN 24-26 px pilot art, one hull-class byte); full; `MULTI_HULL=0` full 27,042 B / 1,688 B, lean 24,962 B / 1,679 B, core 22,368 B / 1,420 B, min 10,568 B / 1,259 B; `sizeof(game::State)` 92 B; `test_memory` P at 601 B under the 600 B target (title + all hull art paths), other suites P |
 | 2026-10-23 | 28,792 B | 1,690 B | M9 polish (pause/failure screens, one `lastDelivery` byte, LATE/SHORT board note, aggregate `game::reset()`); full; lean 25,800 B / 1,680 B, core 22,244 B / 1,421 B, min 10,456 B / 1,259 B; `sizeof(game::State)` 93 B; `test_memory` P with `stack_reserve=624` under the 600 B target (reset path included), other suites P |
+| 2026-10-23 | 28,792 B | 1,690 B | M9 chart save default off; feature-off image is byte-identical to the M9 polish image (`.text` 28,722 B, `.data` 70 B, SHA-256 of `.hex` unchanged); `SAVE_CHART=1` full variant 29,352 B / 1,690 B (+560 B flash, +0 B static), lean variant 26,238 B / 1,680 B (+438 B); `test_memory` with save path P at 620 B for the variant and 624 B with the flag off; 75 tool tests; full/lean/core/min device suites P |
 
 Static free SRAM is **870 B** at the latest checkpoint. `chart::State` is
 256 B, the sonar fields add 2 B, the mine mask adds 1 B, the damage cooldown
 adds 1 B, the four-particle pool adds 16 B, the run-only shop levels add 3 B,
-the M8 hull class adds 1 B, and the M9 last-delivery byte adds 1 B. The M8
-sketch removes the chart blink byte and the cargo B-hold byte and makes the
-stateless cargo reader local; the M9 aggregate reset does not add persistent
-state. The whole-image static total is **1,690 B**. The chart, sonar, mine,
-current, damage/particle, shop, title/roster, holds, and reset paths are all
-inside the fixed probe with the explored set owned statically; the probe
-measures a **624 B** reserve and prints `P` under the **600 B** target
-re-baselined on 2026-10-23. The firmware reserve is about **640 B** (870 B
-static free minus an estimated 230 B stack depth); the test's stack locals
-(`game::State`, cargo state, tile cache) are static in the firmware, so they
-must not be subtracted a second time. The planning ceiling is **1,700 B**: the
-full image has 10 B of headroom. The M9 polish is **-18 B flash / +1 B static**
-against the M8 holds checkpoint: the pause/failure/delivery additions are
-offset by the aggregate reset rewrite, and the one byte is `lastDelivery`.
-`MULTI_HULL` adds **+920 B flash / +1 B static** against the same full image
-with the flag off (27,042 B / 1,688 B); the flash planning ceiling stays at
-**29,000 B** (696 B under hardware) for the M8 content slice. Core and min
-measure 22,244 B / 1,421 B and 10,456 B / 1,259 B because the roster collapses
-to HAULER and no class strings or art are linked. Any future persistent state
-still needs a carve rather than another byte-class allocation. The probe does
-not print the exact high-water byte unless `SH_STACK_DIAG=1`; static free bytes
-are still not a stack measurement.
+the M8 hull class adds 1 B, and the M9 last-delivery byte adds 1 B. The M9
+chart save adds **0 B**: its 260 B block is EEPROM and its adapter is a
+stateless stack object. The M8 sketch removes the chart blink byte and the
+cargo B-hold byte and makes the stateless cargo reader local; the M9 aggregate
+reset does not add persistent state. The whole-image static total is
+**1,690 B**. The chart, sonar, mine, current, damage/particle, shop,
+title/roster, holds, and reset paths are all inside the fixed probe with the
+explored set owned statically; the probe measures a **624 B** reserve and
+prints `P` under the **600 B** target re-baselined on 2026-10-23. The
+firmware reserve is about **640 B** (870 B static free minus an estimated
+230 B stack depth); the test's stack locals (`game::State`, cargo state, tile
+cache) are static in the firmware, so they must not be subtracted a second
+time. The planning ceiling is **1,700 B**: the full image has 10 B of headroom.
+The M9 polish is **-18 B flash / +1 B static** against the M8 holds checkpoint:
+the pause/failure/delivery additions are offset by the aggregate reset rewrite,
+and the one byte is `lastDelivery`. The optional chart save is **+560 B flash /
++0 B static** on the full profile (`SAVE_CHART=1` 29,352 B / 1,690 B): it fits
+the 29,696 B hardware limit with **344 B** free but is **352 B over the
+29,000 B planning ceiling**, so `SAVE_CHART` stays `0` in every shipped
+profile until a carve or a later release decision. The `SAVE_CHART=1`
+`test_memory` run reports **620 B** with the save path included; the default
+feature-off probe still reports **624 B**. `MULTI_HULL` adds **+920 B flash /
++1 B static** against the same full image with the flag off (27,042 B /
+1,688 B); the flash planning ceiling stays at **29,000 B** (696 B under
+hardware) for the M8 content slice. Core and min measure 22,244 B / 1,421 B and
+10,456 B / 1,259 B because the roster collapses to HAULER and no class strings
+or art are linked. Any future persistent state still needs a carve rather than
+another byte-class allocation. The probe does not print the exact high-water
+byte unless `SH_STACK_DIAG=1`; static free bytes are still not a stack
+measurement.

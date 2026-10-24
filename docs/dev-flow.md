@@ -59,6 +59,9 @@ hardware and resource facts live in `docs/platform.md`.
 ## Save data
 
 - `FX::begin(FX_DATA_PAGE)` is the single-argument form.
-- For a save partition, regenerate with `FX_SAVE_PAGE` and add a versioned,
-  checksummed save block. Writes belong on transitions, never in the per-frame
-  path.
+- The optional chart save uses the internal EEPROM: a 260 B versioned,
+  checksummed block loaded once in setup and written only on the chart-close
+  transition. It adds no static RAM and no cart-page allocation.
+- For a future save that outgrows internal EEPROM, regenerate with
+  `FX_SAVE_PAGE` and keep the versioned, checksummed block. Writes belong on
+  transitions, never in the per-frame path.
