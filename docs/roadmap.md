@@ -666,8 +666,8 @@ and all four default device suites print `P`. The save-inclusive
 
 `sub-hauler-m9-release` is the final gate and content freeze at HEAD
 `4f66830`. No gameplay, balance, or feature code changed; the only edits are
-this release record, `README.md`, and the stale "Arduboy fit" numbers in
-`docs/design.md`. No commit was made.
+this release record plus `README.md`, `docs/platform.md`, and the stale
+"Arduboy fit" numbers in `docs/design.md`. No commit was made.
 
 - **Gate:** `make gen-check` is deterministic (no generated diff);
   `make test` passes **156** full / **123** lean / **99** core / **46** min;
