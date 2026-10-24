@@ -41,6 +41,9 @@
 #include "src/chart.hpp"
 #include "src/chart_view.hpp"
 #endif
+#if SH_FEATURE_SAVE_CHART
+#include "src/chart_save.hpp"
+#endif
 #if SH_FEATURE_SONAR
 #include "src/sonar.hpp"
 #endif
@@ -161,6 +164,16 @@ __attribute__((noinline)) void runRepresentativePath() {
         chart_view::draw(Arduboy2Base::sBuffer, probeChart, state, tables, blink);
         FX::display(CLEAR_BUFFER);
     }
+#if SH_FEATURE_SAVE_CHART
+    // Save path: persist and reload the same probe chart through the real
+    // EEPROM adapter. The save is included in the measured window because it
+    // runs on the chart-close transition, not inside the frame loop. A blank
+    // or corrupt EEPROM block is ignored by load(), so the probe still works
+    // after a fresh flash.
+    chart_save::EepromStorage saveStorage;
+    chart_save::load(probeChart, saveStorage);
+    chart_save::save(probeChart, saveStorage);
+#endif
 #endif
 
 #if SH_FEATURE_SONAR

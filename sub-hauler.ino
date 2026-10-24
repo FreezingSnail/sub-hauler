@@ -40,6 +40,9 @@
 #include "src/chart.hpp"
 #include "src/chart_view.hpp"
 #endif
+#if SH_FEATURE_SAVE_CHART
+#include "src/chart_save.hpp"
+#endif
 #if SH_FEATURE_SONAR
 #include "src/sonar.hpp"
 #endif
@@ -115,6 +118,24 @@ static void resetRun() {
     chart::revealInitial(s_chart, s_state);
 #endif
 }
+
+#if SH_FEATURE_SAVE_CHART
+// Load once from EEPROM during setup. A blank, corrupt, wrong-version, or
+// wrong-checksum block is ignored and the reset chart stays empty; the loader
+// validates the whole block before copying, so there is never a partial map.
+static void loadChartSave() {
+    chart_save::EepromStorage storage;
+    chart_save::load(s_chart, storage);
+}
+
+// Persist only on the chart-close transition. Nothing in the per-frame flight,
+// station, cargo, or display path calls this. EEPROM.update skips bytes whose
+// value already matches, so repeat closes only pay for newly explored cells.
+static void saveChartOnClose() {
+    chart_save::EepromStorage storage;
+    chart_save::save(s_chart, storage);
+}
+#endif
 
 #if SH_FEATURE_STATIONS || SH_FEATURE_FOG_CHART || SH_FEATURE_MULTI_HULL || SH_FEATURE_HULL_DAMAGE
 // Paused/failure frames deliberately draw no world and read no cart: the
@@ -289,6 +310,9 @@ static void updateFlight() {
 // Arduboy frame counter because game::State.ticks cannot advance here.
 static void updateChart() {
     if (arduboy.justPressed(B_BUTTON)) {
+#if SH_FEATURE_SAVE_CHART
+        saveChartOnClose();
+#endif
         s_screen = Screen::Pilot;
         drawPilot();
         return;
@@ -475,6 +499,12 @@ void setup() {
     FX::setCursorRange(0, 32767);
 
     resetRun();
+
+#if SH_FEATURE_SAVE_CHART
+    // Restore the explored set once at boot; resetRun() already revealed the
+    // spawn, and a valid save overwrites that with the exact stored mask.
+    loadChartSave();
+#endif
 }
 
 void loop() {

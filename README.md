@@ -84,9 +84,13 @@ SPI handoff after them.
 
 ## Save data
 
-`FX::begin(FX_DATA_PAGE)` is the single-argument form. If the game needs a
-save partition, regenerate with `FX_SAVE_PAGE` and add a checksummed EEPROM
-save module. Keep writes out of the per-frame path.
+`FX::begin(FX_DATA_PAGE)` is the single-argument form. The optional chart save
+(`SH_FEATURE_SAVE_CHART`, default `0`) lives in the ATmega32u4 internal EEPROM
+as a 260 B versioned, CRC-8-checked block; it loads once in setup and writes
+only when the paused chart closes. It needs no `FX_SAVE_PAGE` and adds no static
+RAM. Only if a future save outgrows internal EEPROM or needs cart-sized state
+should the image be regenerated with `FX_SAVE_PAGE`. Keep writes out of the
+per-frame path.
 
 ## Layout
 

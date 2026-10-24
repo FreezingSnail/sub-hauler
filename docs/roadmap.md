@@ -601,6 +601,58 @@ device suites print `P`. The memory probe covers the new reset path through
 **`stack_reserve=624`**, passing the 600 B target with 24 B of margin. No
 screenshot or frame-rate claim.
 
+### M9 save checkpoint — 2026-10-23
+
+`sub-hauler-m9-save` adds optional chart persistence behind
+`SH_FEATURE_SAVE_CHART` (default `0`, requires `FOG_CHART`). The flag stays off
+in every shipped profile: the feature is available for a later release
+decision, but the M9 image is measured both ways and the default gate does not
+depend on it.
+
+- **Storage decision:** the ATmega32u4 internal 1,024 B EEPROM, not an FX
+  cart partition. The block is 260 B, needs no `FX_SAVE_PAGE` regeneration, no
+  cart-page allocation, and no SPI traffic. An FX save partition remains the
+  option only if a future save outgrows internal EEPROM or needs cart-sized
+  state.
+- **Layout:** a four-byte versioned header (`'S'`, `'H'`, version `1`, CRC-8/ATM
+  over the explored bytes) followed by the exact 256 B `chart::State.explored`
+  mask. No migration: version 1 is the only accepted layout.
+- **Validation:** load checks magic, version, and the whole CRC before copying,
+  so blank (`0xFF`), corrupt data, a bad checksum, or a bad version all return
+  false and leave the reset chart empty. There is never a partial map. The
+  sketch loads once in `setup()` after `resetRun()`.
+- **Writes:** only when B closes the paused chart (`updateChart`). The flight,
+  station, cargo, shop, failure, pause, and display paths never call the save.
+  `EEPROM.update` skips unchanged bytes, so repeat closes only write newly
+  explored cells; the first blank-EEPROM save writes all 260 B (~0.86 s at
+  ~3.3 ms/byte) on that one transition, not in the frame loop.
+- **Feature-off proof:** `SAVE_CHART=0` compiles the include, calls, adapter,
+  layout, and tests out. The resulting full `.hex` is byte-identical to the M9
+  polish image (same `.text` 28,722 B and `.data` 70 B; no EEPROM functions in
+  `avr-nm`). The host suite compiles `chart_save.hpp` in every profile and adds
+  one feature-off assertion.
+- **State:** `chart_save::EepromStorage` is stateless; no new static SRAM. The
+  260 B block is EEPROM only.
+
+Budget: the default profiles do not change: full **28,792 B flash / 1,690 B
+static**, lean **25,800 B / 1,680 B**, core **22,244 B / 1,421 B**, min
+**10,456 B / 1,259 B**. With `SAVE_CHART=1`, full is **29,352 B flash / 1,690 B
+static** (**+560 B flash, +0 B static**) and lean is **26,238 B / 1,680 B**
+(**+438 B**). The enabled variant has **344 B** of hardware flash headroom but
+is **352 B over the 29,000 B planning ceiling**, which is recorded rather than
+hidden; keeping the flag off is the release-safe choice. Options if it must
+ship enabled: carve ~352 B from existing UI/data, accept a raised planning
+ceiling up to the hardware limit, or replace the Arduino EEPROM wrapper with
+direct avr-libc byte calls (not done here; the task specifies `EEPROM.read/
+update`).
+
+Host tests: **156** full, **123** lean, **99** core, **46** min in the default
+feature-off profiles; the full `SAVE_CHART=1` variant runs **159**, lean
+**126**. `make test-tools` passes **75**, `make gen-check` is deterministic,
+and all four default device suites print `P`. The save-inclusive
+`test_memory` probe reports **`stack_reserve=620`** (feature-off remains
+**624**), both above the 600 B target. No screenshot or frame-rate claim.
+
 ### Harness sentinel proof — 2026-10-22
 
 A temporary `SH_FEATURE_SENTINEL` block put a unique string
@@ -1047,7 +1099,10 @@ Acceptance:
 Tasks:
 
 - Add optional chart save (`SAVE_CHART`) with checksummed writes on stable
-  transitions; keep writes out of the frame loop.
+  transitions; keep writes out of the frame loop. Implemented 2026-10-23
+  behind a default-off flag (260 B internal-EEPROM block); not enabled in any
+  shipped profile because the enabled full variant is 352 B over the planning
+  ceiling.
 - Add title/pause flow, clearer failure states, and final HUD text.
 - Run full device suite, stack paint, and a soak run.
 - Balance jobs/shop; freeze the content set.
@@ -1084,6 +1139,7 @@ deltas against the same profile with the feature disabled.
 | multi-hull | +920 | +1 | 2026-10-23 | boot title with left/right selection, A confirm, B back-to-default; MINNOW/HAULER/LEVIATHAN 24-26 px pilot art, hull-class byte; full A/B (`MULTI_HULL=0` 27,042 B / 1,688 B); `sizeof(game::State)` 92 B; title/class strings and art compile out; linked binary clean |
 | cargo holds (M8) | +848 | +0 | 2026-10-23 | class holds MINNOW 6x3/7 px, HAULER 11x3/6 px, LEVIATHAN 14x4/5 px; dynamic cutaway, blocked-cell masks from `puzzle.hold`, selected-class load and reopen; full A/B vs M8 roster; `MULTI_HULL=0` full 26,914 B / 1,688 B; `sizeof(cargo::CargoPuzzle)` 83 B, `sizeof(cargo_screen::State)` 88 B; no generator change |
 | M9 polish | -18 | +1 | 2026-10-23 | no new flag; pause/failure screens, `lastDelivery` byte, LATE/SHORT board note, one-byte state; aggregate `game::reset()` rewrite pays for the UI; vs M8 holds whole image (28,810 B / 1,689 B) |
+| chart save (M9) | +560 | +0 | 2026-10-23 | optional `SAVE_CHART=1`; 260 B internal-EEPROM block (4 B magic/version/CRC-8 header + 256 B explored), load once in setup, write only on chart close; full A/B 28,792 → 29,352 B; default off and feature-off image byte-identical; 344 B under hardware but 352 B over the 29,000 B planning ceiling |
 
 The mine and current A/B deltas share 8 B of LTO folding: both enabled is
 +1,574 B, not +1,582 B. The chart `initialised` carve (-1 B) offsets the mine
@@ -1110,6 +1166,7 @@ Record the profile matrix separately:
 | 2026-10-23 | M8 roster | 27,962 | 1,689 | `test_memory` P (chart + sonar + mine + current + damage/particle + shop + title/all-hull art path, 601 B under 600 B target) | full; `MULTI_HULL=0` full 27,042/1,688; lean 24,962/1,679; core 22,368/1,420; min 10,568/1,259; `sizeof(game::State)` 92 B; flash ceiling raised to 29,000 B with 696 B hardware headroom; static 11 B under 1,700 B |
 | 2026-10-23 | M8 holds | 28,810 | 1,689 | `test_memory` P (chart + sonar + mine + current + damage/particle + shop + title + all three class cargo holds, 619 B under 600 B target) | full; `MULTI_HULL=0` full 26,914/1,688; lean 25,874/1,679; core 22,242/1,420; min 10,568/1,259; `sizeof(cargo::CargoPuzzle)` 83 B, `sizeof(cargo_screen::State)` 88 B; flash 190 B under 29,000 B ceiling; static 11 B under 1,700 B |
 | 2026-10-23 | M9 polish | 28,792 | 1,690 | `test_memory` P (chart + sonar + mine + current + damage/particle + shop + title + all three class cargo holds + aggregate reset, 624 B under 600 B target) | full; lean 25,800/1,680; core 22,244/1,421; min 10,456/1,259; `sizeof(game::State)` 93 B; pause/failure screens, `lastDelivery` byte; flash 208 B under 29,000 B ceiling; static 10 B under 1,700 B |
+| 2026-10-23 | M9 chart save (`SAVE_CHART=1`) | 29,352 | 1,690 | `test_memory` P (save path included, 620 B under 600 B target); feature-off probe remains 624 B | full variant; lean 26,238/1,680; default profiles untouched at full 28,792/1,690, lean 25,800/1,680, core 22,244/1,421, min 10,456/1,259; 260 B EEPROM block, no static cost; 344 B under hardware but 352 B over the 29,000 B planning ceiling, so flag stays 0 |
 
 ## Verification gates
 
@@ -1145,7 +1202,7 @@ Before content freeze:
 | Cargo puzzle parity drift | validate generated records and test known fixtures, not JS runtime |
 | Art flash growth | tile atlas + small pilot sprites; measure per asset; no FLEET art |
 | Scope creep from browser | browser remains reference only; no DOM/objects/localStorage ports |
-| Save complexity | default off; add only after core loop fits |
+| Save complexity | default off; 260 B internal-EEPROM block adds 0 B static and writes only on chart close; enabled variant is measured separately (+560 B flash) and stays out of shipped profiles |
 
 ## Open decisions
 
@@ -1156,7 +1213,10 @@ Before content freeze:
 - Number of cave layouts; one fixed layout initially.
 - Hull selection location: resolved to the boot title screen (left/right
   cycles, A confirms); drydock rows remain reserved for cargo holds.
-- Chart save in v1; currently deferred.
+- Chart save in v1; currently deferred. Resolved 2026-10-23: implemented
+  behind default-off `SH_FEATURE_SAVE_CHART` with a 260 B internal-EEPROM
+  block; it stays off in shipped profiles until a 352 B flash carve or a
+  release decision raises the planning ceiling under the hardware limit.
 - Final flash/static ceilings after stack measurement.
 
 ## Bead map
