@@ -13,6 +13,7 @@
 #include "src/features.hpp"
 #include "src/game.hpp"
 #include "src/hud.hpp"
+#include "src/pause.hpp"
 #include "src/pilot.hpp"
 #include "src/render.hpp"
 #include "src/world_fx.hpp"
@@ -50,14 +51,15 @@ static world::FxTables s_tables;
 static world::TileCache s_cache;
 
 // The screen tag exists whenever more than one screen can be reached. With
-// stations, chart, and multi-hull all off the pilot frame is the only path,
-// matching the pre-feature image exactly.
-#if SH_FEATURE_STATIONS || SH_FEATURE_FOG_CHART || SH_FEATURE_MULTI_HULL
+// stations, chart, multi-hull, and hull damage all off the pilot frame is the
+// only path, matching the pre-feature image exactly.
+#if SH_FEATURE_STATIONS || SH_FEATURE_FOG_CHART || SH_FEATURE_MULTI_HULL || SH_FEATURE_HULL_DAMAGE
 enum class Screen : uint8_t {
 #if SH_FEATURE_MULTI_HULL
     Title,
 #endif
     Pilot,
+    Pause,
 #if SH_FEATURE_STATIONS
     Station,
 #endif
@@ -69,6 +71,9 @@ enum class Screen : uint8_t {
 #endif
 #if SH_FEATURE_FOG_CHART
     Chart,
+#endif
+#if SH_FEATURE_HULL_DAMAGE
+    Failure,
 #endif
 };
 
@@ -99,6 +104,34 @@ static void drawPilot() {
     view::frame(s_state, camera, s_cache, s_tables);
     hud::draw(s_state);
 }
+
+// One boot/restart path. The setup call and the failure-screen restart share
+// this function, so the full reset is linked once instead of being duplicated
+// by the failure entry.
+static void resetRun() {
+    game::resetWorld(s_state);
+#if SH_FEATURE_FOG_CHART
+    chart::reset(s_chart);
+    chart::revealInitial(s_chart, s_state);
+#endif
+}
+
+#if SH_FEATURE_STATIONS || SH_FEATURE_FOG_CHART || SH_FEATURE_MULTI_HULL || SH_FEATURE_HULL_DAMAGE
+// Paused/failure frames deliberately draw no world and read no cart: the
+// buffer is blank after the previous FX::display(CLEAR_BUFFER), so one short
+// text line is enough at 128x64.
+static void drawPause() {
+    arduboy.setCursor(10, 30);
+    arduboy.print(F("PAUSED  A/B RESUME"));
+}
+
+#if SH_FEATURE_HULL_DAMAGE
+static void drawFailure() {
+    arduboy.setCursor(4, 30);
+    arduboy.print(F("HULL LOST  A RESTART"));
+}
+#endif
+#endif
 
 #if SH_FEATURE_MULTI_HULL
 // Title frame: no world step and no cart reads. Left/right cycles the roster,
@@ -140,9 +173,47 @@ static void drawChart() {
 }
 #endif
 
+#if SH_FEATURE_STATIONS || SH_FEATURE_FOG_CHART || SH_FEATURE_MULTI_HULL || SH_FEATURE_HULL_DAMAGE
+// Pause frame: no world step, no air/ballast drain, no job clock, and no cart
+// reads. A or B resumes on the frozen pilot frame without stepping.
+static void updatePause() {
+    if (arduboy.justPressed(A_BUTTON) || arduboy.justPressed(B_BUTTON)) {
+        s_screen = Screen::Pilot;
+        drawPilot();
+        return;
+    }
+    drawPause();
+}
+
+#if SH_FEATURE_HULL_DAMAGE
+// Hull failure frame. A restarts the run: world, job/economy state, and the
+// chart return to their boot values, so the player can never be stranded at
+// zero hull. No extra save byte is involved.
+static void updateFailure() {
+    if (arduboy.justPressed(A_BUTTON)) {
+        resetRun();
+        s_screen = Screen::Pilot;
+        drawPilot();
+        return;
+    }
+    drawFailure();
+}
+#endif
+#endif
+
 // Flight frame: step once, then either redraw the cave or switch to the
 // station board on the frame that docked.
 static void updateFlight() {
+#if SH_FEATURE_STATIONS || SH_FEATURE_FOG_CHART || SH_FEATURE_MULTI_HULL || SH_FEATURE_HULL_DAMAGE
+    // A+B is the free-flight pause gesture. It is sampled before the chart key
+    // and before the world step, so the opening frame does not move the boat or
+    // read the cart. The cargo screen owns A+B there; this path is Pilot only.
+    if (arduboy.pressed(A_BUTTON) && arduboy.pressed(B_BUTTON)) {
+        s_screen = Screen::Pause;
+        drawPause();
+        return;
+    }
+#endif
 #if SH_FEATURE_FOG_CHART
     // B only opens the chart in free flight. Consume the edge before sampling
     // flight input so travel, air, and ballast do not tick on that frame.
@@ -182,6 +253,17 @@ static void updateFlight() {
     // Coarse reveal rides flight ticks.
     chart::revealOnStep(s_chart, s_state);
 #endif
+#endif
+
+#if SH_FEATURE_HULL_DAMAGE
+    // Zero hull ends free flight immediately. A docking step above already
+    // serviced the boat and returned to the station board, so this can only
+    // fire on an undocked wreck.
+    if (damage::lostInFlight(s_state)) {
+        s_screen = Screen::Failure;
+        drawFailure();
+        return;
+    }
 #endif
 
 #if SH_FEATURE_SONAR
@@ -392,12 +474,7 @@ void setup() {
     FX::begin(FX_DATA_PAGE);
     FX::setCursorRange(0, 32767);
 
-    world::clearCache(s_cache);
-    game::resetWorld(s_state);
-#if SH_FEATURE_FOG_CHART
-    chart::reset(s_chart);
-    chart::revealInitial(s_chart, s_state);
-#endif
+    resetRun();
 }
 
 void loop() {
@@ -412,10 +489,17 @@ void loop() {
         updateTitle();
     else
 #endif
+#if SH_FEATURE_STATIONS || SH_FEATURE_FOG_CHART || SH_FEATURE_MULTI_HULL || SH_FEATURE_HULL_DAMAGE
+    if (s_screen == Screen::Pause)
+        updatePause();
+#if SH_FEATURE_HULL_DAMAGE
+    else if (s_screen == Screen::Failure)
+        updateFailure();
+#endif
 #if SH_FEATURE_FOG_CHART
     // Chart is a pilot sub-screen, so the dispatch gains one branch while the
     // station/cargo chain keeps its shape.
-    if (s_screen == Screen::Pilot)
+    else if (s_screen == Screen::Pilot)
         updateFlight();
 #if SH_FEATURE_STATIONS
     else if (s_screen == Screen::Station)
@@ -433,7 +517,7 @@ void loop() {
         updateChart();
 #else
 #if SH_FEATURE_STATIONS
-    if (s_screen == Screen::Station)
+    else if (s_screen == Screen::Station)
         updateStation();
 #if SH_FEATURE_SHOP
     else if (s_screen == Screen::Shop)
@@ -443,11 +527,12 @@ void loop() {
     else if (s_screen == Screen::Cargo)
         updateCargo();
 #endif
+#endif
     else
         updateFlight();
+#endif
 #else
     updateFlight();
-#endif
 #endif
 
     // The OLED and the FX cart share SPI: all cart reads above happen before

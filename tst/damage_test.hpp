@@ -164,6 +164,38 @@ inline void DamageSuite(TestRunner &runner) {
     }
 
     {
+        Test test("zero hull is a free-flight failure and restart recovers");
+        game::State state;
+        game::resetWorld(state);
+        state.hull = 1;
+        damage::applyDamage(state, 1);
+        test.assertTrue(damage::lost(state), "zero hull is lost");
+        test.assertTrue(damage::lostInFlight(state), "an undocked zero-hull boat fails");
+#if SH_FEATURE_STATIONS
+        state.docked = 0;
+        test.assertTrue(!damage::lostInFlight(state), "a docked boat is serviced before failure");
+        state.docked = -1;
+#endif
+#if SH_FEATURE_JOBS
+        state.activeJob.to = 0;
+        state.credits = 500;
+        state.lastDelivery = 2;
+#endif
+        state.cargo = 3;
+        game::resetWorld(state); // the failure screen's restart path
+        test.assertTrue(!damage::lost(state), "restart restores a live hull");
+        test.assertEqual(state.hull, game::hullCapacity(state), "restart fills the hull");
+        test.assertEqual(state.air, game::airCapacity(state), "restart fills the air");
+        test.assertEqual(state.cargo, 0, "restart clears the hold");
+#if SH_FEATURE_JOBS
+        test.assertTrue(!game::hasActiveJob(state), "restart clears the contract");
+        test.assertEqual(state.credits, 0, "restart clears credits");
+        test.assertEqual(state.lastDelivery, 0, "restart clears the last delivery");
+#endif
+        runner.add(test);
+    }
+
+    {
         Test test("free-flight world step applies wall damage and latches feedback");
         Fixture fake;
         fillTiles(fake, 10, 0, 10, 159, true);   // solid face at x=80

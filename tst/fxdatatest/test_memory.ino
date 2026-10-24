@@ -76,8 +76,8 @@ Arduboy2 arduboy;
 #if SH_FEATURE_STATIONS && SH_FEATURE_JOBS && SH_FEATURE_CARGO_LOAD && SH_FEATURE_FOG_CHART && SH_FEATURE_SONAR && SH_FEATURE_MINES && SH_FEATURE_CURRENTS && SH_FEATURE_SHOP && SH_FEATURE_HULL_DAMAGE && SH_FEATURE_PARTICLES && SH_FEATURE_MULTI_HULL
 // The full AVR state budget is pinned here: M7 hazard state (71 B), the
 // one-byte damage cooldown, the 16-byte particle pool, the three run-only shop
-// level bytes, and the M8 hull-class byte.
-static_assert(sizeof(game::State) == 92, "full game::State is 92 bytes on AVR");
+// level bytes, the M8 hull-class byte, and the M9 last-delivery byte.
+static_assert(sizeof(game::State) == 93, "full game::State is 93 bytes on AVR");
 #endif
 
 #if SH_FEATURE_FOG_CHART
@@ -91,8 +91,9 @@ chart::State probeChart;
 namespace {
 
 // Re-baselined from 800 B to 600 B on 2026-10-23, after the 258 B persistent
-// chart slice entered the full image. The chart+sonar+hazard+damage+shop+title
-// probe measures 601 B, so 600 B stays the pass line with 1 B of margin.
+// chart slice entered the full image. The chart+sonar+hazard+damage+shop+
+// title/roster/holds/reset probe measures 624 B, so 600 B stays the pass line
+// with 24 B of margin.
 constexpr uint16_t kReserveTarget = 600;   // bytes of stack reserve required
 constexpr uint8_t kFrameGuard = 64;        // active-frame headroom, never painted
 constexpr uint8_t kPattern = 0xA5;

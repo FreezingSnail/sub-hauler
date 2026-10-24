@@ -26,26 +26,26 @@ rewriting the game.
 
 ## Current baseline
 
-Measured 2026-10-23 at the M8 roster checkpoint:
+Measured 2026-10-23 at the M9 polish checkpoint:
 
 | Resource | Current | Planning ceiling | Hardware limit |
 | --- | ---: | ---: | ---: |
-| Flash | 27,962 B | 29,000 B | 29,696 B |
-| Static SRAM | 1,689 B | 1,700 B | 2,560 B |
-| Stack | 601 B probe reserve | ≥600 B reserve | remainder |
+| Flash | 28,792 B | 29,000 B | 29,696 B |
+| Static SRAM | 1,690 B | 1,700 B | 2,560 B |
+| Stack | 624 B probe reserve | ≥600 B reserve | remainder |
 
 The 1,700 B static ceiling is a planning target, not a hardware fact. It was
-raised from 1,680 B on 2026-10-23 at the M7 damage/particles checkpoint. The M8
-roster adds one hull-class byte but removes the chart blink and cargo B-hold
-bytes and makes the stateless cargo reader local, so static RAM moves from
-1,690 B to **1,689 B**. The 11 B of headroom under 1,700 B is intentional slack
-for LTO rounding, not a licence for another state slice; the 600 B stack target
-is unchanged and the roster-inclusive probe measures **601 B**, a 1 B margin.
+raised from 1,680 B on 2026-10-23 at the M7 damage/particles checkpoint. The M9
+polish adds one `lastDelivery` byte, so static RAM moves from 1,689 B to
+**1,690 B**. The 10 B of headroom under 1,700 B is intentional slack for LTO
+rounding, not a licence for another state slice; the 600 B stack target is
+unchanged and the probe measures **624 B**, a 24 B margin.
 
-The flash planning ceiling rises from 28,000 B to **29,000 B** on 2026-10-23
-for the M8 roster and its title/art slice (696 B under the 29,696 B hardware
-limit). The full image measures **27,962 B**, just 38 B under the old 28,000 B
-line before the raise. Any future persistent feature still needs a carve.
+The flash planning ceiling remains **29,000 B** (696 B under the 29,696 B
+hardware limit; the M9 image is 208 B under the planning line). The aggregate
+`game::reset()` rewrite more than pays for the pause/failure/delivery code, so
+the full image is 18 B below the M8 holds checkpoint. Any future persistent
+feature still needs a carve.
 
 Whole-image measurements only: LTO makes per-symbol arithmetic misleading. Use
 `make size` and record profile A/B deltas.
@@ -549,6 +549,58 @@ probe now loads and draws all three class holds; with `SH_STACK_DIAG=1` it
 reports **`stack_reserve=619`**, passing the 600 B target with 19 B of margin.
 No screenshot or frame-rate claim.
 
+### M9 polish checkpoint — 2026-10-23
+
+`sub-hauler-m9-polish` adds the pause/failure clarity pass and the balance
+audit. No new feature flag or screen beyond pause/failure was added; the cargo
+screen keeps ownership of its A+B commit.
+
+- **Pause:** A+B in free flight opens `Screen::Pause` before the chart key,
+  sonar, and world step. The pure `pause::resolve()` rule owns the transition;
+  A or B resumes. A paused frame performs no world step, air/ballast drain, job
+  clock advance, or cart read. The device draws one compact line,
+  `PAUSED  A/B RESUME`, inside 128x64.
+- **Hull failure:** `damage::lost()`/`damage::lostInFlight()` trigger
+  `Screen::Failure` only at zero hull in free flight. The screen shows
+  `HULL LOST  A RESTART`; A calls the same `resetRun()` used by `setup()`, which
+  resets the world, job/economy state, and chart. This is a safe full restart,
+  so the player cannot be stranded. The shared reset keeps the failure path from
+  duplicating the boot reset in flash.
+- **Delivery clarity:** `game::State.lastDelivery` is one byte, written by
+  `jobs::deliver()` (`kDeliveryPaid`/`kDeliveryFailed`) and cleared on accept,
+  abandon, and reset. `jobs::deliveryFailed()` lets the station board replace
+  its control hint with `LATE/SHORT` until the next accept or abandon. Late and
+  short-hold host tests assert the note and its clearing.
+- **Balance audit:** reward is `20 + 4*10 + distance/2`, rounded to five;
+  deadline is `80 + 0.55*distance + 4*8` seconds. Generated contracts pay
+  **110..180 credits** with **169..246 s** deadlines. Loaded top speed is
+  **18 px/s** (30 - 3*4 cargo), the longest straight-line run is **1,955 px**,
+  and a full **180-unit** tank lasts **300 s** at the base 0.6 unit/s drain
+  before deliberate blowing. Every deadline therefore exceeds straight-line
+  loaded travel and fits inside one tank, and every reward covers the cheapest
+  upgrade (SONAR 50, AIR TANK 60, HULL PLATE 70). The host balance test asserts
+  those boundaries for every generated offer. No integer tuning changed: the
+  values are survivable and the audit is recorded rather than churned.
+- **Size direction:** `game::reset()` now value-initialises the aggregate and
+  restores only the non-zero defaults (`spawn`, trim, air, mines, docked,
+  hull, active-job tag). That reduces the whole-image reset code more than the
+  new pause/failure/delivery code costs, so the full image is slightly smaller
+  than the M8 holds checkpoint.
+
+Budget: `sizeof(game::State)` is **93 B** on AVR (92 B plus `lastDelivery`).
+The full image is **28,792 B flash / 1,690 B static**, which is **-18 B flash
+/ +1 B static** against the M8 holds checkpoint (28,810 B / 1,689 B). The flash
+planning ceiling stays **29,000 B** (208 B of headroom) and static stays
+**1,700 B** (10 B of headroom). `lean` measures **25,800 B / 1,680 B**,
+`core` **22,244 B / 1,421 B**, and `min` **10,456 B / 1,259 B**.
+
+Host tests: **155** full, **122** lean, **98** core, **45** min;
+`make test-tools` passes **75**. `make gen-check` is deterministic. All four
+device suites print `P`. The memory probe covers the new reset path through
+`game::resetWorld`; with `SH_STACK_DIAG=1` it reports
+**`stack_reserve=624`**, passing the 600 B target with 24 B of margin. No
+screenshot or frame-rate claim.
+
 ### Harness sentinel proof — 2026-10-22
 
 A temporary `SH_FEATURE_SENTINEL` block put a unique string
@@ -1031,6 +1083,7 @@ deltas against the same profile with the feature disabled.
 | particles | +398 | +16 | 2026-10-23 | fixed 4-slot pool (3 B/slot + 4 B anchor), deterministic corner spawn, 1 px/tick, ±24 px clamp, 14-tick max life; A/B with hull damage on |
 | multi-hull | +920 | +1 | 2026-10-23 | boot title with left/right selection, A confirm, B back-to-default; MINNOW/HAULER/LEVIATHAN 24-26 px pilot art, hull-class byte; full A/B (`MULTI_HULL=0` 27,042 B / 1,688 B); `sizeof(game::State)` 92 B; title/class strings and art compile out; linked binary clean |
 | cargo holds (M8) | +848 | +0 | 2026-10-23 | class holds MINNOW 6x3/7 px, HAULER 11x3/6 px, LEVIATHAN 14x4/5 px; dynamic cutaway, blocked-cell masks from `puzzle.hold`, selected-class load and reopen; full A/B vs M8 roster; `MULTI_HULL=0` full 26,914 B / 1,688 B; `sizeof(cargo::CargoPuzzle)` 83 B, `sizeof(cargo_screen::State)` 88 B; no generator change |
+| M9 polish | -18 | +1 | 2026-10-23 | no new flag; pause/failure screens, `lastDelivery` byte, LATE/SHORT board note, one-byte state; aggregate `game::reset()` rewrite pays for the UI; vs M8 holds whole image (28,810 B / 1,689 B) |
 
 The mine and current A/B deltas share 8 B of LTO folding: both enabled is
 +1,574 B, not +1,582 B. The chart `initialised` carve (-1 B) offsets the mine
@@ -1056,6 +1109,7 @@ Record the profile matrix separately:
 | 2026-10-23 | M7 shop | 27,082 | 1,690 | `test_memory` P (chart + sonar + mine + current + damage/particle + shop path, 606 B under 600 B target) | full; SHOP=0 full 26,088/1,697; lean 24,096/1,680; core 22,394/1,421; min 10,586/1,259; flash ceiling raised to 28,000 B |
 | 2026-10-23 | M8 roster | 27,962 | 1,689 | `test_memory` P (chart + sonar + mine + current + damage/particle + shop + title/all-hull art path, 601 B under 600 B target) | full; `MULTI_HULL=0` full 27,042/1,688; lean 24,962/1,679; core 22,368/1,420; min 10,568/1,259; `sizeof(game::State)` 92 B; flash ceiling raised to 29,000 B with 696 B hardware headroom; static 11 B under 1,700 B |
 | 2026-10-23 | M8 holds | 28,810 | 1,689 | `test_memory` P (chart + sonar + mine + current + damage/particle + shop + title + all three class cargo holds, 619 B under 600 B target) | full; `MULTI_HULL=0` full 26,914/1,688; lean 25,874/1,679; core 22,242/1,420; min 10,568/1,259; `sizeof(cargo::CargoPuzzle)` 83 B, `sizeof(cargo_screen::State)` 88 B; flash 190 B under 29,000 B ceiling; static 11 B under 1,700 B |
+| 2026-10-23 | M9 polish | 28,792 | 1,690 | `test_memory` P (chart + sonar + mine + current + damage/particle + shop + title + all three class cargo holds + aggregate reset, 624 B under 600 B target) | full; lean 25,800/1,680; core 22,244/1,421; min 10,456/1,259; `sizeof(game::State)` 93 B; pause/failure screens, `lastDelivery` byte; flash 208 B under 29,000 B ceiling; static 10 B under 1,700 B |
 
 ## Verification gates
 
