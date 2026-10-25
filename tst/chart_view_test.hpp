@@ -115,7 +115,7 @@ inline void ChartViewSuite(TestRunner &runner) {
         const int16_t yBefore = gameState.y;
         const uint16_t ticksBefore = gameState.ticks;
         const int16_t airBefore = gameState.air;
-        const uint32_t jobClockBefore = gameState.jobClock;
+        const uint16_t jobElapsedBefore = gameState.activeJob.elapsed;
 
         uint8_t on[chart_view::kFrameBytes];
         uint8_t onAgain[chart_view::kFrameBytes];
@@ -144,7 +144,7 @@ inline void ChartViewSuite(TestRunner &runner) {
         test.assertEqual(gameState.y, yBefore, "chart render does not move the sub vertically");
         test.assertEqual(gameState.ticks, ticksBefore, "chart render does not advance flight ticks");
         test.assertEqual(gameState.air, airBefore, "chart render does not consume air");
-        test.assertEqual(gameState.jobClock, jobClockBefore, "chart render does not advance the job clock");
+        test.assertEqual(gameState.activeJob.elapsed, jobElapsedBefore, "chart render does not age the job");
         runner.add(test);
     }
 #endif

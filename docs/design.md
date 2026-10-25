@@ -1,85 +1,73 @@
 # Design — sub-hauler
 
-Status: released design (M9 freeze, 2026-10-23). The browser slices in
-`spike-trim/` are one flow: pilot travel, station loading, and fleet reference.
-The precomputed cargo-table plan below is the shipped device path.
+Status: post-review design (2026-10-24, cargo-free resource pass). The
+cargo-packing minigame was removed in `sub-hauler-gl1.1` because its value did
+not justify its flash/SRAM cost. The final pass moved the surviving UI text and
+fixed pilot art into FX and compacted the generated world metadata and AVR run
+state. The browser slices in `spike-trim/` remain a historical reference; the
+shipped device path is the cargo-free contract loop described below.
 
 ## Direction
 
 - The cutaway is the identity of the game. The external sub is the travel view;
   the inside is where cargo, ballast, air, engine, and crew live.
-- Cargo belongs inside the hull. The pilot now uses the selected round external
-  hull and no longer stacks crates above it; cargo is represented by internal
-  mass, trim, acceleration, and top speed. The station loading screen's LOAD &
-  UNDOCK action feeds the pilot's coarse four-unit load model from the hold.
+- Cargo belongs inside the hull. The pilot uses the selected external hull and
+  cargo is represented by coarse internal mass, trim, acceleration, and top
+  speed. Accepting a contract auto-loads four units; the player starts travel
+  with an explicit UNDOCK row action or B.
 - The internal view should be used at stations and for damage/repair work, not
   as a second full-time flight view.
-- Feel is slow, heavy, deliberate. Packing is a planning puzzle, not a twitch
-  minigame.
+- Feel is slow, heavy, deliberate. The former packing puzzle is removed rather
+  than gated: there is no loading screen, LOAD CARGO row, commit chord, or
+  arrangement runtime on device.
 
 ## Sub classes
 
-| Class | Hull | Hold | Cargo load | Pieces |
-| --- | ---: | ---: | ---: | ---: |
-| MINNOW | 64 px | 6×3 hex bay | 12/14 cells | 4 (3 required + 1 bonus) |
-| HAULER | 94 px | 11×3 split/notched bay | 26/28 cells | 7 (6 required + 1 bonus) |
-| LEVIATHAN | 118 px | 14×4 twin-spine bay | 40/44 cells | 8 (6 required + 2 bonus) |
+| Class | Hull | Hold (legacy FX) | Cargo units |
+| --- | ---: | ---: | ---: |
+| MINNOW | 64 px | 6×3 hex bay | 4 |
+| HAULER | 94 px | 11×3 split/notched bay | 4 |
+| LEVIATHAN | 118 px | 14×4 twin-spine bay | 4 |
 
-The `FLEET` view shows three round hulls, external and cutaway:
+The `FLEET` browser reference shows three round hulls, external and cutaway:
 - MINNOW: TADPOLE rounded shuttle with bow viewport and landing skids.
 - HAULER: FLATBED rounded freighter with deckhouse and cargo doors.
 - LEVIATHAN: FORTRESS rounded heavy with outrigger pods and deckhouse/gantry.
 
-Hold masks are fixed per class; only the arrangement and random cargo shapes
-vary. Hull studies do not change the hold capacity. PILOT draws playable-scale
-silhouettes inside the tunnel envelope; FLEET shows the full hull proportions.
+The device roster keeps the three playable hulls and their pilot art. The
+silhouettes are baked FX sprites with right/left and unloaded/loaded frames,
+shared by title and flight; the host tests retain equivalent procedural shapes
+for exact-pixel checks. The legacy hold dimensions remain only in the shipped
+`cargoBank` FX declaration and generator so flash offsets stay stable; no
+flight or station code reads that bank.
 
-## Cargo packing loop
+## Contract loading loop
 
-- Dock, accept a contract, and load the selected hull in the station loading
-  screen. The screen opens automatically from the accepted job.
-- Device D-pad: with nothing held it cycles the selection across tray and
-  installed cargo; while holding a crate it moves the suspended crate, clamped
-  to the open hold.
-- `A` picks up or lifts the selected crate, and releases the held crate.
-- `B` rotates a held crate clockwise (`B`+UP is counter-clockwise); with
-  nothing held it undoes the last placement. Holding `B` exits to the station
-  board so a manipulation tap never leaves the screen by accident.
-- A crate can only be released when at least one bottom cell rests on cargo or
-  the floor. No mid-air placement. Structural mask cells are solid; on HAULER
-  cargo cannot bridge or occupy the central split bulkhead.
-- Crates can be moved sideways/up/down while suspended, so they can be tucked
-  under overhangs and into corners.
-- Installed crates stay in the tray. Select an installed piece and press `A`
-  to lift it; cargo directly above blocks the lift.
-- The Arduino pad has no spare key, so device `R`/`N` are omitted; the pure
-  `cargo_screen::restart` helper exists for a future pause menu. The browser
-  slice keeps `R` reset and `N` reroll.
-- `A+B` while nothing is held is `LOAD & UNDOCK`. The prompt appears only when
-  the required pieces are placed and no crate is held; a short load is rejected
-  with `LOAD SHORT`. `A+B` cannot collide with pick/release (`A`), rotate/undo
-  (`B`), or the `B`+UP counter-clockwise modifier.
-- A successful commit checks the job crate requirement, sets the pilot load to
-  the contract's four units, neutralizes trim, clears the loading state,
-  auto-undocks, and returns to the pilot with the job still active. Holding `B`
-  (cancel/back) returns to the station board with the job open, selected on
-  `LOAD CARGO`; the board row reopens the screen.
-- With `SH_FEATURE_CARGO_LOAD=0` the loading screen, its strings, and the
-  handoff compile out. Acceptance then auto-loads the four units directly and
-  the M3 board shows summary, ABANDON, and UNDOCK.
-- The hold is schematic 128×64, 1-bit, and shown as one compartment inside the
-  pressure hull. Cells scale per class (7 px MINNOW, 6 px HAULER, 5 px
-  LEVIATHAN) so the bow cabin, engine room, and ballast remain visible without
-  scrolling. The FX arrangement data is independent of this view scale.
+1. Dock (auto-dock inside a settlement ring at or below the dock speed).
+2. Select an offer and press `A`. Acceptance fills the hold with the contract's
+   four coarse cargo units, neutralizes trim, and keeps the boat docked.
+3. Confirm the active board's `UNDOCK` row with `A`, or press `B`, to start
+   travel. Docking latch and flight pause are unchanged.
+4. Deliver at the destination station for credits; late or wrong-station
+   arrivals follow the existing economy rules. `ABANDON` clears the hold and
+   contract while docked.
 
-The browser views share one hull roster and selection (`spike-trim/subs.js`).
-The cargo view is the station loading step; the device `A+B` commit checks the
-contract requirement and maps the packed hold to the pilot's four-unit cargo
-model. The FX arrangement bank remains the device path.
+The active station board is now `[summary] ABANDON SHOP UNDOCK` (or
+`[summary] ABANDON UNDOCK` without the shop). There is no `LOAD CARGO` row and
+no way to reach a packing screen.
 
-## Random shape generation
+### Historical: packing prototype (removed)
 
-Browser-only generator, used to produce candidate loads:
+The M5–M8 packing flow was implemented and then removed in `sub-hauler-gl1.1`:
+selection, suspended movement, support, lift blocking, rotation, undo, the
+`A+B` commit, hold-B exit timer, and per-class arrangement loading. The design
+and measurements remain in `docs/roadmap.md` as history. Do not reintroduce or
+optimize those paths without a new user decision and a measured budget.
+
+## Random shape generation (browser reference only)
+
+Browser-only generator, retained as historical reference for the removed
+packing prototype. It is not part of the firmware.
 
 1. Choose a bottom-filled target region:
    - base fill per column, plus random extra cells in the top row(s);
@@ -101,15 +89,17 @@ This constructs a packing rather than solving arbitrary shapes, so every
 generated load has a full arrangement by construction.
 
 The JS generator uses `Math.random`, `Set`, `Array.sort`, `filter`, object
-arrays, and dynamic allocation. It is not portable as-is. Do not port the
-runtime generator to AVR unless it is rewritten with fixed arrays.
+arrays, and dynamic allocation. It was never portable as-is.
 
-## Device plan: precomputed FX arrangements
+## Device plan: retained FX arrangement ABI (not loaded at runtime)
 
-Recommended Arduboy path: precompute arrangements offline and store them in the
-FX cart. At runtime, select one arrangement and copy it into SRAM.
+The shipped `fxdata/fxdata.txt` declaration `raw_t cargoBank` and its 3,648 B
+`fxdata/tables/cargo.bin` stay in place at offset **0x001AC2**, because
+declaration order is flash ABI. `tools/gen_cargo.py` and `make gen-check` still
+reproduce them. The generated `src/generated/cargo.hpp` constants remain
+generator evidence only; no device header includes it after the runtime removal.
 
-### Piece record
+Historical record layout:
 
 ```c
 struct CargoPieceRecord {
@@ -118,54 +108,37 @@ struct CargoPieceRecord {
 };
 ```
 
-- 3 bytes per piece.
-- Shape area and bbox derive from `mask`.
-- Target orientation is in the mask; player rotation is runtime bit logic.
-- Required pieces can be first in the record, so the bonus bit is optional.
-- Target position is the known solution placement.
+- 3 bytes per piece; 64 arrangements per hull.
+- MINNOW 12 B / HAULER 21 B / LEVIATHAN 24 B per arrangement.
+- Total bank: 3,648 B in external FX flash, zero program flash.
 
-### Arrangement sizes
-
-| Hull | Per arrangement | 32 | 64 | 128 |
-| --- | ---: | ---: | ---: | ---: |
-| MINNOW | 12 B | 384 B | 768 B | 1,536 B |
-| HAULER | 21 B | 672 B | 1,344 B | 2,688 B |
-| LEVIATHAN | 24 B | 768 B | 1,536 B | 3,072 B |
-| **Total** | | **1.8 KB** | **3.6 KB** | **7.3 KB** |
-
-Use 64 arrangements per hull initially. Add a table header with format version
-and count, or carry fixed counts/offsets in `src/fxdata.h`.
-
-### Runtime
-
-- Pick an arrangement index with a small seeded PRNG or a shuffle bag.
-- Use `FX::seekData(tableBase + index * recordBytes)`.
-- Read 12–24 bytes with `FX::readPendingUInt8`.
-- Call `FX::readEnd`.
-- Copy piece masks/positions into a fixed `CargoPiece[8]` array.
-- Keep only the selected arrangement and puzzle state in SRAM.
-- Read cart data in update/render, never during the OLED transaction.
-- No runtime generator, retries, owner grid, cluster metadata, or heap.
-
-Suggested SRAM state: under ~100 B for the selected arrangement plus the cargo
-screen. This avoids the roughly 0.5–0.7 KB generator working set.
-
-### Generation and ABI
-
-- Add generated raw tables to `fxdata/fxdata.txt` with `raw_t` entries.
-- Append tables only; declaration order is flash ABI.
-- Generate the `.bin` tables with a tool called from `make gen`; never hand-edit
-  packed tables.
-- Put counts/offsets in the generated `src/fxdata.h`.
+Rules for future work:
+- Append FX declarations only; never reorder or reclaim shipped bytes.
+- Generate tables with `make gen`; never hand-edit packed tables.
 - Run `make gen-check` to prove reproducibility.
-- Offline validation must reject:
-  - disconnected shapes;
-  - overlap/out-of-bounds target positions;
-  - cells over the max 4×4/8-cell shape;
-  - wrong load or required/bonus counts;
-  - target arrangements without support/stability.
-- Generate a larger candidate pool than needed, then keep visually distinct
-  arrangements.
+- Reading this bank again requires a new measured feature decision.
+
+## Device text and fixed art
+
+All device text uses the external 6x8 FX font; `src/text.hpp` owns
+`FX::setFont`/`drawString`/`drawNumber` and switches to `dcmInvert` for selected
+menu rows. Strings are deduplicated in `fxdata/fxdata.txt`. The firmware uses
+`Arduboy2Base`, so the inherited `Print`/built-in-font path is not instantiated
+and the old font symbols are absent from the ELF. The external font keeps the
+same 6x8 cell and layout constants, so station/shop rows stay at 7 px pitch and
+128x64 clipping is unchanged.
+
+MINNOW/HAULER/LEVIATHAN are generated 26x8 plus-mask sheets: right/left facing
+and unloaded/loaded. Title and pilot draw the same frames through
+`Blit::draw`, preserving class pixels, mirroring, masking, and draw order.
+`tools/gen_pilot.py` owns the shapes; `tools/gen_sprites.py` packs them into a
+separate include appended after every shipped FX symbol. With `MULTI_HULL=0`,
+only the HAULER sprite call is compiled.
+
+Both additions are append-only. The shipped `cargoBank` stays at offset
+**0x001AC2** with unchanged bytes; the FX payload in
+`fxdata/fxdata-data.bin` is **13,012 B**, while the padded flashable
+`fxdata/fxdata.bin` image is **13,056 B**.
 
 ## Baked world pipeline (M1)
 
@@ -200,14 +173,16 @@ downsample rule, determinism, and corrupt-input rejection.
 
 `world.hpp` metadata is split by target. Host tests get full `constexpr`
 records including settlement names. AVR code never references those arrays:
-`src/generated/world.hpp` also emits position-only `SETTLEMENT_META` and
-`MINE_META` records in `PROGMEM`, and `world::settlementInfo()`/`mineInfo()`
-read them with `pgm_read_byte`/`pgm_read_word`. This keeps both costs off SRAM:
-an odr-used namespace-scope `constexpr` array is copied into SRAM by the AVR
-startup code, and name pointers would drag their string literals along with it.
-`Settlement::name` is therefore null on device. The metadata copy is 36 B of
-program flash for four settlements; `MINE_META` is only linked when a device
-test uses it.
+`src/generated/world.hpp` also emits position-only settlement, mine, and current
+records in `PROGMEM`, and `world::settlementInfo()`/`mineInfo()`/
+`currentInfo()` read them with `pgm_read_byte`/`pgm_read_word`. This keeps both
+costs off SRAM: an odr-used namespace-scope `constexpr` array is copied into
+SRAM by the AVR startup code, and name pointers would drag their string
+literals along with it. `Settlement::name` is therefore null on device. The
+compact AVR metadata total is **88 B of program flash** (down from 148 B) with
+no RAM or cart-read change. The route economy is generated as compact reward
+and deadline tables; it no longer requires diagnostic counters or a job clock
+in `game::State`.
 
 ### Cave view and visible window (M1.4)
 
@@ -229,7 +204,8 @@ composes a frame, and `src/render.hpp` is the device entry. The view is native
   order: **128 B in program flash, 0 B SRAM**. Index is a four-bit open-neighbour
   mask; each open side is trimmed by one pixel and two open adjacent sides add a
   45-degree chamfer, which rounds the rock silhouette. Interior rock gets one
-  deterministic dark pixel per tile as texture.
+  deterministic dark pixel per tile as texture. The atlas intentionally stays in
+  PROGMEM: moving it to FX adds hot per-tile render traffic for no RAM win.
 - Settlements are drawn by iterating the generated ids and reading the PROGMEM
   metadata: a station body, beam, dock ring, and clamps centred on the
   settlement `pixel_x/pixel_y`. No name and no second position table.
@@ -251,39 +227,38 @@ checkpoint records build/static evidence only.
 From `docs/platform.md`:
 
 - 128×64 SSD1306, 1,024 B framebuffer.
-- 2,560 B SRAM; **870 B** static free at the M9 release checkpoint.
-- 29,696 B flash; final image **28,792 B flash / 1,690 B static RAM**
-  (904 B flash free, 208 B under the 29,000 B planning ceiling, 10 B static
-  headroom; `test_memory` reserve **624 B** against a 600 B target).
+- 2,560 B SRAM; **988 B** static free after the cargo-free resource pass.
+- 29,696 B flash; current image **17,548 B flash / 1,572 B static RAM**
+  (12,148 B flash free, 11,452 B under the 29,000 B planning ceiling, 128 B
+  static headroom; `test_memory` reserve **812 B** against a 600 B target).
+- AVR `game::State` is **80 B**; the compact generated metadata is 88 B
+  PROGMEM; the 128 B cave atlas stays in fast program flash.
 - No floats, no heap in device code, no cart reads during display.
 
-The arrangement tables live in external FX flash, so they do not consume
-program flash or static SRAM. The in-device cargo screen, input, and persistent
-state are complete: 64 arrangements per hull, class holds, and the four-unit
-job handoff. Measure every future change with `make size` and `make size-matrix`;
-do not assume the remaining headroom survives another feature.
+The retained `cargoBank` lives in external FX flash, so it does not consume
+program flash or static SRAM. It is shipped for ABI stability only; the
+cargo-free station/job/undock path is the device path. Measure every future
+change with `make size` and `make size-matrix`; do not assume the remaining
+headroom survives another feature.
 
-## Browser reference
+## Browser reference (historical)
 
-- `spike-trim/index.html` — PILOT and FLEET views, plus the station loading screen.
+- `spike-trim/index.html` — PILOT and FLEET views plus the removed station
+  loading screen.
 - `spike-trim/subs.js` — shared MINNOW / HAULER / LEVIATHAN roster and selection.
 - `PILOT` — external sim, stations, contracts, shop. Draws the selected round
   hull; cargo is internal mass, not a stack above the hull.
-- Loading screen — opens from the station when a contract is accepted; playable
-  internal hold with crane, random shapes, support, lifting, and LOAD & UNDOCK.
+- Loading screen — historical packing prototype; not shipped on device.
 - `FLEET` — external and cutaway profiles for the same selected hull.
 
-The browser cargo generator is for experimentation; the FX arrangement bank is
-the device plan.
+The browser cargo generator is reference-only; the retained FX arrangement
+bank is an ABI artifact, not a runtime plan.
 
 ## Open questions
 
-- How many arrangements per hull before the loads feel repetitive? Start 64.
-- Add horizontal mirror/rotation of whole arrangements for variety?
-- Any-bottom support vs full-bottom support for release?
-- How exactly cargo cell area maps to mass/neutral trim once cargo is internal.
-- Do bonus crates affect payout, capacity, or only fill?
-- Jobs currently require a full four-unit hold so the loading screen has a
-  clear pass/fail. Revisit partial-hold jobs and how their crate count should
-  size the required packed region.
-- Whether arrangement index persists in save data or is rerolled per dock.
+- How exactly coarse cargo units map to mass/neutral trim for future balance.
+- Whether bonus crates ever affect payout, capacity, or only fill.
+- Jobs currently require a full four-unit hold so acceptance has a clear
+  pass/fail. Revisit partial-hold jobs and their effect on top speed, air, and
+  deadlines.
+- Whether any save data should persist delivery or roster state.

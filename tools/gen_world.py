@@ -21,7 +21,8 @@ Binary layout
     5 x 5 world tiles and is water when at least one tile in that block is
     open. This matches the browser chart's "any open tile" downsample.
 
-``src/generated/world.hpp`` -- generated symbolic constants and metadata only.
+``src/generated/world.hpp`` -- generated symbolic constants, metadata, and the
+    baked ordered-pair contract economy (reward/deadline arrays plus bounds).
     The header is pure C++ (only ``<stdint.h>``). It deliberately does not
     include Arduino headers so host tests can include it. Any runtime-used
     metadata array must move to FX/PROGMEM in M1.2/M1.3; see the warning in the
@@ -59,6 +60,23 @@ SETTLEMENT_CLEAR_TILES = 6
 DOCK_CLEARANCE_PX = 42
 MINE_RADIUS_PX = 3
 
+# Contract economy recipe. These are the shipping floor/round rules that were
+# previously evaluated at runtime in src/jobs.hpp:
+#   distance = isqrt(dx*dx + dy*dy) // tile            (tiles, floored)
+#   reward   = round((20 + crates*10 + 0.5*distance) / 5) * 5
+#   deadline = (80 + 0.55*distance + 8*crates) * 60    (flight ticks, seconds floored)
+CONTRACT_CRATES = 4
+STEP_HZ = 60
+ROUTE_REWARD_BASE = 20
+ROUTE_REWARD_PER_CRATE = 10
+ROUTE_REWARD_ROUND = 5
+ROUTE_REWARD_DISTANCE_DIVISOR = 2
+ROUTE_DEADLINE_BASE_SECONDS = 80
+ROUTE_DEADLINE_PERCENT_PER_TILE = 55
+ROUTE_DEADLINE_PERCENT_SCALE = 100
+ROUTE_DEADLINE_SECONDS_PER_CRATE = 8
+ROUTE_DEADLINE_MAX_TICKS = 0xFFFF
+
 # Current zones are metadata-only (no FX table). Each zone is a small
 # rectangle inside one non-settlement chamber; the 16 px/s^2 Q8.8 acceleration
 # drives the boat along one axis at a time. They are placed on chamber centres
@@ -67,6 +85,25 @@ MINE_RADIUS_PX = 3
 CURRENT_WIDTH_PX = 32
 CURRENT_HEIGHT_PX = 16
 CURRENT_ACCEL_Q8 = 16 * 256
+
+# Compact AVR current direction codes. The generated set uses one signed axis
+# at a time; host records keep the full ax_q8/ay_q8 pair.
+CURRENT_DIR_XPOS = 0
+CURRENT_DIR_YPOS = 1
+CURRENT_DIR_XNEG = 2
+CURRENT_DIR_YNEG = 3
+
+
+def current_direction(current: Current) -> int:
+    if current.ax_q8 == CURRENT_ACCEL_Q8 and current.ay_q8 == 0:
+        return CURRENT_DIR_XPOS
+    if current.ax_q8 == 0 and current.ay_q8 == CURRENT_ACCEL_Q8:
+        return CURRENT_DIR_YPOS
+    if current.ax_q8 == -CURRENT_ACCEL_Q8 and current.ay_q8 == 0:
+        return CURRENT_DIR_XNEG
+    if current.ax_q8 == 0 and current.ay_q8 == -CURRENT_ACCEL_Q8:
+        return CURRENT_DIR_YNEG
+    raise ValueError("current acceleration is not a compact signed-axis code")
 
 # Browser constants that affect the baked geometry.
 HULL_WIDTH_PX = 26
@@ -420,6 +457,49 @@ def unpack_chart(data: bytes) -> bytes:
     return bytes(chart)
 
 
+def build_route_economy(world: World) -> tuple[tuple[int, ...], tuple[int, ...]]:
+    """Bake every ordered settlement pair with the shipping offer formulas.
+
+    Diagonal entries are unused (a destination never equals its origin) and are
+    emitted as zero. All other pairs keep the historical floor/round rules
+    exactly, including the 0xFFFF deadline saturation.
+    """
+    rewards: list[int] = []
+    deadlines: list[int] = []
+    for origin in world.settlements:
+        for destination in world.settlements:
+            if origin.id == destination.id:
+                rewards.append(0)
+                deadlines.append(0)
+                continue
+
+            dx = destination.pixel_x - origin.pixel_x
+            dy = destination.pixel_y - origin.pixel_y
+            distance_pixels = math.isqrt(dx * dx + dy * dy)
+            distance_tiles = distance_pixels // TILE_PIXELS
+
+            base = (
+                ROUTE_REWARD_BASE
+                + CONTRACT_CRATES * ROUTE_REWARD_PER_CRATE
+                + distance_tiles // ROUTE_REWARD_DISTANCE_DIVISOR
+            )
+            reward = (
+                (base + ROUTE_REWARD_ROUND // 2) // ROUTE_REWARD_ROUND
+            ) * ROUTE_REWARD_ROUND
+
+            seconds = (
+                ROUTE_DEADLINE_BASE_SECONDS
+                + (distance_tiles * ROUTE_DEADLINE_PERCENT_PER_TILE)
+                // ROUTE_DEADLINE_PERCENT_SCALE
+                + CONTRACT_CRATES * ROUTE_DEADLINE_SECONDS_PER_CRATE
+            )
+            ticks = min(seconds * STEP_HZ, ROUTE_DEADLINE_MAX_TICKS)
+
+            rewards.append(reward)
+            deadlines.append(ticks)
+    return tuple(rewards), tuple(deadlines)
+
+
 def _open_components(grid: bytearray) -> int:
     seen = bytearray(len(grid))
     components = 0
@@ -498,8 +578,14 @@ def validate_world(world: World) -> None:
     if _open_components(grid) != 1:
         raise ValueError("open cave is not one connected component")
 
-    # Settlement centers are open and clear of walls.
+    # Settlement centers are open and clear of walls. Tile coordinates must be
+    # derivable from the pixel center for the compact AVR record.
     for settlement in world.settlements:
+        if (
+            settlement.tile_x != settlement.pixel_x // TILE_PIXELS
+            or settlement.tile_y != settlement.pixel_y // TILE_PIXELS
+        ):
+            raise ValueError(f"settlement {settlement.name} tile/pixel mismatch")
         radius = SETTLEMENT_CLEAR_TILES
         for dy in range(-radius, radius + 1):
             for dx in range(-radius, radius + 1):
@@ -512,6 +598,25 @@ def validate_world(world: World) -> None:
                         f"settlement {settlement.name} is blocked at "
                         f"tile ({tx}, {ty})"
                     )
+
+    # Baked route economy must stay inside its storage contract and remain a
+    # symmetric ordered-pair table with unused diagonal zeroes.
+    rewards, deadlines = build_route_economy(world)
+    count = len(world.settlements)
+    if any(reward > 255 for reward in rewards):
+        raise ValueError("route reward exceeds the uint8 storage bound")
+    if any(deadline > ROUTE_DEADLINE_MAX_TICKS for deadline in deadlines):
+        raise ValueError("route deadline exceeds the uint16 storage bound")
+    for origin in range(count):
+        if rewards[origin * count + origin] != 0 or deadlines[origin * count + origin] != 0:
+            raise ValueError("unused diagonal route is not zero")
+        for destination in range(count):
+            forward = origin * count + destination
+            reverse = destination * count + origin
+            if rewards[forward] != rewards[reverse] or deadlines[forward] != deadlines[reverse]:
+                raise ValueError(
+                    f"route economy is not symmetric for ({origin}, {destination})"
+                )
 
     # Mines sit in open water, away from every settlement's dock radius.
     if not world.mines:
@@ -537,8 +642,11 @@ def validate_world(world: World) -> None:
     for index, current in enumerate(world.currents):
         if current.w <= 0 or current.h <= 0:
             raise ValueError(f"current {index} has an empty rectangle")
+        if current.w != CURRENT_WIDTH_PX or current.h != CURRENT_HEIGHT_PX:
+            raise ValueError(f"current {index} does not use the compact extent")
         if current.ax_q8 == 0 and current.ay_q8 == 0:
             raise ValueError(f"current {index} has no acceleration")
+        current_direction(current)  # validates the compact signed-axis code
         if (
             current.x < 0
             or current.y < 0
@@ -595,7 +703,20 @@ def _cpp_bool(value: bool) -> str:
     return "true" if value else "false"
 
 
+def _format_route_rows(values: tuple[int, ...], count: int) -> str:
+    return "\n".join(
+        "    " + ", ".join(str(values[row * count + col]) for col in range(count)) + ","
+        for row in range(count)
+    )
+
+
 def render_header(world: World) -> str:
+    route_rewards, route_deadlines = build_route_economy(world)
+    route_count = len(world.settlements) * len(world.settlements)
+    route_reward_rows = _format_route_rows(route_rewards, len(world.settlements))
+    route_deadline_rows = _format_route_rows(route_deadlines, len(world.settlements))
+    route_reward_max = max(route_rewards)
+    route_deadline_max = max(route_deadlines)
     settlements = "\n".join(
         "    {"
         f"{s.id}, \"{s.name}\", {s.tile_x}, {s.tile_y}, "
@@ -614,13 +735,14 @@ def render_header(world: World) -> str:
         for current in world.currents
     )
     settlement_meta = "\n".join(
-        "    {"
-        f"{s.id}, {s.tile_x}, {s.tile_y}, {s.pixel_x}, {s.pixel_y}"
-        "},"
-        for s in world.settlements
+        f"    {{{s.pixel_x}, {s.pixel_y}}}," for s in world.settlements
     )
     mine_meta = "\n".join(
         f"    {{{mine.x}, {mine.y}}}," for mine in world.mines
+    )
+    current_meta = "\n".join(
+        f"    {{{current.x}, {current.y}, {current_direction(current)}}},"
+        for current in world.currents
     )
     return f"""// Generated by tools/gen_world.py. Do not edit.
 //
@@ -669,10 +791,22 @@ constexpr uint8_t  CHART_CELL_TILES  = {CHART_CELL_TILES};
 constexpr uint8_t  CHART_ROW_BYTES   = {CHART_ROW_BYTES};
 constexpr uint16_t CHART_BYTES       = {CHART_BYTES};
 constexpr uint8_t  SETTLEMENT_COUNT  = {len(world.settlements)};
+constexpr uint8_t  ROUTE_COUNT       = static_cast<uint8_t>(SETTLEMENT_COUNT * SETTLEMENT_COUNT);
+constexpr uint8_t  ROUTE_CRATES      = {CONTRACT_CRATES};
+constexpr uint16_t ROUTE_STEP_HZ     = {STEP_HZ};
+constexpr uint8_t  ROUTE_REWARD_MAX  = {route_reward_max};
+constexpr uint16_t ROUTE_DEADLINE_MAX = {route_deadline_max};
 constexpr uint8_t  MINE_COUNT        = {len(world.mines)};
 constexpr uint8_t  CURRENT_COUNT     = {len(world.currents)};
 constexpr int16_t  DOCK_CLEARANCE_PX = {DOCK_CLEARANCE_PX};
 constexpr uint8_t  MINE_RADIUS_PX    = {MINE_RADIUS_PX};
+constexpr uint8_t  CURRENT_WIDTH_PX  = {CURRENT_WIDTH_PX};
+constexpr uint8_t  CURRENT_HEIGHT_PX = {CURRENT_HEIGHT_PX};
+constexpr int16_t  CURRENT_ACCEL_Q8 = {CURRENT_ACCEL_Q8};
+constexpr uint8_t  CURRENT_DIR_XPOS = {CURRENT_DIR_XPOS};
+constexpr uint8_t  CURRENT_DIR_YPOS = {CURRENT_DIR_YPOS};
+constexpr uint8_t  CURRENT_DIR_XNEG = {CURRENT_DIR_XNEG};
+constexpr uint8_t  CURRENT_DIR_YNEG = {CURRENT_DIR_YNEG};
 constexpr bool     CHART_ANY_OPEN    = {_cpp_bool(True)};
 
 constexpr int16_t SPAWN_TILE_X  = {world.spawn_tile_x};
@@ -709,11 +843,11 @@ struct Current {{
 
 #if defined(__AVR__)
 
-// Position-only copy: {len(world.settlements)} * 9 B + {len(world.mines)} * 4 B + {len(world.currents)} * 10 B in program flash.
+// Compact position-only copy: {len(world.settlements)} * 4 B + {len(world.mines)} * 4 B + {len(world.currents)} * 5 B in program flash.
+// Settlement ids are implicit in the index and tile coordinates derive from
+// the pixel pair. Current extents are the generated constants and the signed
+// axis direction is one compact code.
 struct SettlementMeta {{
-    uint8_t id;
-    int16_t tile_x;
-    int16_t tile_y;
     int16_t pixel_x;
     int16_t pixel_y;
 }};
@@ -726,19 +860,45 @@ const Mine MINE_META[MINE_COUNT] PROGMEM = {{
 {mine_meta}
 }};
 
-const Current CURRENT_META[CURRENT_COUNT] PROGMEM = {{
-{currents}
+struct CurrentMeta {{
+    int16_t x;
+    int16_t y;
+    uint8_t dir;
 }};
+
+const CurrentMeta CURRENT_META[CURRENT_COUNT] PROGMEM = {{
+{current_meta}
+}};
+
+// Baked contract economy: one row per origin, one column per destination.
+// Diagonal entries are unused. Host and device consume these arrays through
+// routeEconomy(), so no offer path recomputes distance, reward or deadline.
+const uint8_t ROUTE_REWARD[ROUTE_COUNT] PROGMEM = {{
+{route_reward_rows}
+}};
+
+const uint16_t ROUTE_DEADLINE[ROUTE_COUNT] PROGMEM = {{
+{route_deadline_rows}
+}};
+
+inline bool routeEconomy(uint8_t from, uint8_t to, uint8_t &reward, uint16_t &deadline) {{
+    if (from >= SETTLEMENT_COUNT || to >= SETTLEMENT_COUNT)
+        return false;
+    const uint8_t index = static_cast<uint8_t>(from * SETTLEMENT_COUNT + to);
+    reward = pgm_read_byte(&ROUTE_REWARD[index]);
+    deadline = static_cast<uint16_t>(pgm_read_word(&ROUTE_DEADLINE[index]));
+    return true;
+}}
 
 inline bool settlementMeta(uint8_t id, Settlement &out) {{
     if (id >= SETTLEMENT_COUNT)
         return false;
-    out.id = pgm_read_byte(&SETTLEMENT_META[id].id);
+    out.id = id;
     out.name = nullptr;
-    out.tile_x = static_cast<int16_t>(pgm_read_word(&SETTLEMENT_META[id].tile_x));
-    out.tile_y = static_cast<int16_t>(pgm_read_word(&SETTLEMENT_META[id].tile_y));
     out.pixel_x = static_cast<int16_t>(pgm_read_word(&SETTLEMENT_META[id].pixel_x));
     out.pixel_y = static_cast<int16_t>(pgm_read_word(&SETTLEMENT_META[id].pixel_y));
+    out.tile_x = static_cast<int16_t>(out.pixel_x / TILE_PIXELS);
+    out.tile_y = static_cast<int16_t>(out.pixel_y / TILE_PIXELS);
     return true;
 }}
 
@@ -755,10 +915,15 @@ inline bool currentMeta(uint8_t id, Current &out) {{
         return false;
     out.x = static_cast<int16_t>(pgm_read_word(&CURRENT_META[id].x));
     out.y = static_cast<int16_t>(pgm_read_word(&CURRENT_META[id].y));
-    out.w = pgm_read_byte(&CURRENT_META[id].w);
-    out.h = pgm_read_byte(&CURRENT_META[id].h);
-    out.ax_q8 = static_cast<int16_t>(pgm_read_word(&CURRENT_META[id].ax_q8));
-    out.ay_q8 = static_cast<int16_t>(pgm_read_word(&CURRENT_META[id].ay_q8));
+    out.w = CURRENT_WIDTH_PX;
+    out.h = CURRENT_HEIGHT_PX;
+    const uint8_t direction = pgm_read_byte(&CURRENT_META[id].dir);
+    out.ax_q8 = direction == CURRENT_DIR_XPOS
+                    ? CURRENT_ACCEL_Q8
+                    : (direction == CURRENT_DIR_XNEG ? static_cast<int16_t>(-CURRENT_ACCEL_Q8) : 0);
+    out.ay_q8 = direction == CURRENT_DIR_YPOS
+                    ? CURRENT_ACCEL_Q8
+                    : (direction == CURRENT_DIR_YNEG ? static_cast<int16_t>(-CURRENT_ACCEL_Q8) : 0);
     return true;
 }}
 
@@ -775,6 +940,25 @@ constexpr Mine MINES[MINE_COUNT] = {{
 constexpr Current CURRENTS[CURRENT_COUNT] = {{
 {currents}
 }};
+
+// Host mirror of the device route economy. The values and accessor contract
+// are generated once; only the storage differs (constexpr vs PROGMEM).
+constexpr uint8_t ROUTE_REWARD[ROUTE_COUNT] = {{
+{route_reward_rows}
+}};
+
+constexpr uint16_t ROUTE_DEADLINE[ROUTE_COUNT] = {{
+{route_deadline_rows}
+}};
+
+inline bool routeEconomy(uint8_t from, uint8_t to, uint8_t &reward, uint16_t &deadline) {{
+    if (from >= SETTLEMENT_COUNT || to >= SETTLEMENT_COUNT)
+        return false;
+    const uint8_t index = static_cast<uint8_t>(from * SETTLEMENT_COUNT + to);
+    reward = ROUTE_REWARD[index];
+    deadline = ROUTE_DEADLINE[index];
+    return true;
+}}
 
 inline bool settlementMeta(uint8_t id, Settlement &out) {{
     if (id >= SETTLEMENT_COUNT)

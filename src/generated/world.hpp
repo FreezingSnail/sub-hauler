@@ -45,10 +45,22 @@ constexpr uint8_t  CHART_CELL_TILES  = 5;
 constexpr uint8_t  CHART_ROW_BYTES   = 8;
 constexpr uint16_t CHART_BYTES       = 256;
 constexpr uint8_t  SETTLEMENT_COUNT  = 4;
+constexpr uint8_t  ROUTE_COUNT       = static_cast<uint8_t>(SETTLEMENT_COUNT * SETTLEMENT_COUNT);
+constexpr uint8_t  ROUTE_CRATES      = 4;
+constexpr uint16_t ROUTE_STEP_HZ     = 60;
+constexpr uint8_t  ROUTE_REWARD_MAX  = 180;
+constexpr uint16_t ROUTE_DEADLINE_MAX = 14760;
 constexpr uint8_t  MINE_COUNT        = 8;
 constexpr uint8_t  CURRENT_COUNT     = 8;
 constexpr int16_t  DOCK_CLEARANCE_PX = 42;
 constexpr uint8_t  MINE_RADIUS_PX    = 3;
+constexpr uint8_t  CURRENT_WIDTH_PX  = 32;
+constexpr uint8_t  CURRENT_HEIGHT_PX = 16;
+constexpr int16_t  CURRENT_ACCEL_Q8 = 4096;
+constexpr uint8_t  CURRENT_DIR_XPOS = 0;
+constexpr uint8_t  CURRENT_DIR_YPOS = 1;
+constexpr uint8_t  CURRENT_DIR_XNEG = 2;
+constexpr uint8_t  CURRENT_DIR_YNEG = 3;
 constexpr bool     CHART_ANY_OPEN    = true;
 
 constexpr int16_t SPAWN_TILE_X  = 38;
@@ -85,20 +97,20 @@ struct Current {
 
 #if defined(__AVR__)
 
-// Position-only copy: 4 * 9 B + 8 * 4 B + 8 * 10 B in program flash.
+// Compact position-only copy: 4 * 4 B + 8 * 4 B + 8 * 5 B in program flash.
+// Settlement ids are implicit in the index and tile coordinates derive from
+// the pixel pair. Current extents are the generated constants and the signed
+// axis direction is one compact code.
 struct SettlementMeta {
-    uint8_t id;
-    int16_t tile_x;
-    int16_t tile_y;
     int16_t pixel_x;
     int16_t pixel_y;
 };
 
 const SettlementMeta SETTLEMENT_META[SETTLEMENT_COUNT] PROGMEM = {
-    {0, 38, 48, 304, 384},
-    {1, 150, 30, 1200, 240},
-    {2, 282, 62, 2256, 496},
-    {3, 172, 132, 1376, 1056},
+    {304, 384},
+    {1200, 240},
+    {2256, 496},
+    {1376, 1056},
 };
 
 const Mine MINE_META[MINE_COUNT] PROGMEM = {
@@ -112,26 +124,58 @@ const Mine MINE_META[MINE_COUNT] PROGMEM = {
     {374, 835},
 };
 
-const Current CURRENT_META[CURRENT_COUNT] PROGMEM = {
-    {712, 568, 32, 16, 4096, 0},
-    {1744, 248, 32, 16, 0, 4096},
-    {2000, 832, 32, 16, -4096, 0},
-    {784, 1096, 32, 16, 0, -4096},
-    {560, 168, 32, 16, 4096, 0},
-    {1328, 568, 32, 16, 0, 4096},
-    {2320, 1112, 32, 16, -4096, 0},
-    {336, 856, 32, 16, 0, -4096},
+struct CurrentMeta {
+    int16_t x;
+    int16_t y;
+    uint8_t dir;
 };
+
+const CurrentMeta CURRENT_META[CURRENT_COUNT] PROGMEM = {
+    {712, 568, 0},
+    {1744, 248, 1},
+    {2000, 832, 2},
+    {784, 1096, 3},
+    {560, 168, 0},
+    {1328, 568, 1},
+    {2320, 1112, 2},
+    {336, 856, 3},
+};
+
+// Baked contract economy: one row per origin, one column per destination.
+// Diagonal entries are unused. Host and device consume these arrays through
+// routeEconomy(), so no offer path recomputes distance, reward or deadline.
+const uint8_t ROUTE_REWARD[ROUTE_COUNT] PROGMEM = {
+    0, 115, 180, 140,
+    115, 0, 125, 110,
+    180, 125, 0, 125,
+    140, 110, 125, 0,
+};
+
+const uint16_t ROUTE_DEADLINE[ROUTE_COUNT] PROGMEM = {
+    0, 10440, 14760, 11880,
+    10440, 0, 11160, 10140,
+    14760, 11160, 0, 10980,
+    11880, 10140, 10980, 0,
+};
+
+inline bool routeEconomy(uint8_t from, uint8_t to, uint8_t &reward, uint16_t &deadline) {
+    if (from >= SETTLEMENT_COUNT || to >= SETTLEMENT_COUNT)
+        return false;
+    const uint8_t index = static_cast<uint8_t>(from * SETTLEMENT_COUNT + to);
+    reward = pgm_read_byte(&ROUTE_REWARD[index]);
+    deadline = static_cast<uint16_t>(pgm_read_word(&ROUTE_DEADLINE[index]));
+    return true;
+}
 
 inline bool settlementMeta(uint8_t id, Settlement &out) {
     if (id >= SETTLEMENT_COUNT)
         return false;
-    out.id = pgm_read_byte(&SETTLEMENT_META[id].id);
+    out.id = id;
     out.name = nullptr;
-    out.tile_x = static_cast<int16_t>(pgm_read_word(&SETTLEMENT_META[id].tile_x));
-    out.tile_y = static_cast<int16_t>(pgm_read_word(&SETTLEMENT_META[id].tile_y));
     out.pixel_x = static_cast<int16_t>(pgm_read_word(&SETTLEMENT_META[id].pixel_x));
     out.pixel_y = static_cast<int16_t>(pgm_read_word(&SETTLEMENT_META[id].pixel_y));
+    out.tile_x = static_cast<int16_t>(out.pixel_x / TILE_PIXELS);
+    out.tile_y = static_cast<int16_t>(out.pixel_y / TILE_PIXELS);
     return true;
 }
 
@@ -148,10 +192,15 @@ inline bool currentMeta(uint8_t id, Current &out) {
         return false;
     out.x = static_cast<int16_t>(pgm_read_word(&CURRENT_META[id].x));
     out.y = static_cast<int16_t>(pgm_read_word(&CURRENT_META[id].y));
-    out.w = pgm_read_byte(&CURRENT_META[id].w);
-    out.h = pgm_read_byte(&CURRENT_META[id].h);
-    out.ax_q8 = static_cast<int16_t>(pgm_read_word(&CURRENT_META[id].ax_q8));
-    out.ay_q8 = static_cast<int16_t>(pgm_read_word(&CURRENT_META[id].ay_q8));
+    out.w = CURRENT_WIDTH_PX;
+    out.h = CURRENT_HEIGHT_PX;
+    const uint8_t direction = pgm_read_byte(&CURRENT_META[id].dir);
+    out.ax_q8 = direction == CURRENT_DIR_XPOS
+                    ? CURRENT_ACCEL_Q8
+                    : (direction == CURRENT_DIR_XNEG ? static_cast<int16_t>(-CURRENT_ACCEL_Q8) : 0);
+    out.ay_q8 = direction == CURRENT_DIR_YPOS
+                    ? CURRENT_ACCEL_Q8
+                    : (direction == CURRENT_DIR_YNEG ? static_cast<int16_t>(-CURRENT_ACCEL_Q8) : 0);
     return true;
 }
 
@@ -185,6 +234,31 @@ constexpr Current CURRENTS[CURRENT_COUNT] = {
     {2320, 1112, 32, 16, -4096, 0},
     {336, 856, 32, 16, 0, -4096},
 };
+
+// Host mirror of the device route economy. The values and accessor contract
+// are generated once; only the storage differs (constexpr vs PROGMEM).
+constexpr uint8_t ROUTE_REWARD[ROUTE_COUNT] = {
+    0, 115, 180, 140,
+    115, 0, 125, 110,
+    180, 125, 0, 125,
+    140, 110, 125, 0,
+};
+
+constexpr uint16_t ROUTE_DEADLINE[ROUTE_COUNT] = {
+    0, 10440, 14760, 11880,
+    10440, 0, 11160, 10140,
+    14760, 11160, 0, 10980,
+    11880, 10140, 10980, 0,
+};
+
+inline bool routeEconomy(uint8_t from, uint8_t to, uint8_t &reward, uint16_t &deadline) {
+    if (from >= SETTLEMENT_COUNT || to >= SETTLEMENT_COUNT)
+        return false;
+    const uint8_t index = static_cast<uint8_t>(from * SETTLEMENT_COUNT + to);
+    reward = ROUTE_REWARD[index];
+    deadline = ROUTE_DEADLINE[index];
+    return true;
+}
 
 inline bool settlementMeta(uint8_t id, Settlement &out) {
     if (id >= SETTLEMENT_COUNT)

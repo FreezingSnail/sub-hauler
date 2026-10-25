@@ -6,6 +6,7 @@
 #include <ArduboyFX.h>
 #include "src/fxdata.h"
 #include "src/generated/sprites.hpp"
+#include "src/generated/pilot_sprites.hpp"
 #include "src/generated/world.hpp"
 #include "src/generated/cargo.hpp"
 
@@ -20,16 +21,28 @@ constexpr uint8_t CHART_FIRST_BYTE = 0x00;
 constexpr uint8_t CARGO_FIRST_MASK_LO = 0x17;
 constexpr uint8_t CARGO_FIRST_MASK_HI = 0x00;
 constexpr uint8_t CARGO_FIRST_POSKIND = 0x02;
+// Each pilot sheet is a two-byte header plus four 26x8 plus-mask frames.
+constexpr uint24_t PILOT_SPRITE_BYTES = 2 + 4 * 26 * 2;
 
 // Flash ABI order: the world tables are appended after the shipped sprite
-// include and packed back to back, then the cargo bank.
+// include and packed back to back, then the cargo bank. The external font,
+// deduplicated UI strings, and pilot sheets follow the cargo bank without
+// moving any earlier symbol.
 static_assert(worldTiles > hero, "worldTiles must follow the shipped symbols");
 static_assert(worldChart == worldTiles + world::WORLD_BYTES,
               "worldChart must immediately follow worldTiles");
 static_assert(cargoBank == worldChart + world::CHART_BYTES,
               "cargoBank must immediately follow the world chart");
-static_assert(FX_DATA_BYTES == cargoBank + CARGO_TABLE_BYTES,
-              "FX image size must end after the cargo bank");
+static_assert(font_6x8 == cargoBank + CARGO_TABLE_BYTES,
+              "font must immediately follow the cargo bank");
+static_assert(txt_paused > font_6x8, "text must follow the font");
+static_assert(hauler > txt_paused, "pilot sheets must follow the strings");
+static_assert(leviathan == hauler + PILOT_SPRITE_BYTES,
+              "pilot sheets are appended in generated order");
+static_assert(minnow == leviathan + PILOT_SPRITE_BYTES,
+              "pilot sheets are appended in generated order");
+static_assert(FX_DATA_BYTES == minnow + PILOT_SPRITE_BYTES,
+              "FX image size must end after the pilot sheets");
 
 // Cargo block layout: fixed counts and back-to-back hull blocks.
 static_assert(CARGO_MINNOW_OFFSET == 0, "MINNOW is the first hull block");
@@ -61,6 +74,19 @@ void setup() {
     const uint8_t width = FX::readPendingUInt8();
     const uint8_t height = FX::readEnd();
     ok = ok && width == HERO_WIDTH && height == HERO_HEIGHT;
+
+    // External text and pilot art live after the cargo bank. Probe the font
+    // cell and the first pilot sheet header; the static asserts above pin the
+    // complete append chain.
+    FX::seekData(font_6x8);
+    const uint16_t fontWidth = FX::readPendingUInt16();
+    const uint16_t fontHeight = FX::readPendingLastUInt16();
+    ok = ok && fontWidth == 6 && fontHeight == 8;
+
+    FX::seekData(hauler);
+    const uint8_t pilotWidth = FX::readPendingUInt8();
+    const uint8_t pilotHeight = FX::readEnd();
+    ok = ok && pilotWidth == HAULER_WIDTH && pilotHeight == HAULER_HEIGHT;
 
     // Probe the first byte of each appended world table. The static asserts
     // above tie their offsets and sizes to the generated metadata.

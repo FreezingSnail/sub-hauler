@@ -53,6 +53,8 @@ void setup() {
     ok = ok && settlement.id == 0 && settlement.tile_x == 38 && settlement.tile_y == 48;
     ok = ok && settlement.pixel_x == 304 && settlement.pixel_y == 384;
     ok = ok && world::settlementInfo(3, settlement);
+    ok = ok && settlement.id == 3;
+    ok = ok && settlement.tile_x == 172 && settlement.tile_y == 132;
     ok = ok && settlement.pixel_x == 1376 && settlement.pixel_y == 1056;
     ok = ok && !world::settlementInfo(4, settlement);
 
@@ -68,6 +70,10 @@ void setup() {
     ok = ok && current.ax_q8 == 4096 && current.ay_q8 == 0;
     ok = ok && world::currentInfo(1, current);
     ok = ok && current.ax_q8 == 0 && current.ay_q8 == 4096;
+    ok = ok && world::currentInfo(2, current);
+    ok = ok && current.ax_q8 == -4096 && current.ay_q8 == 0;
+    ok = ok && world::currentInfo(3, current);
+    ok = ok && current.ax_q8 == 0 && current.ay_q8 == -4096;
     ok = ok && !world::currentInfo(world::CURRENT_COUNT, current);
 
     Serial.println(ok ? F("P") : F("F"));

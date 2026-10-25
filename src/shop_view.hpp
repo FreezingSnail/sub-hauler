@@ -10,7 +10,7 @@
 #include "shop.hpp"
 
 // Shop board, 128x64. Pure layout is host-checkable; the draw function is
-// device-only because it prints through the Arduboy font with PROGMEM strings.
+// device-only because it uses the external FX font.
 //
 // Header: SHOP and the credit balance.
 // Status: current air and hull, including the purchased capacities.
@@ -53,14 +53,14 @@ static_assert(kPriceX + 3 * 6 <= 128, "MAX fits inside 128 columns");
 
 #include "common.hpp"
 
-inline const __FlashStringHelper *itemLabel(shop::Item item) {
+inline uint24_t itemLabel(shop::Item item) {
     if (item == shop::kAir)
-        return F("AIR TANK");
+        return txt_air_tank;
     if (item == shop::kHull)
-        return F("HULL PLATE");
+        return txt_hull_plate;
     if (item == shop::kSonar)
-        return F("SONAR");
-    return F("ITEM");
+        return txt_sonar;
+    return txt_item;
 }
 
 inline void draw(const game::State &state, uint8_t selected) {
@@ -70,25 +70,26 @@ inline void draw(const game::State &state, uint8_t selected) {
     if (selected >= shop::kItemCount)
         selected = shop::kFirstItem;
 
-    arduboy.setCursor(kHeaderX, kHeaderY);
-    arduboy.print(F("SHOP"));
-    arduboy.setCursor(kCreditsX, kHeaderY);
-    arduboy.print(F("CR "));
-    arduboy.print(state.credits);
+    text::normal();
+    text::at(kHeaderX, kHeaderY);
+    text::print(txt_shop);
+    text::at(kCreditsX, kHeaderY);
+    text::print(txt_credits);
+    text::number(state.credits);
 
     arduboy.drawFastHLine(0, kDividerY, 128, WHITE);
 
-    arduboy.setCursor(kStatusX, kStatusY);
-    arduboy.print(F("AIR "));
-    arduboy.print(state.air);
-    arduboy.print('/');
-    arduboy.print(game::airCapacity(state));
+    text::at(kStatusX, kStatusY);
+    text::print(txt_air_status);
+    text::number(state.air);
+    text::character('/');
+    text::number(game::airCapacity(state));
 #if SH_FEATURE_HULL_DAMAGE
-    arduboy.setCursor(kHullX, kStatusY);
-    arduboy.print(F("HULL "));
-    arduboy.print(state.hull);
-    arduboy.print('/');
-    arduboy.print(game::hullCapacity(state));
+    text::at(kHullX, kStatusY);
+    text::print(txt_hull_status);
+    text::number(state.hull);
+    text::character('/');
+    text::number(game::hullCapacity(state));
 #endif
 
     for (uint8_t row = 0; row < shop::kItemCount; ++row) {
@@ -98,37 +99,36 @@ inline void draw(const game::State &state, uint8_t selected) {
 
         if (row == selected) {
             arduboy.fillRect(0, static_cast<int16_t>(y - kRowInsetY), 128, kRowInvertH, WHITE);
-            arduboy.setTextColor(BLACK);
-            arduboy.setTextBackground(WHITE);
+            // Invert mode paints only the glyph strokes black, so the cell
+            // cannot spill into the next 7 px board row.
+            text::inverted();
         } else {
-            arduboy.setTextColor(WHITE);
-            arduboy.setTextBackground(BLACK);
+            text::normal();
         }
 
-        arduboy.setCursor(kRowX, y);
-        arduboy.print(itemLabel(item));
+        text::at(kRowX, y);
+        text::print(itemLabel(item));
 
-        arduboy.setCursor(kLevelX, y);
-        arduboy.print('L');
-        arduboy.print(level);
+        text::at(kLevelX, y);
+        text::character('L');
+        text::number(level);
 
-        arduboy.setCursor(kPriceX, y);
+        text::at(kPriceX, y);
         if (level >= shop::kMaxLevel)
-            arduboy.print(F("MAX"));
+            text::print(txt_max);
         else
-            arduboy.print(shop::priceFor(item));
+            text::number(shop::priceFor(item));
     }
-    arduboy.setTextColor(WHITE);
-    arduboy.setTextBackground(BLACK);
+    text::normal();
 
-    arduboy.setCursor(kHintX, kHintY);
+    text::at(kHintX, kHintY);
     const shop::Result status = shop::canBuy(state, static_cast<shop::Item>(selected));
     if (status == shop::kSoldOut)
-        arduboy.print(F("MAX LEVEL  B BACK"));
+        text::print(txt_max_level);
     else if (status == shop::kNoCredits)
-        arduboy.print(F("LOW CREDITS  B BACK"));
+        text::print(txt_low_credits);
     else
-        arduboy.print(F("A BUY  B BACK"));
+        text::print(txt_buy_hint);
 }
 
 #endif   // __AVR__

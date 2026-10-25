@@ -14,10 +14,6 @@
 #define SH_FEATURE_JOBS 1
 #endif
 
-#ifndef SH_FEATURE_CARGO_LOAD
-#define SH_FEATURE_CARGO_LOAD 1
-#endif
-
 #ifndef SH_FEATURE_FOG_CHART
 #define SH_FEATURE_FOG_CHART 1
 #endif
@@ -55,14 +51,10 @@
 #endif
 
 // Dependency checks. These direct checks also enforce the aggregate rules:
-// STATIONS=0 implies JOBS, SHOP, and CARGO_LOAD are 0; FOG_CHART=0 implies
-// SONAR and SAVE_CHART are 0.
+// STATIONS=0 implies JOBS and SHOP are 0; FOG_CHART=0 implies SONAR and
+// SAVE_CHART are 0.
 #if SH_FEATURE_JOBS && !SH_FEATURE_STATIONS
 #error "SH_FEATURE_JOBS requires SH_FEATURE_STATIONS"
-#endif
-
-#if SH_FEATURE_CARGO_LOAD && !SH_FEATURE_JOBS
-#error "SH_FEATURE_CARGO_LOAD requires SH_FEATURE_JOBS"
 #endif
 
 #if SH_FEATURE_SONAR && !SH_FEATURE_FOG_CHART
@@ -77,5 +69,7 @@
 #error "SH_FEATURE_SHOP requires SH_FEATURE_STATIONS"
 #endif
 
-// CARGO_LOAD=0 fallback: accepting a job still sets the four cargo units and
-// undocks; the loading UI and arrangement loader are not compiled.
+// Contract acceptance owns the coarse four-unit cargo load directly. The
+// packing minigame and its runtime were removed in sub-hauler-gl1.1 because
+// its value did not justify the flash/SRAM cost; the shipped cargoBank FX
+// declaration remains only for flash ABI compatibility.

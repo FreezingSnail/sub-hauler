@@ -13,8 +13,8 @@
 //
 // Air is a top-left bar, ballast is a left-edge gauge with a neutral notch,
 // cargo is a row of four pips, and the bottom line gives the D-pad contract.
-// All strings use F() (PROGMEM); there is no float, heap, or String. Placement
-// keeps the 26x8 boat (screen x ~44, y ~32) clear.
+// Labels come from the external FX text section; there is no float, heap, or
+// String. Placement keeps the 26x8 boat (screen x ~44, y ~32) clear.
 namespace hud {
 
 constexpr uint8_t kAirLabelX = 1;
@@ -42,8 +42,9 @@ constexpr uint8_t kHintY = 56;
 #if defined(__AVR__)
 inline void draw(const game::State &state) {
     // Air bar: outline plus a white fill proportional to the tank.
-    arduboy.setCursor(kAirLabelX, kAirLabelY);
-    arduboy.print(F("AIR"));
+    text::normal();
+    text::at(kAirLabelX, kAirLabelY);
+    text::print(txt_air);
     arduboy.drawRect(kAirX, kAirY, kAirW, kAirH, WHITE);
     const uint8_t airInnerW = static_cast<uint8_t>(kAirW - 2);
     const uint8_t airFill = static_cast<uint8_t>(static_cast<uint16_t>(state.air) * airInnerW / game::airCapacity(state));
@@ -64,8 +65,8 @@ inline void draw(const game::State &state) {
     arduboy.fillRect(static_cast<int16_t>(kGaugeX + kGaugeW), notchY, 3, 1, WHITE);
 
     // Cargo pips: four outline boxes, one filled per loaded unit.
-    arduboy.setCursor(kCargoLabelX, kCargoLabelY);
-    arduboy.print(F("CGO"));
+    text::at(kCargoLabelX, kCargoLabelY);
+    text::print(txt_cgo);
     for (uint8_t i = 0; i < game::kCargoMax; ++i) {
         const int16_t x = static_cast<int16_t>(kCargoX + i * kCargoStep);
         arduboy.drawRect(x, kCargoY, kCargoPip, kCargoPip, WHITE);
@@ -75,10 +76,10 @@ inline void draw(const game::State &state) {
 
     // Locked M2 flight contract: D-pad only; A/B stay reserved. Two short
     // segments keep both thrust and ballast controls readable in one text row.
-    arduboy.setCursor(kHintX, kHintY);
-    arduboy.print(F("L/R THRUST"));
-    arduboy.setCursor(65, kHintY);
-    arduboy.print(F("UP/DN TRIM"));
+    text::at(kHintX, kHintY);
+    text::print(txt_thrust);
+    text::at(65, kHintY);
+    text::print(txt_trim);
 }
 
 #endif   // __AVR__

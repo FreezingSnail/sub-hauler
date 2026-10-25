@@ -43,22 +43,23 @@ constexpr int32_t kDockRadiusSq = static_cast<int32_t>(kDockRadius) * kDockRadiu
 constexpr int16_t kDockSpeedQ8 = 16 * kQ8One;
 constexpr int32_t kDockSpeedSq = static_cast<int32_t>(kDockSpeedQ8) * kDockSpeedQ8;
 
-// Undocking must not instantly re-dock on the next idle frame. Give the
-// player a short window to thrust clear of the ring; this is 1.5 s at 60 Hz.
-constexpr uint8_t kUndockCooldown = 90;
+// Undocking arms the ring latch. Auto-dock stays disarmed until the boat has
+// left every settlement ring, so the player can take as long as they need to
+// thrust clear; re-entering after that exit docks normally.
+constexpr uint8_t kUndockCooldown = 1;
 
 // Row extension point for M3 jobs and the M7 shop. Offers occupy the leading
 // rows; SERVICE and the shop follow, and UNDOCK stays last so its action never
 // moves when jobs or the shop are compiled out. With an active contract the
-// board instead shows a summary row followed by the load/abandon/shop/undock
+// board instead shows a summary row followed by the abandon/shop/undock
 // actions, so the board shapes are:
 //
-//   no job:         [offer 0] [offer 1] SERVICE SHOP UNDOCK
-//   active, cargo:  [summary] LOAD CARGO ABANDON SHOP UNDOCK
-//   active, no cargo UI: [summary] ABANDON SHOP UNDOCK
+//   no job:       [offer 0] [offer 1] SERVICE SHOP UNDOCK
+//   active:       [summary] ABANDON SHOP UNDOCK
 //
 // A SHOP=0 build drops the SHOP row and leaves the M3 shapes untouched. Only
 // selectable rows participate in wrap-around; the summary row is inert.
+// Acceptance auto-loads the contract hold, so there is no LOAD CARGO row.
 #if SH_FEATURE_JOBS
 constexpr uint8_t kOfferRows = game::kJobOffers;
 #else
@@ -77,18 +78,6 @@ constexpr uint8_t kFirstRow = 0;
 
 #if SH_FEATURE_JOBS
 constexpr uint8_t kActiveSummaryRow = 0;
-#if SH_FEATURE_CARGO_LOAD
-constexpr uint8_t kLoadRow = 1;
-constexpr uint8_t kAbandonRow = 2;
-#if SH_FEATURE_SHOP
-constexpr uint8_t kActiveShopRow = 3;
-constexpr uint8_t kActiveUndockRow = 4;
-constexpr uint8_t kActiveRowCount = 5;
-#else
-constexpr uint8_t kActiveUndockRow = 3;
-constexpr uint8_t kActiveRowCount = 4;
-#endif
-#else
 constexpr uint8_t kAbandonRow = 1;
 #if SH_FEATURE_SHOP
 constexpr uint8_t kActiveShopRow = 2;
@@ -97,7 +86,6 @@ constexpr uint8_t kActiveRowCount = 4;
 #else
 constexpr uint8_t kActiveUndockRow = 2;
 constexpr uint8_t kActiveRowCount = 3;
-#endif
 #endif
 #endif
 
@@ -112,10 +100,6 @@ enum RowKind : uint8_t {
     ,
     kRowJob,
     kRowAbandon
-#if SH_FEATURE_CARGO_LOAD
-    ,
-    kRowLoad
-#endif
 #endif
 };
 
@@ -131,10 +115,6 @@ enum Action : uint8_t {
     ,
     kActionAccepted,
     kActionAbandoned
-#if SH_FEATURE_CARGO_LOAD
-    ,
-    kActionLoadCargo
-#endif
 #endif
 };
 
@@ -160,10 +140,6 @@ inline RowKind rowKind(uint8_t row, const State &state) {
     if (jobActive(state)) {
         if (row == kActiveSummaryRow)
             return kRowJob;
-#if SH_FEATURE_CARGO_LOAD
-        if (row == kLoadRow)
-            return kRowLoad;
-#endif
         if (row == kAbandonRow)
             return kRowAbandon;
 #if SH_FEATURE_SHOP
@@ -184,26 +160,20 @@ inline RowKind rowKind(uint8_t row, const State &state) {
     return kRowUndock;
 }
 
-// First selectable row for a freshly docked boat: offer 0, or the safe load
-// row when a contract is already running (wrong-station dock). Without the
-// cargo screen the fallback lands on ABANDON instead.
+// First selectable row for a freshly docked boat: offer 0, or the safe ABANDON
+// row when a contract is already running (wrong-station dock).
 inline uint8_t initialRow(const State &state) {
 #if SH_FEATURE_JOBS
-    if (jobActive(state)) {
-#if SH_FEATURE_CARGO_LOAD
-        return kLoadRow;
-#else
+    if (jobActive(state))
         return kAbandonRow;
-#endif
-    }
 #endif
     return kFirstRow;
 }
 
 #if SH_FEATURE_SHOP
 // The SHOP row index depends on the board shape. The sketch uses this when B
-// backs out of the shop, so a CARGO_LOAD=0 active board returns to SHOP rather
-// than the UNDOCK row that shares the no-job index.
+// backs out of the shop, so an active board returns to SHOP rather than the
+// UNDOCK row that shares the no-job index.
 inline uint8_t shopRow(const State &state) {
 #if SH_FEATURE_JOBS
     if (jobActive(state))
@@ -294,13 +264,17 @@ inline void service(State &state) {
 // is the same anchor the gantry renderer uses; the camera snaps with it so the
 // first station frame and any later undock frame cannot show a stale view.
 inline bool dock(State &state) {
-    if (state.docked >= 0 || state.dockCooldown > 0)
+    if (state.docked >= 0)
         return false;
 
     uint8_t settlementId = 0;
-    if (!nearestDock(state, settlementId))
-        return false;
-    if (!slowEnoughToDock(state))
+    const bool inRing = nearestDock(state, settlementId);
+    if (state.dockCooldown > 0) {
+        if (inRing)
+            return false;
+        state.dockCooldown = 0;
+    }
+    if (!inRing || !slowEnoughToDock(state))
         return false;
 
     world::Settlement settlement;
@@ -342,24 +316,21 @@ inline bool undock(State &state) {
 
 // World step plus auto-dock, in that order. Docked state pauses the step:
 // travel time, air drain, and ballast valves do not advance while the station
-// screen is showing. Returns true only on the frame that docked.
+// screen is showing. Returns true only on the frame that docked. The ring
+// latch is resolved inside dock() after the step, so an exit frame and a
+// re-entry frame behave the same as a direct dock() call.
 template <typename Reader> inline bool stepFlight(State &state, const Input &input, Reader &reader, const world::TileCache *cache = nullptr) {
     if (state.docked >= 0)
         return false;
 
-    if (state.dockCooldown > 0)
-        --state.dockCooldown;
-
     game::stepWorld(state, input, reader, cache);
-    if (state.dockCooldown > 0)
-        return false;
     return dock(state);
 }
 
-// A confirms the selected row. Offer rows accept the contract, LOAD CARGO
-// reopens the loading screen (the sketch owns that screen transition), ABANDON
-// clears the contract, SHOP opens the shop screen (the sketch owns it),
-// SERVICE refills/repairs, and UNDOCK leaves the station.
+// A confirms the selected row. Offer rows accept the contract (auto-loading
+// the four contract units), ABANDON clears the contract, SHOP opens the shop
+// screen (the sketch owns it), SERVICE refills/repairs, and UNDOCK leaves the
+// station.
 inline Action activate(uint8_t selected, State &state) {
     if (state.docked < 0 || selected >= rowCount(state))
         return kActionNone;
@@ -379,10 +350,6 @@ inline Action activate(uint8_t selected, State &state) {
         return jobs::accept(state, selected) ? kActionAccepted : kActionNone;
     case kRowAbandon:
         return jobs::abandon(state) ? kActionAbandoned : kActionNone;
-#if SH_FEATURE_CARGO_LOAD
-    case kRowLoad:
-        return jobActive(state) ? kActionLoadCargo : kActionNone;
-#endif
     case kRowJob:
         return kActionNone;
 #endif

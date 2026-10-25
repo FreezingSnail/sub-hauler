@@ -24,7 +24,6 @@ PREFIX = "SH_FEATURE_"
 FEATURES = (
     "STATIONS",
     "JOBS",
-    "CARGO_LOAD",
     "FOG_CHART",
     "SONAR",
     "MINES",
@@ -40,7 +39,6 @@ FEATURES = (
 # sync with the #if blocks so error reporting is deterministic.
 DEPENDENCIES = {
     "JOBS": ("STATIONS",),
-    "CARGO_LOAD": ("JOBS",),
     "SONAR": ("FOG_CHART",),
     "SAVE_CHART": ("FOG_CHART",),
     "SHOP": ("STATIONS",),
@@ -50,7 +48,6 @@ PROFILES = {
     "full": {
         "STATIONS": 1,
         "JOBS": 1,
-        "CARGO_LOAD": 1,
         "FOG_CHART": 1,
         "SONAR": 1,
         "MINES": 1,
@@ -64,7 +61,6 @@ PROFILES = {
     "lean": {
         "STATIONS": 1,
         "JOBS": 1,
-        "CARGO_LOAD": 1,
         "FOG_CHART": 1,
         "SONAR": 1,
         "MINES": 0,
@@ -78,7 +74,6 @@ PROFILES = {
     "core": {
         "STATIONS": 1,
         "JOBS": 1,
-        "CARGO_LOAD": 1,
         "FOG_CHART": 0,
         "SONAR": 0,
         "MINES": 0,
@@ -92,7 +87,6 @@ PROFILES = {
     "min": {
         "STATIONS": 0,
         "JOBS": 0,
-        "CARGO_LOAD": 0,
         "FOG_CHART": 0,
         "SONAR": 0,
         "MINES": 0,

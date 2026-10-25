@@ -56,9 +56,9 @@ inline uint8_t radiusForLevel(uint8_t upgradeLevel) {
     return radius > kMaxRevealRadius ? kMaxRevealRadius : static_cast<uint8_t>(radius);
 }
 
-// A ping is atomic: a rejected ping spends no air, reveals nothing, and does
-// not advance the ping count. A station screen never calls this, and a docked
-// boat is rejected here as a second line of defence.
+// A ping is atomic: a rejected ping spends no air, starts no cooldown, and
+// reveals nothing. A station screen never calls this, and a docked boat is
+// rejected here as a second line of defence.
 inline Result fire(game::State &state, chart::State &chartState, uint8_t upgradeLevel) {
 #if SH_FEATURE_STATIONS
     if (state.docked >= 0)
@@ -73,8 +73,6 @@ inline Result fire(game::State &state, chart::State &chartState, uint8_t upgrade
 
     state.air = static_cast<int16_t>(state.air - cost);
     state.sonarCooldown = kCooldownTicks;
-    if (state.sonarPings != 255)
-        ++state.sonarPings;
     chart::revealAtPixels(chartState, state.x, state.y, radiusForLevel(upgradeLevel));
     return kFired;
 }

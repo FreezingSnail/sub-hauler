@@ -6,10 +6,53 @@ using uint24_t = __uint24;
 
 // Initialize FX hardware using  FX::begin(FX_DATA_PAGE); in the setup() function.
 
-constexpr uint16_t FX_DATA_PAGE  = 0xffd6;
-constexpr uint24_t FX_DATA_BYTES = 10498;
+constexpr uint16_t FX_DATA_PAGE  = 0xffcd;
+constexpr uint24_t FX_DATA_BYTES = 13012;
 
 constexpr uint24_t hero = 0x000000;
 constexpr uint24_t worldTiles = 0x0000C2;
 constexpr uint24_t worldChart = 0x0019C2;
 constexpr uint24_t cargoBank = 0x001AC2;
+constexpr uint24_t font_6x8 = 0x002902;
+constexpr uint16_t font_6x8_width  = 6;
+constexpr uint16_t font_6x8_height = 8;
+constexpr uint8_t  font_6x8_frames = 256;
+
+constexpr uint24_t txt_paused = 0x002F06;
+constexpr uint24_t txt_hull_lost = 0x002F19;
+constexpr uint24_t txt_air = 0x002F2E;
+constexpr uint24_t txt_cgo = 0x002F32;
+constexpr uint24_t txt_thrust = 0x002F36;
+constexpr uint24_t txt_trim = 0x002F41;
+constexpr uint24_t txt_minnow = 0x002F4C;
+constexpr uint24_t txt_hauler = 0x002F53;
+constexpr uint24_t txt_leviathan = 0x002F5A;
+constexpr uint24_t txt_len = 0x002F64;
+constexpr uint24_t txt_title_hint = 0x002F69;
+constexpr uint24_t txt_air_tank = 0x002F7A;
+constexpr uint24_t txt_hull_plate = 0x002F83;
+constexpr uint24_t txt_sonar = 0x002F8E;
+constexpr uint24_t txt_item = 0x002F94;
+constexpr uint24_t txt_shop = 0x002F99;
+constexpr uint24_t txt_credits = 0x002F9E;
+constexpr uint24_t txt_air_status = 0x002FA2;
+constexpr uint24_t txt_hull_status = 0x002FA7;
+constexpr uint24_t txt_max = 0x002FAD;
+constexpr uint24_t txt_max_level = 0x002FB1;
+constexpr uint24_t txt_low_credits = 0x002FC3;
+constexpr uint24_t txt_buy_hint = 0x002FD7;
+constexpr uint24_t txt_tidewall = 0x002FE5;
+constexpr uint24_t txt_benthos = 0x002FEE;
+constexpr uint24_t txt_cormorant = 0x002FF6;
+constexpr uint24_t txt_deep_anchor = 0x003000;
+constexpr uint24_t txt_station = 0x00300C;
+constexpr uint24_t txt_service = 0x003014;
+constexpr uint24_t txt_undock = 0x00301C;
+constexpr uint24_t txt_abandon = 0x003023;
+constexpr uint24_t txt_offer = 0x00302B;
+constexpr uint24_t txt_late_short = 0x003031;
+constexpr uint24_t txt_autoload_hint = 0x00303C;
+constexpr uint24_t txt_station_hint = 0x00304D;
+constexpr uint24_t hauler = 0x00305E;
+constexpr uint24_t leviathan = 0x003130;
+constexpr uint24_t minnow = 0x003202;

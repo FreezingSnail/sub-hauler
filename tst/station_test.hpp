@@ -181,6 +181,35 @@ inline void StationSuite(TestRunner &runner) {
     }
 
     {
+        Test test("undock ring latch waits for a clear exit before auto-dock");
+        world::Settlement settlement;
+        test.assertTrue(anySettlement(settlement), "settlement metadata loads");
+
+        Fixture fake;
+        game::State state;
+        game::reset(state);
+        place(state, settlement.pixel_x, settlement.pixel_y);
+        test.assertTrue(station::dock(state), "dock succeeds");
+        test.assertTrue(station::undock(state), "undock succeeds");
+
+        bool redocked = false;
+        for (uint16_t i = 0; i < 240; ++i)
+            redocked = station::stepFlight(state, idle(), fake) || redocked;
+        test.assertTrue(!redocked, "idling in the berth ring never re-docks");
+        test.assertEqual(state.docked, static_cast<int8_t>(-1), "boat stays in free flight");
+        test.assertEqual(state.dockCooldown, 1, "ring latch holds the cooldown at one");
+
+        place(state, static_cast<int16_t>(settlement.pixel_x + station::kDockRadius + 1), settlement.pixel_y);
+        test.assertTrue(!station::stepFlight(state, idle(), fake), "leaving the ring does not dock");
+        test.assertEqual(state.dockCooldown, 0, "clearing the ring re-arms auto-dock");
+
+        place(state, settlement.pixel_x, settlement.pixel_y);
+        test.assertTrue(station::stepFlight(state, idle(), fake), "re-entering the ring docks again");
+        test.assertEqual(state.docked, settlement.id, "dock returns to the berth");
+        runner.add(test);
+    }
+
+    {
         Test test("auto-dock fires after a slow world step");
         for (uint8_t id = 0; id < world::settlementCount(); ++id) {
             world::Settlement settlement;
