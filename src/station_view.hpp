@@ -13,16 +13,16 @@
 #endif
 
 // Station board, 128x64. The layout is pure and host-checkable; the draw
-// function is device-only because it prints through the Arduboy font with
-// PROGMEM strings.
+// function is device-only because it uses the external FX font.
 //
 // Header: settlement name and the credits placeholder.
 // Status: current air and hull, including run-only shop upgrades.
-// Rows:   offers then SERVICE/SHOP/UNDOCK, or summary/LOAD
-//         CARGO/ABANDON/SHOP/UNDOCK when a contract is active. One inverted
-//         selection bar. The SHOP row opens the shop screen; B there returns.
-// Hint:   A confirms the row and B always undocks. With SH_FEATURE_JOBS the
-//         active board reopens the cargo screen from LOAD CARGO.
+// Rows:   offers then SERVICE/SHOP/UNDOCK, or summary/ABANDON/SHOP/UNDOCK when
+//         a contract is active. One inverted selection bar. The SHOP row opens
+//         the shop screen; B there returns.
+// Hint:   A confirms the row and B always undocks. Contract acceptance
+//         auto-loads the four cargo units, so the active board needs no load
+//         row or screen.
 namespace station_view {
 
 constexpr uint8_t kNameX = 2;
@@ -76,57 +76,49 @@ static_assert(kRowX + kOfferChars * 6 <= 128, "offer text fits inside 128 column
 
 // Generated AVR settlement records carry position only (name is null), so the
 // station board owns the display names. Order matches the generated flash ABI.
-inline const __FlashStringHelper *nameFor(uint8_t id) {
+inline uint24_t nameFor(uint8_t id) {
     switch (id) {
     case 0:
-        return F("TIDEWALL");
+        return txt_tidewall;
     case 1:
-        return F("BENTHOS");
+        return txt_benthos;
     case 2:
-        return F("CORMORANT");
+        return txt_cormorant;
     case 3:
-        return F("DEEP ANCHOR");
+        return txt_deep_anchor;
     default:
-        return F("STATION");
+        return txt_station;
     }
 }
 
-inline const __FlashStringHelper *rowLabel(uint8_t row, const game::State &state) {
+inline uint24_t rowLabel(uint8_t row, const game::State &state) {
     const station::RowKind kind = station::rowKind(row, state);
 #if SH_FEATURE_SHOP
     // The shop label is folded into an if-chain instead of the switch: adding a
     // sixth RowKind would widen the compiler's jump table by two bytes of RAM.
     if (kind == station::kRowService)
-        return F("SERVICE");
+        return txt_service;
     if (kind == station::kRowShop)
-        return F("SHOP");
+        return txt_shop;
     if (kind == station::kRowUndock)
-        return F("UNDOCK");
+        return txt_undock;
 #if SH_FEATURE_JOBS
     if (kind == station::kRowAbandon)
-        return F("ABANDON");
-#if SH_FEATURE_CARGO_LOAD
-    if (kind == station::kRowLoad)
-        return F("LOAD CARGO");
+        return txt_abandon;
 #endif
-#endif
-    return nullptr;
+    return 0;
 #else
     switch (kind) {
     case station::kRowService:
-        return F("SERVICE");
+        return txt_service;
     case station::kRowUndock:
-        return F("UNDOCK");
+        return txt_undock;
 #if SH_FEATURE_JOBS
     case station::kRowAbandon:
-        return F("ABANDON");
-#if SH_FEATURE_CARGO_LOAD
-    case station::kRowLoad:
-        return F("LOAD CARGO");
-#endif
+        return txt_abandon;
 #endif
     default:
-        return nullptr;
+        return 0;
     }
 #endif
 }
@@ -134,19 +126,19 @@ inline const __FlashStringHelper *rowLabel(uint8_t row, const game::State &state
 #if SH_FEATURE_JOBS
 inline void printClock(uint16_t ticks) {
     const uint16_t seconds = static_cast<uint16_t>(ticks / game::kStepHz);
-    arduboy.print(static_cast<uint16_t>(seconds / 60));
-    arduboy.print(':');
+    text::number(static_cast<uint16_t>(seconds / 60));
+    text::character(':');
     const uint8_t rest = static_cast<uint8_t>(seconds % 60);
     if (rest < 10)
-        arduboy.print('0');
-    arduboy.print(rest);
+        text::character('0');
+    text::number(rest);
 }
 
 inline void printDestination(uint8_t toId, uint16_t reward, uint16_t ticks) {
-    arduboy.print(nameFor(toId));
-    arduboy.print(' ');
-    arduboy.print(reward);
-    arduboy.print(' ');
+    text::print(nameFor(toId));
+    text::character(' ');
+    text::number(reward);
+    text::character(' ');
     printClock(ticks);
 }
 
@@ -156,22 +148,22 @@ inline void printRow(uint8_t row, const game::State &state) {
         if (row < state.offerCount)
             printDestination(state.offers[row].to, state.offers[row].reward, state.offers[row].deadline);
         else
-            arduboy.print(F("OFFER"));
+            text::print(txt_offer);
         break;
     case station::kRowJob:
         printDestination(state.activeJob.to, state.activeJob.reward, jobs::remainingTicks(state));
         break;
     case station::kRowAbandon:
-        arduboy.print(F("ABANDON"));
+        text::print(txt_abandon);
         break;
     default:
-        arduboy.print(rowLabel(row, state));
+        text::print(rowLabel(row, state));
         break;
     }
 }
 #else
 inline void printRow(uint8_t row, const game::State &state) {
-    arduboy.print(rowLabel(row, state));
+    text::print(rowLabel(row, state));
 }
 #endif
 
@@ -179,29 +171,30 @@ inline void draw(const game::State &state, uint8_t selected) {
     if (state.docked < 0)
         return;
 
-    arduboy.setCursor(kNameX, kHeaderY);
-    arduboy.print(nameFor(static_cast<uint8_t>(state.docked)));
+    text::normal();
+    text::at(kNameX, kHeaderY);
+    text::print(nameFor(static_cast<uint8_t>(state.docked)));
 
 #if SH_FEATURE_JOBS
-    arduboy.setCursor(kCreditsX, kHeaderY);
-    arduboy.print(F("CR "));
-    arduboy.print(state.credits);
+    text::at(kCreditsX, kHeaderY);
+    text::print(txt_credits);
+    text::number(state.credits);
 #endif
 
     arduboy.drawFastHLine(0, kDividerY, 128, WHITE);
 
-    arduboy.setCursor(kStatusX, kStatusY);
-    arduboy.print(F("AIR "));
-    arduboy.print(state.air);
-    arduboy.print('/');
-    arduboy.print(game::airCapacity(state));
+    text::at(kStatusX, kStatusY);
+    text::print(txt_air_status);
+    text::number(state.air);
+    text::character('/');
+    text::number(game::airCapacity(state));
 
 #if SH_FEATURE_HULL_DAMAGE
-    arduboy.setCursor(kHullX, kStatusY);
-    arduboy.print(F("HULL "));
-    arduboy.print(state.hull);
-    arduboy.print('/');
-    arduboy.print(game::hullCapacity(state));
+    text::at(kHullX, kStatusY);
+    text::print(txt_hull_status);
+    text::number(state.hull);
+    text::character('/');
+    text::number(game::hullCapacity(state));
 #endif
 
     const uint8_t rowCount = station::rowCount(state);
@@ -211,42 +204,34 @@ inline void draw(const game::State &state, uint8_t selected) {
 
         if (chosen) {
             arduboy.fillRect(0, static_cast<int16_t>(y - kRowInsetY), 128, kRowInvertH, WHITE);
-            arduboy.setTextColor(BLACK);
-            arduboy.setTextBackground(WHITE);
+            // The bar is the cell background. Invert mode paints only the
+            // glyph strokes black, so the cell cannot spill into the next row.
+            text::inverted();
         } else {
-            arduboy.setTextColor(WHITE);
-            arduboy.setTextBackground(BLACK);
+            text::normal();
         }
 
-        arduboy.setCursor(kRowX, y);
+        text::at(kRowX, y);
         printRow(row, state);
     }
-    arduboy.setTextColor(WHITE);
-    arduboy.setTextBackground(BLACK);
+    text::normal();
 
-    arduboy.setCursor(kHintX, kHintY);
+    text::at(kHintX, kHintY);
 #if SH_FEATURE_JOBS
     // A failed delivery replaces the control hint until the next accept or
     // abandon. Treat it as a transient board note, not a permanent flag.
     if (jobs::deliveryFailed(state)) {
-        arduboy.print(F("LATE/SHORT"));
+        text::print(txt_late_short);
         return;
     }
-#endif
-#if SH_FEATURE_JOBS
-#if SH_FEATURE_CARGO_LOAD
-    // The M5 board reopens the cargo screen from LOAD CARGO, so the same row
-    // hint works for offer and active shapes.
-    arduboy.print(F("UP/DN A OK B OUT"));
-#else
-    // CARGO_LOAD=0 keeps the M3 fallback: acceptance already fills the hold.
+    // Acceptance already fills the hold; the active board only needs the
+    // abandon/undock actions.
     if (station::jobActive(state))
-        arduboy.print(F("AUTO-LOAD  B OUT"));
+        text::print(txt_autoload_hint);
     else
-        arduboy.print(F("UP/DN A OK B OUT"));
-#endif
+        text::print(txt_station_hint);
 #else
-    arduboy.print(F("UP/DN A OK B OUT"));
+    text::print(txt_station_hint);
 #endif
 }
 

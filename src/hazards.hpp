@@ -102,8 +102,6 @@ inline uint8_t collide(game::State &state) {
         remove(state, id);
         state.impactSpeedQ8 = kMineImpactSpeedQ8;
         state.impactAxis = kMineImpactAxis;
-        if (state.impacts < 255)
-            ++state.impacts;
 #if SH_FEATURE_HULL_DAMAGE
         applyDamage(state, kMineDamage);
 #endif

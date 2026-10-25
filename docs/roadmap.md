@@ -1,16 +1,20 @@
 # Roadmap — Arduboy device port
 
-Status: **M9 release, content frozen 2026-10-23** at commit `4f66830`.
-`spike-trim/` remains the behavioural reference; the device firmware now
-implements the full dock → accept → load → travel → deliver loop across three
-hulls. This document sequences the port so each milestone leaves a playable or
-testable device build.
+Status: **cargo-free resource pass complete, 2026-10-24** (`sub-hauler-gl1.2`–`gl1.8`).
+`spike-trim/` remains a historical behavioural
+reference; the device firmware implements the full dock → accept → auto-load →
+undock → travel → deliver loop across three hulls. The cargo-packing minigame
+was removed because its value did not justify its flash/SRAM cost; the final
+pass moved UI text and fixed pilot art to FX and compacted generated metadata
+and AVR run state. This document sequences the port so each milestone leaves a
+playable or testable device build; earlier cargo milestones remain below as
+history.
 
 ## Goal
 
 Stand up the browser game loop on the Arduboy FX:
 
-> dock → accept contract → load hold → undock → travel → deliver → repeat
+> dock → accept contract → auto-load hold → undock → travel → deliver → repeat
 
 The full game is the target, but every feature must be removable at compile
 time so flash or SRAM pressure can be answered by carving scope rather than
@@ -28,36 +32,97 @@ rewriting the game.
 
 ## Current baseline
 
-Measured 2026-10-23 at the M9 release checkpoint (full profile, default
+Measured 2026-10-24 after the cargo-free resource pass (full profile, default
 `SAVE_CHART=0`):
 
 | Resource | Current | Planning ceiling | Hardware limit |
 | --- | ---: | ---: | ---: |
-| Flash | 28,792 B | 29,000 B | 29,696 B |
-| Static SRAM | 1,690 B | 1,700 B | 2,560 B |
-| Stack | 624 B probe reserve | ≥600 B reserve | remainder |
+| Flash | 17,548 B | 29,000 B | 29,696 B |
+| Static SRAM | 1,572 B | 1,700 B | 2,560 B |
+| Stack | 812 B probe reserve | ≥600 B reserve | remainder |
 
 The 1,700 B static ceiling is a planning target, not a hardware fact. It was
-raised from 1,680 B on 2026-10-23 at the M7 damage/particles checkpoint. The M9
-polish adds one `lastDelivery` byte, so static RAM moves from 1,689 B to
-**1,690 B**. The 10 B of headroom under 1,700 B is intentional slack for LTO
-rounding, not a licence for another state slice; the 600 B stack target is
-unchanged and the probe measures **624 B**, a 24 B margin.
+raised from 1,680 B on 2026-10-23 at the M7 damage/particles checkpoint. The
+cargo-free carve removed the static cargo screen state and this pass removed
+another 20 B, so static RAM falls from 1,690 B to **1,572 B** and the full image
+has 128 B of headroom under 1,700 B. The 600 B stack target is unchanged and
+the probe measures **812 B**, a 212 B margin.
 
-The flash planning ceiling remains **29,000 B** (696 B under the 29,696 B
-hardware limit; the M9 image is 208 B under the planning line). The aggregate
-`game::reset()` rewrite more than pays for the pause/failure/delivery code, so
-the full image is 18 B below the M8 holds checkpoint. Any future persistent
-feature still needs a carve.
+The flash planning ceiling remains **29,000 B** (12,148 B under the 29,696 B
+hardware limit; the current image is **11,452 B** under the planning line).
+Removing the packing runtime released **8,734 B flash and 98 B static** against
+the post-M9 menu-fix image (28,930 B / 1,690 B); the UI/art/metadata pass
+released another **2,648 B flash and 20 B static**. The undock ring latch,
+edge-gated A+B pause, and idle-frame skips for the title/station/shop/pause
+boards remain. Any future persistent feature still needs a recorded cost.
 
-The release matrix is full **28,792 B / 1,690 B**, lean **25,800 B / 1,680 B**,
-core **22,244 B / 1,421 B**, min **10,456 B / 1,259 B**. The default
-`SAVE_CHART=0` image is unchanged from HEAD; the measured `SAVE_CHART=1`
-variant is **29,352 B / 1,690 B**, 344 B under hardware but 352 B over the
-planning ceiling, so the flag remains off and the overage is a recorded risk.
+The matrix is full **17,548 B / 1,572 B**, lean **14,792 B / 1,560 B**, core
+**12,626 B / 1,302 B**, min **9,142 B / 1,252 B**. Against the cargo-free
+baseline (20,196 / 17,362 / 14,756 / 10,456 B flash and 1,592 / 1,580 / 1,321 /
+1,259 B static), this pass saves **2,648 / 2,570 / 2,130 / 1,314 B flash** and
+**20 / 20 / 19 / 7 B static**. The measured `SAVE_CHART=1` variant was last
+recorded at 29,330 B / 1,690 B before the cargo carve; enabling it requires a
+fresh measurement.
 
 Whole-image measurements only: LTO makes per-symbol arithmetic misleading. Use
 `make size` and record profile A/B deltas.
+
+### Cargo packing removal — 2026-10-24
+
+`sub-hauler-gl1.1` supersedes the former cutaway/packing direction and the
+cargo-loader validation work:
+
+- `Screen::Cargo`, the LOAD CARGO row, the A+B commit chord, the hold-B exit
+  timer, `s_cargo`, the packing rules, and the `CARGO_LOAD` flag/profile
+  plumbing are removed.
+- Acceptance uses the former `CARGO_LOAD=0` contract: it auto-loads the four
+  coarse cargo units, neutralizes trim, and keeps the boat docked. An explicit
+  `UNDOCK` row action or `B` starts travel.
+- Coarse cargo units/physics, jobs/economy/deadlines, all playable hulls, the
+  docking latch, flight pause, chart/sonar, hazards, shop, and save option are
+  preserved.
+- The shipped `cargoBank` declaration, position, size, bytes, generator, and
+  `make gen-check` coverage remain for flash ABI compatibility. The runtime
+  reader, screen, rules, and their host/device tests are retired.
+- `test_memory` now runs the cargo-free accept/auto-load/station-board/undock
+  path instead of the removed hold screens.
+
+This is the measured replacement, not a feature toggle: there is no compile-time
+switch to bring packing back. Reintroducing it needs a new user decision and a
+new budget.
+
+### UI/art and metadata resource pass — 2026-10-24
+
+`sub-hauler-gl1.2`–`gl1.8` completed the cargo-free resource pass and integrated
+verification.
+
+- **Compact world metadata.** Position-only AVR settlement/mine/current records
+  fell from **148 B to 88 B PROGMEM**. The incremental A/B was
+  17,584/14,810/12,640/9,178 B -> **17,548/14,792/12,626/9,142 B**, with no RAM
+  or cart-read change. The 128 B cave atlas stays in PROGMEM because FX would
+  add hot render traffic.
+- **Route economy generated.** Rewards and deadlines are baked compact tables;
+  diagnostic counters and the job clock were removed, route reward fields were
+  narrowed, and AVR `game::State` is now **80 B**.
+- **UI text in FX.** Surviving labels were deduplicated into
+  `fxdata/fxdata.txt`; the external 6x8 font and `src/text.hpp` adapter replace
+  `Print`. `dcmInvert` keeps selected-row glyphs black at the 7 px station/shop
+  pitch. The firmware uses `Arduboy2Base`, and the default Arduboy font/Print
+  symbols are absent from the ELF.
+- **Pilot art in FX.** MINNOW/HAULER/LEVIATHAN are generated 26x8 plus-mask
+  sheets with right/left and unloaded/loaded frames, shared by title and pilot.
+  Host pixel tests retain equivalent procedural shapes.
+- **ABI preserved.** `cargoBank` stays at **0x001AC2** with unchanged bytes and
+  order; all new FX entries append after it. The FX payload in
+  `fxdata/fxdata-data.bin` is **13,012 B**, while the padded flashable
+  `fxdata/fxdata.bin` image is **13,056 B**.
+
+Final evidence: `make gen-check` pass; host `make test` 132/99/75/39 passed
+(full/lean/core/min); `make test-tools` 77 passed; `make fxtest`
+`test_boot`/`test_memory`/`test_world` all `P`; full `mini` 17,548 B / 1,572 B;
+full diagnostics `stack_reserve=812` against the 600 B target. No manual
+interactive playthrough or manual device soak was run; evidence is the host loop
+suite plus the device smoke run.
 
 ### Profile matrix — 2026-10-22
 
@@ -142,7 +207,7 @@ probe confirms at least 800 B reserve under the target then in force. No manual
 end-to-end playtest,
 frame-rate, or screenshot claim is made.
 
-### M5 cargo shell checkpoint — 2026-10-22
+### M5 cargo shell checkpoint — 2026-10-22 (historical; removed 2026-10-24)
 
 `sub-hauler-m5-shell` adds the 128x64 HAULER cutaway, 11x3 hold at 6 px cells,
 structural bulkhead/notch marks, solid installed crates, held/tray cues, and
@@ -157,7 +222,7 @@ integration wire the job flow. All four device suites printed `P` with Ardens;
 the stack probe does not yet include the cargo screen. No screenshot or
 frame-rate claim.
 
-### M5 cargo rules checkpoint — 2026-10-22
+### M5 cargo rules checkpoint — 2026-10-22 (historical; removed 2026-10-24)
 
 `sub-hauler-m5-rules` makes the HAULER hold playable: selection across tray and
 installed pieces, suspended movement, supported release, blocked cells,
@@ -168,7 +233,7 @@ and runs cargo input/render frames. Full/core measure **21,836 B flash /
 printed `P`, including the cargo path. Job commit and auto-undock remain for
 M5 integration.
 
-### M5 cargo integration checkpoint — 2026-10-22
+### M5 cargo integration checkpoint — 2026-10-22 (historical; removed 2026-10-24)
 
 `sub-hauler-m5-integration` connects the accepted contract to the loading
 screen and removes the temporary dev entry:
@@ -504,7 +569,7 @@ silhouette through the measured pilot frames; with `SH_STACK_DIAG=1` it reports
 **`stack_reserve=601`**, passing the unchanged **600 B** target with a 1 B
 margin. No screenshot or frame-rate claim.
 
-### M8 holds checkpoint — 2026-10-23
+### M8 holds checkpoint — 2026-10-23 (historical; removed 2026-10-24)
 
 `sub-hauler-m8-holds` completes the class cargo experience. The boot roster
 choice now drives the cargo screen, the hold scale, and the arrangement record
@@ -829,10 +894,10 @@ wired. Device playtest for auto-dock is still pending.
 M6 resolution (2026-10-23): in free flight `B` opens the paused chart and `A`
 fires the sonar ping. Both edges are consumed before the flight step, so the
 frame that opens the chart does not tick travel/air/ballast and the ping does
-not also count as a station action. The chart, station, and cargo screens never
-route A to the sonar. A docked boat is rejected by the pure rule even if a
-future screen calls it. Station A remains SELECT/confirm and B remains UNDOCK;
-cargo keeps its `A+B` commit.
+not also count as a station action. The chart and station screens never route A
+to the sonar. A docked boat is rejected by the pure rule even if a future
+screen calls it. Station A remains SELECT/confirm and B remains UNDOCK. The
+former cargo screen and its `A+B` commit were removed on 2026-10-24.
 
 M8 roster resolution (2026-10-23): the boot title is the selection screen.
 Left/right cycles MINNOW/HAULER/LEVIATHAN with wrap, A confirms, and B backs
@@ -842,8 +907,12 @@ run. HAULER remains the default. All three classes share the 26x8 collision
 footprint and draw a 24-26 px pilot silhouette inside it (MINNOW 24x7, HAULER
 26x8, LEVIATHAN 26x8); cargo stripes and facing mirroring are preserved. With
 `MULTI_HULL=0` the title, class strings, art, and state byte compile out and the
-build boots straight to Pilot. Holds, scales, and arrangements remain the
-`m8-holds` task; the cargo screen still loads HAULER arrangement 0.
+build boots straight to Pilot.
+
+Cargo packing removal (2026-10-24): the M8 holds, scales, arrangements, and
+cargo screen described above were removed by `sub-hauler-gl1.1`. Hull selection
+and all three pilot silhouettes remain; contract acceptance auto-loads the
+coarse four-unit hold.
 
 ## Feature flags
 
@@ -856,7 +925,6 @@ there is no runtime options menu.
 | --- | ---: | --- | --- |
 | `SH_FEATURE_STATIONS` | 1 | — | docking, station board, refill |
 | `SH_FEATURE_JOBS` | 1 | `STATIONS` | contracts, credits, delivery |
-| `SH_FEATURE_CARGO_LOAD` | 1 | `JOBS` | loading screen + job load handoff |
 | `SH_FEATURE_FOG_CHART` | 1 | — | 256 B explored chart; chart screen |
 | `SH_FEATURE_SONAR` | 1 | `FOG_CHART` | ping, reveal, cooldown |
 | `SH_FEATURE_MINES` | 1 | — | mine placement, collision, damage |
@@ -864,17 +932,16 @@ there is no runtime options menu.
 | `SH_FEATURE_SHOP` | 1 | `STATIONS` | upgrades and credit sink |
 | `SH_FEATURE_HULL_DAMAGE` | 1 | — | wall-impact hull points, cooldown, edge flash |
 | `SH_FEATURE_PARTICLES` | 1 | — | fixed 4-slot impact debris pool |
-| `SH_FEATURE_MULTI_HULL` | 1 | — | hull roster/selection and hold variants |
+| `SH_FEATURE_MULTI_HULL` | 1 | — | hull roster, selection, and class art |
 | `SH_FEATURE_SAVE_CHART` | 0 | `FOG_CHART` | persist explored chart |
 
 Core (always on): sub physics, ballast/air, cave collision, camera, HUD,
 screen/input state machine.
 
-If `SH_FEATURE_CARGO_LOAD=0`, accepting a job still sets the four cargo units
-and undocks; the loading UI and arrangement loader are not compiled. If
-`SH_FEATURE_STATIONS=0`, jobs/shop/cargo must also be off and the build is a
+If `SH_FEATURE_STATIONS=0`, jobs/shop must also be off and the build is a
 free-flight cave run. If `SH_FEATURE_FOG_CHART=0`, sonar and chart save must be
-off.
+off. Contract acceptance always auto-loads the four coarse cargo units; there
+is no cargo-loading flag or packing runtime.
 
 ### Header and validation
 
@@ -1043,7 +1110,11 @@ Acceptance:
   deterministically.
 - `lean` and `core` profiles still build.
 
-### M4 — Cargo arrangement pipeline
+### M4 — Cargo arrangement pipeline (historical; runtime removed 2026-10-24)
+
+The generator and FX bank remain for ABI compatibility. The device loader,
+parser tests, and runtime record use described below were removed by
+`sub-hauler-gl1.1`; keep the generated bytes and offsets frozen.
 
 Can run in parallel with M1–M3.
 
@@ -1064,7 +1135,11 @@ Acceptance:
 - No runtime generator code is compiled.
 - Loader reads happen outside the display transaction.
 
-### M5 — Cargo loading screen
+### M5 — Cargo loading screen (historical; removed 2026-10-24)
+
+The shell, interaction, commit, and job handoff below were implemented and
+then removed by `sub-hauler-gl1.1`. Contract acceptance now auto-loads the
+coarse four-unit hold; do not rebuild these paths without a new decision.
 
 Split into three beads:
 
@@ -1177,7 +1252,7 @@ deltas against the same profile with the feature disabled.
 | cave view (M1) | +204 | +3 | 2026-10-22 | replaces walker/ground/hero/HUD; 128 B atlas + 36 B AVR metadata in flash; 32 B runtime state |
 | stations (M3) | +1,762 | +17 | 2026-10-22 | auto-dock, board, refill/repair; min compiles out |
 | jobs (M3) | +2,064 | +43 | 2026-10-22 | offers, deadlines, delivery, credits, active auto-load hint; M5 replaces fallback |
-| cargo load (M5) | +7,628 | +101 | 2026-10-22 | cutaway, hold/tray, rules, job handoff, auto-undock |
+| cargo load (M5) | +7,628 | +101 | 2026-10-22 | historical: cutaway, hold/tray, rules, job handoff, auto-undock; removed by `sub-hauler-gl1.1` on 2026-10-24 |
 | fog/chart | +1,248 | +258 | 2026-10-23 | 64x32 explored set (256 B) + initialised byte + blink; paused chart, reveal, markers; full A/B; M7 carved the initialised byte |
 | sonar | +484 | +2 | 2026-10-23 | A-key ping: 6 air base (-1/level), 3+level cell reveal, 120-tick cooldown, 24-tick ring; 2 state bytes; full A/B |
 | mines | +730 | +1 | 2026-10-23 | 8 fixed positions, one mask byte, circle/hull hit, one-frame spark, optional hull hook; full A/B |
@@ -1186,7 +1261,8 @@ deltas against the same profile with the feature disabled.
 | hull damage | +464 | +2 | 2026-10-23 | 16 px/s wall threshold, 24-tick cooldown, 12-tick edge flash, zero-hull valid, repair clamp; A/B with particles off; +2 B is the hull byte plus the cooldown |
 | particles | +398 | +16 | 2026-10-23 | fixed 4-slot pool (3 B/slot + 4 B anchor), deterministic corner spawn, 1 px/tick, ±24 px clamp, 14-tick max life; A/B with hull damage on |
 | multi-hull | +920 | +1 | 2026-10-23 | boot title with left/right selection, A confirm, B back-to-default; MINNOW/HAULER/LEVIATHAN 24-26 px pilot art, hull-class byte; full A/B (`MULTI_HULL=0` 27,042 B / 1,688 B); `sizeof(game::State)` 92 B; title/class strings and art compile out; linked binary clean |
-| cargo holds (M8) | +848 | +0 | 2026-10-23 | class holds MINNOW 6x3/7 px, HAULER 11x3/6 px, LEVIATHAN 14x4/5 px; dynamic cutaway, blocked-cell masks from `puzzle.hold`, selected-class load and reopen; full A/B vs M8 roster; `MULTI_HULL=0` full 26,914 B / 1,688 B; `sizeof(cargo::CargoPuzzle)` 83 B, `sizeof(cargo_screen::State)` 88 B; no generator change |
+| cargo holds (M8) | +848 | +0 | 2026-10-23 | historical: class holds MINNOW 6x3/7 px, HAULER 11x3/6 px, LEVIATHAN 14x4/5 px; dynamic cutaway, blocked-cell masks from `puzzle.hold`, selected-class load and reopen; removed by `sub-hauler-gl1.1` |
+| cargo packing removal | -8,734 | -98 | 2026-10-24 | removes Screen::Cargo, LOAD CARGO, commit chord/hold-B timer, `s_cargo`, packing rules/runtime, CARGO_LOAD flag/profile plumbing; acceptance auto-loads four units and stays docked; all hulls/economy preserved; cargoBank FX bytes/offset unchanged |
 | M9 polish | -18 | +1 | 2026-10-23 | no new flag; pause/failure screens, `lastDelivery` byte, LATE/SHORT board note, one-byte state; aggregate `game::reset()` rewrite pays for the UI; vs M8 holds whole image (28,810 B / 1,689 B) |
 | chart save (M9) | +560 | +0 | 2026-10-23 | optional `SAVE_CHART=1`; 260 B internal-EEPROM block (4 B magic/version/CRC-8 header + 256 B explored), load once in setup, write only on chart close; full A/B 28,792 → 29,352 B; default off and feature-off image byte-identical; 344 B under hardware but 352 B over the 29,000 B planning ceiling |
 
@@ -1217,6 +1293,10 @@ Record the profile matrix separately:
 | 2026-10-23 | M9 polish | 28,792 | 1,690 | `test_memory` P (chart + sonar + mine + current + damage/particle + shop + title + all three class cargo holds + aggregate reset, 624 B under 600 B target) | full; lean 25,800/1,680; core 22,244/1,421; min 10,456/1,259; `sizeof(game::State)` 93 B; pause/failure screens, `lastDelivery` byte; flash 208 B under 29,000 B ceiling; static 10 B under 1,700 B |
 | 2026-10-23 | M9 chart save (`SAVE_CHART=1`) | 29,352 | 1,690 | `test_memory` P (save path included, 620 B under 600 B target); feature-off probe remains 624 B | full variant; lean 26,238/1,680; default profiles untouched at full 28,792/1,690, lean 25,800/1,680, core 22,244/1,421, min 10,456/1,259; 260 B EEPROM block, no static cost; 344 B under hardware but 352 B over the 29,000 B planning ceiling, so flag stays 0 |
 | 2026-10-23 | M9 release (freeze) | 28,792 | 1,690 | `test_memory` P, diagnostics `stack_reserve=624` (600 B target, 24 B margin) | full; lean 25,800/1,680; core 22,244/1,421; min 10,456/1,259; mini full 28,792/1,690; 904 B hardware flash free, 208 B under 29,000 B planning ceiling, 10 B static headroom, 870 B static free; all four device suites P; 156/123/99/46 host tests, 75 tool tests; no manual playthrough |
+| 2026-10-23 | Post-M9 fixes | 28,988 | 1,690 | `test_memory` P at 624 B reserve | full; lean 26,120/1,680; core 22,522/1,421; min 10,456/1,259; mini full 28,988/1,690; 708 B hardware flash free, 12 B under 29,000 B planning ceiling; 157/124/100/46 host tests, 75 tool tests; four device suites P; cargo idle presentation skip, cargo hline batching, undock ring latch, edge-gated A+B pause, cargo resume preserves partial hold |
+| 2026-10-24 | Menu idle fix | 28,930 | 1,690 | `test_memory` P at the 600 B target (prior diagnostic 624 B) | full; lean 26,020/1,680; core 22,406/1,421; min 10,456/1,259; mini full 28,930/1,690; 766 B hardware flash free, 70 B under 29,000 B planning ceiling; 157/124/100/46 host tests, 75 tool tests; four device suites P; station/shop/pause/failure/cargo idle frames skip composition and the OLED transaction, selection bars use a `fillRect` bar with the font background disabled, dock latch resolves `nearestDock` once; `SAVE_CHART=1` full 29,330/1,690, 366 B under hardware, 330 B over planning |
+| 2026-10-24 | Cargo-free contract loading | 20,196 | 1,592 | `test_memory` P, diagnostics `stack_reserve=816` (600 B target, 216 B margin) | full; lean 17,362/1,580; core 14,756/1,321; min 10,456/1,259; mini full 20,196/1,592; 9,500 B hardware flash free, 8,804 B under 29,000 B planning ceiling; 108 B static headroom, 968 B static free; 129/96/72/38 host tests, 75 tool tests; three device suites P; removes Screen::Cargo/LOAD CARGO/commit chord/hold-B/s_cargo/packing runtime/CARGO_LOAD; acceptance auto-loads and stays docked; `make gen-check` deterministic with cargoBank bytes/offset unchanged |
+| 2026-10-24 | Cargo-free resource pass | 17,548 | 1,572 | `test_memory` P, diagnostics `stack_reserve=812` (600 B target, 212 B margin) | full; lean 14,792/1,560; core 12,626/1,302; min 9,142/1,252; mini full 17,548/1,572; 12,148 B hardware flash free, 11,452 B under 29,000 B planning ceiling; 128 B static headroom, 988 B static free; 132/99/75/39 host tests, 77 tool tests; three device suites P; compact metadata 148→88 B PROGMEM, generated route economy, AVR `game::State` 80 B; UI font/strings + three pilot silhouettes in FX, default Arduboy font/Print absent from ELF; `cargoBank` stays at 0x001AC2 with bytes/order unchanged, FX payload 13,012 B (`fxdata-data.bin`), padded flashable image 13,056 B (`fxdata.bin`); no manual playthrough or device soak |
 
 ## Verification gates
 

@@ -1,5 +1,4 @@
 // Host test entry point. `make test` compiles this with the native compiler.
-#include "cargo_test.hpp"
 #include "cave_test.hpp"
 #include "collision_test.hpp"
 #include "damage_test.hpp"
@@ -33,11 +32,6 @@
 #include "sonar_view_test.hpp"
 #endif
 
-#if SH_FEATURE_CARGO_LOAD
-#include "cargo_screen_test.hpp"
-#include "cargo_view_test.hpp"
-#endif
-
 #if SH_FEATURE_STATIONS
 #include "station_test.hpp"
 #endif
@@ -53,11 +47,6 @@
 
 int main() {
     TestRunner runner;
-    CargoSuite(runner);
-#if SH_FEATURE_CARGO_LOAD
-    CargoScreenSuite(runner);
-    CargoViewSuite(runner);
-#endif
     CaveSuite(runner);
     CollisionSuite(runner);
     DamageSuite(runner);

@@ -4,7 +4,10 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
+python3 tools/gen_font.py --output fxdata/fonts/font_6x8.png
+python3 tools/gen_pilot.py --output images/pilot
 python3 tools/gen_sprites.py --input images --output fxdata/Sprites.txt --header src/generated/sprites.hpp --shades 2
+python3 tools/gen_sprites.py --input images/pilot --output fxdata/PilotSprites.txt --header src/generated/pilot_sprites.hpp --shades 2
 python3 tools/gen_world.py
 python3 tools/gen_cargo.py
 python3 tools/fxdata-build.py fxdata/fxdata.txt

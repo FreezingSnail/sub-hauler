@@ -115,20 +115,25 @@ constexpr uint8_t kJobOffers = 2;
 constexpr uint8_t kJobCrates = 4;
 constexpr uint8_t kJobNone = 0xFF;
 
+// Active-job age saturates here. Every generated deadline is strictly below
+// this sentinel (asserted in jobs.hpp), so a saturated age can only mean
+// "overdue": it can never wrap back into a payable window.
+constexpr uint16_t kJobElapsedLate = 0xFFFF;
+
 struct JobOffer {
     uint8_t from;      // origin settlement id
     uint8_t to;        // destination settlement id
     uint8_t crates;    // required cargo units
-    uint16_t reward;   // credits, a multiple of 5
+    uint8_t reward;    // credits, a multiple of 5; generated bound-checked
     uint16_t deadline; // allowed flight ticks from acceptance
 };
 
 struct ActiveJob {
     uint8_t to;
     uint8_t crates;
-    uint16_t reward;
+    uint8_t reward;      // promoted when credits are paid
     uint16_t deadline;   // allowed flight ticks from acceptance
-    uint32_t acceptedAt; // jobClock at acceptance
+    uint16_t elapsed;    // flight ticks since acceptance, saturating
 };
 #endif
 
@@ -166,14 +171,13 @@ struct State {
     int16_t cameraY;
     int16_t impactSpeedQ8;   // speed on the blocked axis before it was zeroed
     uint8_t impactAxis;      // 0 none, 1 x, 2 y, 3 mine hit (one frame)
-    uint8_t impacts;         // saturating count of blocked-axis contacts
 #if SH_FEATURE_MINES
     uint8_t minesAlive;      // one bit per generated mine, 1 = still armed
 #endif
 
 #if SH_FEATURE_STATIONS
     int8_t docked;           // -1 = free flight, else the settlement id
-    uint8_t dockCooldown;    // flight ticks before auto-dock is armed again
+    uint8_t dockCooldown;    // non-zero while the undock ring latch is armed
 #endif
 #if SH_FEATURE_HULL_DAMAGE
     uint8_t hull;            // 0..hullCapacity(state), repaired at a station
@@ -182,15 +186,10 @@ struct State {
 #if SH_FEATURE_PARTICLES
     ParticlePool particles;  // fixed debris pool, 4 slots
 #endif
-#if SH_FEATURE_SONAR
-    uint8_t sonarPings;      // saturating count of accepted pings this run
-#endif
 #if SH_FEATURE_JOBS
     uint16_t credits;
-    uint16_t deliveries;
     uint8_t lastDelivery;    // jobs::DeliveryResult from the last resolved contract
     uint16_t offerSerial;    // deterministic offer generator cursor
-    uint32_t jobClock;       // flight ticks; paused while docked
     uint8_t offerCount;      // 0..kJobOffers valid entries in offers
     JobOffer offers[kJobOffers];
     ActiveJob activeJob;     // activeJob.to == kJobNone means no contract
@@ -206,6 +205,21 @@ struct State {
 #if SH_FEATURE_JOBS
 inline bool hasActiveJob(const State &state) {
     return state.activeJob.to != kJobNone;
+}
+
+// Charge one flight tick to the active contract. The age saturates at
+// kJobElapsedLate instead of wrapping; because every deadline is strictly
+// smaller, saturation is permanently overdue and a late contract cannot
+// revive. Docked/chart frames never call a world step, and the station guard
+// keeps a direct step() call honest too.
+inline void tickJobElapsed(State &state) {
+#if SH_FEATURE_STATIONS
+    if (state.docked >= 0)
+        return;
+#endif
+    if (!hasActiveJob(state) || state.activeJob.elapsed == kJobElapsedLate)
+        return;
+    ++state.activeJob.elapsed;
 }
 #endif
 
@@ -297,10 +311,17 @@ inline int16_t dragStep(int16_t velocityQ8) {
 
 // Advance one axis by velocityQ8 * (1/60) s. The Q12 remainder keeps slow
 // velocities moving smoothly instead of dead-zoning below one Q8 unit.
+//
+// Width proof for any int16 velocity:
+//   stepQ12    = velocity * 4 / 15  in -8738..8737 (truncates toward zero)
+//   accumulated = fracQ12 + stepQ12 in -8738..12832 (fracQ12 is 0..4095)
+//   whole       = floor(accumulated / 4096) in -3..3
+// so int16 holds the step, the accumulator and the whole-pixel delta. Only the
+// multiply keeps 32 bits: the result can exceed int16 before the divide.
 inline void advanceAxis(int16_t &position, int16_t &fracQ12, int16_t velocityQ8) {
-    const int32_t stepQ12 = static_cast<int32_t>(velocityQ8) * kSubpixelOne / (kQ8One * kStepHz);
-    const int32_t accumulated = static_cast<int32_t>(fracQ12) + stepQ12;
-    int32_t whole = accumulated / kSubpixelOne;
+    const int16_t stepQ12 = static_cast<int16_t>(static_cast<int32_t>(velocityQ8) * 4 / 15);
+    const int16_t accumulated = static_cast<int16_t>(fracQ12 + stepQ12);
+    int16_t whole = static_cast<int16_t>(accumulated / kSubpixelOne);
     if (accumulated < 0 && accumulated % kSubpixelOne != 0)
         --whole;
     position = static_cast<int16_t>(position + whole);
@@ -420,8 +441,8 @@ inline void step(State &state, const Input &input) {
 #endif
 #if SH_FEATURE_JOBS
     // Job deadlines measure flight ticks; the docked station screen never
-    // reaches a world step, so this clock pauses with the rest of the world.
-    ++state.jobClock;
+    // reaches a world step, so the age pauses with the rest of the world.
+    tickJobElapsed(state);
 #endif
 }
 

@@ -12,7 +12,8 @@
 //   4. Re-enable interrupts and run kRepresentativeFrames of the normal
 //      poll/update/render/present path, including FX cart reads. The M6 chart
 //      and sonar paths, the M7 mine/current, damage/particle, and shop frames,
-//      and the M8 title/all-hull art path follow in the same measured window.
+//      the M8 title/all-hull art path, and the cargo-free contract/undock path
+//      follow in the same measured window.
 //   5. Scan upward from bssEnd + 1 for the lowest byte that is no longer
 //      0xA5. That address is the stack high-water mark.
 //   6. reserve = highWater - bssEnd. Print one bare P when the reserve is at
@@ -47,15 +48,13 @@
 #if SH_FEATURE_SONAR
 #include "src/sonar.hpp"
 #endif
-#if SH_FEATURE_CARGO_LOAD
-#include "src/cargo_fx.hpp"
-#include "src/cargo_handoff.hpp"
-#include "src/cargo_screen.hpp"
-#include "src/cargo_view.hpp"
-#endif
 #if SH_FEATURE_SHOP
 #include "src/shop.hpp"
 #include "src/shop_view.hpp"
+#endif
+#if SH_FEATURE_STATIONS
+#include "src/station.hpp"
+#include "src/station_view.hpp"
 #endif
 #if SH_FEATURE_HULL_DAMAGE
 #include "src/damage.hpp"
@@ -74,13 +73,13 @@
 // Defined by the AVR linker script; points one past the last static byte.
 extern "C" char __bss_end;
 
-Arduboy2 arduboy;
+Arduboy2Base arduboy;
 
-#if SH_FEATURE_STATIONS && SH_FEATURE_JOBS && SH_FEATURE_CARGO_LOAD && SH_FEATURE_FOG_CHART && SH_FEATURE_SONAR && SH_FEATURE_MINES && SH_FEATURE_CURRENTS && SH_FEATURE_SHOP && SH_FEATURE_HULL_DAMAGE && SH_FEATURE_PARTICLES && SH_FEATURE_MULTI_HULL
-// The full AVR state budget is pinned here: M7 hazard state (71 B), the
-// one-byte damage cooldown, the 16-byte particle pool, the three run-only shop
-// level bytes, the M8 hull-class byte, and the M9 last-delivery byte.
-static_assert(sizeof(game::State) == 93, "full game::State is 93 bytes on AVR");
+#if SH_FEATURE_STATIONS && SH_FEATURE_JOBS && SH_FEATURE_FOG_CHART && SH_FEATURE_SONAR && SH_FEATURE_MINES && SH_FEATURE_CURRENTS && SH_FEATURE_SHOP && SH_FEATURE_HULL_DAMAGE && SH_FEATURE_PARTICLES && SH_FEATURE_MULTI_HULL
+// The full AVR state budget is pinned here at 80 B after the gl1.3/gl1.4
+// compaction: diagnostic counters and the job clock were removed and route
+// reward fields were narrowed.
+static_assert(sizeof(game::State) == 80, "full game::State is 80 bytes on AVR");
 #endif
 
 #if SH_FEATURE_FOG_CHART
@@ -95,8 +94,8 @@ namespace {
 
 // Re-baselined from 800 B to 600 B on 2026-10-23, after the 258 B persistent
 // chart slice entered the full image. The chart+sonar+hazard+damage+shop+
-// title/roster/holds/reset probe measures 624 B, so 600 B stays the pass line
-// with 24 B of margin.
+// title/roster+contract/undock/reset probe measures the cargo-free reserve;
+// 600 B stays the pass line.
 constexpr uint16_t kReserveTarget = 600;   // bytes of stack reserve required
 constexpr uint8_t kFrameGuard = 64;        // active-frame headroom, never painted
 constexpr uint8_t kPattern = 0xA5;
@@ -277,63 +276,23 @@ __attribute__((noinline)) void runRepresentativePath() {
     FX::display(CLEAR_BUFFER);
 #endif
 
-#if SH_FEATURE_CARGO_LOAD
-    // Cargo path: one arrangement load plus a few real input edges and renders.
-    // The cart read happens in update, never during FX::display.
-    cargo::FxCargoReader reader;
-    cargo_screen::State cargo;
-    if (cargo_screen::load(cargo, reader)) {
-        for (uint8_t frame = 0; frame < 5; ++frame) {
-            cargo_screen::Input input{};
-            switch (frame) {
-            case 0:
-                input.left = true;
-                break;
-            case 1:
-                input.a = true;
-                break;
-            case 2:
-                input.right = true;
-                break;
-            case 3:
-                input.b = true;
-                break;
-            default:
-                input.left = true;
-                break;
-            }
-            cargo_screen::apply(cargo, input);
-            cargo_view::draw(cargo.puzzle, cargo.selected, cargo.message);
-            FX::display(CLEAR_BUFFER);
-        }
+#if SH_FEATURE_STATIONS && SH_FEATURE_JOBS
+    // Contract path: post offers at a real berth, accept (auto-load), draw the
+    // active station board, then undock through the board action and draw the
+    // first pilot frame. This replaces the removed packing screen and keeps
+    // the station/job/auto-load/undock call chain inside the measured window.
+    state.docked = 0;
+    jobs::clearActive(state);
+    if (jobs::refreshOffers(state, 0)) {
+        station::activate(station::kFirstRow, state);
+        station_view::draw(state, station::initialRow(state));
+        FX::display(CLEAR_BUFFER);
 
-        // Commit path: solve the known required arrangement and run the real
-        // handoff, including station::undock, so the probe covers the deepest
-        // M5 integration frame.
-        const uint8_t order[6] = {4, 5, 0, 1, 2, 3};
-        bool solved = true;
-        for (uint8_t i = 0; i < 6; ++i) {
-            const cargo::CargoPiece &piece = cargo.puzzle.pieces[order[i]];
-            if (!cargo::place(cargo.puzzle, order[i], piece.x, piece.y))
-                solved = false;
-        }
-        if (solved) {
-            state.docked = 0;
-            state.activeJob.to = 0;
-            state.activeJob.crates = game::kJobCrates;
-            cargo_handoff::commit(state, cargo);
-        }
-
-#if SH_FEATURE_MULTI_HULL
-        // M8 holds: load and draw every class hold. Reuses the same local
-        // state, so the probe charges no extra persistent byte.
-        for (uint8_t hull = 0; hull < cargo::HULL_COUNT; ++hull) {
-            if (!cargo_screen::load(cargo, reader, hull, 0))
-                continue;
-            cargo_view::draw(cargo.puzzle, cargo.selected, cargo.message);
-            FX::display(CLEAR_BUFFER);
-        }
-#endif
+        station::activate(station::kActiveUndockRow, state);
+        const cave::Camera contractCamera = pilot_view::cameraForState(state);
+        view::frame(state, contractCamera, cache, tables);
+        hud::draw(state);
+        FX::display(CLEAR_BUFFER);
     }
 #endif
 }
@@ -382,6 +341,7 @@ void setup() {
     delay(100);
     FX::begin(FX_DATA_PAGE);
     FX::setCursorRange(0, 32767);
+    text::begin();
 
     const uint16_t reserve = measureStackReserve();
 

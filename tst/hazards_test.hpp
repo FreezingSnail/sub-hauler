@@ -91,11 +91,10 @@ inline void HazardsSuite(TestRunner &runner) {
         test.assertTrue(hazards::alive(state, 1), "other mines stay armed");
         test.assertEqual(state.impactAxis, hazards::kMineImpactAxis, "mine impact axis recorded");
         test.assertEqual(state.impactSpeedQ8, hazards::kMineImpactSpeedQ8, "deterministic impact speed");
-        test.assertEqual(state.impacts, 1, "one impact counted");
 
         const uint8_t second = hazards::collide(state);
         test.assertEqual(second, hazards::kNoMine, "the same hit cannot fire twice");
-        test.assertEqual(state.impacts, 1, "impact count does not advance again");
+        test.assertTrue(!hazards::alive(state, 0), "the consumed mine stays removed");
 #if SH_FEATURE_HULL_DAMAGE
         test.assertEqual(state.hull, static_cast<uint8_t>(game::kHullMax - 1), "one point of hull damage");
 #endif
@@ -128,7 +127,7 @@ inline void HazardsSuite(TestRunner &runner) {
         game::stepWorld(state, idle(), fake);
         test.assertTrue(!hazards::alive(state, 2), "stepWorld removed the overlapping mine");
         test.assertEqual(state.impactAxis, hazards::kMineImpactAxis, "impact feedback is set");
-        test.assertEqual(state.impacts, 1, "one hit counted");
+        test.assertEqual(state.impactSpeedQ8, hazards::kMineImpactSpeedQ8, "mine feedback carries its speed");
 
         game::stepWorld(state, idle(), fake);
         test.assertEqual(state.impactAxis, 0, "the next step clears the one-frame spark");

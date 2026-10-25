@@ -11,8 +11,9 @@
 #include "cave_test.hpp"
 #include "test.hpp"
 
-// Sonar rule tests: level cost/radius, atomic rejection, reveal reach, ping
-// counting, docked rejection, and the one-tick-per-flight-step cooldown.
+// Sonar rule tests: level cost/radius, atomic rejection, reveal reach, docked
+// rejection, and the one-tick-per-flight-step cooldown. The cooldown, air and
+// chart are the observable evidence; no diagnostic ping counter is stored.
 namespace sonar_test {
 
 inline uint16_t exploredCells(const chart::State &state) {
@@ -50,7 +51,7 @@ inline void SonarSuite(TestRunner &runner) {
     }
 
     {
-        Test test("a ping spends air, stores cooldown, reveals, and counts");
+        Test test("a ping spends air, stores cooldown, and reveals");
         game::State state;
         game::reset(state);
         chart::State fog;
@@ -62,7 +63,6 @@ inline void SonarSuite(TestRunner &runner) {
         test.assertEqual(sonar::fire(state, fog, 0), sonar::kFired, "ping is accepted");
         test.assertEqual(state.air, game::kAirCapacity - 6, "level 0 spends six air");
         test.assertEqual(state.sonarCooldown, sonar::kCooldownTicks, "cooldown starts full");
-        test.assertEqual(state.sonarPings, 1, "ping count increments");
 
         test.assertTrue(chart::isExplored(fog, 25, 20), "centre cell is revealed");
         test.assertTrue(chart::isExplored(fog, 22, 17), "radius-3 corner is revealed");
@@ -98,7 +98,6 @@ inline void SonarSuite(TestRunner &runner) {
         test.assertEqual(sonar::fire(state, fog, 0), sonar::kNoAir, "low air is rejected");
         test.assertEqual(state.air, 5, "rejected ping spends nothing");
         test.assertEqual(state.sonarCooldown, 0, "rejected ping starts no cooldown");
-        test.assertEqual(state.sonarPings, 0, "rejected ping is not counted");
         test.assertEqual(sonar_test::exploredCells(fog), 0, "rejected ping reveals nothing");
         runner.add(test);
     }
@@ -120,7 +119,6 @@ inline void SonarSuite(TestRunner &runner) {
         state.y = 1000;
         test.assertEqual(sonar::fire(state, fog, 0), sonar::kCooldown, "cooldown rejects the second ping");
         test.assertEqual(state.air, airAfterFirst, "rejected ping spends no air");
-        test.assertEqual(state.sonarPings, 1, "rejected ping is not counted");
         test.assertEqual(state.sonarCooldown, sonar::kCooldownTicks, "rejected ping does not recharge the cooldown");
         test.assertEqual(sonar_test::exploredCells(fog), 0, "rejected ping reveals nothing");
 
@@ -131,7 +129,7 @@ inline void SonarSuite(TestRunner &runner) {
 
         test.assertEqual(sonar::fire(state, fog, 0), sonar::kFired, "ping is accepted again after cooldown");
         test.assertEqual(state.air, airAfterFirst - 6, "second accepted ping spends air");
-        test.assertEqual(state.sonarPings, 2, "second accepted ping increments the count");
+        test.assertEqual(state.sonarCooldown, sonar::kCooldownTicks, "second accepted ping restarts the cooldown");
         test.assertTrue(chart::isExplored(fog, 40, 25), "second ping reveals at its own position");
         runner.add(test);
     }
@@ -150,7 +148,6 @@ inline void SonarSuite(TestRunner &runner) {
         test.assertEqual(sonar::fire(state, fog, 0), sonar::kDocked, "docked state is rejected");
         test.assertEqual(state.air, game::kAirCapacity, "docked rejection spends no air");
         test.assertEqual(state.sonarCooldown, 0, "docked rejection starts no cooldown");
-        test.assertEqual(state.sonarPings, 0, "docked rejection is not counted");
         test.assertEqual(sonar_test::exploredCells(fog), 0, "docked rejection reveals nothing");
         runner.add(test);
     }
@@ -186,11 +183,9 @@ inline void SonarSuite(TestRunner &runner) {
         game::State state;
         game::reset(state);
         state.sonarCooldown = 50;
-        state.sonarPings = 7;
 
         game::reset(state);
         test.assertEqual(state.sonarCooldown, 0, "reset clears the cooldown");
-        test.assertEqual(state.sonarPings, 0, "reset clears the ping count");
         runner.add(test);
     }
 }

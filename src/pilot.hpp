@@ -35,6 +35,10 @@ constexpr int16_t kCameraScreenY = 32;
 constexpr int16_t kCameraMaxX = static_cast<int16_t>(world::PIXELS_X) - kViewW;
 constexpr int16_t kCameraMaxY = static_cast<int16_t>(world::PIXELS_Y) - kViewH;
 
+static_assert(kCameraMaxX >= 0 && kCameraMaxY >= 0, "world must be at least one view");
+static_assert(kCameraScreenX >= 0 && kCameraScreenX < static_cast<int16_t>(world::PIXELS_X), "camera target x can clamp");
+static_assert(kCameraScreenY >= 0 && kCameraScreenY < static_cast<int16_t>(world::PIXELS_Y), "camera target y can clamp");
+
 // Integer shift lerp: one quarter of the error per tick, but never less than
 // one pixel while the camera is off target. Both bounds are enforced here.
 inline int16_t lerpCamera(int16_t current, int16_t target) {
@@ -58,14 +62,15 @@ inline int16_t cameraTargetY(const State &state) {
 
 // Update owns the camera. Rendering reads cameraX/cameraY without changing
 // them, so display timing can never feed back into movement.
+//
+// No post-lerp clamp is needed: cameraTargetX/Y are clamped, and lerpCamera
+// moves by a step no larger than the remaining delta (delta/4 truncated toward
+// zero, with a one-pixel floor). Starting from an in-range camera, every
+// result stays between the current value and the target. resetWorld snaps from
+// reset()'s zero camera; both endpoints are in range by the asserts above.
 inline void updateCamera(State &state) {
     state.cameraX = lerpCamera(state.cameraX, cameraTargetX(state));
     state.cameraY = lerpCamera(state.cameraY, cameraTargetY(state));
-
-    // Lerp cannot leave the valid range when it starts inside, but clamp here
-    // so a caller that wrote camera fields directly still cannot show void.
-    state.cameraX = clampI16(state.cameraX, 0, kCameraMaxX);
-    state.cameraY = clampI16(state.cameraY, 0, kCameraMaxY);
 }
 
 inline void snapCamera(State &state) {
@@ -122,8 +127,6 @@ inline bool moveAxis(State &state, Reader &reader, const world::TileCache *cache
             if (hullHits(reader, cache, px, py)) {
                 state.impactSpeedQ8 = static_cast<int16_t>(velocity < 0 ? -velocity : velocity);
                 state.impactAxis = horizontal ? 1 : 2;
-                if (state.impacts < 255)
-                    ++state.impacts;
                 frac = 0;
                 velocity = 0;
                 return true;
@@ -156,8 +159,6 @@ inline bool moveAxis(State &state, Reader &reader, const world::TileCache *cache
 
     state.impactSpeedQ8 = static_cast<int16_t>(velocity < 0 ? -velocity : velocity);
     state.impactAxis = horizontal ? 1 : 2;
-    if (state.impacts < 255)
-        ++state.impacts;
 
     position = lastValid;
     frac = 0;
@@ -176,10 +177,12 @@ inline void stepWorld(State &state, const Input &input, Reader &reader, const wo
     // historical latch and are consumed by the move that produced them.
     hazards::clearImpact(state);
 #endif
+#if SH_FEATURE_HULL_DAMAGE || SH_FEATURE_CURRENTS || SH_FEATURE_PARTICLES || SH_FEATURE_MINES
 #if SH_FEATURE_STATIONS
     const bool freeFlight = state.docked < 0;
 #else
     const bool freeFlight = true;
+#endif
 #endif
 #if SH_FEATURE_HULL_DAMAGE
     // Cooldown and flash tick only in free flight; docked/chart/cargo frames
@@ -249,7 +252,7 @@ inline void stepWorld(State &state, const Input &input, Reader &reader, const wo
 #endif
 #if SH_FEATURE_JOBS
     // Flight tick for contract deadlines (docked frames never step the world).
-    ++state.jobClock;
+    tickJobElapsed(state);
 #endif
 }
 

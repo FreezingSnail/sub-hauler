@@ -6,15 +6,15 @@
 #include "roster.hpp"
 
 // Hull-selection title screen, 128x64. The layout is pure and host-checkable;
-// draw() is device-only because it prints through the Arduboy font with
-// PROGMEM strings and blits the pilot silhouette.
+// draw() is device-only because it uses the external FX font and blits the
+// baked pilot silhouette.
 //
 // Body:   NAME over the playable 26x8 silhouette and one short stat line
 //         (reference length).
 // Hint:   left/right cycles the roster, A confirms and starts the run.
 //
 // Only compiled when MULTI_HULL=1. Single-hull builds boot straight to Pilot
-// and link no MINNOW/LEVIATHAN strings or art.
+// and compile out the MINNOW/LEVIATHAN label and art calls.
 #if SH_FEATURE_MULTI_HULL
 
 #if defined(__AVR__)
@@ -65,28 +65,29 @@ static_assert(kArtLeft >= 1 && kArtLeft + 26 <= kScreenW - 1, "art footprint is 
 
 #if defined(__AVR__)
 
-inline const __FlashStringHelper *nameFor(roster::HullClass hull) {
+inline uint24_t nameFor(roster::HullClass hull) {
     if (hull == roster::kMinnow)
-        return F("MINNOW");
+        return txt_minnow;
     if (hull == roster::kLeviathan)
-        return F("LEVIATHAN");
-    return F("HAULER");
+        return txt_leviathan;
+    return txt_hauler;
 }
 
 inline void draw(uint8_t hullClass) {
     const roster::HullClass hull = roster::sanitize(static_cast<roster::HullClass>(hullClass));
 
-    arduboy.setCursor(nameX(hull), kNameY);
-    arduboy.print(nameFor(hull));
+    text::normal();
+    text::at(nameX(hull), kNameY);
+    text::print(nameFor(hull));
 
     pilot_view::drawAt(Arduboy2Base::sBuffer, kArtLeft, kArtTop, false, false, hull);
 
-    arduboy.setCursor(statX(hull), kStatY);
-    arduboy.print(F("LEN "));
-    arduboy.print(roster::length(hull));
+    text::at(statX(hull), kStatY);
+    text::print(txt_len);
+    text::number(roster::length(hull));
 
-    arduboy.setCursor(centerX(kHintChars), kHintY);
-    arduboy.print(F("D-PAD HULL  A GO"));
+    text::at(centerX(kHintChars), kHintY);
+    text::print(txt_title_hint);
 }
 
 #endif   // __AVR__

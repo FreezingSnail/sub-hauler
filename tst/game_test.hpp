@@ -196,6 +196,49 @@ inline void GameSuite(TestRunner &runner) {
     }
 
     {
+        Test test("narrow advanceAxis matches the Q12 fixed-step reference");
+        // Independent 32-bit reference for the retired wide intermediate. The
+        // production step is velocity*4/15 with the same truncation and floor.
+        const auto reference = [](int16_t position, int16_t frac, int16_t velocity, int16_t &outPosition,
+                                  int16_t &outFrac) {
+            const int32_t stepQ12 = static_cast<int32_t>(velocity) * game::kSubpixelOne /
+                                    (game::kQ8One * game::kStepHz);
+            const int32_t accumulated = static_cast<int32_t>(frac) + stepQ12;
+            int32_t whole = accumulated / game::kSubpixelOne;
+            if (accumulated < 0 && accumulated % game::kSubpixelOne != 0)
+                --whole;
+            outPosition = static_cast<int16_t>(position + whole);
+            outFrac = static_cast<int16_t>(accumulated - whole * game::kSubpixelOne);
+        };
+
+        const int16_t velocities[] = {0,     1,     -1,    15,    -15,   16,    -16,
+                                      game::kMaxVyQ8, -game::kMaxVyQ8, game::topSpeedQ8For(0),
+                                      static_cast<int16_t>(-game::topSpeedQ8For(0)), 32767, -32768};
+        const int16_t fracs[] = {0, 1, 2047, 2048, 4095};
+
+        bool positionsMatch = true;
+        bool fracsInRange = true;
+        for (int16_t velocity : velocities) {
+            for (int16_t frac : fracs) {
+                int16_t expectedPosition = 0;
+                int16_t expectedFrac = 0;
+                reference(100, frac, velocity, expectedPosition, expectedFrac);
+
+                int16_t position = 100;
+                int16_t actualFrac = frac;
+                game::advanceAxis(position, actualFrac, velocity);
+
+                positionsMatch = positionsMatch && position == expectedPosition;
+                fracsInRange = fracsInRange && actualFrac == expectedFrac && actualFrac >= 0 &&
+                               actualFrac < game::kSubpixelOne;
+            }
+        }
+        test.assertTrue(positionsMatch, "every velocity/remainder matches the wide reference");
+        test.assertTrue(fracsInRange, "truncation and negative floor keep a normalized remainder");
+        runner.add(test);
+    }
+
+    {
         Test test("fixed-step determinism");
         game::State a;
         game::State b;

@@ -50,11 +50,13 @@ AVR_SIZE      ?= $(firstword $(wildcard $(HOME)/Library/Arduino15/packages/ardui
 # Generation
 # ----------------------------------------------------------------------------
 IMAGES        := $(wildcard images/*.png)
+PILOT_IMAGES  := $(wildcard images/pilot/*.png)
 WORLD_TABLES  := fxdata/tables/world.bin fxdata/tables/world-chart.bin
 CARGO_TABLES  := fxdata/tables/cargo.bin
 FX_INPUTS     := $(IMAGES) fxdata/fxdata.txt tools/gen.sh tools/gen_sprites.py \
-                 tools/gen_world.py tools/gen_cargo.py $(WORLD_TABLES) \
-                 $(CARGO_TABLES) tools/fxdata-build.py
+                 tools/gen_font.py tools/gen_pilot.py tools/gen_world.py \
+                 tools/gen_cargo.py $(WORLD_TABLES) $(CARGO_TABLES) \
+                 tools/fxdata-build.py
 
 full: gen build
 
@@ -75,6 +77,12 @@ gen-check:
 	@cp src/generated/world.hpp $(BUILD_DIR)/gen-check/world.hpp
 	@cp fxdata/tables/cargo.bin $(BUILD_DIR)/gen-check/cargo.bin
 	@cp src/generated/cargo.hpp $(BUILD_DIR)/gen-check/cargo.hpp
+	@cp fxdata/fonts/font_6x8.png $(BUILD_DIR)/gen-check/font_6x8.png
+	@cp images/pilot/hauler_26x8.png $(BUILD_DIR)/gen-check/hauler_26x8.png
+	@cp images/pilot/leviathan_26x8.png $(BUILD_DIR)/gen-check/leviathan_26x8.png
+	@cp images/pilot/minnow_26x8.png $(BUILD_DIR)/gen-check/minnow_26x8.png
+	@cp fxdata/PilotSprites.txt $(BUILD_DIR)/gen-check/PilotSprites.txt
+	@cp src/generated/pilot_sprites.hpp $(BUILD_DIR)/gen-check/pilot_sprites.hpp
 	@$(MAKE) --no-print-directory gen
 	@cmp -s fxdata/fxdata.h src/fxdata.h || { echo "gen-check: src/fxdata.h is stale; run make gen" >&2; exit 1; }
 	@cmp -s fxdata/fxdata.h $(BUILD_DIR)/gen-check/fxdata.h || { echo "gen-check: fxdata header changed" >&2; exit 1; }
@@ -86,6 +94,12 @@ gen-check:
 	@cmp -s src/generated/world.hpp $(BUILD_DIR)/gen-check/world.hpp || { echo "gen-check: world header changed" >&2; exit 1; }
 	@cmp -s fxdata/tables/cargo.bin $(BUILD_DIR)/gen-check/cargo.bin || { echo "gen-check: cargo table changed" >&2; exit 1; }
 	@cmp -s src/generated/cargo.hpp $(BUILD_DIR)/gen-check/cargo.hpp || { echo "gen-check: cargo header changed" >&2; exit 1; }
+	@cmp -s fxdata/fonts/font_6x8.png $(BUILD_DIR)/gen-check/font_6x8.png || { echo "gen-check: font image changed" >&2; exit 1; }
+	@cmp -s images/pilot/hauler_26x8.png $(BUILD_DIR)/gen-check/hauler_26x8.png || { echo "gen-check: hauler art changed" >&2; exit 1; }
+	@cmp -s images/pilot/leviathan_26x8.png $(BUILD_DIR)/gen-check/leviathan_26x8.png || { echo "gen-check: leviathan art changed" >&2; exit 1; }
+	@cmp -s images/pilot/minnow_26x8.png $(BUILD_DIR)/gen-check/minnow_26x8.png || { echo "gen-check: minnow art changed" >&2; exit 1; }
+	@cmp -s fxdata/PilotSprites.txt $(BUILD_DIR)/gen-check/PilotSprites.txt || { echo "gen-check: pilot sprite include changed" >&2; exit 1; }
+	@cmp -s src/generated/pilot_sprites.hpp $(BUILD_DIR)/gen-check/pilot_sprites.hpp || { echo "gen-check: pilot sprite header changed" >&2; exit 1; }
 	@echo "gen-check: generated artifacts are deterministic"
 
 # Generation is a prerequisite of the firmware build, so a missing or stale

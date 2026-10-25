@@ -81,7 +81,6 @@ inline void CollisionSuite(TestRunner &runner) {
         test.assertEqual(stepped.air, pure.air, "air matches");
         test.assertEqual(stepped.ticks, pure.ticks, "one step is one tick");
         test.assertEqual(stepped.impactAxis, 0, "open water has no impact");
-        test.assertEqual(stepped.impacts, 0, "open water impact count");
         test.assertTrue(stepped.cameraX >= 0 && stepped.cameraX <= game::kCameraMaxX, "camera x in bounds");
         test.assertTrue(stepped.cameraY >= 0 && stepped.cameraY <= game::kCameraMaxY, "camera y in bounds");
         runner.add(test);
@@ -107,7 +106,6 @@ inline void CollisionSuite(TestRunner &runner) {
         test.assertEqual(state.vxQ8, 0, "blocked axis velocity is zero");
         test.assertEqual(state.impactAxis, 1, "impact recorded on x");
         test.assertTrue(state.impactSpeedQ8 > 0, "impact speed captured");
-        test.assertTrue(state.impacts > 0, "impact counter advanced");
         runner.add(test);
     }
 
@@ -152,7 +150,7 @@ inline void CollisionSuite(TestRunner &runner) {
         test.assertEqual(state.vxQ8, 0, "x velocity zeroed at corner");
         test.assertEqual(state.vyQ8, 0, "y velocity zeroed at corner");
         test.assertEqual(state.impactAxis, 2, "last blocked axis is y");
-        test.assertTrue(state.impacts >= 2, "both axes report impacts");
+        test.assertTrue(state.impactSpeedQ8 > 0, "the blocked axis reports an impact speed");
         runner.add(test);
     }
 
@@ -254,7 +252,6 @@ inline void CollisionSuite(TestRunner &runner) {
         test.assertEqual(state.xFrac, 0, "position remainder cleared");
         test.assertEqual(state.impactAxis, 1, "impact axis captured");
         test.assertEqual(state.impactSpeedQ8, expected, "impact speed is pre-zero velocity");
-        test.assertEqual(state.impacts, 1, "one impact counted");
         runner.add(test);
     }
 }
