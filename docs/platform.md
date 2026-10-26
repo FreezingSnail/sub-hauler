@@ -175,6 +175,14 @@ allocation or FX layout regeneration, and it does not add SPI traffic. The
 `FX_SAVE_PAGE` guidance above applies only if a future save grows past the
 internal EEPROM or needs cart-sized state.
 
+The installed Arduboy2 reserves EEPROM addresses 0–15 for system settings
+(`EEPROM_STORAGE_SPACE_START == 16` in its `src/Arduboy2.h`). The current
+default-off chart implementation writes from address 0 and overlaps that
+reservation; its documented layout below describes existing behavior, not a
+safe allocation for new saves. The proposed [voyage save](progression.md)
+starts after the system prefix and replaces the chart writer. That correction
+and migration are design work; the current implementation is unchanged.
+
 Record layout, with the version following `world::LAYOUT_VERSION` (currently 3):
 
 | Offset | Bytes | Meaning |
@@ -423,3 +431,38 @@ HAULER and those calls compile out. Any future persistent state still needs a
 carve rather than another byte-class allocation. The probe does not print the
 exact high-water byte unless `SH_STACK_DIAG=1`; static free bytes are still not
 a stack measurement.
+
+Progression resource/storage audit checkpoint (2026-10-26,
+`sub-hauler-7px.1`): no production firmware or generated artifact changed.
+Whole-image baseline re-measured with `make size-matrix`: full/lean/core/min
+**20,176 / 17,368 / 14,756 / 8,750 B** flash and **1,583 / 1,571 / 1,313 /
+1,252 B** static; `make mini PROFILE=full` repeats **20,176 / 1,583 B**;
+`make fxtest` builds six suites and each prints a bare `P`. The supported stack
+diagnostic is `make fxtest FXTEST_ONLY=test_memory
+RELAX_FLAGS="-mrelax -mcall-prologues -DSH_STACK_DIAG=1"`, which prints
+**`stack_reserve=756`** (600 B target). Host tests pass **150/117/89/44**,
+tooling **105**, and `make gen-check` reports deterministic artifacts.
+
+The installed Arduboy2 reserves EEPROM 0–15: address 1 system flags, 2 audio
+mute, 3–7 reserved, 8–9 unit ID, 10–15 unit name; `EEPROM_STORAGE_SPACE_START`
+is 16 and `E2END` is `0x3FF` (1,024 B). Arduboy2 writes only that prefix,
+ArduboyFX and ATMlib2FX contain no EEPROM code, and the current default-off
+chart save writes 0–259 (including the system prefix). The voyage save contract
+places two 320-byte slots at 16–335 and 336–655 and never writes 0–15; details
+are frozen in [progression-implementation.md](progression-implementation.md).
+
+A bounded build-only AVR probe,
+`tst/fxdatatest/probe_music/probe_music.ino`, measured the ATMlib2FX compact
+decoder with the intended `RING=64`, `LOOP=1` flags: **5,858 B / 1,197 B**
+without music versus **9,518 B / 1,425 B** with it, a marginal
+**+3,660 B flash / +228 B static**. `avr-nm` confirms the 228 B static split
+(`atm_fx_compact_state` 103, `channels` 84, `osc_params_array` 16,
+`osc_pha_acc_array` 8, `osc_cb` 12, `atmlib_state` 3, two ISR bytes). The
+64-byte ring is only 64 of those 228 B. Music alone therefore exceeds the
+**117 B** static headroom by **111 B**; adding the projected 17 B campaign
+state gives roughly a 128–132 B projected deficit. Flash projection
+20,176 + 3,660 = **23,836 B** leaves 5,164 B under the 29,000 B planning
+ceiling, but campaign/save flash and the combined stack are unmeasured. Full
+music must stay default-off until `.7` measures a combined fit or carves the
+state; the 1,700 B static ceiling and 600 B stack target are unchanged. No
+manual playthrough, physical listening or soak test was performed.
