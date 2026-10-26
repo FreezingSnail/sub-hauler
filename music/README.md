@@ -69,7 +69,9 @@ must build ATMlib2FX with `ATM_FX_COMPACT_RING=64` and
 `ATM_FX_COMPACT_LOOP=1`, use the generated `sh_*` FX offsets and
 `music_data::sh_*_bytes` lengths from `src/generated/music.hpp`, and service
 the ring in the foreground between complete SPI transactions. The normal
-game has no playback calls yet. Asset bytes are external cart storage;
+game has no playback calls yet. The [progression draft](../docs/progression.md#music-follows-place-and-recovery)
+proposes region/berth cues, pause and save behavior, mute, and a combined-image
+resource gate. Asset bytes are external cart storage;
 they do not measure the cost of a future player in AVR flash, SRAM or stack.
 
 Validation/export and host decoder loop checks establish timing and stream

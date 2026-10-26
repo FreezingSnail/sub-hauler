@@ -4,7 +4,11 @@ Campaign draft, 2026-10-24; playable map implementation added 2026-10-25.
 The authored map, equipment gates and eight cove rewards are now implemented;
 see [the active level format and behavior](../levels/README.md). Campaign
 restoration missions, the ending and persistent voyage checkpoints remain
-proposals. Exact encoded geometry is shown in the generated terrain preview.
+proposals. The current [voyage progression draft](progression.md), dated
+2026-10-26, develops seven objectives, restoration rewards, checkpoint rules,
+the ending and regional music with the player's relaxed-restoration direction.
+It supersedes the campaign/save outline below where details differ.
+Exact encoded geometry is shown in the generated terrain preview.
 The active map now has winding passages, asymmetric caverns and 31 physical
 rock features. High-pressure water remains lowest, with equipment dependencies
 validated against actual hull clearance. The legacy-map critique below records
@@ -319,7 +323,11 @@ valid checkpoint on interrupted writes. A preliminary allocation of two
 reserved addresses and existing chart-save migration require an implementation
 audit. No extra 256-byte RAM map buffer should be introduced for serialization.
 
-## First playable slice and acceptance
+## Historical exploration slice and acceptance
+
+The map and equipment portion is now implemented. Retain these exploration
+criteria as design context; the next campaign slice and its acceptance live
+in [progression.md](progression.md#implementation-boundaries-and-acceptance).
 
 Build **Tidewall -> Lantern Fork -> Benthos** first, with the abandoned tender
 and an interlocking network of roughly 10-12 places, including three coves.
@@ -396,9 +404,9 @@ checks supplement, but cannot establish, enjoyable handling.
 Before implementation, record a whole-image baseline. Each playable increment
 needs the relevant native tests, generated determinism, device smoke suites,
 whole-image flash/RAM measurements and stack reserve checks. Current planning
-headroom is 128 bytes of static SRAM, so larger runtime collections are not a
+headroom is documented in `platform.md`; larger runtime collections are not a
 safe assumption. Final gates follow `dev-flow.md` and `platform.md`.
 
-The main unresolved choices are tone, how much exploration survives rescue,
-and desired campaign duration. The recommendation here is to settle those
-through the first slice rather than fix the entire map around untested timing.
+The player selected relaxed restoration on 2026-10-26. The current progression
+draft proposes complete berth rollback and an initial duration target;
+rescue tolerance and pacing still need first-slice playtesting.

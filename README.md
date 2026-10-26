@@ -75,7 +75,10 @@ No manual interactive playthrough or physical-device soak is claimed.
 Exploration is enabled in full/lean/core; min remains free-flight/cave with
 barriers disabled. Equipment, reward claims and opened grates last for the
 current run. Campaign restoration missions, an ending and persistent voyage
-checkpoints remain proposed in [`docs/campaign-exploration.md`](docs/campaign-exploration.md).
+checkpoints remain proposed. The current
+[progression design](docs/progression.md) specifies seven main objectives,
+restored refuge berths, checkpoint recovery, homecoming and regional music;
+the [exploration proposal](docs/campaign-exploration.md) records the wider direction.
 Freight allowances follow the winding route lengths and allow intermediate
 berth stops for resupply. Rewards retain the existing economy. Gameplay still
 has no music player.

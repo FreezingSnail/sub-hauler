@@ -18,8 +18,9 @@ The active terrain uses winding, variable-width passages and asymmetric
 caverns with 31 solid pillars, shelves, wall teeth and wreck ribs. Freight
 allowances follow authored route lengths; optional shortcuts save travel time.
 See [the level contract](../levels/README.md) for encoding, controls and limits.
-The older baked-world measurements below are historical. The campaign/ending
-and persistent voyage save in `campaign-exploration.md` remain proposed work.
+The older baked-world measurements below are historical. Campaign/ending,
+persistent voyage saves and gameplay music remain proposed work; the current
+[progression draft](progression.md) refines the wider exploration proposal.
 
 ## Direction
 
