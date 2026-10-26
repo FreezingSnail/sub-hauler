@@ -277,10 +277,13 @@ stack probe still passed its 800 B reserve (the target was re-baselined to
   radius clips at the world border. The spawn reveal is radius 1 and the
   movement reveal is radius 1 every 30 flight ticks, driven by `state.ticks`.
 - `chart_view` draws 2x2 pixels per cell, reads the cart water mask exactly
-  once per byte (256 reads per frame), and lights only explored water.
+  once per byte (originally 256 transactions per frame), and lights only explored water.
   Settlement crosses appear only after their cell is explored. The sub marker
-  is a filled 2x2 block; the active job destination is an X driven by a
-  caller-supplied blink phase, never by the paused simulation clock.
+  is a filled 2x2 block; the sub and the active job destination both blink from
+  a caller-supplied phase, never from the paused simulation clock.
+  The 2026-10-26 performance pass batches these bytes into eight bursts and
+  redraws only at 16-frame blink boundaries. See
+  [current measurements](render-performance.md).
 - `B` opens the chart in free flight and closes it; the chart frame performs
   no world step, so travel time, air, ballast, and `jobClock` do not tick and
   D-pad/A input is contained. There is no text or `B` cue on the chart; the

@@ -4,6 +4,9 @@
 
 #include "features.hpp"
 #include "roster.hpp"
+#if SH_FEATURE_EXPLORATION
+#include "generated/exploration.hpp"
+#endif
 
 // Pure submarine rules. No Arduino headers: this file is compiled into the
 // host test binary and the firmware from the same source.
@@ -33,13 +36,13 @@ constexpr int16_t kHullH = kHullHalfH * 2;
 
 constexpr uint8_t kCargoMax = 4;
 constexpr int16_t kBallastMax = 100;
-constexpr int16_t kNeutralBase = 50;     // ballast at zero cargo
-constexpr int16_t kNeutralPerCargo = 5;  // neutral falls 5 per cargo unit
+constexpr int16_t kNeutralBase = 50;      // ballast at zero cargo
+constexpr int16_t kNeutralPerCargo = 5;   // neutral falls 5 per cargo unit
 
-constexpr int16_t kAirCapacity = 180;       // integer air units at full tank
-constexpr uint16_t kAirDrainTicks = 100;    // 0.6 units/s -> one unit per 100 ticks
+constexpr int16_t kAirCapacity = 180;      // integer air units at full tank
+constexpr uint16_t kAirDrainTicks = 100;   // 0.6 units/s -> one unit per 100 ticks
 #if SH_FEATURE_SHOP
-constexpr int16_t kAirCapacityPerLevel = 30;    // air-tank upgrade step
+constexpr int16_t kAirCapacityPerLevel = 30;   // air-tank upgrade step
 #endif
 
 #if SH_FEATURE_HULL_DAMAGE
@@ -47,7 +50,7 @@ constexpr int16_t kAirCapacityPerLevel = 30;    // air-tank upgrade step
 // the station already repairs the value so the M3 board has a real readout.
 constexpr uint8_t kHullMax = 6;
 #if SH_FEATURE_SHOP
-constexpr uint8_t kHullCapacityPerLevel = 1;    // hull-plate upgrade step
+constexpr uint8_t kHullCapacityPerLevel = 1;   // hull-plate upgrade step
 #endif
 #endif
 constexpr uint8_t kBlowCarryStep = 3;       // 3.0 air units/s while blowing
@@ -58,10 +61,10 @@ constexpr int16_t kBallastDriveMax = 35;    // ballast units -> drive clamp
 constexpr int16_t kBallastAccelQ8 = 128;    // 0.5 px/s^2, in Q8.8
 constexpr int16_t kMaxVyQ8 = 20 * kQ8One;   // 20 px/s down (browser maxVy)
 
-constexpr int16_t kThrustAccel = 34;        // px/s^2 at zero cargo
-constexpr int16_t kThrustAccelPerCargo = 3;// px/s^2 lost per cargo unit
-constexpr int16_t kTopSpeedBase = 30;       // px/s at zero cargo
-constexpr int16_t kTopSpeedPerCargo = 3;    // px/s lost per cargo unit
+constexpr int16_t kThrustAccel = 34;          // px/s^2 at zero cargo
+constexpr int16_t kThrustAccelPerCargo = 3;   // px/s^2 lost per cargo unit
+constexpr int16_t kTopSpeedBase = 30;         // px/s at zero cargo
+constexpr int16_t kTopSpeedPerCargo = 3;      // px/s lost per cargo unit
 constexpr int16_t kMaxVxBaseQ8 = kTopSpeedBase * kQ8One;
 constexpr int16_t kMaxVxPerCargoQ8 = kTopSpeedPerCargo * kQ8One;
 
@@ -81,10 +84,10 @@ constexpr int16_t kHardImpactSpeedQ8 = 16 * kQ8One;
 // ---------------------------------------------------------------------------
 
 struct Input {
-    bool up;     // blow ballast (rise); spends air
-    bool down;   // flood ballast (sink); free
-    bool left;   // reverse thrust (weaker)
-    bool right;  // forward thrust
+    bool up;      // blow ballast (rise); spends air
+    bool down;    // flood ballast (sink); free
+    bool left;    // reverse thrust (weaker)
+    bool right;   // forward thrust
 };
 
 #if SH_FEATURE_PARTICLES
@@ -121,11 +124,11 @@ constexpr uint8_t kJobNone = 0xFF;
 constexpr uint16_t kJobElapsedLate = 0xFFFF;
 
 struct JobOffer {
-    uint8_t from;      // origin settlement id
-    uint8_t to;        // destination settlement id
-    uint8_t crates;    // required cargo units
-    uint8_t reward;    // credits, a multiple of 5; generated bound-checked
-    uint16_t deadline; // allowed flight ticks from acceptance
+    uint8_t from;        // origin settlement id
+    uint8_t to;          // destination settlement id
+    uint8_t crates;      // required cargo units
+    uint8_t reward;      // credits, a multiple of 5; generated bound-checked
+    uint16_t deadline;   // allowed flight ticks from acceptance
 };
 
 struct ActiveJob {
@@ -138,21 +141,33 @@ struct ActiveJob {
 #endif
 
 struct State {
-    int16_t x;          // whole-pixel world position
+#if SH_FEATURE_EXPLORATION
+    uint8_t tools;        // CUTTER / SEAL / THRUSTER / LENS
+    uint8_t pickups;      // one bit per unique cove reward
+    uint16_t openGates;   // cutter grates opened during this run
+    uint16_t seenGates;   // encountered gate markers retained on the chart
+    uint8_t contactId;    // current pickup or gate dwell target, 0xff = none
+    uint8_t contactTicks;
+    uint8_t discoveryTicks;
+    uint8_t lastDiscovery;   // pickup id, valid only while discoveryTicks != 0
+    uint8_t blockedGate;     // gate id, valid only when impactAxis == 4
+#endif
+
+    int16_t x;   // whole-pixel world position
     int16_t y;
-    int16_t xFrac;      // Q12 sub-pixel remainder, 0..4095
+    int16_t xFrac;   // Q12 sub-pixel remainder, 0..4095
     int16_t yFrac;
-    int16_t vxQ8;       // Q8.8 pixels per second
-    int16_t vyQ8;       // positive is down
-    uint8_t ballast;    // 0..100
+    int16_t vxQ8;      // Q8.8 pixels per second
+    int16_t vyQ8;      // positive is down
+    uint8_t ballast;   // 0..100
 #if SH_FEATURE_SONAR
     // Sonar state is two bytes total. The host build files these into existing
     // alignment holes; the AVR layout is byte-packed, so the device image grows
     // by exactly these two bytes (1,678 -> 1,680 B).
     uint8_t sonarCooldown;   // flight ticks until the next ping is allowed
 #endif
-    int16_t air;        // integer units, 0..airCapacity(state)
-    uint8_t cargo;      // 0..4
+    int16_t air;     // integer units, 0..airCapacity(state)
+    uint8_t cargo;   // 0..4
 #if SH_FEATURE_MULTI_HULL
     // Selected roster class, owned by the title screen and kept across
     // dock/undock. One byte; the damage hull byte above is unrelated.
@@ -167,32 +182,32 @@ struct State {
     // Follow camera and collision feedback. The camera is owned by update, not
     // render, so it can be reproduced by the host tests and stays independent
     // of display timing.
-    int16_t cameraX;         // whole-pixel world offset
+    int16_t cameraX;   // whole-pixel world offset
     int16_t cameraY;
     int16_t impactSpeedQ8;   // speed on the blocked axis before it was zeroed
     uint8_t impactAxis;      // 0 none, 1 x, 2 y, 3 mine hit (one frame)
 #if SH_FEATURE_MINES
-    uint8_t minesAlive;      // one bit per generated mine, 1 = still armed
+    uint8_t minesAlive;   // one bit per generated mine, 1 = still armed
 #endif
 
 #if SH_FEATURE_STATIONS
-    int8_t docked;           // -1 = free flight, else the settlement id
-    uint8_t dockCooldown;    // non-zero while the undock ring latch is armed
+    int8_t docked;          // -1 = free flight, else the settlement id
+    uint8_t dockCooldown;   // non-zero while the undock ring latch is armed
 #endif
 #if SH_FEATURE_HULL_DAMAGE
-    uint8_t hull;            // 0..hullCapacity(state), repaired at a station
-    uint8_t damageCooldown;  // flight ticks before another wall hit can damage
+    uint8_t hull;             // 0..hullCapacity(state), repaired at a station
+    uint8_t damageCooldown;   // flight ticks before another wall hit can damage
 #endif
 #if SH_FEATURE_PARTICLES
-    ParticlePool particles;  // fixed debris pool, 4 slots
+    ParticlePool particles;   // fixed debris pool, 4 slots
 #endif
 #if SH_FEATURE_JOBS
     uint16_t credits;
-    uint8_t lastDelivery;    // jobs::DeliveryResult from the last resolved contract
-    uint16_t offerSerial;    // deterministic offer generator cursor
-    uint8_t offerCount;      // 0..kJobOffers valid entries in offers
+    uint8_t lastDelivery;   // jobs::DeliveryResult from the last resolved contract
+    uint16_t offerSerial;   // deterministic offer generator cursor
+    uint8_t offerCount;     // 0..kJobOffers valid entries in offers
     JobOffer offers[kJobOffers];
-    ActiveJob activeJob;     // activeJob.to == kJobNone means no contract
+    ActiveJob activeJob;   // activeJob.to == kJobNone means no contract
 #endif
 #if SH_FEATURE_SHOP
     // Run-only shop levels: three bytes, no save field, no extra UI state.
@@ -288,10 +303,18 @@ inline int16_t airCapacity(const State &state) {
 #if SH_FEATURE_HULL_DAMAGE
 inline uint8_t hullCapacity(const State &state) {
 #if SH_FEATURE_SHOP
-    return static_cast<uint8_t>(kHullMax + kHullCapacityPerLevel * state.hullLevel);
+    return static_cast<uint8_t>(kHullMax + kHullCapacityPerLevel * state.hullLevel
+#if SH_FEATURE_EXPLORATION
+                                + ((state.pickups & (1u << exploration_data::PICKUP_CC)) != 0)
+#endif
+    );
 #else
     (void)state;
-    return kHullMax;
+    return kHullMax
+#if SH_FEATURE_EXPLORATION
+           + ((state.pickups & (1u << exploration_data::PICKUP_CC)) != 0)
+#endif
+        ;
 #endif
 }
 #endif
@@ -337,6 +360,9 @@ inline void reset(State &state) {
     // keeps every byte (including inactive feature state) deterministic without
     // a long field-by-field clear in the device image.
     state = State{};
+#if SH_FEATURE_EXPLORATION
+    state.contactId = 0xFF;
+#endif
     state.x = kSpawnX;
     state.y = kSpawnY;
     state.ballast = static_cast<uint8_t>(neutralFor(0));
@@ -425,8 +451,7 @@ inline void stepPhysics(State &state, const Input &input) {
         state.facingLeft = true;
     }
     const int16_t powerQ8 = static_cast<int16_t>(power * kQ8One / kStepHz);
-    state.vxQ8 = clampI16(static_cast<int16_t>(state.vxQ8 + powerQ8 - dragStep(state.vxQ8)), -topSpeedQ8For(state.cargo),
-                          topSpeedQ8For(state.cargo));
+    state.vxQ8 = clampI16(static_cast<int16_t>(state.vxQ8 + powerQ8 - dragStep(state.vxQ8)), -topSpeedQ8For(state.cargo), topSpeedQ8For(state.cargo));
 }
 
 inline void step(State &state, const Input &input) {

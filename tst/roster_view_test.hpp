@@ -79,6 +79,15 @@ inline void TitleSuite(TestRunner &runner) {
         test.assertTrue(hud::kCargoX + (game::kCargoMax - 1) * hud::kCargoStep + hud::kCargoPip <= 128, "cargo pips inside");
         test.assertTrue(hud::kHintY + 7 <= 64, "hint inside");
 
+        test.assertTrue(hud::kTopBackingX == 0 && hud::kTopBackingX + hud::kTopBackingW <= 128 && hud::kTopBackingY + hud::kTopBackingH <= 64, "top backing inside");
+        test.assertTrue(hud::kTopBackingY <= hud::kAirLabelY && hud::kTopBackingY + hud::kTopBackingH >= hud::kAirLabelY + 7, "top backing covers AIR label");
+        test.assertTrue(hud::kTopBackingY <= hud::kAirY && hud::kTopBackingY + hud::kTopBackingH >= hud::kAirY + hud::kAirH, "top backing covers air bar");
+        test.assertTrue(hud::kTopBackingY <= hud::kCargoLabelY && hud::kTopBackingY + hud::kTopBackingH >= hud::kCargoLabelY + 7, "top backing covers CGO label");
+        test.assertTrue(hud::kGaugeBackingX <= hud::kGaugeX && hud::kGaugeBackingX + hud::kGaugeBackingW >= hud::kGaugeX + hud::kGaugeW + 3, "gauge backing covers notch");
+        test.assertTrue(hud::kGaugeBackingY <= hud::kGaugeY && hud::kGaugeBackingY + hud::kGaugeBackingH >= hud::kGaugeY + hud::kGaugeH, "gauge backing covers gauge");
+        test.assertTrue(hud::kHintBackingX == 0 && hud::kHintBackingX + hud::kHintBackingW <= 128, "hint backing inside");
+        test.assertTrue(hud::kHintBackingY <= hud::kHintY && hud::kHintBackingY + hud::kHintBackingH >= hud::kHintY + 7, "hint backing covers text");
+
         game::State state{};
         game::resetWorld(state);
         const cave::Camera camera = pilot_view::cameraForState(state);
@@ -94,6 +103,9 @@ inline void TitleSuite(TestRunner &runner) {
         test.assertTrue(!overlaps(hud::kGaugeX, hud::kGaugeY, hud::kGaugeW, hud::kGaugeH), "gauge clear");
         test.assertTrue(!overlaps(hud::kCargoX, hud::kCargoY, (game::kCargoMax - 1) * hud::kCargoStep + hud::kCargoPip, hud::kCargoPip), "cargo clear");
         test.assertTrue(!overlaps(hud::kHintX, hud::kHintY, 125, 7), "hint clear");
+        test.assertTrue(!overlaps(hud::kTopBackingX, hud::kTopBackingY, hud::kTopBackingW, hud::kTopBackingH), "top backing clear");
+        test.assertTrue(!overlaps(hud::kGaugeBackingX, hud::kGaugeBackingY, hud::kGaugeBackingW, hud::kGaugeBackingH), "gauge backing clear");
+        test.assertTrue(!overlaps(hud::kHintBackingX, hud::kHintBackingY, hud::kHintBackingW, hud::kHintBackingH), "hint backing clear");
         runner.add(test);
     }
 }

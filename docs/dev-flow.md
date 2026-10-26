@@ -70,3 +70,15 @@ hardware and resource facts live in `docs/platform.md`.
 - For a future save that outgrows internal EEPROM, regenerate with
   `FX_SAVE_PAGE` and keep the versioned, checksummed block. Writes belong on
   transitions, never in the per-frame path.
+
+## Developer traversal
+
+`make dev` launches a separate `DEV_MODE=1` firmware in Ardens. D-pad moves
+through walls and gates, A boosts speed, B opens the complete chart. It skips
+station docking, world physics/hazards, pickups and contract time. Both health
+resources stay full; chart-save reads/writes are suppressed. Coves and gate
+appearances are retained for inspection. `make build DEV_MODE=1` builds without
+launching, and `make test DEV_MODE=1` exercises free-flight plus ordinary rules.
+Outputs live under `build/dev/PROFILE` and `dist/dev/PROFILE`; the default
+`DEV_MODE=0` uses the normal directories and gameplay. This override is separate
+from the shipped feature-profile list.

@@ -1,0 +1,777 @@
+{
+  "format": "atmlib-score",
+  "version": 1,
+  "id": "sh_abyssal_glass",
+  "clock": {
+    "tick_rate": 50,
+    "ticks_per_beat": 75,
+    "beats_per_bar": 4
+  },
+  "instruments": {
+    "glass": {
+      "voice": "pulse",
+      "volume": 42,
+      "duty": 128
+    },
+    "water": {
+      "voice": "pulse",
+      "volume": 22,
+      "duty": 128
+    },
+    "ballast": {
+      "voice": "pulse",
+      "volume": 28,
+      "duty": 128
+    },
+    "silt": {
+      "voice": "noise",
+      "volume": 5
+    }
+  },
+  "patterns": {
+    "glass_01": {
+      "ticks": 300,
+      "events": [
+        {"at": 0, "note": "C#5", "duration": 110, "instrument": "glass"},
+        {"at": 150, "note": "A4", "duration": 65, "instrument": "glass"},
+        {"at": 225, "note": "F#4", "duration": 65, "instrument": "glass"}
+      ],
+      "effects": [
+        {
+          "at": 1,
+          "until": 299,
+          "type": "lfo",
+          "mode": "vibrato",
+          "depth": 2,
+          "period": 32
+        }
+      ]
+    },
+    "water_01": {
+      "ticks": 300,
+      "events": [
+        {"at": 25, "note": "E4", "duration": 260, "instrument": "water"}
+      ],
+      "effects": [
+        {
+          "at": 26,
+          "until": 285,
+          "type": "lfo",
+          "mode": "tremolo",
+          "depth": 1,
+          "period": 64
+        }
+      ]
+    },
+    "ballast_01": {
+      "ticks": 300,
+      "events": [
+        {"at": 0, "note": "F#2", "duration": 140, "instrument": "ballast"},
+        {"at": 150, "note": "C#3", "duration": 140, "instrument": "ballast"}
+      ]
+    },
+    "silt_01": {
+      "ticks": 300,
+      "events": []
+    },
+    "glass_02": {
+      "ticks": 300,
+      "events": [
+        {"at": 0, "note": "A4", "duration": 140, "instrument": "glass"},
+        {"at": 187, "note": "F#4", "duration": 70, "instrument": "glass"}
+      ],
+      "effects": [
+        {
+          "at": 1,
+          "until": 299,
+          "type": "lfo",
+          "mode": "vibrato",
+          "depth": 2,
+          "period": 32
+        }
+      ]
+    },
+    "water_02": {
+      "ticks": 300,
+      "events": [
+        {"at": 25, "note": "C#4", "duration": 260, "instrument": "water"}
+      ],
+      "effects": [
+        {
+          "at": 26,
+          "until": 285,
+          "type": "lfo",
+          "mode": "tremolo",
+          "depth": 1,
+          "period": 64
+        }
+      ]
+    },
+    "ballast_02": {
+      "ticks": 300,
+      "events": [
+        {"at": 0, "note": "D3", "duration": 140, "instrument": "ballast"},
+        {"at": 150, "note": "A2", "duration": 140, "instrument": "ballast"}
+      ]
+    },
+    "silt_02": {
+      "ticks": 300,
+      "events": []
+    },
+    "glass_03": {
+      "ticks": 300,
+      "events": [
+        {"at": 0, "note": "E5", "duration": 110, "instrument": "glass"},
+        {"at": 150, "note": "C#5", "duration": 65, "instrument": "glass"},
+        {"at": 225, "note": "B4", "duration": 65, "instrument": "glass"}
+      ],
+      "effects": [
+        {
+          "at": 1,
+          "until": 299,
+          "type": "lfo",
+          "mode": "vibrato",
+          "depth": 2,
+          "period": 32
+        }
+      ]
+    },
+    "water_03": {
+      "ticks": 300,
+      "events": [
+        {"at": 25, "note": "B3", "duration": 260, "instrument": "water"}
+      ],
+      "effects": [
+        {
+          "at": 26,
+          "until": 285,
+          "type": "lfo",
+          "mode": "tremolo",
+          "depth": 1,
+          "period": 64
+        }
+      ]
+    },
+    "ballast_03": {
+      "ticks": 300,
+      "events": [
+        {"at": 0, "note": "A2", "duration": 140, "instrument": "ballast"},
+        {"at": 150, "note": "E3", "duration": 140, "instrument": "ballast"}
+      ]
+    },
+    "silt_03": {
+      "ticks": 300,
+      "events": []
+    },
+    "glass_04": {
+      "ticks": 300,
+      "events": [
+        {"at": 0, "note": "B4", "duration": 140, "instrument": "glass"},
+        {"at": 187, "note": "G#4", "duration": 70, "instrument": "glass"}
+      ],
+      "effects": [
+        {
+          "at": 1,
+          "until": 299,
+          "type": "lfo",
+          "mode": "vibrato",
+          "depth": 2,
+          "period": 32
+        }
+      ]
+    },
+    "water_04": {
+      "ticks": 300,
+      "events": [
+        {"at": 25, "note": "F#4", "duration": 260, "instrument": "water"}
+      ],
+      "effects": [
+        {
+          "at": 26,
+          "until": 285,
+          "type": "lfo",
+          "mode": "tremolo",
+          "depth": 1,
+          "period": 64
+        }
+      ]
+    },
+    "ballast_04": {
+      "ticks": 300,
+      "events": [
+        {"at": 0, "note": "E3", "duration": 140, "instrument": "ballast"},
+        {"at": 150, "note": "B2", "duration": 140, "instrument": "ballast"}
+      ]
+    },
+    "silt_04": {
+      "ticks": 300,
+      "events": [
+        {"at": 245, "note": "C3", "duration": 3, "instrument": "silt"}
+      ]
+    },
+    "glass_05": {
+      "ticks": 300,
+      "events": [
+        {"at": 0, "note": "A4", "duration": 110, "instrument": "glass"},
+        {"at": 150, "note": "C#5", "duration": 65, "instrument": "glass"},
+        {"at": 225, "note": "E5", "duration": 65, "instrument": "glass"}
+      ],
+      "effects": [
+        {
+          "at": 1,
+          "until": 299,
+          "type": "lfo",
+          "mode": "vibrato",
+          "depth": 2,
+          "period": 32
+        }
+      ]
+    },
+    "water_05": {
+      "ticks": 300,
+      "events": [
+        {"at": 25, "note": "E4", "duration": 260, "instrument": "water"}
+      ],
+      "effects": [
+        {
+          "at": 26,
+          "until": 285,
+          "type": "lfo",
+          "mode": "tremolo",
+          "depth": 1,
+          "period": 64
+        }
+      ]
+    },
+    "ballast_05": {
+      "ticks": 300,
+      "events": [
+        {"at": 0, "note": "F#2", "duration": 140, "instrument": "ballast"},
+        {"at": 150, "note": "C#3", "duration": 140, "instrument": "ballast"}
+      ]
+    },
+    "silt_05": {
+      "ticks": 300,
+      "events": []
+    },
+    "glass_06": {
+      "ticks": 300,
+      "events": [
+        {"at": 0, "note": "F#4", "duration": 140, "instrument": "glass"},
+        {"at": 187, "note": "A4", "duration": 70, "instrument": "glass"}
+      ],
+      "effects": [
+        {
+          "at": 1,
+          "until": 299,
+          "type": "lfo",
+          "mode": "vibrato",
+          "depth": 2,
+          "period": 32
+        }
+      ]
+    },
+    "water_06": {
+      "ticks": 300,
+      "events": [
+        {"at": 25, "note": "C#4", "duration": 260, "instrument": "water"}
+      ],
+      "effects": [
+        {
+          "at": 26,
+          "until": 285,
+          "type": "lfo",
+          "mode": "tremolo",
+          "depth": 1,
+          "period": 64
+        }
+      ]
+    },
+    "ballast_06": {
+      "ticks": 300,
+      "events": [
+        {"at": 0, "note": "D3", "duration": 140, "instrument": "ballast"},
+        {"at": 150, "note": "A2", "duration": 140, "instrument": "ballast"}
+      ]
+    },
+    "silt_06": {
+      "ticks": 300,
+      "events": []
+    },
+    "glass_07": {
+      "ticks": 300,
+      "events": [
+        {"at": 0, "note": "C#5", "duration": 110, "instrument": "glass"},
+        {"at": 150, "note": "B4", "duration": 65, "instrument": "glass"},
+        {"at": 225, "note": "A4", "duration": 65, "instrument": "glass"}
+      ],
+      "effects": [
+        {
+          "at": 1,
+          "until": 299,
+          "type": "lfo",
+          "mode": "vibrato",
+          "depth": 2,
+          "period": 32
+        }
+      ]
+    },
+    "water_07": {
+      "ticks": 300,
+      "events": [
+        {"at": 25, "note": "B3", "duration": 260, "instrument": "water"}
+      ],
+      "effects": [
+        {
+          "at": 26,
+          "until": 285,
+          "type": "lfo",
+          "mode": "tremolo",
+          "depth": 1,
+          "period": 64
+        }
+      ]
+    },
+    "ballast_07": {
+      "ticks": 300,
+      "events": [
+        {"at": 0, "note": "A2", "duration": 140, "instrument": "ballast"},
+        {"at": 150, "note": "E3", "duration": 140, "instrument": "ballast"}
+      ]
+    },
+    "silt_07": {
+      "ticks": 300,
+      "events": []
+    },
+    "glass_08": {
+      "ticks": 300,
+      "events": [
+        {"at": 0, "note": "G#4", "duration": 140, "instrument": "glass"},
+        {"at": 187, "note": "B4", "duration": 70, "instrument": "glass"}
+      ],
+      "effects": [
+        {
+          "at": 1,
+          "until": 299,
+          "type": "lfo",
+          "mode": "vibrato",
+          "depth": 2,
+          "period": 32
+        }
+      ]
+    },
+    "water_08": {
+      "ticks": 300,
+      "events": [
+        {"at": 25, "note": "F#4", "duration": 260, "instrument": "water"}
+      ],
+      "effects": [
+        {
+          "at": 26,
+          "until": 285,
+          "type": "lfo",
+          "mode": "tremolo",
+          "depth": 1,
+          "period": 64
+        }
+      ]
+    },
+    "ballast_08": {
+      "ticks": 300,
+      "events": [
+        {"at": 0, "note": "E3", "duration": 140, "instrument": "ballast"},
+        {"at": 150, "note": "B2", "duration": 140, "instrument": "ballast"}
+      ]
+    },
+    "silt_08": {
+      "ticks": 300,
+      "events": [
+        {"at": 245, "note": "C3", "duration": 3, "instrument": "silt"}
+      ]
+    },
+    "glass_09": {
+      "ticks": 300,
+      "events": [
+        {"at": 0, "note": "C#5", "duration": 110, "instrument": "glass"},
+        {"at": 150, "note": "A4", "duration": 65, "instrument": "glass"},
+        {"at": 225, "note": "F#4", "duration": 65, "instrument": "glass"}
+      ],
+      "effects": [
+        {
+          "at": 1,
+          "until": 299,
+          "type": "lfo",
+          "mode": "vibrato",
+          "depth": 2,
+          "period": 32
+        }
+      ]
+    },
+    "water_09": {
+      "ticks": 300,
+      "events": [
+        {"at": 25, "note": "E4", "duration": 260, "instrument": "water"}
+      ],
+      "effects": [
+        {
+          "at": 26,
+          "until": 285,
+          "type": "lfo",
+          "mode": "tremolo",
+          "depth": 1,
+          "period": 64
+        }
+      ]
+    },
+    "ballast_09": {
+      "ticks": 300,
+      "events": [
+        {"at": 0, "note": "F#2", "duration": 140, "instrument": "ballast"},
+        {"at": 150, "note": "C#3", "duration": 140, "instrument": "ballast"}
+      ]
+    },
+    "silt_09": {
+      "ticks": 300,
+      "events": []
+    },
+    "glass_10": {
+      "ticks": 300,
+      "events": [
+        {"at": 0, "note": "F#4", "duration": 140, "instrument": "glass"},
+        {"at": 187, "note": "E4", "duration": 70, "instrument": "glass"}
+      ],
+      "effects": [
+        {
+          "at": 1,
+          "until": 299,
+          "type": "lfo",
+          "mode": "vibrato",
+          "depth": 2,
+          "period": 32
+        }
+      ]
+    },
+    "water_10": {
+      "ticks": 300,
+      "events": [
+        {"at": 25, "note": "C#4", "duration": 260, "instrument": "water"}
+      ],
+      "effects": [
+        {
+          "at": 26,
+          "until": 285,
+          "type": "lfo",
+          "mode": "tremolo",
+          "depth": 1,
+          "period": 64
+        }
+      ]
+    },
+    "ballast_10": {
+      "ticks": 300,
+      "events": [
+        {"at": 0, "note": "D3", "duration": 140, "instrument": "ballast"},
+        {"at": 150, "note": "A2", "duration": 140, "instrument": "ballast"}
+      ]
+    },
+    "silt_10": {
+      "ticks": 300,
+      "events": []
+    },
+    "glass_11": {
+      "ticks": 300,
+      "events": [
+        {"at": 0, "note": "E5", "duration": 110, "instrument": "glass"},
+        {"at": 150, "note": "C#5", "duration": 65, "instrument": "glass"},
+        {"at": 225, "note": "B4", "duration": 65, "instrument": "glass"}
+      ],
+      "effects": [
+        {
+          "at": 1,
+          "until": 299,
+          "type": "lfo",
+          "mode": "vibrato",
+          "depth": 2,
+          "period": 32
+        }
+      ]
+    },
+    "water_11": {
+      "ticks": 300,
+      "events": [
+        {"at": 25, "note": "B3", "duration": 260, "instrument": "water"}
+      ],
+      "effects": [
+        {
+          "at": 26,
+          "until": 285,
+          "type": "lfo",
+          "mode": "tremolo",
+          "depth": 1,
+          "period": 64
+        }
+      ]
+    },
+    "ballast_11": {
+      "ticks": 300,
+      "events": [
+        {"at": 0, "note": "A2", "duration": 140, "instrument": "ballast"},
+        {"at": 150, "note": "E3", "duration": 140, "instrument": "ballast"}
+      ]
+    },
+    "silt_11": {
+      "ticks": 300,
+      "events": []
+    },
+    "glass_12": {
+      "ticks": 300,
+      "events": [
+        {"at": 0, "note": "G#4", "duration": 110, "instrument": "glass"},
+        {"at": 150, "note": "B4", "duration": 65, "instrument": "glass"},
+        {"at": 262, "note": "E4", "duration": 30, "instrument": "glass"}
+      ],
+      "effects": [
+        {
+          "at": 1,
+          "until": 299,
+          "type": "lfo",
+          "mode": "vibrato",
+          "depth": 2,
+          "period": 32
+        }
+      ]
+    },
+    "water_12": {
+      "ticks": 300,
+      "events": [
+        {"at": 25, "note": "F#4", "duration": 260, "instrument": "water"}
+      ],
+      "effects": [
+        {
+          "at": 26,
+          "until": 285,
+          "type": "lfo",
+          "mode": "tremolo",
+          "depth": 1,
+          "period": 64
+        }
+      ]
+    },
+    "ballast_12": {
+      "ticks": 300,
+      "events": [
+        {"at": 0, "note": "E3", "duration": 140, "instrument": "ballast"},
+        {"at": 150, "note": "B2", "duration": 140, "instrument": "ballast"}
+      ]
+    },
+    "silt_12": {
+      "ticks": 300,
+      "events": [
+        {"at": 245, "note": "C3", "duration": 3, "instrument": "silt"}
+      ]
+    }
+  },
+  "tracks": {
+    "pulse0": [
+      {
+        "pattern": "glass_01",
+        "repeat": 1
+      },
+      {
+        "pattern": "glass_02",
+        "repeat": 1
+      },
+      {
+        "pattern": "glass_03",
+        "repeat": 1
+      },
+      {
+        "pattern": "glass_04",
+        "repeat": 1
+      },
+      {
+        "pattern": "glass_05",
+        "repeat": 1
+      },
+      {
+        "pattern": "glass_06",
+        "repeat": 1
+      },
+      {
+        "pattern": "glass_07",
+        "repeat": 1
+      },
+      {
+        "pattern": "glass_08",
+        "repeat": 1
+      },
+      {
+        "pattern": "glass_09",
+        "repeat": 1
+      },
+      {
+        "pattern": "glass_10",
+        "repeat": 1
+      },
+      {
+        "pattern": "glass_11",
+        "repeat": 1
+      },
+      {
+        "pattern": "glass_12",
+        "repeat": 1
+      }
+    ],
+    "pulse1": [
+      {
+        "pattern": "water_01",
+        "repeat": 1
+      },
+      {
+        "pattern": "water_02",
+        "repeat": 1
+      },
+      {
+        "pattern": "water_03",
+        "repeat": 1
+      },
+      {
+        "pattern": "water_04",
+        "repeat": 1
+      },
+      {
+        "pattern": "water_05",
+        "repeat": 1
+      },
+      {
+        "pattern": "water_06",
+        "repeat": 1
+      },
+      {
+        "pattern": "water_07",
+        "repeat": 1
+      },
+      {
+        "pattern": "water_08",
+        "repeat": 1
+      },
+      {
+        "pattern": "water_09",
+        "repeat": 1
+      },
+      {
+        "pattern": "water_10",
+        "repeat": 1
+      },
+      {
+        "pattern": "water_11",
+        "repeat": 1
+      },
+      {
+        "pattern": "water_12",
+        "repeat": 1
+      }
+    ],
+    "pulse2": [
+      {
+        "pattern": "ballast_01",
+        "repeat": 1
+      },
+      {
+        "pattern": "ballast_02",
+        "repeat": 1
+      },
+      {
+        "pattern": "ballast_03",
+        "repeat": 1
+      },
+      {
+        "pattern": "ballast_04",
+        "repeat": 1
+      },
+      {
+        "pattern": "ballast_05",
+        "repeat": 1
+      },
+      {
+        "pattern": "ballast_06",
+        "repeat": 1
+      },
+      {
+        "pattern": "ballast_07",
+        "repeat": 1
+      },
+      {
+        "pattern": "ballast_08",
+        "repeat": 1
+      },
+      {
+        "pattern": "ballast_09",
+        "repeat": 1
+      },
+      {
+        "pattern": "ballast_10",
+        "repeat": 1
+      },
+      {
+        "pattern": "ballast_11",
+        "repeat": 1
+      },
+      {
+        "pattern": "ballast_12",
+        "repeat": 1
+      }
+    ],
+    "noise": [
+      {
+        "pattern": "silt_01",
+        "repeat": 1
+      },
+      {
+        "pattern": "silt_02",
+        "repeat": 1
+      },
+      {
+        "pattern": "silt_03",
+        "repeat": 1
+      },
+      {
+        "pattern": "silt_04",
+        "repeat": 1
+      },
+      {
+        "pattern": "silt_05",
+        "repeat": 1
+      },
+      {
+        "pattern": "silt_06",
+        "repeat": 1
+      },
+      {
+        "pattern": "silt_07",
+        "repeat": 1
+      },
+      {
+        "pattern": "silt_08",
+        "repeat": 1
+      },
+      {
+        "pattern": "silt_09",
+        "repeat": 1
+      },
+      {
+        "pattern": "silt_10",
+        "repeat": 1
+      },
+      {
+        "pattern": "silt_11",
+        "repeat": 1
+      },
+      {
+        "pattern": "silt_12",
+        "repeat": 1
+      }
+    ]
+  },
+  "loop": true
+}

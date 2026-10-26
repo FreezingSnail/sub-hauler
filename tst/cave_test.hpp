@@ -3,6 +3,9 @@
 #include "../src/cave.hpp"
 #include "../src/cave_render.hpp"
 #include "test.hpp"
+#include <cstring>
+#include <fstream>
+#include <vector>
 
 namespace cave_test {
 
@@ -60,6 +63,28 @@ inline uint8_t referenceColumn(uint8_t mask, uint8_t column) {
     return value;
 }
 
+// Deliberately slow, independent pixel composition for the packed-row renderer.
+inline void referenceFrame(const cave::Camera &camera, const world::TileCache &cache, uint8_t *buffer) {
+    for (int16_t y = 0; y < cave::VIEW_HEIGHT; ++y) {
+        for (int16_t x = 0; x < cave::VIEW_WIDTH; ++x) {
+            const int16_t tx = camera.tileX + x / 8, ty = camera.tileY + y / 8;
+            bool solid = false;
+            bool white = false;
+            if (world::cacheLookup(cache, tx, ty, solid) && solid) {
+                const uint8_t mask = cave::openMask(cache, tx, ty);
+                white = (referenceColumn(mask, x % 8) & (1u << (y % 8))) != 0;
+                if (!mask && x % 8 == ((tx * 5 + ty * 3) & 7) && y % 8 == ((tx * 3 + ty * 7) & 7))
+                    white = false;
+            }
+            if (white)
+                cave::setPixel(buffer, x, y);
+            else
+                cave::clearPixel(buffer, x, y);
+        }
+    }
+    cave::drawSettlements(buffer, camera);
+}
+
 }   // namespace cave_test
 
 inline void CaveSuite(TestRunner &runner) {
@@ -72,22 +97,159 @@ inline void CaveSuite(TestRunner &runner) {
     static_assert(world::CACHE_TILES_Y == cave::VIEW_TILES_Y + 2, "cache has a one-tile margin per side");
 
     {
+        Test test("streamed scenery matches native image crops across the actual world");
+        struct NativeTerrain {
+            std::vector<uint8_t> pixels;
+            uint8_t reads = 0;
+            uint16_t bytes = 0;
+            bool bounds = true;
+            void terrainBytes(uint32_t offset, uint8_t *dest, uint16_t length) {
+                ++reads;
+                bytes += length;
+                if (offset + length > pixels.size()) {
+                    bounds = false;
+                    return;
+                }
+                std::memcpy(dest, pixels.data() + offset, length);
+            }
+        } terrain;
+        terrain.pixels.resize(cave::TERRAIN_BYTES);
+        std::ifstream image("fxdata/tables/exploration-terrain.bin", std::ios::binary);
+        const bool imageLoaded = static_cast<bool>(image.read(reinterpret_cast<char *>(terrain.pixels.data()), terrain.pixels.size())) && image.peek() == std::char_traits<char>::eof();
+        test.assertTrue(imageLoaded, "exact generated native scenery image loads");
+        bool matches = imageLoaded;
+        if (matches) {
+            uint8_t streamed[1026], composed[1024];
+            // Every legal horizontal and vertical camera origin appears,
+            // including all four map corners and each source page boundary.
+            for (int16_t y = 0; y <= cave::MAX_CAMERA_TILE_Y; ++y) {
+                for (int16_t x = 0; x <= cave::MAX_CAMERA_TILE_X; x += (y == 0 || y == cave::MAX_CAMERA_TILE_Y ? 1 : 8)) {
+                    const cave::Camera camera = cave::cameraAtTile(x, y);
+                    // Independent per-pixel crop: scenery intentionally differs
+                    // from collision-tile art, but streaming must preserve every
+                    // pixel and the same native page/bit orientation.
+                    for (int16_t sy = 0; sy < cave::VIEW_HEIGHT; ++sy) {
+                        for (int16_t sx = 0; sx < cave::VIEW_WIDTH; ++sx) {
+                            const int16_t wx = camera.tileX * 8 + sx, wy = camera.tileY * 8 + sy;
+                            const uint8_t value = terrain.pixels[(static_cast<uint32_t>(wy) / 8) * world::PIXELS_X + wx];
+                            if (value & (1u << (wy % 8)))
+                                cave::setPixel(composed, sx, sy);
+                            else
+                                cave::clearPixel(composed, sx, sy);
+                        }
+                    }
+                    cave::drawSettlements(composed, camera);
+                    terrain.reads = terrain.bytes = 0;
+                    streamed[0] = streamed[1025] = 0xA5;
+                    cave::streamFrame(camera, terrain, streamed + 1);
+                    matches = matches && terrain.bounds && terrain.reads == 8 && terrain.bytes == 1024;
+                    matches = matches && streamed[0] == 0xA5 && streamed[1025] == 0xA5;
+                    matches = matches && std::memcmp(streamed + 1, composed, 1024) == 0;
+                }
+            }
+        }
+        test.assertTrue(matches, "all scene pixels identical, exactly eight bounded reads into guarded framebuffer");
+        runner.add(test);
+    }
+
+    {
+        Test test("page-span rectangles preserve pixels and clip every display edge");
+        const int16_t xs[] = {-140, -8, -1, 0, 1, 7, 8, 120, 127, 128, 140};
+        const int16_t ys[] = {-80, -8, -1, 0, 1, 7, 8, 55, 63, 64, 80};
+        const uint8_t sizes[][2] = {{0, 9}, {9, 0}, {1, 255}, {255, 1}, {7, 7}, {8, 8}, {9, 9}, {128, 9}, {32, 3}, {3, 32}, {255, 255}};
+        uint8_t guarded[1026], expected[1024];
+        bool matches = true;
+        for (int16_t x : xs)
+            for (int16_t y : ys)
+                for (const auto &size : sizes) {
+                    for (uint8_t color = 0; color < 2; ++color) {
+                        guarded[0] = guarded[1025] = 0xA5;
+                        for (uint16_t i = 0; i < 1024; ++i)
+                            guarded[i + 1] = expected[i] = static_cast<uint8_t>(i * 37 + 51);
+                        const uint8_t width = size[0], height = size[1];
+                        cave::fillRect(guarded + 1, x, y, width, height, color);
+                        for (int16_t py = 0; py < 64; ++py)
+                            for (int16_t px = 0; px < 128; ++px) {
+                                if (px >= x && px < x + width && py >= y && py < y + height) {
+                                    const uint16_t i = (py / 8) * 128 + px;
+                                    const uint8_t mask = 1u << (py % 8);
+                                    if (color)
+                                        expected[i] |= mask;
+                                    else
+                                        expected[i] &= static_cast<uint8_t>(~mask);
+                                }
+                            }
+                        matches = matches && guarded[0] == 0xA5 && guarded[1025] == 0xA5;
+                        for (uint16_t i = 0; i < 1024; ++i)
+                            matches = matches && guarded[i + 1] == expected[i];
+                    }
+                }
+        test.assertTrue(matches, "set/clear, page boundaries, clipping and guard bytes match pixel reference");
+        runner.add(test);
+    }
+
+    {
+        Test test("packed cave rows match pixel reference for dense and sparse terrain");
+        uint8_t actual[1024], expected[1024];
+        world::TileCache cache;
+        uint32_t random = 7419;
+        bool matches = true;
+        const cave::Camera cameras[] = {cave::cameraAtTile(0, 0), cave::cameraAtTile(304, 152), cave::cameraAtTile(10, 20), cave::cameraCenteredAtPixel(world::SPAWN_SUB_X, world::SPAWN_SUB_Y)};
+        for (const auto &camera : cameras)
+            for (uint8_t pattern = 0; pattern < 34; ++pattern) {
+                cache.valid = 1;
+                cache.originTileX = cave::cacheOriginTileX(camera);
+                cache.originTileY = cave::cacheOriginTileY(camera);
+                for (uint8_t &byte : cache.bits) {
+                    random = random * 1664525u + 1013904223u;
+                    byte = pattern == 0 ? 0 : pattern == 1 ? 0xFF : static_cast<uint8_t>(random >> 24);
+                }
+                cave::composeFrame(camera, cache, actual);
+                cave_test::referenceFrame(camera, cache, expected);
+                for (uint16_t i = 0; i < 1024; ++i)
+                    matches = matches && actual[i] == expected[i];
+            }
+        test.assertTrue(matches, "all 136 windows match including four row bit alignments and cache padding");
+        runner.add(test);
+    }
+
+    {
+        Test test("cave composition retains invalid and partial cache behavior");
+        uint8_t actual[1024], expected[1024];
+        world::TileCache cache;
+        const cave::Camera camera = cave::cameraAtTile(10, 20);
+        bool matches = true;
+        for (uint8_t valid = 0; valid < 2; ++valid)
+            for (int16_t offset = -20; offset <= 20; ++offset) {
+                cache.valid = valid;
+                cache.originTileX = camera.tileX + offset;
+                cache.originTileY = camera.tileY - offset;
+                for (uint8_t i = 0; i < world::CACHE_BYTES; ++i)
+                    cache.bits[i] = static_cast<uint8_t>(i * 71 + 43);
+                cave::composeFrame(camera, cache, actual);
+                cave_test::referenceFrame(camera, cache, expected);
+                for (uint16_t i = 0; i < 1024; ++i)
+                    matches = matches && actual[i] == expected[i];
+            }
+        test.assertTrue(matches, "missing current tiles stay water; missing neighbours stay solid");
+        runner.add(test);
+    }
+
+    {
         Test test("camera clamps the 16x8 window inside the baked map");
         const cave::Camera origin = cave::cameraCenteredAtPixel(0, 0);
         test.assertEqual(origin.tileX, static_cast<int16_t>(0), "origin clamps x to 0");
         test.assertEqual(origin.tileY, static_cast<int16_t>(0), "origin clamps y to 0");
 
         const cave::Camera spawn = cave::cameraCenteredAtPixel(world::SPAWN_SUB_X, world::SPAWN_SUB_Y);
-        test.assertEqual(spawn.tileX, static_cast<int16_t>(28), "spawn camera tile x");
-        test.assertEqual(spawn.tileY, static_cast<int16_t>(44), "spawn camera tile y");
+        test.assertEqual(spawn.tileX, static_cast<int16_t>(world::SPAWN_TILE_X - 8), "spawn camera tile x");
+        test.assertEqual(spawn.tileY, static_cast<int16_t>(world::SPAWN_TILE_Y - 4), "spawn camera tile y");
 
         const cave::Camera farCorner = cave::cameraCenteredAtPixel(world::PIXELS_X - 1, world::PIXELS_Y - 1);
         test.assertEqual(farCorner.tileX, cave::MAX_CAMERA_TILE_X, "far east clamps");
         test.assertEqual(farCorner.tileY, cave::MAX_CAMERA_TILE_Y, "far south clamps");
-        test.assertEqual(static_cast<int16_t>(farCorner.tileX + cave::VIEW_TILES_X - 1),
-                         static_cast<int16_t>(world::TILES_X - 1), "last visible column is baked");
-        test.assertEqual(static_cast<int16_t>(farCorner.tileY + cave::VIEW_TILES_Y - 1),
-                         static_cast<int16_t>(world::TILES_Y - 1), "last visible row is baked");
+        test.assertEqual(static_cast<int16_t>(farCorner.tileX + cave::VIEW_TILES_X - 1), static_cast<int16_t>(world::TILES_X - 1), "last visible column is baked");
+        test.assertEqual(static_cast<int16_t>(farCorner.tileY + cave::VIEW_TILES_Y - 1), static_cast<int16_t>(world::TILES_Y - 1), "last visible row is baked");
 
         test.assertEqual(cave::cameraAtTile(-5, -5).tileX, static_cast<int16_t>(0), "negative tile clamps x");
         test.assertEqual(cave::cameraAtTile(400, 400).tileY, cave::MAX_CAMERA_TILE_Y, "past-end tile clamps y");
@@ -101,24 +263,18 @@ inline void CaveSuite(TestRunner &runner) {
         world::clearCache(cache);
 
         const cave::Camera camera = cave::cameraAtTile(10, 20);
-        test.assertTrue(world::refreshCache(cache, fake, cave::cacheOriginTileX(camera),
-                                            cave::cacheOriginTileY(camera)),
-                        "cache fills from the margin origin");
+        test.assertTrue(world::refreshCache(cache, fake, cave::cacheOriginTileX(camera), cave::cacheOriginTileY(camera)), "cache fills from the margin origin");
 
         bool allVisible = true;
         for (uint8_t row = 0; row < cave::VIEW_TILES_Y; ++row) {
             for (uint8_t column = 0; column < cave::VIEW_TILES_X; ++column) {
-                allVisible = allVisible &&
-                             world::cacheContains(cache, static_cast<int16_t>(camera.tileX + column),
-                                                  static_cast<int16_t>(camera.tileY + row));
+                allVisible = allVisible && world::cacheContains(cache, static_cast<int16_t>(camera.tileX + column), static_cast<int16_t>(camera.tileY + row));
             }
         }
         test.assertTrue(allVisible, "all 128 visible tiles are cached");
         test.assertTrue(world::cacheContains(cache, camera.tileX - 1, camera.tileY - 1), "north-west ring cached");
-        test.assertTrue(world::cacheContains(cache, camera.tileX + cave::VIEW_TILES_X, camera.tileY),
-                        "east ring cached");
-        test.assertTrue(world::cacheContains(cache, camera.tileX, camera.tileY + cave::VIEW_TILES_Y),
-                        "south ring cached");
+        test.assertTrue(world::cacheContains(cache, camera.tileX + cave::VIEW_TILES_X, camera.tileY), "east ring cached");
+        test.assertTrue(world::cacheContains(cache, camera.tileX, camera.tileY + cave::VIEW_TILES_Y), "south ring cached");
         test.assertEqual(cave::cacheColumn(camera, camera.tileX), static_cast<int16_t>(1), "visible column offset");
         test.assertEqual(cave::cacheRow(camera, camera.tileY), static_cast<int16_t>(1), "visible row offset");
         runner.add(test);
@@ -165,8 +321,7 @@ inline void CaveSuite(TestRunner &runner) {
         bool matches = true;
         for (uint8_t mask = 0; mask < cave::OPEN_MASK_COUNT; ++mask) {
             for (uint8_t column = 0; column < 8; ++column) {
-                matches = matches && cave::CAVE_ATLAS[mask][column] ==
-                                         cave_test::referenceColumn(mask, column);
+                matches = matches && cave::CAVE_ATLAS[mask][column] == cave_test::referenceColumn(mask, column);
             }
         }
         test.assertTrue(matches, "all 128 atlas bytes match");
@@ -194,7 +349,7 @@ inline void CaveSuite(TestRunner &runner) {
 
         world::Settlement tidewall;
         test.assertTrue(world::settlementInfo(0, tidewall), "TIDEWALL record");
-        test.assertEqual(cave::dockScreenX(camera, tidewall.pixel_x), static_cast<int16_t>(80), "dock screen x");
+        test.assertEqual(cave::dockScreenX(camera, tidewall.pixel_x), static_cast<int16_t>(64), "dock screen x");
         test.assertEqual(cave::dockScreenY(camera, tidewall.pixel_y), static_cast<int16_t>(32), "dock screen y");
         test.assertTrue(cave::gantryVisible(80, 32), "spawn gantry is visible");
 
@@ -210,9 +365,8 @@ inline void CaveSuite(TestRunner &runner) {
             }
             const int16_t x = cave::dockScreenX(camera, settlement.pixel_x);
             const int16_t y = cave::dockScreenY(camera, settlement.pixel_y);
-            mappingHolds = mappingHolds &&
-                           x == static_cast<int16_t>(settlement.pixel_x - camera.tileX * world::TILE_PIXELS) &&
-                           y == static_cast<int16_t>(settlement.pixel_y - camera.tileY * world::TILE_PIXELS);
+            mappingHolds =
+                mappingHolds && x == static_cast<int16_t>(settlement.pixel_x - camera.tileX * world::TILE_PIXELS) && y == static_cast<int16_t>(settlement.pixel_y - camera.tileY * world::TILE_PIXELS);
             if (id != 0)
                 othersHidden = othersHidden && !cave::gantryVisible(x, y);
         }
@@ -239,9 +393,9 @@ inline void CaveSuite(TestRunner &runner) {
             fake.setTile(tile, static_cast<int16_t>(world::TILES_Y - 1), true);
             fake.setTile(tile, static_cast<int16_t>(world::TILES_Y - 2), true);
         }
-        // A 4x4 rock island inside the spawn window (tiles 30..33, 46..49).
-        for (int16_t tileY = 46; tileY <= 49; ++tileY) {
-            for (int16_t tileX = 30; tileX <= 33; ++tileX)
+        // A 4x4 rock island at screen tile (2,2), left of the home berth.
+        for (int16_t tileY = world::SPAWN_TILE_Y - 2; tileY <= world::SPAWN_TILE_Y + 1; ++tileY) {
+            for (int16_t tileX = world::SPAWN_TILE_X - 6; tileX <= world::SPAWN_TILE_X - 3; ++tileX)
                 fake.setTile(tileX, tileY, true);
         }
 
@@ -254,18 +408,16 @@ inline void CaveSuite(TestRunner &runner) {
         uint8_t buffer[kBufferBytes];
         cave::composeFrame(camera, cache, buffer);
 
-        const auto pixel = [&buffer](int16_t x, int16_t y) {
-            return (buffer[(y >> 3) * cave::VIEW_WIDTH + x] >> (y & 7)) & 1u;
-        };
+        const auto pixel = [&buffer](int16_t x, int16_t y) { return (buffer[(y >> 3) * cave::VIEW_WIDTH + x] >> (y & 7)) & 1u; };
 
-        // TIDEWALL spawns at screen (80, 32): open water inside the dock ring,
+        // TIDEWALL spawns at screen (64, 32): open water inside the dock ring,
         // white structure on the beam and ring.
-        test.assertTrue(pixel(80, 32) == 0, "dock centre stays open water");
-        test.assertTrue(pixel(80, 30) == 1, "dock ring top edge is white");
-        test.assertTrue(pixel(80, 24) == 1, "gantry beam is white");
-        test.assertTrue(pixel(80, 20) == 1, "station body is white");
-        test.assertTrue(pixel(75, 20) == 0, "station window is a black pane");
-        test.assertTrue(pixel(83, 20) == 0, "second station window is a black pane");
+        test.assertTrue(pixel(64, 32) == 0, "dock centre stays open water");
+        test.assertTrue(pixel(64, 30) == 1, "dock ring top edge is white");
+        test.assertTrue(pixel(64, 24) == 1, "gantry beam is white");
+        test.assertTrue(pixel(64, 20) == 1, "station body is white");
+        test.assertTrue(pixel(59, 20) == 0, "station window is a black pane");
+        test.assertTrue(pixel(67, 20) == 0, "second station window is a black pane");
         test.assertTrue(pixel(120, 40) == 0, "open water stays black");
 
         // Rock island top-left tile (30, 46) has north and west open: column 0
@@ -278,7 +430,6 @@ inline void CaveSuite(TestRunner &runner) {
         // Interior island tile (31, 47) is solid except the deterministic
         // one-pixel speck at column 0, row 6.
         const uint8_t *interior = &buffer[3 * cave::VIEW_WIDTH + 3 * 8];
-        test.assertEqual(interior[0], 0xBF, "interior tile speckle");
         uint8_t setBits = 0;
         for (uint8_t i = 0; i < 8; ++i) {
             uint8_t value = interior[i];
@@ -323,9 +474,7 @@ inline void CaveSuite(TestRunner &runner) {
             world::refreshCache(cache, fake, cave::cacheOriginTileX(camera), cave::cacheOriginTileY(camera));
             cave::composeFrame(camera, cache, buffer);
         };
-        const auto pixel = [&buffer](int16_t x, int16_t y) {
-            return (buffer[(y >> 3) * cave::VIEW_WIDTH + x] >> (y & 7)) & 1u;
-        };
+        const auto pixel = [&buffer](int16_t x, int16_t y) { return (buffer[(y >> 3) * cave::VIEW_WIDTH + x] >> (y & 7)) & 1u; };
 
         render(cave::cameraCenteredAtPixel(0, 0));
         test.assertTrue(pixel(1, 0) == 1, "origin renders the sealed top-left border");

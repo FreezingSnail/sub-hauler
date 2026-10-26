@@ -109,16 +109,13 @@ inline jobs::RouteEconomy referenceRoute(uint8_t fromId, uint8_t toId) {
     const uint16_t distancePixels = isqrt32(static_cast<uint32_t>(dx * dx + dy * dy));
     const uint16_t distanceTiles = static_cast<uint16_t>(distancePixels / 8);
 
-    const uint16_t base = static_cast<uint16_t>(kRewardBase + game::kJobCrates * kRewardPerCrate +
-                                                distanceTiles / kRewardDistanceDivisor);
+    const uint16_t base = static_cast<uint16_t>(kRewardBase + game::kJobCrates * kRewardPerCrate + distanceTiles / kRewardDistanceDivisor);
     const uint16_t reward = static_cast<uint16_t>(((base + kRewardRound / 2) / kRewardRound) * kRewardRound);
-    const uint32_t seconds = static_cast<uint32_t>(kDeadlineBaseSeconds) +
-                            (static_cast<uint32_t>(distanceTiles) * kDeadlinePercentPerTile) / kDeadlinePercentScale +
-                            static_cast<uint32_t>(game::kJobCrates) * kDeadlineSecondsPerCrate;
+    const uint32_t seconds = static_cast<uint32_t>(kDeadlineBaseSeconds) + (static_cast<uint32_t>(distanceTiles) * kDeadlinePercentPerTile) / kDeadlinePercentScale +
+                             static_cast<uint32_t>(game::kJobCrates) * kDeadlineSecondsPerCrate;
     constexpr uint32_t kLegacyDeadlineMaxTicks = 0xFFFF;
     const uint32_t ticks = seconds * game::kStepHz;
-    return jobs::RouteEconomy{static_cast<uint8_t>(reward),
-                              static_cast<uint16_t>(ticks > kLegacyDeadlineMaxTicks ? kLegacyDeadlineMaxTicks : ticks)};
+    return jobs::RouteEconomy{static_cast<uint8_t>(reward), static_cast<uint16_t>(ticks > kLegacyDeadlineMaxTicks ? kLegacyDeadlineMaxTicks : ticks)};
 }
 
 // Simulated flight fixtures never need a separate load step: acceptance owns
@@ -185,7 +182,7 @@ inline void JobsSuite(TestRunner &runner) {
     }
 
     {
-        Test test("baked routes preserve the canonical reward and deadline rules");
+        Test test("baked routes preserve rewards and allow time for winding passages");
         bool rewardsMatch = true;
         bool deadlinesMatch = true;
         bool symmetric = true;
@@ -202,15 +199,14 @@ inline void JobsSuite(TestRunner &runner) {
 
                 const jobs::RouteEconomy expected = referenceRoute(fromId, toId);
                 rewardsMatch = rewardsMatch && actual.reward == expected.reward;
-                deadlinesMatch = deadlinesMatch && actual.deadline == expected.deadline;
-                symmetric = symmetric && jobs::routeEconomy(toId, fromId).reward == actual.reward &&
-                            jobs::routeEconomy(toId, fromId).deadline == actual.deadline;
+                deadlinesMatch = deadlinesMatch && actual.deadline >= expected.deadline;
+                symmetric = symmetric && jobs::routeEconomy(toId, fromId).reward == actual.reward && jobs::routeEconomy(toId, fromId).deadline == actual.deadline;
                 widthsHold = widthsHold && actual.reward <= 255 && actual.deadline < game::kJobElapsedLate;
             }
         }
 
         test.assertTrue(rewardsMatch, "every ordered pair keeps the old reward");
-        test.assertTrue(deadlinesMatch, "every ordered pair keeps the old deadline");
+        test.assertTrue(deadlinesMatch, "every winding route gets at least its former time allowance");
         test.assertTrue(symmetric, "routes are symmetric");
         test.assertTrue(widthsHold, "reward fits one byte and every deadline is before the late marker");
 
@@ -276,7 +272,7 @@ inline void JobsSuite(TestRunner &runner) {
         test.assertTrue(dockAt(state, origin.id), "dock succeeds");
         test.assertTrue(!jobs::abandon(state), "abandon is inert without a contract");
         test.assertTrue(jobs::accept(state, 0), "contract accepted");
-        state.lastDelivery = jobs::kDeliveryFailed; // simulate a stale note before abandon
+        state.lastDelivery = jobs::kDeliveryFailed;   // simulate a stale note before abandon
 
         const uint16_t credits = state.credits;
         test.assertEqual(station::activate(station::kAbandonRow, state), station::kActionAbandoned, "A on ABANDON clears the contract");
@@ -405,8 +401,7 @@ inline void JobsSuite(TestRunner &runner) {
         const uint16_t flightElapsed = state.activeJob.elapsed;
         for (uint8_t i = 0; i < 10; ++i)
             station::stepFlight(state, idle(), fake);
-        test.assertEqual(state.activeJob.elapsed, static_cast<uint16_t>(flightElapsed + 10),
-                         "job age advances one tick per flight step");
+        test.assertEqual(state.activeJob.elapsed, static_cast<uint16_t>(flightElapsed + 10), "job age advances one tick per flight step");
         runner.add(test);
     }
 
@@ -469,7 +464,7 @@ inline void JobsSuite(TestRunner &runner) {
     }
 
     {
-        Test test("balance: every contract is reachable on one tank and pays for an upgrade");
+        Test test("balance: freight pays for upgrades and long hauls can resupply without losing the job");
         game::State fresh;
         game::reset(fresh);
         test.assertTrue(fresh.air > 0, "a fresh run starts with air");
@@ -498,7 +493,30 @@ inline void JobsSuite(TestRunner &runner) {
 
                 test.assertTrue(loadedSpeed > 0, "a loaded boat still moves");
                 test.assertTrue(state.offers[i].deadline > straightTicks, "deadline exceeds straight-line travel");
-                test.assertTrue(state.offers[i].deadline <= airTicks, "a full tank covers the whole deadline");
+                if (state.offers[i].deadline > airTicks) {
+                    // A deadline is a time allowance, not an oxygen requirement.
+                    // Long cross-map jobs may service at another berth en route.
+                    game::State resupply;
+                    game::reset(resupply);
+                    resupply.activeJob.to = state.offers[i].to;
+                    resupply.activeJob.deadline = state.offers[i].deadline;
+                    resupply.activeJob.crates = game::kJobCrates;
+                    resupply.activeJob.elapsed = 123;
+                    game::setCargo(resupply, game::kJobCrates);
+                    uint8_t stop = 0;
+                    while (stop == originId || stop == state.offers[i].to)
+                        ++stop;
+                    world::Settlement berth;
+                    test.assertTrue(world::settlementInfo(stop, berth), "an intermediate berth exists");
+                    resupply.x = berth.pixel_x;
+                    resupply.y = berth.pixel_y;
+                    resupply.air = 0;
+                    test.assertTrue(station::dock(resupply), "long-haul resupply docks normally");
+                    test.assertEqual(resupply.air, game::airCapacity(resupply), "service refills the tank");
+                    test.assertEqual(resupply.activeJob.to, state.offers[i].to, "resupply retains destination");
+                    test.assertEqual(resupply.activeJob.elapsed, 123, "docked service does not age the deadline");
+                    test.assertEqual(resupply.cargo, game::kJobCrates, "resupply preserves the loaded hold");
+                }
 #if SH_FEATURE_SHOP
                 test.assertTrue(state.offers[i].reward >= shop::kSonarPrice, "a contract pays for the cheapest upgrade");
                 test.assertTrue(state.offers[i].reward >= shop::kAirPrice, "a contract pays for an air tank");

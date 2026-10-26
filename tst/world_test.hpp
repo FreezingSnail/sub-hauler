@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../src/world.hpp"
+#include "../src/generated/exploration.hpp"
 #include "test.hpp"
 
 namespace world_test {
@@ -124,7 +125,7 @@ inline void WorldSuite(TestRunner &runner) {
 
         fake.tileReads = 0;
         test.assertTrue(world::refreshCache(cache, fake, 10, 20), "first refresh fills");
-        test.assertEqual(fake.tileReads, 180, "one read per cached tile");
+        test.assertEqual(fake.tileReads, 30, "three packed bytes per row, each read once");
         test.assertTrue(world::cacheContains(cache, 10, 20), "origin is in window");
         test.assertTrue(world::cacheContains(cache, 27, 29), "far corner is in window");
         test.assertTrue(!world::cacheContains(cache, 28, 20), "just outside width misses");
@@ -132,13 +133,51 @@ inline void WorldSuite(TestRunner &runner) {
         test.assertTrue(!world::tileSolidCached(cache, fake, 11, 20), "cached open tile");
 
         test.assertTrue(!world::refreshCache(cache, fake, 10, 20), "same window is reused");
-        test.assertEqual(fake.tileReads, 180, "reusing a window performs no cart reads");
+        test.assertEqual(fake.tileReads, 30, "reusing a window performs no cart reads");
 
         test.assertTrue(world::refreshCache(cache, fake, 11, 20), "a moved window refreshes");
-        test.assertEqual(fake.tileReads, 360, "moved window reads a fresh window");
+        test.assertEqual(fake.tileReads, 60, "moved window reads a fresh packed window");
 
         test.assertTrue(world::tileSolidCached(cache, fake, 0, 0), "fallback reads wall");
-        test.assertEqual(fake.tileReads, 361, "outside-window lookup falls back to cart");
+        test.assertEqual(fake.tileReads, 61, "outside-window lookup falls back to cart");
+        runner.add(test);
+    }
+
+    {
+        Test test("packed cache refill preserves all alignments and seals out-of-world tiles");
+        world_test::FakeWorld fake;
+        for (uint16_t i = 0; i < world::WORLD_BYTES; ++i)
+            fake.tiles[i] = static_cast<uint8_t>(i * 71 + i / 40 + 43);
+        const int16_t ys[] = {-12, -1, 0, 20, 151, 159, 160};
+        const int16_t xs[] = {-20, -1, 0, 1, 2, 3, 4, 5, 6, 7, 302, 319, 320};
+        bool matches = true;
+        for (int16_t y : ys)
+            for (int16_t x : xs) {
+                world::TileCache cache;
+                world::clearCache(cache);
+                fake.tileReads = 0;
+                world::refreshCache(cache, fake, x, y);
+                uint16_t expectedReads = 0;
+                for (int16_t row = 0; row < world::CACHE_TILES_Y; ++row) {
+                    int16_t lastByte = -1;
+                    for (int16_t col = 0; col < world::CACHE_TILES_X; ++col) {
+                        const int16_t tx = x + col, ty = y + row;
+                        bool expected = true;
+                        if (world::inTileBounds(tx, ty)) {
+                            const int16_t source = world::tileByteIndex(tx, ty);
+                            if (source != lastByte)
+                                ++expectedReads;
+                            lastByte = source;
+                            expected = (fake.tiles[source] & (1u << (tx & 7))) != 0;
+                        }
+                        bool actual = false;
+                        matches = world::cacheLookup(cache, tx, ty, actual) && matches;
+                        matches = matches && actual == expected;
+                    }
+                }
+                matches = matches && fake.tileReads == expectedReads;
+            }
+        test.assertTrue(matches, "every bit matches the source, with exactly one read per unique in-bounds byte");
         runner.add(test);
     }
 
@@ -146,23 +185,23 @@ inline void WorldSuite(TestRunner &runner) {
         Test test("generated settlement and mine metadata accessors");
         test.assertEqual(world::settlementCount(), 4, "settlement count");
         test.assertEqual(world::mineCount(), 8, "mine count");
-        test.assertEqual(world::spawnTileX(), 38, "spawn tile x");
-        test.assertEqual(world::spawnTileY(), 48, "spawn tile y");
+        test.assertEqual(world::spawnTileX(), exploration_data::DOCK_T_X / 8, "spawn tile x");
+        test.assertEqual(world::spawnTileY(), exploration_data::DOCK_T_Y / 8, "spawn tile y");
 
         world::Settlement settlement;
         test.assertTrue(world::settlementInfo(0, settlement), "settlement 0 exists");
         test.assertEqual(settlement.id, 0, "settlement id");
-        test.assertEqual(settlement.tile_x, 38, "settlement tile x");
-        test.assertEqual(settlement.tile_y, 48, "settlement tile y");
-        test.assertEqual(settlement.pixel_x, 304, "settlement pixel x");
-        test.assertEqual(settlement.pixel_y, 384, "settlement pixel y");
+        test.assertEqual(settlement.tile_x, exploration_data::DOCK_T_X / 8, "settlement tile x");
+        test.assertEqual(settlement.tile_y, exploration_data::DOCK_T_Y / 8, "settlement tile y");
+        test.assertEqual(settlement.pixel_x, exploration_data::DOCK_T_X, "settlement pixel x");
+        test.assertEqual(settlement.pixel_y, exploration_data::DOCK_T_Y, "settlement pixel y");
         test.assertTrue(settlement.name != nullptr, "settlement name present");
         test.assertTrue(!world::settlementInfo(4, settlement), "settlement bounds");
 
         world::Mine mine;
         test.assertTrue(world::mineInfo(1, mine), "mine 1 exists");
-        test.assertEqual(mine.x, 1724, "mine x");
-        test.assertEqual(mine.y, 273, "mine y");
+        test.assertEqual(mine.x, world::MINES[1].x, "mine x");
+        test.assertEqual(mine.y, world::MINES[1].y, "mine y");
         test.assertTrue(!world::mineInfo(8, mine), "mine bounds");
         runner.add(test);
     }

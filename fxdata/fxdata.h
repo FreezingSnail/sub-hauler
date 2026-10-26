@@ -6,8 +6,8 @@ using uint24_t = __uint24;
 
 // Initialize FX hardware using  FX::begin(FX_DATA_PAGE); in the setup() function.
 
-constexpr uint16_t FX_DATA_PAGE  = 0xffcd;
-constexpr uint24_t FX_DATA_BYTES = 13012;
+constexpr uint16_t FX_DATA_PAGE  = 0xf91d;
+constexpr uint24_t FX_DATA_BYTES = 451172;
 
 constexpr uint24_t hero = 0x000000;
 constexpr uint24_t worldTiles = 0x0000C2;
@@ -56,3 +56,28 @@ constexpr uint24_t txt_station_hint = 0x00304D;
 constexpr uint24_t hauler = 0x00305E;
 constexpr uint24_t leviathan = 0x003130;
 constexpr uint24_t minnow = 0x003202;
+constexpr uint24_t sh_harbor_bubbles = 0x0032D4;
+constexpr uint24_t sh_kelp_drift = 0x0040D6;
+constexpr uint24_t sh_sonar_lullaby = 0x004E48;
+constexpr uint24_t sh_abyssal_glass = 0x005932;
+constexpr uint24_t sh_tidepool_waltz = 0x0062FA;
+constexpr uint24_t sh_bubblejet_run = 0x006FB0;
+constexpr uint24_t explorationTiles = 0x0086EC;
+constexpr uint24_t explorationChart = 0x009FEC;
+constexpr uint24_t explorationObjects = 0x00A0EC;
+constexpr uint24_t txt_found_cutter = 0x00A163;
+constexpr uint24_t txt_found_seal = 0x00A170;
+constexpr uint24_t txt_found_thruster = 0x00A184;
+constexpr uint24_t txt_found_credits = 0x00A193;
+constexpr uint24_t txt_found_hull = 0x00A1A1;
+constexpr uint24_t txt_found_lens = 0x00A1B2;
+constexpr uint24_t txt_need_cutter = 0x00A1C4;
+constexpr uint24_t txt_need_seal = 0x00A1D0;
+constexpr uint24_t txt_need_thruster = 0x00A1E3;
+constexpr uint24_t txt_salvage_hint = 0x00A1F1;
+constexpr uint24_t txt_cut_hint = 0x00A207;
+constexpr uint24_t txt_cutter_rumor = 0x00A219;
+constexpr uint24_t txt_thruster_rumor = 0x00A22B;
+constexpr uint24_t txt_seal_rumor = 0x00A23D;
+constexpr uint24_t txt_dev_noclip = 0x00A251;
+constexpr uint24_t explorationTerrain = 0x00A264;

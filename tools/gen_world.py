@@ -710,8 +710,10 @@ def _format_route_rows(values: tuple[int, ...], count: int) -> str:
     )
 
 
-def render_header(world: World) -> str:
-    route_rewards, route_deadlines = build_route_economy(world)
+def render_header(world: World, route_deadlines=None) -> str:
+    route_rewards, legacy_deadlines = build_route_economy(world)
+    if route_deadlines is None:
+        route_deadlines = legacy_deadlines
     route_count = len(world.settlements) * len(world.settlements)
     route_reward_rows = _format_route_rows(route_rewards, len(world.settlements))
     route_deadline_rows = _format_route_rows(route_deadlines, len(world.settlements))

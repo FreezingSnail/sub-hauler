@@ -50,7 +50,7 @@ constexpr uint8_t kRowInvertH = 8;
 constexpr uint8_t kHintX = 3;
 constexpr uint8_t kHintY = 56;
 #endif
-constexpr uint8_t kOfferChars = 20; // "DEEP ANCHOR 240 5:32"
+constexpr uint8_t kOfferChars = 20;   // "DEEP ANCHOR 240 5:32"
 
 // Row i's text baseline is rowY(i); the invert bar extends kRowInsetY above
 // it. Keep the last row clear of the hint and the hint inside the display.
@@ -224,6 +224,21 @@ inline void draw(const game::State &state, uint8_t selected) {
         text::print(txt_late_short);
         return;
     }
+#if SH_FEATURE_EXPLORATION
+    if (!station::jobActive(state)) {
+        uint24_t rumor = 0;
+        if (!(state.tools & exploration_data::CUTTER))
+            rumor = txt_cutter_rumor;
+        else if (state.docked == 1 && !(state.tools & exploration_data::THRUSTER))
+            rumor = txt_thruster_rumor;
+        else if (state.docked == 2 && !(state.tools & exploration_data::SEAL))
+            rumor = txt_seal_rumor;
+        if (rumor) {
+            text::print(rumor);
+            return;
+        }
+    }
+#endif
     // Acceptance already fills the hold; the active board only needs the
     // abandon/undock actions.
     if (station::jobActive(state))

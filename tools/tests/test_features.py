@@ -36,6 +36,7 @@ class ProfileValuesTest(unittest.TestCase):
                 "PARTICLES": 1,
                 "MULTI_HULL": 1,
                 "SAVE_CHART": 0,
+                "EXPLORATION": 1,
             },
         )
 
@@ -54,6 +55,7 @@ class ProfileValuesTest(unittest.TestCase):
                 "PARTICLES": 0,
                 "MULTI_HULL": 1,
                 "SAVE_CHART": 0,
+                "EXPLORATION": 1,
             },
         )
 
@@ -72,6 +74,7 @@ class ProfileValuesTest(unittest.TestCase):
                 "PARTICLES": 0,
                 "MULTI_HULL": 0,
                 "SAVE_CHART": 0,
+                "EXPLORATION": 1,
             },
         )
 
@@ -90,6 +93,7 @@ class ProfileValuesTest(unittest.TestCase):
                 "PARTICLES": 0,
                 "MULTI_HULL": 0,
                 "SAVE_CHART": 0,
+                "EXPLORATION": 0,
             },
         )
 
@@ -117,6 +121,7 @@ class DependencyTest(unittest.TestCase):
             ("SONAR", "FOG_CHART"),
             ("SAVE_CHART", "FOG_CHART"),
             ("SHOP", "STATIONS"),
+            ("EXPLORATION", "JOBS"),
         ]
         for feature, requirement in cases:
             with self.subTest(feature=feature, requirement=requirement):
@@ -188,6 +193,7 @@ class FlagOutputTest(unittest.TestCase):
                 "-DSH_FEATURE_PARTICLES=1",
                 "-DSH_FEATURE_MULTI_HULL=1",
                 "-DSH_FEATURE_SAVE_CHART=0",
+                "-DSH_FEATURE_EXPLORATION=1",
             ],
         )
 
@@ -197,7 +203,7 @@ class FlagOutputTest(unittest.TestCase):
         )
         self.assertIn("profile: lean", report)
         self.assertIn(
-            "active (6): STATIONS JOBS FOG_CHART SONAR HULL_DAMAGE MULTI_HULL",
+            "active (7): STATIONS JOBS FOG_CHART SONAR HULL_DAMAGE MULTI_HULL EXPLORATION",
             report,
         )
         self.assertIn(
@@ -208,8 +214,8 @@ class FlagOutputTest(unittest.TestCase):
         report = features.feature_report("min", features.profile_values("min"))
         self.assertIn("active (0): (none)", report)
         self.assertIn(
-            "inactive (11): STATIONS JOBS FOG_CHART SONAR "
-            "MINES CURRENTS SHOP HULL_DAMAGE PARTICLES MULTI_HULL SAVE_CHART",
+            "inactive (12): STATIONS JOBS FOG_CHART SONAR "
+            "MINES CURRENTS SHOP HULL_DAMAGE PARTICLES MULTI_HULL SAVE_CHART EXPLORATION",
             report,
         )
 

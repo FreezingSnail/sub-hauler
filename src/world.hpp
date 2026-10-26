@@ -2,7 +2,7 @@
 
 #include <stdint.h>
 
-#include "generated/world.hpp"
+#include "generated/level.hpp"
 
 // Runtime access to the baked world tables. This header is pure C++: it has no
 // Arduino headers and never stores a world-sized grid. A Reader supplies one
@@ -10,7 +10,8 @@
 // can supply an FX-cart adapter (see world_fx.hpp).
 //
 // Cart contract: Reader::tileByte/Reader::chartByte may perform FX cart reads.
-// Call them from update/render only, never during FX::display.
+// Chart composition additionally uses Reader::chartBytes for bounded bursts.
+// Call these from update/render only, never during FX::display.
 namespace world {
 
 // ---------------------------------------------------------------------------
@@ -142,12 +143,25 @@ template <typename Reader> inline bool refreshCache(TileCache &cache, Reader &re
     for (uint8_t i = 0; i < CACHE_BYTES; ++i)
         cache.bits[i] = 0;
 
+    uint16_t packedIndex = UINT16_MAX;
+    uint8_t packed = 0;
     for (uint8_t row = 0; row < CACHE_TILES_Y; ++row) {
         const int16_t ty = static_cast<int16_t>(cameraTileY + row);
         for (uint8_t col = 0; col < CACHE_TILES_X; ++col) {
             const int16_t tx = static_cast<int16_t>(cameraTileX + col);
             const uint8_t index = static_cast<uint8_t>(row * CACHE_TILES_X + col);
-            cacheSet(cache, index, tileSolid(reader, tx, ty));
+            bool solid = true;
+            if (inTileBounds(tx, ty)) {
+                const uint16_t source = tileByteIndex(tx, ty);
+                // Adjacent tiles share one packed cart byte. Read it once,
+                // rather than seeking the same address up to eight times.
+                if (source != packedIndex) {
+                    packed = reader.tileByte(source);
+                    packedIndex = source;
+                }
+                solid = (packed & static_cast<uint8_t>(1u << (tx & 7))) != 0;
+            }
+            cacheSet(cache, index, solid);
         }
     }
     return true;

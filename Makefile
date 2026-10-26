@@ -1,4 +1,4 @@
-.PHONY: help full gen gen-check features-check feature-report build mini size size-line size-matrix run debug test test-tools fxtest fxtest-build fxtest-run clean format
+.PHONY: help full gen gen-check features-check feature-report build mini size size-line size-matrix run dev debug test test-tools fxtest fxtest-build fxtest-run clean format music-viewer music-viewer-build render-world
 
 # ----------------------------------------------------------------------------
 # Project
@@ -6,6 +6,8 @@
 SKETCH        ?= $(basename $(notdir $(firstword $(wildcard *.ino))))
 CXX           ?= g++
 ARDUINO_CLI   ?= arduino-cli
+ATMLIB2FX_ROOT ?= ../ATMlib2FX
+export ATMLIB2FX_ROOT
 FQBN          ?= arduboy-homemade:avr:arduboy-fx
 MINI_FQBN     ?= arduboy-homemade:avr:arduboy-mini
 
@@ -13,11 +15,18 @@ MINI_FQBN     ?= arduboy-homemade:avr:arduboy-mini
 # output directories prevent objects compiled with one flag set from being
 # reused by another.
 PROFILE       ?= full
+DEV_MODE      ?= 0
+ifneq ($(DEV_MODE),0)
+ifneq ($(DEV_MODE),1)
+$(error DEV_MODE must be 0 or 1)
+endif
+endif
+DEV_FLAGS     := -DSH_DEV_MODE=$(DEV_MODE)
 FEATURES_PY   ?= python3 tools/features.py
 PROFILES      := $(shell $(FEATURES_PY) --list 2>/dev/null)
 FEATURE_FLAGS := $(shell $(FEATURES_PY) --profile "$(PROFILE)" --flags 2>/dev/null)
-BUILD_DIR     ?= build/$(PROFILE)
-DIST_DIR      ?= dist/$(PROFILE)
+BUILD_DIR     ?= $(if $(filter 1,$(DEV_MODE)),build/dev/$(PROFILE),build/$(PROFILE))
+DIST_DIR      ?= $(if $(filter 1,$(DEV_MODE)),dist/dev/$(PROFILE),dist/$(PROFILE))
 ARDENS_DEFAULT := $(firstword $(wildcard \
                  ../Ardens/build/Ardens.app/Contents/MacOS/Ardens \
                  $(HOME)/code/arduboy/Ardens/build/Ardens.app/Contents/MacOS/Ardens \
@@ -38,8 +47,8 @@ FXTEST_BUILD_DIR ?= $(BUILD_DIR)/fxtest
 # source projects. LTO means only whole-image measurements are meaningful;
 # use `make size` after every flash-sensitive change.
 RELAX_FLAGS   ?= -mrelax -mcall-prologues
-CPP_EXTRA_FLAGS := $(RELAX_FLAGS) $(FEATURE_FLAGS)
-C_EXTRA_FLAGS   := -mrelax $(FEATURE_FLAGS)
+CPP_EXTRA_FLAGS := $(RELAX_FLAGS) $(FEATURE_FLAGS) $(DEV_FLAGS)
+C_EXTRA_FLAGS   := -mrelax $(FEATURE_FLAGS) $(DEV_FLAGS)
 SIZE_FLAGS    ?= --build-property compiler.cpp.extra_flags="$(CPP_EXTRA_FLAGS)" \
                  --build-property compiler.c.extra_flags="$(C_EXTRA_FLAGS)" \
                  --build-property compiler.c.elf.extra_flags="-mrelax"
@@ -52,11 +61,14 @@ AVR_SIZE      ?= $(firstword $(wildcard $(HOME)/Library/Arduino15/packages/ardui
 IMAGES        := $(wildcard images/*.png)
 PILOT_IMAGES  := $(wildcard images/pilot/*.png)
 WORLD_TABLES  := fxdata/tables/world.bin fxdata/tables/world-chart.bin
+LEVEL_OUTPUTS := fxdata/tables/exploration.bin fxdata/tables/exploration-chart.bin fxdata/tables/exploration-objects.bin fxdata/tables/exploration-terrain.bin src/generated/level.hpp src/generated/exploration.hpp docs/assets/exploration-terrain.svg docs/assets/exploration-scenery.json
 CARGO_TABLES  := fxdata/tables/cargo.bin
+MUSIC_SOURCES := music/catalog.json $(wildcard music/*/song.json)
+MUSIC_OUTPUTS := $(addprefix fxdata/music/sh_,harbor_bubbles.bin kelp_drift.bin sonar_lullaby.bin abyssal_glass.bin tidepool_waltz.bin bubblejet_run.bin) fxdata/music/manifest.json
 FX_INPUTS     := $(IMAGES) fxdata/fxdata.txt tools/gen.sh tools/gen_sprites.py \
                  tools/gen_font.py tools/gen_pilot.py tools/gen_world.py \
-                 tools/gen_cargo.py $(WORLD_TABLES) $(CARGO_TABLES) \
-                 tools/fxdata-build.py
+                 tools/gen_cargo.py tools/gen_level.py tools/gen_scenery.py tools/gen_contours.py tools/gen_settlements.py levels/exploration.json $(WORLD_TABLES) $(CARGO_TABLES) \
+                 tools/fxdata-build.py tools/gen_music.py tools/gen_music_viewer.py $(MUSIC_SOURCES)
 
 full: gen build
 
@@ -68,6 +80,10 @@ gen:
 # for the first time.
 gen-check:
 	@mkdir -p $(BUILD_DIR)/gen-check
+	@mkdir -p $(BUILD_DIR)/gen-check/level
+	@cp $(LEVEL_OUTPUTS) $(BUILD_DIR)/gen-check/level/
+	@mkdir -p $(BUILD_DIR)/gen-check/music
+	@cp $(MUSIC_OUTPUTS) src/generated/music.hpp $(BUILD_DIR)/gen-check/music/
 	@cp fxdata/fxdata.h $(BUILD_DIR)/gen-check/fxdata.h
 	@cp fxdata/fxdata.bin $(BUILD_DIR)/gen-check/fxdata.bin
 	@cp fxdata/Sprites.txt $(BUILD_DIR)/gen-check/Sprites.txt
@@ -100,6 +116,12 @@ gen-check:
 	@cmp -s images/pilot/minnow_26x8.png $(BUILD_DIR)/gen-check/minnow_26x8.png || { echo "gen-check: minnow art changed" >&2; exit 1; }
 	@cmp -s fxdata/PilotSprites.txt $(BUILD_DIR)/gen-check/PilotSprites.txt || { echo "gen-check: pilot sprite include changed" >&2; exit 1; }
 	@cmp -s src/generated/pilot_sprites.hpp $(BUILD_DIR)/gen-check/pilot_sprites.hpp || { echo "gen-check: pilot sprite header changed" >&2; exit 1; }
+	@for file in $(MUSIC_OUTPUTS) src/generated/music.hpp; do \
+		cmp -s "$$file" "$(BUILD_DIR)/gen-check/music/$${file##*/}" || { echo "gen-check: $$file changed" >&2; exit 1; }; \
+	done
+	@for file in $(LEVEL_OUTPUTS); do \
+		cmp -s "$$file" "$(BUILD_DIR)/gen-check/level/$${file##*/}" || { echo "gen-check: $$file changed" >&2; exit 1; }; \
+	done
 	@echo "gen-check: generated artifacts are deterministic"
 
 # Generation is a prerequisite of the firmware build, so a missing or stale
@@ -155,6 +177,9 @@ run: build
 	@test -f "$(FXDATA_BIN)" || { echo "run: FX image missing at $(FXDATA_BIN); run make gen" >&2; exit 1; }
 	"$(ARDENS)" display=ssd1306 fxport=d1 file="$(ELF)" file="$(FXDATA_BIN)"
 
+dev:
+	$(MAKE) run DEV_MODE=1
+
 debug: build
 	@test -x "$(ARDENS)" || { echo "debug: Ardens not found at $(ARDENS); set ARDENS=/path/to/Ardens" >&2; exit 1; }
 	"$(ARDENS)" display=ssd1306 fxport=d1 file="$(ELF)" file="$(FXDATA_BIN)"
@@ -162,13 +187,33 @@ debug: build
 # ----------------------------------------------------------------------------
 # Host tests
 # ----------------------------------------------------------------------------
+music-viewer-build: gen
+	mkdir -p build/music-viewer/out
+	$(ARDUINO_CLI) compile --fqbn "$(FQBN)" --library "$(ATMLIB2FX_ROOT)" \
+		--build-path "$(CURDIR)/build/music-viewer/avr" --output-dir build/music-viewer/out \
+		--build-property "compiler.cpp.extra_flags=-DATM_FX_COMPACT_LOOP=1 -DATM_FX_COMPACT_RING=64" \
+		--build-property "compiler.c.extra_flags=-DATM_FX_COMPACT_LOOP=1 -DATM_FX_COMPACT_RING=64" \
+		build/music-viewer/jukebox_fx
+
+music-viewer: music-viewer-build
+	@test -x "$(ARDENS)" || { echo "music-viewer: set ARDENS=/path/to/Ardens" >&2; exit 1; }
+	"$(ARDENS)" display=ssd1306 fxport=d1 file="$(CURDIR)/build/music-viewer/out/jukebox_fx.ino.hex" file="$(CURDIR)/fxdata/fxdata.bin"
+
+# Preview export only: reads generated game data without changing FX artifacts.
+WORLD_RENDER_DIR ?= build/world-render
+render-world:
+	mkdir -p $(WORLD_RENDER_DIR)
+	$(CXX) -std=c++17 -O2 -Wall -Wextra $(shell $(FEATURES_PY) --profile full --flags) -Isrc tools/render_world.cpp -o $(WORLD_RENDER_DIR)/render-world
+	$(WORLD_RENDER_DIR)/render-world fxdata/tables/exploration-terrain.bin $(WORLD_RENDER_DIR)/world.pbm
+	python3 tools/render_world.py --input $(WORLD_RENDER_DIR)/world.pbm --output-dir $(WORLD_RENDER_DIR)
+
 TEST_OUT      := $(BUILD_DIR)/tests/host
 TEST_SOURCES  := tst/main.cpp
 CXXFLAGS      ?= -std=c++17 -O0 -g3 -Wall -Wextra
 
 test: features-check
 	@mkdir -p $(dir $(TEST_OUT))
-	$(CXX) $(CXXFLAGS) $(FEATURE_FLAGS) -Isrc -DTEST $(TEST_SOURCES) -o $(TEST_OUT)
+	$(CXX) $(CXXFLAGS) $(FEATURE_FLAGS) $(DEV_FLAGS) -Isrc -DTEST $(TEST_SOURCES) -o $(TEST_OUT)
 	./$(TEST_OUT)
 
 test-tools:
@@ -243,6 +288,9 @@ help:
 		'  make size-matrix build and report full, lean, core, and min' \
 		'  make feature-report  list active/inactive flags for PROFILE' \
 		'  make run        build, then launch Ardens with the ELF + FX image' \
+		'  make dev        launch developer noclip, full chart, A speed boost' \
+		'  make render-world export the native world and annotated PNG overview' \
+		'  make music-viewer audition the underwater tracks in the ATMlib2FX jukebox' \
 		'  make test       host C++ tests (g++, no device required)' \
 		'  make test-tools Python tooling unittest suite' \
 		'  make fxtest     compile and run device suites through Ardens' \
@@ -252,4 +300,4 @@ help:
 		'  make build PROFILE=lean' \
 		'  make feature-report PROFILE=core' \
 		'' \
-		'Overrides: PROFILE, SKETCH, FQBN, MINI_FQBN, ARDUINO_CLI, ARDENS, FXTEST_ONLY, FXTEST_MS, CXX.'
+		'Overrides: DEV_MODE=0|1, PROFILE, SKETCH, FQBN, MINI_FQBN, ARDUINO_CLI, ARDENS, FXTEST_ONLY, FXTEST_MS, CXX.'

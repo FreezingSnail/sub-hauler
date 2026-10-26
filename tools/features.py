@@ -33,6 +33,7 @@ FEATURES = (
     "PARTICLES",
     "MULTI_HULL",
     "SAVE_CHART",
+    "EXPLORATION",
 )
 
 # Direct dependency checks, matching src/features.hpp. Keep insertion order in
@@ -42,6 +43,7 @@ DEPENDENCIES = {
     "SONAR": ("FOG_CHART",),
     "SAVE_CHART": ("FOG_CHART",),
     "SHOP": ("STATIONS",),
+    "EXPLORATION": ("JOBS",),
 }
 
 PROFILES = {
@@ -57,6 +59,7 @@ PROFILES = {
         "PARTICLES": 1,
         "MULTI_HULL": 1,
         "SAVE_CHART": 0,
+        "EXPLORATION": 1,
     },
     "lean": {
         "STATIONS": 1,
@@ -70,6 +73,7 @@ PROFILES = {
         "PARTICLES": 0,
         "MULTI_HULL": 1,
         "SAVE_CHART": 0,
+        "EXPLORATION": 1,
     },
     "core": {
         "STATIONS": 1,
@@ -83,6 +87,7 @@ PROFILES = {
         "PARTICLES": 0,
         "MULTI_HULL": 0,
         "SAVE_CHART": 0,
+        "EXPLORATION": 1,
     },
     "min": {
         "STATIONS": 0,
@@ -96,6 +101,7 @@ PROFILES = {
         "PARTICLES": 0,
         "MULTI_HULL": 0,
         "SAVE_CHART": 0,
+        "EXPLORATION": 0,
     },
 }
 

@@ -8,6 +8,9 @@
 
 #include "game.hpp"
 #include "world.hpp"
+#if SH_FEATURE_EXPLORATION
+#include "exploration.hpp"
+#endif
 
 // Contract economy. Pure C++: no heap, no dynamic containers, and no float.
 // Destination choice is a deterministic hash of the origin id and a
@@ -19,12 +22,15 @@
 //   reward   = round((20 + crates*10 + 0.5*distance) / 5) * 5
 //   deadline = round(80 + 0.55*distance + 8*crates)        (seconds)
 //
-// Device rules keep the integer floor/round shape but bake the result for the
+// Rewards keep the integer floor/round shape but bake the result for the
 // fixed generated settlement set. Distance is the integer tile count (floor),
 // the 0.5 term is distance/2, the 0.55 term is distance*55/100, and deadline
 // seconds are floored before the 60 Hz conversion. The offer path therefore
 // reads one compact route record and retires the runtime coordinate subtract,
 // square, square root and reward/deadline arithmetic.
+// Active authored-map deadlines use conservative navigable-route lengths,
+// excluding cutter/jet shortcuts, with a 7 px/s budget and 45 s maneuver slack.
+// The legacy seed-4242 generator retains its historical straight-line recipe.
 namespace jobs {
 
 using game::ActiveJob;
@@ -32,7 +38,7 @@ using game::JobOffer;
 using game::State;
 
 constexpr uint8_t kCrates = game::kJobCrates;
-constexpr uint8_t kOfferAttempts = 12; // browser guard against duplicate destinations
+constexpr uint8_t kOfferAttempts = 12;   // browser guard against duplicate destinations
 
 // Kept as the economy's public rounding unit; route rewards are pre-rounded
 // multiples of five and tests assert the invariant.
@@ -50,8 +56,7 @@ struct RouteEconomy {
     uint16_t deadline;
 };
 
-static_assert(world::ROUTE_COUNT == static_cast<uint8_t>(world::SETTLEMENT_COUNT * world::SETTLEMENT_COUNT),
-              "route table covers every ordered settlement pair");
+static_assert(world::ROUTE_COUNT == static_cast<uint8_t>(world::SETTLEMENT_COUNT * world::SETTLEMENT_COUNT), "route table covers every ordered settlement pair");
 static_assert(world::ROUTE_CRATES == game::kJobCrates, "generated route recipe uses the shipping crate count");
 static_assert(world::ROUTE_STEP_HZ == game::kStepHz, "generated route recipe uses the shipping step rate");
 static_assert(game::kJobElapsedLate > 0, "late marker must leave a payable range");
@@ -59,8 +64,7 @@ static_assert(game::kJobElapsedLate > 0, "late marker must leave a payable range
 // Generated-bound proof for the narrow reward byte and the late sentinel.
 // These fail at compile time if a future tuning pass exceeds either width.
 static_assert(world::ROUTE_REWARD_MAX <= 250, "route reward keeps uint8_t headroom");
-static_assert(world::ROUTE_DEADLINE_MAX < game::kJobElapsedLate,
-              "route deadline must be strictly before the saturated late marker");
+static_assert(world::ROUTE_DEADLINE_MAX < game::kJobElapsedLate, "route deadline must be strictly before the saturated late marker");
 
 #if !defined(__AVR__)
 constexpr bool routeRewardsRoundToFive() {
@@ -129,6 +133,18 @@ inline bool makeOffer(State &state, uint8_t fromId, JobOffer &out) {
     if (!pickDestination(fromId, state.offerSerial, toId))
         return false;
 
+#if SH_FEATURE_EXPLORATION
+    // Do not send a new captain through a pressure boundary without the seal.
+    if (!exploration::stationAvailable(state, toId)) {
+        for (uint8_t offset = 1; offset < world::settlementCount(); ++offset) {
+            const uint8_t candidate = static_cast<uint8_t>((toId + offset) % world::settlementCount());
+            if (candidate != fromId && exploration::stationAvailable(state, candidate)) {
+                toId = candidate;
+                break;
+            }
+        }
+    }
+#endif
     const RouteEconomy route = routeEconomy(fromId, toId);
     out.from = fromId;
     out.to = toId;

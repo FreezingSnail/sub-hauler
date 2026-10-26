@@ -73,3 +73,19 @@
 // packing minigame and its runtime were removed in sub-hauler-gl1.1 because
 // its value did not justify the flash/SRAM cost; the shipped cargoBank FX
 // declaration remains only for flash ABI compatibility.
+
+// Authored map tools/gates/rewards. The minimum pilot profile leaves gates open.
+#ifndef SH_FEATURE_EXPLORATION
+#define SH_FEATURE_EXPLORATION 1
+#endif
+#if SH_FEATURE_EXPLORATION && !SH_FEATURE_JOBS
+#error "SH_FEATURE_EXPLORATION requires SH_FEATURE_JOBS"
+#endif
+
+// Development override, separate from shipped feature profiles.
+#ifndef SH_DEV_MODE
+#define SH_DEV_MODE 0
+#endif
+#if SH_DEV_MODE != 0 && SH_DEV_MODE != 1
+#error "SH_DEV_MODE must be 0 or 1"
+#endif

@@ -73,3 +73,41 @@ string txt_station_hint = 'UP/DN A OK B OUT'
 // the shipped hero symbol first; each hull sheet is four plus-mask frames:
 // right unloaded, right loaded, left unloaded, left loaded.
 include "PilotSprites.txt"
+
+// Original underwater loops. Compact ATMlib2FX streams; ring 64, streaming
+// loops enabled. Playback is separate from these assets. Append-only FX ABI.
+raw_t sh_harbor_bubbles = "../fxdata/music/sh_harbor_bubbles.bin"
+raw_t sh_kelp_drift = "../fxdata/music/sh_kelp_drift.bin"
+raw_t sh_sonar_lullaby = "../fxdata/music/sh_sonar_lullaby.bin"
+
+// Water variations: slower suspended glass, a tidepool waltz and a quicker
+// current-riding cue with native ATM effects. Preserve all earlier offsets.
+raw_t sh_abyssal_glass = "../fxdata/music/sh_abyssal_glass.bin"
+raw_t sh_tidepool_waltz = "../fxdata/music/sh_tidepool_waltz.bin"
+raw_t sh_bubblejet_run = "../fxdata/music/sh_bubblejet_run.bin"
+
+// Authored exploration world v2. All prior declarations retain their offsets.
+raw_t explorationTiles = "../fxdata/tables/exploration.bin"
+raw_t explorationChart = "../fxdata/tables/exploration-chart.bin"
+raw_t explorationObjects = "../fxdata/tables/exploration-objects.bin"
+string txt_found_cutter = 'CUTTER FOUND'
+string txt_found_seal = 'PRESSURE SEAL FOUND'
+string txt_found_thruster = 'THRUSTER FOUND'
+string txt_found_credits = 'CREDITS FOUND'
+string txt_found_hull = 'HULL CAPACITY +1'
+string txt_found_lens = 'SURVEY LENS FOUND'
+string txt_need_cutter = 'NEED CUTTER'
+string txt_need_seal = 'NEED PRESSURE SEAL'
+string txt_need_thruster = 'NEED THRUSTER'
+string txt_salvage_hint = 'HOLD STILL TO SALVAGE'
+string txt_cut_hint = 'HOLD STILL TO CUT'
+string txt_cutter_rumor = 'CUTTER: WEST COVE'
+string txt_thruster_rumor = 'RELAY: USE CUTTER'
+string txt_seal_rumor = 'SEAL: WEST WORKSHOP'
+
+// Developer flight banner; appended without moving game assets.
+string txt_dev_noclip = 'DEV NOCLIP  A FAST'
+
+// Native terrain panorama: 2560 columns x 160 eight-pixel pages, no header.
+// Static rock only; stations and dynamic overlays compose after streaming.
+raw_t explorationTerrain = "../fxdata/tables/exploration-terrain.bin"

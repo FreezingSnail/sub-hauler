@@ -10,6 +10,8 @@
 #include "roster_view_test.hpp"
 #include "test.hpp"
 #include "world_test.hpp"
+#include "exploration_test.hpp"
+#include "dev_mode_test.hpp"
 
 #if SH_FEATURE_MINES
 #include "hazards_test.hpp"
@@ -47,6 +49,9 @@
 
 int main() {
     TestRunner runner;
+#if SH_DEV_MODE
+    DevModeSuite(runner);
+#endif
     CaveSuite(runner);
     CollisionSuite(runner);
     DamageSuite(runner);
@@ -58,6 +63,9 @@ int main() {
     TitleSuite(runner);
 #endif
     WorldSuite(runner);
+#if SH_FEATURE_EXPLORATION
+    ExplorationSuite(runner);
+#endif
 #if SH_FEATURE_MINES
     HazardsSuite(runner);
 #endif
