@@ -19,6 +19,8 @@ inline void ChartViewSuite(TestRunner &runner) {
         return (buffer[(y >> 3) * chart_view::kFrameWidth + x] >> (y & 7)) & 1u;
     };
 
+    const int16_t homeX=world::SPAWN_TILE_X/5*2+1;
+    const int16_t homeY=world::SPAWN_TILE_Y/5*2+1;
     {
         Test test("chart lights only explored water at 2x2 pixels per cell");
         chart_test::FakeReader reader;
@@ -45,16 +47,83 @@ inline void ChartViewSuite(TestRunner &runner) {
         test.assertEqual(pixel(buffer, 11, 11), 0u, "unexplored water block stays black");
         test.assertEqual(pixel(buffer, 8, 12), 0u, "explored land is not lit as water");
         test.assertEqual(reader.reads, world::CHART_BYTES, "one cart read per chart byte");
+        test.assertEqual(reader.bursts, 8, "eight contiguous chart bursts");
+        runner.add(test);
+    }
+
+    {
+        Test test("chart expansion matches independent pixels across byte and page boundaries");
+        chart_test::FakeReader reader;
+        chart::State fog;
+        uint8_t guarded[chart_view::kFrameBytes + 2];
+        bool exact = true;
+        for (uint16_t fixture = 0; fixture < 512; ++fixture) {
+            for (uint16_t i = 0; i < world::CHART_BYTES; ++i) {
+                reader.water[i] = static_cast<uint8_t>(fixture + i * 73);
+                fog.explored[i] = fixture < 256 ? 0xFF : static_cast<uint8_t>(fixture ^ (i * 37));
+            }
+            // Dirty framebuffer must be overwritten, including all zero cells.
+            for (uint16_t i = 0; i < sizeof(guarded); ++i)
+                guarded[i] = 0xA5;
+            reader.reads = reader.bursts = 0;
+            chart_view::drawWater(guarded + 1, fog, reader);
+            for (int16_t y = 0; y < 64; ++y) {
+                for (int16_t x = 0; x < 128; ++x) {
+                    const uint16_t index = (y / 2) * 8 + x / 16;
+                    const uint8_t expected = ((reader.water[index] & fog.explored[index]) >> ((x / 2) % 8)) & 1;
+                    exact = (pixel(guarded + 1, x, y) == expected) && exact;
+                }
+            }
+            exact = guarded[0] == 0xA5 && guarded[sizeof(guarded)-1] == 0xA5 && exact;
+            exact = reader.reads == world::CHART_BYTES && reader.bursts == 8 && exact;
+        }
+        test.assertTrue(exact, "all pixels, bounds and burst lengths match");
+        runner.add(test);
+    }
+
+    {
+        Test test("paused chart redraws at every blink boundary and preserves visible frames");
+        chart_test::FakeReader reader;
+        chart::State fog;
+        chart::reset(fog);
+        game::State state;
+        game::resetWorld(state);
+        bool cadence = true;
+        for (uint16_t phase = 0; phase < 256; ++phase)
+            cadence = chart_view::needsRedraw(state, static_cast<uint8_t>(phase)) ==
+                          ((phase & (chart_view::kBlinkMask - 1)) == 0) &&
+                      cadence;
+        test.assertTrue(cadence, "one redraw per 16-frame blink half-cycle");
+
+        uint8_t displayed[1024], expected[1024];
+        bool same = true;
+        // Open at every possible phase within a blink cycle, then cross wrap.
+        for (uint8_t entry = 0; entry < 32; ++entry) {
+            chart_view::draw(displayed, fog, state, reader, entry);
+            uint8_t redraws = 0;
+            for (uint16_t tick = 1; tick <= 256; ++tick) {
+                const uint8_t phase = static_cast<uint8_t>(entry + tick);
+                if (chart_view::needsRedraw(state, phase)) {
+                    chart_view::draw(displayed, fog, state, reader, phase);
+                    ++redraws;
+                }
+                chart_view::draw(expected, fog, state, reader, phase);
+                for (uint16_t i = 0; i < 1024; ++i)
+                    same = displayed[i] == expected[i] && same;
+            }
+            same = redraws == 16 && same;
+        }
+        test.assertTrue(same, "same displayed pixels at every phase with sixteen times fewer redraws");
         runner.add(test);
     }
 
     {
         Test test("settlement cross and sub marker render at known cells");
         chart_test::FakeReader reader;
-        reader.setWater(7, 9, true);   // settlement 0 cell
+        reader.setWater(world::SPAWN_TILE_X/5, world::SPAWN_TILE_Y/5, true);   // settlement 0 cell
         chart::State fog;
         chart::reset(fog);
-        chart::revealAtPixels(fog, 304, 384, 0);
+        chart::revealAtPixels(fog, world::SPAWN_PIXEL_X, world::SPAWN_PIXEL_Y, 0);
 
         game::State gameState;
         game::resetWorld(gameState);
@@ -65,12 +134,12 @@ inline void ChartViewSuite(TestRunner &runner) {
         chart_view::draw(buffer, fog, gameState, reader, 0);
 
         // Settlement 0 is at cell 7,9; its cross centre is pixel 15,19.
-        test.assertEqual(pixel(buffer, 15, 19), 1u, "settlement cross centre");
-        test.assertEqual(pixel(buffer, 14, 19), 1u, "settlement cross west arm");
-        test.assertEqual(pixel(buffer, 16, 19), 1u, "settlement cross east arm");
-        test.assertEqual(pixel(buffer, 15, 18), 1u, "settlement cross north arm");
-        test.assertEqual(pixel(buffer, 15, 20), 1u, "settlement cross south arm");
-        test.assertEqual(pixel(buffer, 14, 18), 0u, "cross leaves black corners");
+        test.assertEqual(pixel(buffer, homeX, homeY), 1u, "settlement cross centre");
+        test.assertEqual(pixel(buffer, homeX-1, homeY), 1u, "settlement cross west arm");
+        test.assertEqual(pixel(buffer, homeX+1, homeY), 1u, "settlement cross east arm");
+        test.assertEqual(pixel(buffer, homeX, homeY-1), 1u, "settlement cross north arm");
+        test.assertEqual(pixel(buffer, homeX, homeY+1), 1u, "settlement cross south arm");
+        test.assertEqual(pixel(buffer, homeX-1, homeY-1), 0u, "cross leaves black corners");
 
         // The sub marker is a filled 2x2 block inside a black backing.
         test.assertEqual(pixel(buffer, 40, 20), 1u, "sub marker top-left");
@@ -80,9 +149,33 @@ inline void ChartViewSuite(TestRunner &runner) {
     }
 
     {
+        Test test("sub marker blinks from the supplied phase");
+        chart_test::FakeReader reader;
+        chart::State fog;
+        chart::reset(fog);
+
+        game::State gameState;
+        game::resetWorld(gameState);
+        gameState.x = 820;   // chart cell 20,10
+        gameState.y = 420;
+
+        uint8_t on[chart_view::kFrameBytes];
+        uint8_t off[chart_view::kFrameBytes];
+        chart_view::draw(on, fog, gameState, reader, 0);
+        chart_view::draw(off, fog, gameState, reader, chart_view::kBlinkMask);
+
+        test.assertEqual(pixel(on, 40, 20), 1u, "sub marker top-left on phase 0");
+        test.assertEqual(pixel(on, 41, 21), 1u, "sub marker bottom-right on phase 0");
+        test.assertEqual(pixel(off, 40, 20), 0u, "sub marker hidden in the off phase");
+        test.assertEqual(pixel(off, 41, 21), 0u, "sub marker block hidden in the off phase");
+        test.assertEqual(pixel(off, 42, 20), 0u, "sub backing hidden in the off phase");
+        runner.add(test);
+    }
+
+    {
         Test test("unexplored settlement has no cross");
         chart_test::FakeReader reader;
-        reader.setWater(7, 9, true);
+        reader.setWater(world::SPAWN_TILE_X/5, world::SPAWN_TILE_Y/5, true);
         chart::State fog;
         chart::reset(fog);
 
@@ -93,8 +186,8 @@ inline void ChartViewSuite(TestRunner &runner) {
 
         uint8_t buffer[chart_view::kFrameBytes];
         chart_view::draw(buffer, fog, gameState, reader, 0);
-        test.assertEqual(pixel(buffer, 15, 19), 0u, "fogged settlement cell stays black");
-        test.assertEqual(pixel(buffer, 14, 19), 0u, "no cross arm leaks through fog");
+        test.assertEqual(pixel(buffer, homeX, homeY), 0u, "fogged settlement cell stays black");
+        test.assertEqual(pixel(buffer, homeX-1, homeY), 0u, "no cross arm leaks through fog");
         runner.add(test);
     }
 
@@ -111,6 +204,10 @@ inline void ChartViewSuite(TestRunner &runner) {
         gameState.x = 820;
         gameState.y = 420;
         gameState.activeJob.to = 2;   // settlement 2 is chart cell 56,12
+        world::Settlement destination;
+        world::settlementInfo(gameState.activeJob.to,destination);
+        const int16_t destX=destination.tile_x/5*2+1;
+        const int16_t destY=destination.tile_y/5*2+1;
         const int16_t xBefore = gameState.x;
         const int16_t yBefore = gameState.y;
         const uint16_t ticksBefore = gameState.ticks;
@@ -126,10 +223,10 @@ inline void ChartViewSuite(TestRunner &runner) {
 
         // Cell 56,12 has its centre at pixel 113,25. The destination marker is
         // visible in phase 0 and absent in phase kBlinkMask (cell unexplored).
-        test.assertEqual(pixel(on, 113, 25), 1u, "destination X centre on phase 0");
-        test.assertEqual(pixel(on, 112, 24), 1u, "destination X diagonal on phase 0");
-        test.assertEqual(pixel(off, 113, 25), 0u, "destination X is hidden in the off phase");
-        test.assertEqual(pixel(off, 112, 24), 0u, "destination diagonal is hidden off phase");
+        test.assertEqual(pixel(on, destX, destY), 1u, "destination X centre on phase 0");
+        test.assertEqual(pixel(on, destX-1, destY-1), 1u, "destination X diagonal on phase 0");
+        test.assertEqual(pixel(off, destX, destY), 0u, "destination X is hidden in the off phase");
+        test.assertEqual(pixel(off, destX-1, destY-1), 0u, "destination diagonal is hidden off phase");
 
         bool samePhase = true;
         bool differentPhase = false;

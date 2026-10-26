@@ -1,0 +1,548 @@
+#!/usr/bin/env python3
+"""Pack the authored exploration level; invoked by make gen.
+
+Legacy world sections are deliberately left intact. The active world uses
+exploration.bin/chart.bin and a versioned little-endian object table.
+"""
+from __future__ import annotations
+
+import json
+import heapq
+import math
+import struct
+import re
+from collections import deque
+from dataclasses import dataclass, replace
+from html import escape
+from pathlib import Path
+
+import gen_world as old
+import gen_scenery
+import gen_contours
+import gen_settlements
+
+ROOT = Path(__file__).resolve().parents[1]
+SOURCE = ROOT / 'levels/exploration.json'
+TOOLS = {'cutter': 1, 'seal': 2, 'thruster': 4, 'lens': 8}
+KINDS = {'cutter': 1, 'seal': 2, 'thruster': 3, 'credits': 4, 'hull': 5, 'lens': 6}
+
+@dataclass(frozen=True)
+class Gate:
+    name: str
+    x: int
+    y: int
+    w: int
+    h: int
+    required: int
+
+@dataclass(frozen=True)
+class Pickup:
+    name: str
+    x: int
+    y: int
+    kind: int
+    amount: int
+
+@dataclass
+class Level:
+    source: dict
+    world: old.World
+    gates: list[Gate]
+    pickups: list[Pickup]
+
+
+def shape_cavern(grid, cx, cy, rx, ry, phase=0.0, solid=False):
+    """Lobed ellipse in tile space; roughness changes the silhouette, not art."""
+    if rx<=0 or ry<=0:
+        raise ValueError("cavern/rock radii must be positive")
+    reach = 1.23
+    for y in range(max(2, math.floor(cy-ry*reach)), min(158, math.ceil(cy+ry*reach)+1)):
+        for x in range(max(2, math.floor(cx-rx*reach)), min(318, math.ceil(cx+rx*reach)+1)):
+            nx, ny = (x-cx)/rx, (y-cy)/ry
+            angle = math.atan2(ny,nx)
+            boundary = 1 + .10*math.sin(angle*3+phase) + .055*math.sin(angle*7-phase*.7)
+            if nx*nx+ny*ny <= boundary*boundary:
+                grid[y*320+x] = 1 if solid else 0
+
+
+def fill_rock_polygon(grid, points):
+    for y in range(max(2,math.floor(min(p[1] for p in points))),min(158,math.ceil(max(p[1] for p in points))+1)):
+        for x in range(max(2,math.floor(min(p[0] for p in points))),min(318,math.ceil(max(p[0] for p in points))+1)):
+            inside=False
+            for i,(ax,ay) in enumerate(points):
+                bx,by=points[(i+1)%len(points)]
+                if (ay>y)!=(by>y) and x < (bx-ax)*(y-ay)/(by-ay)+ax:
+                    inside=not inside
+            if inside:grid[y*320+x]=1
+
+
+def organic_spine(route, a, b, seed):
+    """Smooth authored waypoints; no runtime curves or floating point required."""
+    if 'via' in route:
+        points=[a]+route['via']+[b]
+    else:
+        dx,dy=b[0]-a[0],b[1]-a[1]
+        length=math.hypot(dx,dy)
+        bend=route.get('bend',min(6.0,max(2.5,length*.12)))
+        phase=seed*.071
+        points=[a]
+        for t in (.25,.5,.75):
+            offset=math.sin(t*math.pi*2+phase)*bend*math.sin(t*math.pi)
+            points.append([a[0]+dx*t-dy/length*offset,a[1]+dy*t+dx/length*offset])
+        points.append(b)
+    result=[]
+    extended=[points[0]]+points+[points[-1]]
+    for i in range(1,len(extended)-2):
+        p0,p1,p2,p3=extended[i-1:i+3]
+        steps=max(8,math.ceil(math.hypot(p2[0]-p1[0],p2[1]-p1[1])*3))
+        for j in range(steps):
+            t=j/steps
+            position=[]
+            for axis in (0,1):
+                value=.5*((2*p1[axis])+(-p0[axis]+p2[axis])*t+(2*p0[axis]-5*p1[axis]+4*p2[axis]-p3[axis])*t*t+(-p0[axis]+3*p1[axis]-3*p2[axis]+p3[axis])*t*t*t)
+                position.append(value)
+            result.append(position)
+    result.append(list(b))
+    return result
+
+
+def on_spine(points, t):
+    lengths=[math.hypot(b[0]-a[0],b[1]-a[1]) for a,b in zip(points,points[1:])]
+    target=t*sum(lengths)
+    for a,b,length in zip(points,points[1:],lengths):
+        if target<=length:
+            f=target/length if length else 0
+            return [a[0]+(b[0]-a[0])*f,a[1]+(b[1]-a[1])*f]
+        target-=length
+    return list(points[-1])
+
+
+def make_gate(route, spine, pressure_y):
+    required=sum(TOOLS[t] for t in route.get('requires',[]))
+    if not required:return None
+    if 'gate' in route:
+        gx,gy=route['gate']['position']
+        horizontal=route['gate']['axis']=='y'
+    elif required&TOOLS['seal']:
+        crossings=[(a,b) for a,b in zip(spine,spine[1:]) if a[1]<pressure_y<=b[1] or b[1]<pressure_y<=a[1]]
+        if len(crossings)!=1:raise ValueError('pressure passage must cross depth boundary once')
+        a,b=crossings[0];f=(pressure_y-a[1])/(b[1]-a[1])
+        gx,gy=a[0]+(b[0]-a[0])*f,pressure_y
+        horizontal=abs(b[1]-a[1])>=abs(b[0]-a[0])
+    else:
+        gx,gy=on_spine(spine,route.get('gate_at',.5))
+        a=on_spine(spine,max(0,route.get('gate_at',.5)-.02));b=on_spine(spine,min(1,route.get('gate_at',.5)+.02))
+        horizontal=abs(b[1]-a[1])>=abs(b[0]-a[0])
+    w,h=(96,8) if horizontal else (8,96)
+    return Gate(route['from']+'_'+route['to'],round(gx*8-w/2),round(gy*8-h/2),w,h,required)
+
+
+def carve_organic_route(grid, route, spine, gate, phase):
+    n=max(1,len(spine)-1)
+    gate_center=[(gate.x+gate.w/2)/8,(gate.y+gate.h/2)/8] if gate else None
+    for i,(x,y) in enumerate(spine):
+        t=i/n
+        radius=route['radius']*(1+.25*math.sin(t*math.pi*4+phase)+.12*math.sin(t*math.pi*11-phase))
+        radius=max(2.45,radius)
+        if gate_center:
+            distance=math.hypot(x-gate_center[0],y-gate_center[1])
+            if distance<9:radius=2.5+(radius-2.5)*max(0,(distance-5)/4)
+        old._carve_disk(grid,x,y,radius)
+    for chamber in route.get('caverns',[]):
+        x,y=on_spine(spine,chamber['at'])
+        shape_cavern(grid,x,y,*chamber['radii'],phase)
+
+
+def carve_organic(source, grid, rooms):
+    seed=source['terrain']['seed']
+    for i,r in enumerate(source['rooms']):
+        x,y=r['position'];phase=(seed+i*17)*.13
+        size=r.get('size',[r['radius'],r['radius']])
+        shape_cavern(grid,x,y,*size,phase)
+        for dx,dy,rx,ry in r.get('lobes',[]):shape_cavern(grid,x+dx,y+dy,rx,ry,phase+.8)
+        old._carve_disk(grid,x,y,6 if 'station' in r else 3)
+    gates=[];spines=[]
+    for i,route in enumerate(source['routes']):
+        required=route.get('requires',[])
+        if len(required)!=len(set(required)) or any(t not in TOOLS or t=='lens' for t in required):raise ValueError('invalid passage tool requirements')
+        if route['from'] not in rooms or route['to'] not in rooms:raise ValueError('passage references unknown room')
+        spine=organic_spine(route,rooms[route['from']]['position'],rooms[route['to']]['position'],seed+i*43)
+        gate=make_gate(route,spine,source['pressure_y'])
+        carve_organic_route(grid,route,spine,gate,(seed+i*43)*.11)
+        if gate:gates.append(gate)
+        spines.append(spine)
+    for obstacle in source.get('obstacles',[]):
+        origin=rooms[obstacle['room']]['position']
+        if 'polygon' in obstacle:
+            fill_rock_polygon(grid,[[origin[0]+x,origin[1]+y] for x,y in obstacle['polygon']])
+        else:
+            dx,dy=obstacle['offset'];shape_cavern(grid,origin[0]+dx,origin[1]+dy,*obstacle['radii'],solid=True)
+    for route,spine in zip(source['routes'],spines):
+        for rock in route.get('obstacles',[]):
+            x,y=on_spine(spine,rock['at'])
+            dx,dy=rock.get('offset',[0,0])
+            shape_cavern(grid,x+dx,y+dy,*rock['radii'],solid=True)
+    # Erase only tiny decorative water slivers trapped by a wall tooth. Larger
+    # disconnected caverns remain errors in validate_world; never erase rooms.
+    visited=bytearray(320*160)
+    anchors={tuple(r['position']) for r in source['rooms']}
+    for start,value in enumerate(grid):
+        if value or visited[start]:continue
+        queue=deque([start]);visited[start]=1;component=[]
+        while queue:
+            i=queue.popleft();component.append(i)
+            for j in (i-1,i+1,i-320,i+320):
+                if 0<=j<len(grid) and not grid[j] and not visited[j]:
+                    visited[j]=1;queue.append(j)
+        if len(component)<=3 and not any((i%320,i//320) in anchors for i in component):
+            for i in component:grid[i]=1
+    return gates
+
+
+def build(source: dict) -> Level:
+    if source.get('format') != 'sub-hauler-level' or source.get('version') != 2:
+        raise ValueError('unsupported authored level format/version')
+    if source['dimensions'] != [320, 160] or source['tile_pixels'] != 8:
+        raise ValueError('level must use the 320x160 native tile contract')
+    if not isinstance(source['pressure_y'], int) or not 0 < source['pressure_y'] < 160:
+        raise ValueError('invalid pressure depth')
+    rows = source['rooms']
+    rooms = {r['id']: r for r in rows}
+    if len(rooms) != len(rows):
+        raise ValueError('duplicate room id')
+    if len(source['routes']) != len({frozenset((r['from'], r['to'])) for r in source['routes']}):
+        raise ValueError('duplicate passage')
+    grid = bytearray([1]) * (320 * 160)
+    for r in rows:
+        x,y=r['position'];radius=r['radius']
+        if not (radius+2 <= x < 320-radius-2 and radius+2 <= y < 160-radius-2):raise ValueError('room crosses sealed border')
+        if 'pickup' in r:
+            item=r['pickup']
+            if item.get('kind') not in KINDS or type(item.get('amount')) is not int or not 0<item['amount']<=255:raise ValueError('invalid pickup kind/amount')
+    if source.get('terrain',{}).get('style')!='organic':
+        raise ValueError('unsupported terrain style')
+    if type(source.get('layout_version')) is not int or not 1<=source['layout_version']<=255:
+        raise ValueError('invalid terrain layout version')
+    gates=carve_organic(source,grid,rooms)
+    pickups = [Pickup(r['id'],r['position'][0]*8,r['position'][1]*8,
+                      KINDS[r['pickup']['kind']],r['pickup']['amount']) for r in rows if 'pickup' in r]
+    if len(gates)>16 or len(pickups)>8:
+        raise ValueError('object counts exceed compact progress masks')
+    settlements = []
+    for r in sorted((r for r in rows if 'station' in r),key=lambda r:r['station']):
+        x,y = r['position']
+        settlements.append(old.Settlement(r['station'],r['name'].upper(),x,y,x*8,y*8))
+    # Eight off-center mine sites and eight current zones, kept clear of berths.
+    hazard_rooms = ['F','K','V','S','R','A','O','I']
+    mines=[];currents=[]
+    for i,key in enumerate(hazard_rooms):
+        x,y=rooms[key]['position'];x*=8;y*=8
+        mines.append(old.Mine(x+20,y-20))
+        ax,ay = [(4096,0),(0,4096),(-4096,0),(0,-4096)][i%4]
+        currents.append(old.Current(x-16,y-8,32,16,ax,ay))
+    spawn=rooms[source['spawn']]['position']
+    world=old.World(0,grid,old.pack_chart(old.build_chart(grid)),
+                    tuple(old.Chamber(*r['position'],r['radius'],r['name'],'station' in r) for r in rows),
+                    tuple(settlements),tuple(mines),tuple(currents),*spawn,spawn[0]*8,spawn[1]*8,
+                    spawn[0]*8-13,spawn[1]*8+4)
+    old.validate_world(world)
+    # Legacy validation checks the open navigation chambers. Wall berths have
+    # a directional approach instead of the old six-tile empty circle.
+    docks=[]
+    for r in sorted((r for r in rows if 'station' in r),key=lambda r:r['station']):
+        dx,dy=r.get('dock',r['position'])
+        if any(type(v) is not int for v in (dx,dy)) or not (2<=dx<318 and 2<=dy<158):
+            raise ValueError('invalid wall dock coordinates')
+        docks.append(old.Settlement(r['station'],r['name'].upper(),dx,dy,dx*8,dy*8))
+    home=next(d for d in docks if d.id==rooms[source['spawn']]['station'])
+    world=replace(world,settlements=tuple(docks),spawn_tile_x=home.tile_x,spawn_tile_y=home.tile_y,
+                  spawn_pixel_x=home.pixel_x,spawn_pixel_y=home.pixel_y,
+                  spawn_sub_x=home.pixel_x,spawn_sub_y=home.pixel_y)
+    level=Level(source,world,gates,pickups)
+    validate_docks(level)
+    return level
+
+
+def validate_docks(level):
+    grid=level.world.grid
+    for dock in level.world.settlements:
+        # Docked hull and straight water approach must both be safe. The pier
+        # is scenery; the boat's 26x8 collision footprint stays in open water.
+        for rise in range(0,49,4):
+            px,py=dock.pixel_x,dock.pixel_y-rise
+            if any(grid[y*320+x] for y in range((py-4)//8,(py+3)//8+1)
+                   for x in range((px-13)//8,(px+12)//8+1)):
+                raise ValueError('wall dock blocks hull or approach: '+dock.name)
+        floor=next((y for y in range(dock.tile_y+1,min(160,dock.tile_y+5)) if grid[y*320+dock.tile_x]),None)
+        if floor is None:raise ValueError('dock is not attached to a wall: '+dock.name)
+        for hazard in level.world.mines:
+            if math.hypot(hazard.x-dock.pixel_x,hazard.y-dock.pixel_y)<old.DOCK_CLEARANCE_PX:
+                raise ValueError('mine inside wall dock approach')
+        for current in level.world.currents:
+            px=max(current.x,min(dock.pixel_x,current.x+current.w))
+            py=max(current.y,min(dock.pixel_y,current.y+current.h))
+            if math.hypot(px-dock.pixel_x,py-dock.pixel_y)<old.DOCK_CLEARANCE_PX:
+                raise ValueError('current inside wall dock approach')
+
+
+def freight_deadlines(level: Level):
+    """Conservative travel budget without optional cutter/jet shortcuts."""
+    source=level.source
+    rooms={r['id']:r for r in source['rooms']}
+    graph={key:[] for key in rooms}
+    tuning=source.get('freight_timing',{})
+    speed=tuning.get('pixels_per_second',7)
+    slack=tuning.get('slack_seconds',45)
+    if type(speed) is not int or speed<=0 or type(slack) is not int or slack<0:
+        raise ValueError('invalid freight time budget')
+    for i,route in enumerate(source['routes']):
+        if any(t in ('cutter','thruster') for t in route.get('requires',[])):continue
+        a,b=route['from'],route['to']
+        spine=organic_spine(route,rooms[a]['position'],rooms[b]['position'],source['terrain']['seed']+i*43)
+        distance=sum(math.dist(p,q)*8 for p,q in zip(spine,spine[1:]))
+        graph[a].append((b,distance));graph[b].append((a,distance))
+    stations=sorted((r for r in source['rooms'] if 'station' in r),key=lambda r:r['station'])
+    table=[]
+    for origin in stations:
+        distances={origin['id']:0.0};queue=[(0.0,origin['id'])]
+        while queue:
+            value,a=heapq.heappop(queue)
+            if value!=distances[a]:continue
+            for b,length in graph[a]:
+                if value+length<distances.get(b,float('inf')):
+                    distances[b]=value+length;heapq.heappush(queue,(value+length,b))
+        for destination in stations:
+            if destination['id']==origin['id']:table.append(0);continue
+            if destination['id'] not in distances:raise ValueError('no freight path without optional shortcuts')
+            approach=sum(math.dist(r['position'],r.get('dock',r['position']))*8 for r in (origin,destination))
+            seconds=math.ceil((distances[destination['id']]+approach)/speed)+slack
+            table.append(min(seconds*old.STEP_HZ,0xFFFE))
+    return tuple(table)
+
+
+def object_bytes(level: Level) -> bytes:
+    data = b'SHL2'+bytes((len(level.gates),len(level.pickups),7,6))
+    for g in level.gates:
+        data+=struct.pack('<HHBBB',g.x,g.y,g.w,g.h,g.required)
+    for p in level.pickups:
+        data+=struct.pack('<HHBB',p.x,p.y,p.kind,p.amount)
+    return data
+
+
+def reachable_tiles(level: Level, tools: int) -> set[tuple[int,int]]:
+    """Hull-center reachability at 8px spacing, with real 26x8 clearance/gates."""
+    grid=level.world.grid
+    free=bytearray(320*160)
+    closed=[g for g in level.gates if tools&g.required!=g.required]
+    for y in range(1,159):
+        for x in range(2,318):
+            if any(grid[yy*320+xx] for yy in (y-1,y) for xx in range(x-2,x+2)):
+                continue
+            px,py=x*8,y*8
+            if any(px+13>g.x and px-13<g.x+g.w and py+4>g.y and py-4<g.y+g.h for g in closed):
+                continue
+            free[y*320+x]=1
+    start=tuple(next(r for r in level.source['rooms'] if r['id']==level.source['spawn'])['position'])
+    seen={start};queue=deque([start])
+    while queue:
+        x,y=queue.popleft()
+        for xx,yy in ((x-1,y),(x+1,y),(x,y-1),(x,y+1)):
+            if 0<=xx<320 and 0<=yy<160 and free[yy*320+xx] and (xx,yy) not in seen:
+                seen.add((xx,yy));queue.append((xx,yy))
+    return seen
+
+
+def validate_access(level: Level) -> None:
+    rooms={r['id']:r for r in level.source['rooms']}
+    for tools in range(8):
+        expected={level.source['spawn']}
+        while True:
+            count=len(expected)
+            for route in level.source['routes']:
+                needed=sum(TOOLS[t] for t in route.get('requires',[]))
+                if tools&needed==needed:
+                    a,b=route['from'],route['to']
+                    if a in expected:expected.add(b)
+                    if b in expected:expected.add(a)
+            if len(expected)==count:break
+        reached=reachable_tiles(level,tools)
+        actual={key for key,r in rooms.items() if tuple(r['position']) in reached}
+        if actual!=expected:
+            raise ValueError(f'hull/gate reachability tools={tools}: missing {expected-actual}, leaked {actual-expected}')
+        for key in expected:
+            if 'station' in rooms[key] and tuple(rooms[key].get('dock',rooms[key]['position'])) not in reached:
+                raise ValueError(f'unreachable wall berth {key} with tools={tools}')
+    required={'W':0,'CW':1,'BR':1,'D':3}
+    for key,tools in required.items():
+        if tuple(rooms[key]['position']) not in reachable_tiles(level,tools):
+            raise ValueError('unobtainable required equipment or destination: '+key)
+    if rooms['D']['position'][1] != max(r['position'][1] for r in level.source['rooms'] if 'station' in r):
+        raise ValueError('Deep Anchor must be the deepest station')
+
+
+def obstacle_centers(source):
+    rooms={r['id']:r for r in source['rooms']}
+    centers=[]
+    for obstacle in source.get('obstacles',[]):
+        ox,oy=rooms[obstacle['room']]['position']
+        if 'polygon' in obstacle:
+            points=obstacle['polygon'];dx=sum(p[0] for p in points)/len(points);dy=sum(p[1] for p in points)/len(points)
+        else:dx,dy=obstacle['offset']
+        centers.append((obstacle['id'],round((ox+dx)*8),round((oy+dy)*8)))
+    for i,route in enumerate(source['routes']):
+        if not route.get('obstacles'):continue
+        spine=organic_spine(route,rooms[route['from']]['position'],rooms[route['to']]['position'],source['terrain']['seed']+i*43)
+        for obstacle in route['obstacles']:
+            x,y=on_spine(spine,obstacle['at']);dx,dy=obstacle.get('offset',[0,0])
+            centers.append((obstacle['id'],round((x+dx)*8),round((y+dy)*8)))
+    return centers
+
+
+def render_objects(level: Level) -> str:
+    blob=object_bytes(level)
+    constants='\n'.join(f'constexpr uint8_t GATE_{g.name} = {i};' for i,g in enumerate(level.gates))
+    constants+='\n'+'\n'.join(f'constexpr uint8_t PICKUP_{p.name} = {i};' for i,p in enumerate(level.pickups))
+    constants+='\n'+'\n'.join(f'constexpr int16_t ROOM_{r["id"]}_{axis} = {r["position"][i]*8};' for r in level.source['rooms'] for i,axis in enumerate(('X','Y')))
+    constants+='\n'+'\n'.join(f'constexpr int16_t DOCK_{r["id"]}_{axis} = {r.get("dock",r["position"])[i]*8};' for r in level.source['rooms'] if 'station' in r for i,axis in enumerate(('X','Y')))
+    constants+='\n'+f'constexpr uint8_t OBSTACLE_COUNT = {len(obstacle_centers(level.source))};'
+    constants+='\n'+'\n'.join(f'constexpr int16_t ROCK_{symbol}_X = {x}, ROCK_{symbol}_Y = {y};' for name,x,y in obstacle_centers(level.source) for symbol in [re.sub(r'[^A-Za-z0-9_]', '_', name).upper()])
+    numbers=', '.join(str(b) for b in blob)
+    return f'''// Generated by tools/gen_level.py through make gen. Do not edit.
+#pragma once
+#include <stdint.h>
+#if defined(__AVR__)
+#include <avr/pgmspace.h>
+#define EXPLORATION_FLASH PROGMEM
+#else
+#define EXPLORATION_FLASH
+#endif
+namespace exploration_data {{
+constexpr uint8_t CUTTER = 1, SEAL = 2, THRUSTER = 4, LENS = 8;
+constexpr uint8_t GATE_COUNT = {len(level.gates)}, PICKUP_COUNT = {len(level.pickups)};
+constexpr uint16_t OBJECT_BYTES = {len(blob)};
+constexpr uint8_t GATE_STRIDE = 7, PICKUP_STRIDE = 6, HEADER_BYTES = 8;
+constexpr int16_t PRESSURE_Y = {level.source['pressure_y']*8};
+{constants}
+// Byte-identical PROGMEM mirror of explorationObjects, avoiding cart transactions
+// inside collision. No object array or map copy is allocated in SRAM.
+const uint8_t DATA[OBJECT_BYTES] EXPLORATION_FLASH = {{{numbers}}};
+inline uint8_t byteAt(uint16_t offset) {{
+#if defined(__AVR__)
+    return pgm_read_byte(DATA + offset);
+#else
+    return DATA[offset];
+#endif
+}}
+inline int16_t wordAt(uint16_t offset) {{
+    return static_cast<int16_t>(byteAt(offset) | (static_cast<uint16_t>(byteAt(offset+1)) << 8));
+}}
+struct Gate {{ int16_t x,y; uint8_t w,h,required; }};
+struct Pickup {{ int16_t x,y; uint8_t kind,amount; }};
+inline Gate gate(uint8_t id) {{
+    const uint16_t p=HEADER_BYTES+static_cast<uint16_t>(id)*GATE_STRIDE;
+    Gate g={{wordAt(p),wordAt(p+2),byteAt(p+4),byteAt(p+5),byteAt(p+6)}};
+    return g;
+}}
+inline Pickup pickup(uint8_t id) {{
+    const uint16_t p=HEADER_BYTES+GATE_COUNT*GATE_STRIDE+static_cast<uint16_t>(id)*PICKUP_STRIDE;
+    Pickup item={{wordAt(p),wordAt(p+2),byteAt(p+4),byteAt(p+5)}};
+    return item;
+}}
+}} // namespace exploration_data
+#undef EXPLORATION_FLASH
+'''
+
+
+def render_preview(level: Level) -> str:
+    parts=['<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 680"><title>Encoded Sub-hauler exploration terrain</title><rect width="1280" height="680" fill="#263a47"/><g transform="scale(4)">']
+    for y in range(160):
+        x=0
+        while x<320:
+            if level.world.grid[y*320+x]:x+=1;continue
+            start=x
+            while x<320 and not level.world.grid[y*320+x]:x+=1
+            parts.append(f'<path d="M{start} {y+.5}h{x-start}" stroke="#081c2b"/>')
+    for g in level.gates:
+        color='#ba9be8' if g.required&2 else '#6cd5df' if g.required&4 else '#edb96a'
+        parts.append(f'<rect x="{g.x/8}" y="{g.y/8}" width="{g.w/8}" height="{g.h/8}" fill="{color}"/>')
+    for p in level.pickups:
+        parts.append(f'<circle cx="{p.x/8}" cy="{p.y/8}" r="1.5" fill="#edb96a"/>')
+    parts.append('</g><g font-family="sans-serif" font-size="13" fill="#e5efed">')
+    for s in level.world.settlements:
+        parts.append(f'<text x="{s.tile_x*4-20}" y="{s.tile_y*4-20}">{escape(s.name)}</text>')
+    parts.append('<text x="20" y="670">Actual 320x160 packed tile geometry · gates and eight cove rewards · generated by make gen</text></g></svg>')
+    return '\n'.join(parts)+'\n'
+
+
+def terrain_columns(grid, x, y):
+    """Native eight-column rock tile: same edge trim/chamfers as cave.hpp."""
+    if not grid[y*320+x]:
+        return bytes(8)
+    def water(tx, ty):
+        return 0 <= tx < 320 and 0 <= ty < 160 and not grid[ty*320+tx]
+    north, south = water(x, y-1), water(x, y+1)
+    west, east = water(x-1, y), water(x+1, y)
+    columns = bytearray(8)
+    for col in range(8):
+        for row in range(8):
+            trimmed = ((north and row == 0) or (south and row == 7) or
+                       (west and col == 0) or (east and col == 7) or
+                       (north and west and col == 1 and row == 1) or
+                       (north and east and col == 6 and row == 1) or
+                       (south and west and col == 1 and row == 6) or
+                       (south and east and col == 6 and row == 6))
+            if not trimmed:
+                columns[col] |= 1 << row
+    if not (north or south or west or east):
+        columns[(x*5+y*3)&7] &= ~(1 << ((x*3+y*7)&7))
+    return bytes(columns)
+
+
+def base_terrain_bytes(level: Level) -> bytes:
+    # 2560 columns x 160 eight-pixel pages. A tile-aligned viewport is eight
+    # contiguous 128-byte reads, written straight into the existing screen.
+    image = gen_contours.solid_image(level.world.grid)
+    pixels = image.load()
+    grid = level.world.grid
+    # Keep the quiet interior texture; the boundary comes from the native
+    # contour, independent of the legacy 8x8 edge atlas.
+    for y in range(160):
+        for x in range(320):
+            if grid[y*320+x] and all(not (0 <= nx < 320 and 0 <= ny < 160) or grid[ny*320+nx]
+                                       for nx,ny in ((x-1,y),(x+1,y),(x,y-1),(x,y+1))):
+                pixels[x*8+((x*5+y*3)&7), y*8+((x*3+y*7)&7)] = 0
+    return gen_contours.pack_native(image)
+
+
+def scenery_spines(level: Level):
+    rooms = {r['id']:r for r in level.source['rooms']}
+    return [organic_spine(route,rooms[route['from']]['position'],rooms[route['to']]['position'],level.source['terrain']['seed']+i*43)
+            for i,route in enumerate(level.source['routes'])]
+
+
+def terrain_bytes(level: Level) -> bytes:
+    terrain=gen_scenery.decorate(level, base_terrain_bytes(level), scenery_spines(level))[0]
+    return gen_settlements.bake(level,terrain)[0]
+
+
+def main() -> None:
+    level=build(json.loads(SOURCE.read_text()))
+    validate_access(level)
+    root=ROOT/'fxdata/tables'
+    (root/'exploration.bin').write_bytes(old.pack_tiles(level.world.grid))
+    (root/'exploration-chart.bin').write_bytes(level.world.chart)
+    (root/'exploration-objects.bin').write_bytes(object_bytes(level))
+    terrain,scenery=gen_scenery.decorate(level,base_terrain_bytes(level),scenery_spines(level))
+    terrain,scenery['settlements']=gen_settlements.bake(level,terrain)
+    (root/'exploration-terrain.bin').write_bytes(terrain)
+    (ROOT/'docs/assets/exploration-scenery.json').write_text(json.dumps(scenery,indent=2)+'\n')
+    print(f'gen_scenery: {json.dumps(scenery, separators=(",", ":"))}')
+    header=old.render_header(level.world,freight_deadlines(level)).replace('Generated by tools/gen_world.py.','Generated by tools/gen_level.py.').replace('LAYOUT_VERSION    = 1',f'LAYOUT_VERSION    = {level.source.get("layout_version",2)}').replace('world.bin','exploration.bin').replace('world-chart.bin','exploration-chart.bin')
+    (ROOT/'src/generated/level.hpp').write_text(header)
+    (ROOT/'src/generated/exploration.hpp').write_text(render_objects(level))
+    (ROOT/'docs/assets/exploration-terrain.svg').write_text(render_preview(level))
+    rocks=len(level.source.get('obstacles',[]))+sum(len(r.get('obstacles',[])) for r in level.source['routes'])
+    print(f'gen_level: rooms={len(level.source["rooms"])} passages={len(level.source["routes"])} physical_obstacles={rocks} layout={level.source["layout_version"]} gates={len(level.gates)} pickups={len(level.pickups)} tiles=6400B chart=256B objects={len(object_bytes(level))}B terrain={len(terrain)}B hull/tool validation=pass')
+
+if __name__=='__main__':
+    main()

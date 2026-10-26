@@ -165,6 +165,19 @@ inline void ChartSaveSuite(TestRunner &runner) {
     }
 
     {
+        Test test("a valid old-world chart cannot reveal the new cave layout");
+        chart::State previous;
+        fillPattern(previous);
+        FakeStorage storage(0);
+        chart_save::save(previous, storage);
+        storage.bytes[2] = static_cast<uint8_t>(chart_save::kVersion - 1);
+        chart::State current;
+        chart::reset(current);
+        test.assertTrue(!chart_save::load(current, storage), "old geometry version is rejected despite a valid mask CRC");
+        test.assertTrue(allZero(current), "new chart remains untouched");
+        runner.add(test);
+    }
+    {
         Test test("save round-trip restores the exact explored mask");
         chart::State source;
         fillPattern(source);

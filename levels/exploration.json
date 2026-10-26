@@ -1,0 +1,1972 @@
+{
+  "format": "sub-hauler-level",
+  "version": 2,
+  "dimensions": [
+    320,
+    160
+  ],
+  "tile_pixels": 8,
+  "pressure_y": 110,
+  "spawn": "T",
+  "rooms": [
+    {
+      "id": "T",
+      "name": "Tidewall",
+      "region": "tide",
+      "position": [
+        38,
+        24
+      ],
+      "radius": 8,
+      "station": 0,
+      "dock": [41, 30]
+    },
+    {
+      "id": "L",
+      "name": "Lantern Fork",
+      "region": "tide",
+      "position": [
+        78,
+        18
+      ],
+      "radius": 5,
+      "size": [
+        9,
+        6
+      ],
+      "lobes": [
+        [
+          -5,
+          -2,
+          6,
+          4
+        ],
+        [
+          6,
+          1,
+          7,
+          5
+        ]
+      ]
+    },
+    {
+      "id": "F",
+      "name": "Upper Shelf",
+      "region": "tide",
+      "position": [
+        127,
+        29
+      ],
+      "radius": 5,
+      "size": [
+        7,
+        9
+      ],
+      "lobes": [
+        [
+          2,
+          -5,
+          5,
+          6
+        ],
+        [
+          -3,
+          4,
+          6,
+          5
+        ]
+      ]
+    },
+    {
+      "id": "M",
+      "name": "Mooring Chimney",
+      "region": "tide",
+      "position": [
+        42,
+        47
+      ],
+      "radius": 5,
+      "size": [
+        8,
+        8
+      ],
+      "lobes": [
+        [
+          -5,
+          2,
+          6,
+          6
+        ],
+        [
+          4,
+          -2,
+          6,
+          4
+        ]
+      ]
+    },
+    {
+      "id": "Q",
+      "name": "Flooded Lock",
+      "region": "tide",
+      "position": [
+        86,
+        51
+      ],
+      "radius": 5,
+      "size": [
+        7,
+        8
+      ],
+      "lobes": [
+        [
+          3,
+          -4,
+          5,
+          5
+        ],
+        [
+          -4,
+          5,
+          5,
+          4
+        ]
+      ]
+    },
+    {
+      "id": "E",
+      "name": "East Bay",
+      "region": "tide",
+      "position": [
+        131,
+        48
+      ],
+      "radius": 5,
+      "size": [
+        9,
+        6
+      ],
+      "lobes": [
+        [
+          6,
+          -1,
+          6,
+          5
+        ]
+      ]
+    },
+    {
+      "id": "K",
+      "name": "Kelp Cathedral",
+      "region": "kelp",
+      "position": [
+        168,
+        18
+      ],
+      "radius": 5,
+      "size": [
+        10,
+        8
+      ],
+      "lobes": [
+        [
+          -4,
+          -3,
+          6,
+          5
+        ],
+        [
+          5,
+          3,
+          6,
+          5
+        ]
+      ]
+    },
+    {
+      "id": "B",
+      "name": "Benthos",
+      "region": "kelp",
+      "position": [
+        214,
+        26
+      ],
+      "radius": 8,
+      "station": 1,
+      "dock": [213, 32]
+    },
+    {
+      "id": "P",
+      "name": "Pump Refuge",
+      "region": "kelp",
+      "position": [
+        270,
+        20
+      ],
+      "radius": 5,
+      "size": [
+        8,
+        8
+      ]
+    },
+    {
+      "id": "V",
+      "name": "Vent Gallery",
+      "region": "kelp",
+      "position": [
+        173,
+        47
+      ],
+      "radius": 5,
+      "size": [
+        8,
+        7
+      ],
+      "lobes": [
+        [
+          -4,
+          3,
+          5,
+          5
+        ],
+        [
+          4,
+          -4,
+          5,
+          5
+        ]
+      ]
+    },
+    {
+      "id": "N",
+      "name": "Old Relay",
+      "region": "kelp",
+      "position": [
+        221,
+        53
+      ],
+      "radius": 5,
+      "size": [
+        6,
+        6
+      ]
+    },
+    {
+      "id": "S",
+      "name": "Pipe Junction",
+      "region": "kelp",
+      "position": [
+        267,
+        52
+      ],
+      "radius": 5,
+      "size": [
+        10,
+        7
+      ],
+      "lobes": [
+        [
+          -5,
+          1,
+          6,
+          5
+        ],
+        [
+          6,
+          -2,
+          6,
+          6
+        ]
+      ]
+    },
+    {
+      "id": "R",
+      "name": "Broken Ribs",
+      "region": "works",
+      "position": [
+        172,
+        73
+      ],
+      "radius": 5,
+      "size": [
+        8,
+        7
+      ],
+      "lobes": [
+        [
+          -4,
+          -2,
+          5,
+          5
+        ],
+        [
+          4,
+          2,
+          6,
+          5
+        ]
+      ]
+    },
+    {
+      "id": "C",
+      "name": "Cormorant",
+      "region": "works",
+      "position": [
+        222,
+        75
+      ],
+      "radius": 8,
+      "station": 2,
+      "dock": [222, 82]
+    },
+    {
+      "id": "Y",
+      "name": "Freight Yard",
+      "region": "works",
+      "position": [
+        274,
+        72
+      ],
+      "radius": 5,
+      "size": [
+        8,
+        8
+      ],
+      "lobes": [
+        [
+          4,
+          -4,
+          6,
+          4
+        ],
+        [
+          -5,
+          3,
+          5,
+          5
+        ]
+      ]
+    },
+    {
+      "id": "Z",
+      "name": "Workshop Approach",
+      "region": "works",
+      "position": [
+        168,
+        89
+      ],
+      "radius": 5,
+      "size": [
+        6,
+        7
+      ],
+      "lobes": [
+        [
+          3,
+          2,
+          6,
+          5
+        ]
+      ]
+    },
+    {
+      "id": "U",
+      "name": "Lower Gantry",
+      "region": "works",
+      "position": [
+        222,
+        96
+      ],
+      "radius": 5,
+      "size": [
+        9,
+        7
+      ],
+      "lobes": [
+        [
+          5,
+          -2,
+          6,
+          5
+        ]
+      ]
+    },
+    {
+      "id": "A",
+      "name": "Anchor Hall",
+      "region": "works",
+      "position": [
+        275,
+        96
+      ],
+      "radius": 5,
+      "size": [
+        9,
+        8
+      ],
+      "lobes": [
+        [
+          5,
+          2,
+          6,
+          5
+        ]
+      ]
+    },
+    {
+      "id": "O",
+      "name": "Trench Refuge",
+      "region": "deep",
+      "position": [
+        42,
+        120
+      ],
+      "radius": 5,
+      "size": [
+        9,
+        7
+      ],
+      "lobes": [
+        [
+          -4,
+          2,
+          6,
+          5
+        ],
+        [
+          6,
+          2,
+          6,
+          4
+        ]
+      ]
+    },
+    {
+      "id": "J",
+      "name": "Basalt Junction",
+      "region": "deep",
+      "position": [
+        126,
+        123
+      ],
+      "radius": 5,
+      "size": [
+        8,
+        6
+      ]
+    },
+    {
+      "id": "H",
+      "name": "Pressure Boundary",
+      "region": "deep",
+      "position": [
+        187,
+        102
+      ],
+      "radius": 5,
+      "size": [
+        6,
+        5
+      ]
+    },
+    {
+      "id": "D",
+      "name": "Deep Anchor",
+      "region": "deep",
+      "position": [
+        44,
+        145
+      ],
+      "radius": 8,
+      "station": 3,
+      "dock": [44, 152]
+    },
+    {
+      "id": "G",
+      "name": "Glass Chimney",
+      "region": "deep",
+      "position": [
+        132,
+        143
+      ],
+      "radius": 5,
+      "size": [
+        8,
+        6
+      ],
+      "lobes": [
+        [
+          -3,
+          1,
+          5,
+          5
+        ]
+      ]
+    },
+    {
+      "id": "I",
+      "name": "Jet Approach",
+      "region": "deep",
+      "position": [
+        211,
+        139
+      ],
+      "radius": 5,
+      "size": [
+        9,
+        8
+      ],
+      "lobes": [
+        [
+          3,
+          -3,
+          6,
+          5
+        ],
+        [
+          -5,
+          2,
+          5,
+          5
+        ]
+      ]
+    },
+    {
+      "id": "W",
+      "name": "Abandoned tender",
+      "region": "tide",
+      "position": [
+        17,
+        33
+      ],
+      "radius": 4,
+      "pickup": {
+        "kind": "cutter",
+        "amount": 1
+      }
+    },
+    {
+      "id": "TC",
+      "name": "Hidden mooring cove",
+      "region": "tide",
+      "position": [
+        128,
+        8
+      ],
+      "radius": 4,
+      "pickup": {
+        "kind": "credits",
+        "amount": 40
+      }
+    },
+    {
+      "id": "BR",
+      "name": "Old relay compartment",
+      "region": "kelp",
+      "position": [
+        185,
+        6
+      ],
+      "radius": 4,
+      "pickup": {
+        "kind": "thruster",
+        "amount": 1
+      }
+    },
+    {
+      "id": "BC",
+      "name": "Hidden silt pocket",
+      "region": "kelp",
+      "position": [
+        303,
+        36
+      ],
+      "radius": 4,
+      "pickup": {
+        "kind": "credits",
+        "amount": 90
+      }
+    },
+    {
+      "id": "CW",
+      "name": "Sealed workshop",
+      "region": "works",
+      "position": [
+        147,
+        86
+      ],
+      "radius": 4,
+      "pickup": {
+        "kind": "seal",
+        "amount": 1
+      }
+    },
+    {
+      "id": "CC",
+      "name": "Hidden wreck compartment",
+      "region": "works",
+      "position": [
+        300,
+        83
+      ],
+      "radius": 4,
+      "pickup": {
+        "kind": "hull",
+        "amount": 1
+      }
+    },
+    {
+      "id": "DL",
+      "name": "Hidden trench cove",
+      "region": "deep",
+      "position": [
+        22,
+        139
+      ],
+      "radius": 4,
+      "pickup": {
+        "kind": "lens",
+        "amount": 1
+      }
+    },
+    {
+      "id": "DC",
+      "name": "Hidden jet cove",
+      "region": "deep",
+      "position": [
+        249,
+        149
+      ],
+      "radius": 4,
+      "pickup": {
+        "kind": "credits",
+        "amount": 150
+      }
+    }
+  ],
+  "routes": [
+    {
+      "from": "T",
+      "to": "L",
+      "radius": 3.7,
+      "via": [
+        [
+          53,
+          14
+        ],
+        [
+          65,
+          23
+        ]
+      ],
+      "caverns": [
+        {
+          "at": 0.55,
+          "radii": [
+            8,
+            6
+          ]
+        }
+      ],
+      "obstacles": [
+        {
+          "id": "T_L_rock",
+          "kind": "pillar",
+          "at": 0.55,
+          "radii": [
+            1.8,
+            2.8
+          ]
+        }
+      ]
+    },
+    {
+      "from": "L",
+      "to": "F",
+      "radius": 3.7,
+      "via": [
+        [
+          96,
+          11
+        ],
+        [
+          114,
+          20
+        ]
+      ],
+      "caverns": [
+        {
+          "at": 0.48,
+          "radii": [
+            8,
+            6
+          ]
+        }
+      ],
+      "obstacles": [
+        {
+          "id": "L_F_rock",
+          "kind": "pillar",
+          "at": 0.48,
+          "radii": [
+            1.8,
+            2.6
+          ]
+        }
+      ]
+    },
+    {
+      "from": "F",
+      "to": "E",
+      "radius": 3.7,
+      "via": [
+        [
+          139,
+          37
+        ],
+        [
+          123,
+          42
+        ]
+      ]
+    },
+    {
+      "from": "T",
+      "to": "M",
+      "radius": 3.7,
+      "via": [
+        [
+          30,
+          32
+        ],
+        [
+          40,
+          38
+        ]
+      ]
+    },
+    {
+      "from": "M",
+      "to": "Q",
+      "radius": 3.7,
+      "via": [
+        [
+          58,
+          56
+        ],
+        [
+          72,
+          46
+        ]
+      ],
+      "caverns": [
+        {
+          "at": 0.42,
+          "radii": [
+            8,
+            7
+          ]
+        }
+      ],
+      "obstacles": [
+        {
+          "id": "M_Q_rock",
+          "kind": "pillar",
+          "at": 0.42,
+          "radii": [
+            2.2,
+            3.2
+          ]
+        }
+      ]
+    },
+    {
+      "from": "Q",
+      "to": "E",
+      "radius": 3.7,
+      "via": [
+        [
+          102,
+          43
+        ],
+        [
+          118,
+          56
+        ]
+      ],
+      "caverns": [
+        {
+          "at": 0.5,
+          "radii": [
+            9,
+            6
+          ]
+        }
+      ],
+      "obstacles": [
+        {
+          "id": "Q_E_rock",
+          "kind": "pillar",
+          "at": 0.5,
+          "radii": [
+            2.2,
+            2.6
+          ]
+        }
+      ]
+    },
+    {
+      "from": "L",
+      "to": "Q",
+      "radius": 3.7,
+      "via": [
+        [
+          87,
+          30
+        ],
+        [
+          72,
+          40
+        ]
+      ]
+    },
+    {
+      "from": "M",
+      "to": "W",
+      "radius": 2.8,
+      "via": [
+        [
+          26,
+          50
+        ],
+        [
+          18,
+          43
+        ]
+      ]
+    },
+    {
+      "from": "F",
+      "to": "TC",
+      "radius": 2.8,
+      "via": [
+        [
+          134,
+          22
+        ],
+        [
+          121,
+          15
+        ]
+      ]
+    },
+    {
+      "from": "K",
+      "to": "B",
+      "radius": 3.7,
+      "via": [
+        [
+          181,
+          22
+        ],
+        [
+          199,
+          17
+        ]
+      ]
+    },
+    {
+      "from": "B",
+      "to": "P",
+      "radius": 3.7,
+      "via": [
+        [
+          233,
+          31
+        ],
+        [
+          249,
+          13
+        ]
+      ],
+      "caverns": [
+        {
+          "at": 0.55,
+          "radii": [
+            9,
+            7
+          ]
+        }
+      ],
+      "obstacles": [
+        {
+          "id": "B_P_rock",
+          "kind": "pillar",
+          "at": 0.55,
+          "radii": [
+            2.3,
+            3.6
+          ]
+        }
+      ]
+    },
+    {
+      "from": "P",
+      "to": "S",
+      "radius": 3.7,
+      "via": [
+        [
+          284,
+          31
+        ],
+        [
+          276,
+          40
+        ]
+      ],
+      "caverns": [
+        {
+          "at": 0.5,
+          "radii": [
+            7,
+            9
+          ]
+        }
+      ],
+      "obstacles": [
+        {
+          "id": "P_S_rock",
+          "kind": "pillar",
+          "at": 0.5,
+          "radii": [
+            2.2,
+            2.4
+          ]
+        }
+      ]
+    },
+    {
+      "from": "S",
+      "to": "N",
+      "radius": 3.7,
+      "via": [
+        [
+          251,
+          45
+        ],
+        [
+          236,
+          61
+        ]
+      ]
+    },
+    {
+      "from": "N",
+      "to": "V",
+      "radius": 3.7,
+      "via": [
+        [
+          205,
+          44
+        ],
+        [
+          187,
+          55
+        ]
+      ]
+    },
+    {
+      "from": "K",
+      "to": "V",
+      "radius": 3.7,
+      "via": [
+        [
+          176,
+          29
+        ],
+        [
+          163,
+          38
+        ]
+      ]
+    },
+    {
+      "from": "B",
+      "to": "N",
+      "radius": 3.7,
+      "via": [
+        [
+          225,
+          36
+        ],
+        [
+          214,
+          45
+        ]
+      ]
+    },
+    {
+      "from": "N",
+      "to": "BR",
+      "radius": 2.8,
+      "requires": [
+        "cutter"
+      ],
+      "via": [
+        [
+          239,
+          44
+        ],
+        [
+          242,
+          10
+        ],
+        [
+          211,
+          8
+        ]
+      ],
+      "gate": {
+        "position": [
+          197,
+          8
+        ],
+        "axis": "x"
+      }
+    },
+    {
+      "from": "P",
+      "to": "BC",
+      "radius": 2.8,
+      "via": [
+        [
+          291,
+          19
+        ],
+        [
+          303,
+          26
+        ]
+      ]
+    },
+    {
+      "from": "R",
+      "to": "C",
+      "radius": 3.7,
+      "via": [
+        [
+          190,
+          67
+        ],
+        [
+          205,
+          79
+        ]
+      ],
+      "caverns": [
+        {
+          "at": 0.48,
+          "radii": [
+            9,
+            7
+          ]
+        }
+      ],
+      "obstacles": [
+        {
+          "id": "R_C_rock",
+          "kind": "pillar",
+          "at": 0.48,
+          "radii": [
+            2.2,
+            3.4
+          ]
+        }
+      ]
+    },
+    {
+      "from": "C",
+      "to": "Y",
+      "radius": 3.7,
+      "via": [
+        [
+          242,
+          84
+        ],
+        [
+          259,
+          69
+        ]
+      ]
+    },
+    {
+      "from": "Y",
+      "to": "A",
+      "radius": 3.7,
+      "via": [
+        [
+          286,
+          81
+        ],
+        [
+          269,
+          89
+        ]
+      ]
+    },
+    {
+      "from": "A",
+      "to": "U",
+      "radius": 3.7,
+      "via": [
+        [
+          260,
+          91
+        ],
+        [
+          239,
+          101
+        ]
+      ]
+    },
+    {
+      "from": "U",
+      "to": "Z",
+      "radius": 3.7,
+      "via": [
+        [
+          204,
+          89
+        ],
+        [
+          186,
+          101
+        ]
+      ],
+      "caverns": [
+        {
+          "at": 0.45,
+          "radii": [
+            8,
+            6
+          ]
+        }
+      ],
+      "obstacles": [
+        {
+          "id": "U_Z_rock",
+          "kind": "pillar",
+          "at": 0.45,
+          "radii": [
+            2.0,
+            2.8
+          ]
+        }
+      ]
+    },
+    {
+      "from": "R",
+      "to": "Z",
+      "radius": 3.7,
+      "via": [
+        [
+          162,
+          79
+        ]
+      ]
+    },
+    {
+      "from": "C",
+      "to": "U",
+      "radius": 3.7,
+      "via": [
+        [
+          231,
+          86
+        ]
+      ]
+    },
+    {
+      "from": "Z",
+      "to": "CW",
+      "radius": 2.8,
+      "requires": [
+        "cutter"
+      ],
+      "via": [
+        [
+          157,
+          88
+        ]
+      ]
+    },
+    {
+      "from": "Y",
+      "to": "CC",
+      "radius": 2.8,
+      "requires": [
+        "cutter"
+      ],
+      "via": [
+        [
+          290,
+          69
+        ],
+        [
+          304,
+          74
+        ]
+      ],
+      "gate": {
+        "position": [
+          302,
+          76
+        ],
+        "axis": "y"
+      }
+    },
+    {
+      "from": "H",
+      "to": "J",
+      "radius": 3.0,
+      "requires": [
+        "seal"
+      ],
+      "via": [
+        [
+          174,
+          106
+        ],
+        [
+          161,
+          117
+        ],
+        [
+          145,
+          115
+        ]
+      ]
+    },
+    {
+      "from": "J",
+      "to": "O",
+      "radius": 3.7,
+      "via": [
+        [
+          104,
+          116
+        ],
+        [
+          85,
+          129
+        ],
+        [
+          62,
+          113
+        ]
+      ],
+      "caverns": [
+        {
+          "at": 0.45,
+          "radii": [
+            11,
+            7
+          ]
+        }
+      ],
+      "obstacles": [
+        {
+          "id": "J_O_rock",
+          "kind": "pillar",
+          "at": 0.45,
+          "radii": [
+            2.5,
+            3.6
+          ]
+        }
+      ]
+    },
+    {
+      "from": "O",
+      "to": "D",
+      "radius": 3.7,
+      "via": [
+        [
+          34,
+          129
+        ],
+        [
+          51,
+          135
+        ]
+      ]
+    },
+    {
+      "from": "D",
+      "to": "G",
+      "radius": 3.7,
+      "via": [
+        [
+          62,
+          138
+        ],
+        [
+          85,
+          148
+        ],
+        [
+          105,
+          139
+        ]
+      ],
+      "caverns": [
+        {
+          "at": 0.55,
+          "radii": [
+            10,
+            7
+          ]
+        }
+      ],
+      "obstacles": [
+        {
+          "id": "D_G_rock",
+          "kind": "pillar",
+          "at": 0.55,
+          "radii": [
+            2.3,
+            3.2
+          ]
+        }
+      ]
+    },
+    {
+      "from": "G",
+      "to": "I",
+      "radius": 3.7,
+      "via": [
+        [
+          156,
+          148
+        ],
+        [
+          178,
+          135
+        ],
+        [
+          195,
+          145
+        ]
+      ],
+      "caverns": [
+        {
+          "at": 0.52,
+          "radii": [
+            11,
+            7
+          ]
+        }
+      ],
+      "obstacles": [
+        {
+          "id": "G_I_rock",
+          "kind": "pillar",
+          "at": 0.52,
+          "radii": [
+            2.7,
+            3.6
+          ]
+        }
+      ]
+    },
+    {
+      "from": "I",
+      "to": "J",
+      "radius": 3.7,
+      "via": [
+        [
+          189,
+          126
+        ],
+        [
+          167,
+          136
+        ],
+        [
+          147,
+          127
+        ]
+      ],
+      "caverns": [
+        {
+          "at": 0.5,
+          "radii": [
+            9,
+            7
+          ]
+        }
+      ],
+      "obstacles": [
+        {
+          "id": "I_J_rock",
+          "kind": "pillar",
+          "at": 0.5,
+          "radii": [
+            2.1,
+            3.4
+          ]
+        }
+      ]
+    },
+    {
+      "from": "J",
+      "to": "G",
+      "radius": 3.0,
+      "requires": [
+        "thruster"
+      ],
+      "via": [
+        [
+          123,
+          133
+        ]
+      ]
+    },
+    {
+      "from": "O",
+      "to": "DL",
+      "radius": 2.8,
+      "via": [
+        [
+          20,
+          125
+        ],
+        [
+          13,
+          134
+        ]
+      ]
+    },
+    {
+      "from": "I",
+      "to": "DC",
+      "radius": 2.8,
+      "requires": [
+        "thruster"
+      ],
+      "via": [
+        [
+          229,
+          135
+        ],
+        [
+          243,
+          143
+        ]
+      ]
+    },
+    {
+      "from": "F",
+      "to": "K",
+      "radius": 3.7,
+      "via": [
+        [
+          138,
+          37
+        ],
+        [
+          153,
+          29
+        ]
+      ],
+      "caverns": [
+        {
+          "at": 0.5,
+          "radii": [
+            8,
+            7
+          ]
+        }
+      ],
+      "obstacles": [
+        {
+          "id": "F_K_rock",
+          "kind": "pillar",
+          "at": 0.5,
+          "radii": [
+            1.8,
+            3.5
+          ]
+        }
+      ]
+    },
+    {
+      "from": "E",
+      "to": "V",
+      "radius": 3.0,
+      "requires": [
+        "cutter"
+      ],
+      "via": [
+        [
+          145,
+          54
+        ],
+        [
+          160,
+          43
+        ]
+      ]
+    },
+    {
+      "from": "S",
+      "to": "Y",
+      "radius": 3.7,
+      "via": [
+        [
+          258,
+          62
+        ]
+      ]
+    },
+    {
+      "from": "N",
+      "to": "C",
+      "radius": 3.0,
+      "requires": [
+        "thruster"
+      ],
+      "via": [
+        [
+          224,
+          64
+        ]
+      ]
+    },
+    {
+      "from": "U",
+      "to": "H",
+      "radius": 3.7,
+      "via": [
+        [
+          205,
+          99
+        ]
+      ]
+    },
+    {
+      "from": "Q",
+      "to": "J",
+      "radius": 3.0,
+      "requires": [
+        "seal",
+        "thruster"
+      ],
+      "via": [
+        [
+          67,
+          70
+        ],
+        [
+          91,
+          88
+        ],
+        [
+          73,
+          106
+        ],
+        [
+          103,
+          115
+        ]
+      ],
+      "caverns": [
+        {
+          "at": 0.28,
+          "radii": [
+            10,
+            7
+          ]
+        },
+        {
+          "at": 0.55,
+          "radii": [
+            8,
+            7
+          ]
+        }
+      ]
+    }
+  ],
+  "layout_version": 3,
+  "terrain": {
+    "style": "organic",
+    "seed": 7419
+  },
+  "obstacles": [
+    {
+      "id": "lantern-tooth",
+      "kind": "stalactite",
+      "room": "L",
+      "polygon": [
+        [
+          -7,
+          -8
+        ],
+        [
+          -3,
+          -9
+        ],
+        [
+          -4,
+          -1
+        ]
+      ]
+    },
+    {
+      "id": "shelf-spire",
+      "kind": "stalagmite",
+      "room": "F",
+      "polygon": [
+        [
+          3,
+          9
+        ],
+        [
+          7,
+          9
+        ],
+        [
+          5,
+          1
+        ]
+      ]
+    },
+    {
+      "id": "mooring-rock",
+      "kind": "pillar",
+      "room": "M",
+      "offset": [
+        -4,
+        6
+      ],
+      "radii": [
+        1.7,
+        2.0
+      ]
+    },
+    {
+      "id": "lock-overhang",
+      "kind": "shelf",
+      "room": "Q",
+      "polygon": [
+        [
+          -8,
+          -5
+        ],
+        [
+          -3,
+          -5
+        ],
+        [
+          -3,
+          -3
+        ],
+        [
+          -8,
+          -2
+        ]
+      ]
+    },
+    {
+      "id": "kelp-column-west",
+      "kind": "pillar",
+      "room": "K",
+      "offset": [
+        -5,
+        1
+      ],
+      "radii": [
+        1.5,
+        4.2
+      ]
+    },
+    {
+      "id": "kelp-column-east",
+      "kind": "pillar",
+      "room": "K",
+      "offset": [
+        5,
+        -1
+      ],
+      "radii": [
+        1.5,
+        3.5
+      ]
+    },
+    {
+      "id": "vent-tooth",
+      "kind": "stalactite",
+      "room": "V",
+      "polygon": [
+        [
+          -7,
+          -7
+        ],
+        [
+          -3,
+          -9
+        ],
+        [
+          -4,
+          -1
+        ]
+      ]
+    },
+    {
+      "id": "silt-spire",
+      "kind": "stalagmite",
+      "room": "S",
+      "polygon": [
+        [
+          4,
+          9
+        ],
+        [
+          8,
+          7
+        ],
+        [
+          5,
+          1
+        ]
+      ]
+    },
+    {
+      "id": "rib-one",
+      "kind": "wreck-rib",
+      "room": "R",
+      "polygon": [
+        [
+          -8,
+          -5
+        ],
+        [
+          -7,
+          -7
+        ],
+        [
+          -3,
+          -3
+        ],
+        [
+          -3,
+          -1
+        ]
+      ]
+    },
+    {
+      "id": "rib-two",
+      "kind": "wreck-rib",
+      "room": "R",
+      "polygon": [
+        [
+          4,
+          -7
+        ],
+        [
+          6,
+          -7
+        ],
+        [
+          5,
+          -1
+        ],
+        [
+          3,
+          -2
+        ]
+      ]
+    },
+    {
+      "id": "yard-boulder",
+      "kind": "pillar",
+      "room": "Y",
+      "offset": [
+        4,
+        3
+      ],
+      "radii": [
+        2.0,
+        2.2
+      ]
+    },
+    {
+      "id": "yard-shelf",
+      "kind": "shelf",
+      "room": "Y",
+      "polygon": [
+        [
+          -10,
+          3
+        ],
+        [
+          -5,
+          2
+        ],
+        [
+          -5,
+          4
+        ],
+        [
+          -10,
+          6
+        ]
+      ]
+    },
+    {
+      "id": "gantry-rib",
+      "kind": "wreck-rib",
+      "room": "U",
+      "polygon": [
+        [
+          4,
+          -8
+        ],
+        [
+          7,
+          -6
+        ],
+        [
+          4,
+          1
+        ],
+        [
+          3,
+          -1
+        ]
+      ]
+    },
+    {
+      "id": "anchor-spire",
+      "kind": "stalagmite",
+      "room": "A",
+      "polygon": [
+        [
+          -7,
+          10
+        ],
+        [
+          -3,
+          11
+        ],
+        [
+          -4,
+          2
+        ]
+      ]
+    },
+    {
+      "id": "basalt-tooth",
+      "kind": "stalactite",
+      "room": "J",
+      "polygon": [
+        [
+          -8,
+          -6
+        ],
+        [
+          -5,
+          -7
+        ],
+        [
+          -5,
+          0
+        ]
+      ]
+    },
+    {
+      "id": "refuge-rock",
+      "kind": "pillar",
+      "room": "O",
+      "offset": [
+        -5,
+        2
+      ],
+      "radii": [
+        1.8,
+        2.8
+      ]
+    },
+    {
+      "id": "glass-spire",
+      "kind": "stalagmite",
+      "room": "G",
+      "polygon": [
+        [
+          4,
+          7
+        ],
+        [
+          7,
+          6
+        ],
+        [
+          5,
+          0
+        ]
+      ]
+    },
+    {
+      "id": "jet-shelf",
+      "kind": "shelf",
+      "room": "I",
+      "polygon": [
+        [
+          -10,
+          -5
+        ],
+        [
+          -4,
+          -6
+        ],
+        [
+          -4,
+          -4
+        ],
+        [
+          -10,
+          -2
+        ]
+      ]
+    }
+  ],
+  "scenery": {
+    "version": 1,
+    "seed": 1907,
+    "landmarks": [
+      {"id": "harbor-tender", "room": "T", "kind": "tender", "offset": [-36, 42]},
+      {"id": "lantern-buoys", "room": "L", "kind": "buoy", "offset": [28, 38]},
+      {"id": "mooring-anchor", "room": "M", "kind": "anchor", "offset": [-30, 44]},
+      {"id": "flooded-lock-winch", "room": "Q", "kind": "winch", "offset": [-32, 40]},
+      {"id": "cathedral-pump", "room": "K", "kind": "pump", "offset": [-42, 50]},
+      {"id": "vent-gallery-pump", "room": "V", "kind": "pump", "offset": [40, 46]},
+      {"id": "pump-refuge", "room": "P", "kind": "pump", "offset": [30, 44]},
+      {"id": "relay-antenna", "room": "N", "kind": "relay", "offset": [-32, 45]},
+      {"id": "broken-freighter", "room": "R", "kind": "wreck", "offset": [-40, 46]},
+      {"id": "anchor-hall-crane", "room": "A", "kind": "crane", "offset": [-40, 40]},
+      {"id": "freight-yard-crane", "room": "Y", "kind": "crane", "offset": [-36, 48]},
+      {"id": "workshop-winch", "room": "Z", "kind": "winch", "offset": [-30, 40]},
+      {"id": "lower-gantry-wreck", "room": "U", "kind": "wreck", "offset": [38, 46]},
+      {"id": "anchor-hall", "room": "A", "kind": "anchor", "offset": [30, 46]},
+      {"id": "trench-refuge-glass", "room": "O", "kind": "crystal", "offset": [-36, 44]},
+      {"id": "deep-anchor-vent", "room": "D", "kind": "vent", "offset": [40, 50]},
+      {"id": "glass-chimney", "room": "G", "kind": "crystal", "offset": [-34, 46]},
+      {"id": "jet-approach-vent", "room": "I", "kind": "vent", "offset": [40, 50]}
+    ]
+  },
+  "freight_timing": {
+    "pixels_per_second": 7,
+    "slack_seconds": 45
+  }
+}

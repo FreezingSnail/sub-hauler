@@ -9,6 +9,8 @@
 #include "src/generated/pilot_sprites.hpp"
 #include "src/generated/world.hpp"
 #include "src/generated/cargo.hpp"
+#include "src/generated/music.hpp"
+#include "src/generated/exploration.hpp"
 
 // First byte of fxdata/tables/world.bin: tile row 0 is inside the sealed
 // two-tile border, so all eight tiles are solid (bit 1).
@@ -41,8 +43,26 @@ static_assert(leviathan == hauler + PILOT_SPRITE_BYTES,
               "pilot sheets are appended in generated order");
 static_assert(minnow == leviathan + PILOT_SPRITE_BYTES,
               "pilot sheets are appended in generated order");
-static_assert(FX_DATA_BYTES == minnow + PILOT_SPRITE_BYTES,
-              "FX image size must end after the pilot sheets");
+static_assert(sh_harbor_bubbles == minnow + PILOT_SPRITE_BYTES,
+              "music must follow the pilot sheets");
+static_assert(sh_kelp_drift == sh_harbor_bubbles + music_data::sh_harbor_bubbles_bytes,
+              "Kelp Drift must follow Harbor Bubbles");
+static_assert(sh_sonar_lullaby == sh_kelp_drift + music_data::sh_kelp_drift_bytes,
+              "Sonar Lullaby must follow Kelp Drift");
+static_assert(sh_abyssal_glass == sh_sonar_lullaby + music_data::sh_sonar_lullaby_bytes,
+              "Abyssal Glass must follow Sonar Lullaby");
+static_assert(sh_tidepool_waltz == sh_abyssal_glass + music_data::sh_abyssal_glass_bytes,
+              "Tidepool Waltz must follow Abyssal Glass");
+static_assert(sh_bubblejet_run == sh_tidepool_waltz + music_data::sh_tidepool_waltz_bytes,
+              "Bubblejet Run must follow Tidepool Waltz");
+static_assert(explorationTiles == sh_bubblejet_run + music_data::sh_bubblejet_run_bytes,
+              "active level is appended after the unchanged music streams");
+static_assert(explorationChart == explorationTiles + world::WORLD_BYTES, "active chart follows tiles");
+static_assert(explorationObjects == explorationChart + world::CHART_BYTES, "objects follow active chart");
+static_assert(txt_found_cutter == explorationObjects + exploration_data::OBJECT_BYTES, "labels follow object stream");
+constexpr uint32_t NATIVE_TERRAIN_BYTES = static_cast<uint32_t>(world::PIXELS_X) * world::PIXELS_Y / 8;
+static_assert(explorationTerrain == txt_dev_noclip + sizeof("DEV NOCLIP  A FAST"), "native terrain appends after unchanged labels");
+static_assert(FX_DATA_BYTES == explorationTerrain + NATIVE_TERRAIN_BYTES, "FX image ends after native terrain");
 
 // Cargo block layout: fixed counts and back-to-back hull blocks.
 static_assert(CARGO_MINNOW_OFFSET == 0, "MINNOW is the first hull block");
@@ -90,6 +110,21 @@ void setup() {
 
     // Probe the first byte of each appended world table. The static asserts
     // above tie their offsets and sizes to the generated metadata.
+    FX::seekData(explorationObjects);
+    for(uint16_t i=0;i<exploration_data::OBJECT_BYTES;++i)
+        ok = (FX::readPendingUInt8()==exploration_data::byteAt(i)) && ok;
+    FX::readEnd();
+    FX::seekData(explorationTiles);
+    ok = (FX::readPendingUInt8()==WORLD_FIRST_BYTE) && ok;
+    FX::readEnd();
+    // The origin tile is interior rock with its deterministic dark speck at
+    // pixel (0,0). Probe both ends of the much larger streamed section.
+    FX::seekData(explorationTerrain);
+    ok = (FX::readPendingUInt8() == 0xFE) && ok;
+    FX::readEnd();
+    FX::seekData(static_cast<uint24_t>(explorationTerrain + NATIVE_TERRAIN_BYTES - 1));
+    ok = (FX::readPendingUInt8() == 0xFF) && ok;
+    FX::readEnd();
     FX::seekData(worldTiles);
     const uint8_t worldFirst = FX::readPendingUInt8();
     FX::readEnd();
@@ -111,6 +146,29 @@ void setup() {
     ok = ok && cargoMaskLo == CARGO_FIRST_MASK_LO &&
          cargoMaskHi == CARGO_FIRST_MASK_HI &&
          cargoPosKind == CARGO_FIRST_POSKIND;
+
+    // All music streams start with compact streaming-loop framing (0xC1).
+    FX::seekData(sh_harbor_bubbles);
+    const uint8_t harborMagic = FX::readPendingUInt8();
+    FX::readEnd();
+    FX::seekData(sh_kelp_drift);
+    const uint8_t kelpMagic = FX::readPendingUInt8();
+    FX::readEnd();
+    FX::seekData(sh_sonar_lullaby);
+    const uint8_t sonarMagic = FX::readPendingUInt8();
+    FX::readEnd();
+    ok = ok && harborMagic == 0xC1 && kelpMagic == 0xC1 && sonarMagic == 0xC1;
+
+    FX::seekData(sh_abyssal_glass);
+    const uint8_t glassMagic = FX::readPendingUInt8();
+    FX::readEnd();
+    FX::seekData(sh_tidepool_waltz);
+    const uint8_t waltzMagic = FX::readPendingUInt8();
+    FX::readEnd();
+    FX::seekData(sh_bubblejet_run);
+    const uint8_t bubblejetMagic = FX::readPendingUInt8();
+    FX::readEnd();
+    ok = ok && glassMagic == 0xC1 && waltzMagic == 0xC1 && bubblejetMagic == 0xC1;
 
     Serial.println(ok ? F("P") : F("F"));
 }

@@ -3,8 +3,12 @@
 #include <stdint.h>
 
 #include "game.hpp"
+#if SH_FEATURE_EXPLORATION
+#include "exploration_view.hpp"
+#endif
 
 #if defined(__AVR__)
+#include "cave_render.hpp"
 #include "common.hpp"
 #endif
 
@@ -39,8 +43,29 @@ constexpr uint8_t kCargoPip = 4;
 constexpr uint8_t kHintX = 3;
 constexpr uint8_t kHintY = 56;
 
+// Opaque HUD plates. The map uses black rock and white water, so each cluster
+// clears its own backing before drawing to keep labels readable over either.
+constexpr uint8_t kTopBackingX = 0;
+constexpr uint8_t kTopBackingY = 0;
+constexpr uint8_t kTopBackingW = 128;
+constexpr uint8_t kTopBackingH = 9;
+
+constexpr uint8_t kGaugeBackingX = 0;
+constexpr uint8_t kGaugeBackingY = static_cast<uint8_t>(kGaugeY - 2);
+constexpr uint8_t kGaugeBackingW = static_cast<uint8_t>(kGaugeX + kGaugeW + 4);
+constexpr uint8_t kGaugeBackingH = static_cast<uint8_t>(kGaugeH + 4);
+
+constexpr uint8_t kHintBackingX = 0;
+constexpr uint8_t kHintBackingY = static_cast<uint8_t>(kHintY - 1);
+constexpr uint8_t kHintBackingW = 128;
+constexpr uint8_t kHintBackingH = 9;
+
 #if defined(__AVR__)
 inline void draw(const game::State &state) {
+    // Black plates first, then the HUD clusters on top.
+    cave::fillRect(Arduboy2Base::sBuffer, kTopBackingX, kTopBackingY, kTopBackingW, kTopBackingH, false);
+    cave::fillRect(Arduboy2Base::sBuffer, kGaugeBackingX, kGaugeBackingY, kGaugeBackingW, kGaugeBackingH, false);
+
     // Air bar: outline plus a white fill proportional to the tank.
     text::normal();
     text::at(kAirLabelX, kAirLabelY);
@@ -49,8 +74,16 @@ inline void draw(const game::State &state) {
     const uint8_t airInnerW = static_cast<uint8_t>(kAirW - 2);
     const uint8_t airFill = static_cast<uint8_t>(static_cast<uint16_t>(state.air) * airInnerW / game::airCapacity(state));
     if (airFill > 0)
-        arduboy.fillRect(static_cast<int16_t>(kAirX + 1), static_cast<int16_t>(kAirY + 1), airFill, static_cast<uint8_t>(kAirH - 2), WHITE);
+        cave::fillRect(Arduboy2Base::sBuffer, static_cast<int16_t>(kAirX + 1), static_cast<int16_t>(kAirY + 1), airFill, static_cast<uint8_t>(kAirH - 2), true);
 
+#if SH_FEATURE_EXPLORATION
+    if (state.tools & exploration_data::CUTTER)
+        exploration_view::glyph(Arduboy2Base::sBuffer, 57, 2, 1);
+    if (state.tools & exploration_data::SEAL)
+        exploration_view::glyph(Arduboy2Base::sBuffer, 64, 2, 2);
+    if (state.tools & exploration_data::THRUSTER)
+        exploration_view::glyph(Arduboy2Base::sBuffer, 71, 2, 3);
+#endif
     // Ballast gauge: white fill grows from the bottom, the notch marks neutral
     // trim for the current cargo load.
     arduboy.drawRect(kGaugeX, kGaugeY, kGaugeW, kGaugeH, WHITE);
@@ -58,11 +91,11 @@ inline void draw(const game::State &state) {
     const uint8_t ballastFill = static_cast<uint8_t>(static_cast<uint16_t>(state.ballast) * gaugeInnerH / game::kBallastMax);
     if (ballastFill > 0) {
         const uint8_t fillY = static_cast<uint8_t>(kGaugeY + kGaugeH - 1 - ballastFill);
-        arduboy.fillRect(static_cast<int16_t>(kGaugeX + 1), fillY, static_cast<uint8_t>(kGaugeW - 2), ballastFill, WHITE);
+        cave::fillRect(Arduboy2Base::sBuffer, static_cast<int16_t>(kGaugeX + 1), fillY, static_cast<uint8_t>(kGaugeW - 2), ballastFill, true);
     }
     const int16_t neutral = game::neutralFor(state.cargo);
     const uint8_t notchY = static_cast<uint8_t>(kGaugeY + kGaugeH - 1 - static_cast<uint8_t>(neutral * gaugeInnerH / game::kBallastMax));
-    arduboy.fillRect(static_cast<int16_t>(kGaugeX + kGaugeW), notchY, 3, 1, WHITE);
+    cave::fillRect(Arduboy2Base::sBuffer, static_cast<int16_t>(kGaugeX + kGaugeW), notchY, 3, 1, true);
 
     // Cargo pips: four outline boxes, one filled per loaded unit.
     text::at(kCargoLabelX, kCargoLabelY);
@@ -71,9 +104,46 @@ inline void draw(const game::State &state) {
         const int16_t x = static_cast<int16_t>(kCargoX + i * kCargoStep);
         arduboy.drawRect(x, kCargoY, kCargoPip, kCargoPip, WHITE);
         if (i < state.cargo)
-            arduboy.fillRect(static_cast<int16_t>(x + 1), static_cast<int16_t>(kCargoY + 1), static_cast<uint8_t>(kCargoPip - 2), static_cast<uint8_t>(kCargoPip - 2), WHITE);
+            cave::fillRect(Arduboy2Base::sBuffer, static_cast<int16_t>(x + 1), static_cast<int16_t>(kCargoY + 1), static_cast<uint8_t>(kCargoPip - 2), static_cast<uint8_t>(kCargoPip - 2), true);
     }
 
+    cave::fillRect(Arduboy2Base::sBuffer, kHintBackingX, kHintBackingY, kHintBackingW, kHintBackingH, false);
+#if SH_DEV_MODE
+    text::at(kHintX, kHintY);
+    text::print(txt_dev_noclip);
+    return;
+#endif
+#if SH_FEATURE_EXPLORATION
+    uint24_t notice = 0;
+    if (state.discoveryTicks) {
+        const uint8_t kind = exploration_data::pickup(state.lastDiscovery).kind;
+        notice = kind == 1 ? txt_found_cutter : kind == 2 ? txt_found_seal : kind == 3 ? txt_found_thruster : kind == 4 ? txt_found_credits : kind == 5 ? txt_found_hull : txt_found_lens;
+    } else if (state.contactId != exploration::kNone) {
+        notice = state.contactId < exploration_data::PICKUP_COUNT ? txt_salvage_hint : txt_cut_hint;
+    } else {
+        for (uint8_t i = 0; i < exploration_data::GATE_COUNT; ++i) {
+            const exploration_data::Gate g = exploration_data::gate(i);
+            if (!exploration::closed(state, i, g) || !exploration::nearGate(state, g, 24))
+                continue;
+            notice = (g.required == exploration_data::CUTTER && (state.tools & exploration_data::CUTTER))         ? txt_cut_hint
+                     : ((g.required & exploration_data::SEAL) && !(state.tools & exploration_data::SEAL))         ? txt_need_seal
+                     : ((g.required & exploration_data::THRUSTER) && !(state.tools & exploration_data::THRUSTER)) ? txt_need_thruster
+                                                                                                                  : txt_need_cutter;
+        }
+    }
+    if (notice) {
+        text::at(kHintX, kHintY);
+        text::print(notice);
+        if (state.discoveryTicks) {
+            const exploration_data::Pickup p = exploration_data::pickup(state.lastDiscovery);
+            if (p.kind == 4) {
+                text::character(' ');
+                text::number(p.amount);
+            }
+        }
+        return;
+    }
+#endif
     // Locked M2 flight contract: D-pad only; A/B stay reserved. Two short
     // segments keep both thrust and ballast controls readable in one text row.
     text::at(kHintX, kHintY);

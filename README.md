@@ -11,7 +11,113 @@ model live in [`docs/design.md`](docs/design.md). The device-port sequence and
 compile-time feature-flag plan live in
 [`docs/roadmap.md`](docs/roadmap.md).
 
-## Status — 2026-10-24 (cargo-free resource pass)
+## Status — 2026-10-26 (chart performance and wall settlements)
+
+The device loads the authored map from [`levels/exploration.json`](levels/exploration.json):
+32 rooms, 42 passages, nine equipment gates and eight hidden cove rewards.
+The high-pressure region is lowest. Recover the cutter near Tidewall, then
+find the pressure seal and optional current thruster to open more routes.
+Hold still near finds or cutter grates for half a second; station rumors and
+bottom-line hints provide guidance. Small C/P/T HUD marks show owned tools.
+
+Passages wind through asymmetric caverns with changing widths. Thirty-one
+physical rock features add pillars, wall teeth, shelves and wreck ribs to the
+collision map. `make render-world` exports a labeled overview and the exact
+native scene pixels; `make dev` lets you inspect the whole world freely.
+
+Each region now has baked native scenery: layered stone and moorings in the
+Lantern Reaches, kelp and pump equipment around Benthos, worn hull plating and
+freighter wrecks in the Broken Works, and glass crystals and chimney vents in
+the trench. Eighteen larger landmarks and 126 smaller growths/scrap formations
+stay clear of navigation corridors and interactive markers. The image uses
+the same storage, reads and runtime code. `make render-world` also exports
+`build/world-render/game-world-regions.png`, eight native viewport crops at 4×.
+The Works walls use sparse broken seams and rivet runs aligned with the wall,
+with gaps and staggered placement rather than repeating rectangular panels.
+
+The four real docking points now sit on cave-wall ledges, with short piers
+and airlocks leading into inhabited rock cutaways. Tidewall has homes, Benthos
+has grow rooms, Cormorant has workshops, and Deep Anchor has pressure capsules.
+Each settlement contains four visible rooms. Navigation-room centres stay
+separate from berths; chart markers, auto-docking and home spawn use the new
+berth coordinates. Native views are exported to
+`build/world-render/game-world-settlements.png`.
+
+Cave boundaries are now reconstructed at native pixel resolution, with rounded
+noses and continuous slopes instead of square tile steps. Scenery roots follow
+the curved floors. Collision tiles keep their original geometry; visual wall
+movement is limited to a three-pixel boundary band. All smoothing is baked
+offline, so image storage, RAM and rendering cost stay unchanged.
+
+[Level encoding and behavior](levels/README.md) documents the packed 1-bit
+collision/chart planes and little-endian object records.
+[Actual encoded terrain](docs/assets/exploration-terrain.svg) shows the native
+map geometry. The preceding 41,572-byte cart payload remains an identical prefix;
+the native terrain adds 409,600 B, making payload/image **451,172 / 451,328 B**.
+`make gen` is still the only
+generation entry and the six music cues remain available in the jukebox.
+
+| Profile | Flash | Static RAM |
+| --- | ---: | ---: |
+| `full` | 20,176 B | 1,583 B |
+| `lean` | 17,368 B | 1,571 B |
+| `core` | 14,756 B | 1,313 B |
+| `min` | 8,750 B | 1,252 B |
+
+AVR run state is 91 B; static headroom is 117 B and the expanded device probe
+measures 756 B stack reserve against the 600 B target. The chart optimization
+adds 44 B flash and no static RAM against a fresh build of its source snapshot.
+All six device suites pass, alongside 150/117/89/44 host tests, 105 tooling
+tests, deterministic generation and the full Mini build. An optional chart-save
+host build passes 154 tests.
+No manual interactive playthrough or physical-device soak is claimed.
+
+Exploration is enabled in full/lean/core; min remains free-flight/cave with
+barriers disabled. Equipment, reward claims and opened grates last for the
+current run. Campaign restoration missions, an ending and persistent voyage
+checkpoints remain proposed in [`docs/campaign-exploration.md`](docs/campaign-exploration.md).
+Freight allowances follow the winding route lengths and allow intermediate
+berth stops for resupply. Rewards retain the existing economy. Gameplay still
+has no music player.
+
+The drawing pass streams native terrain directly from FX into the existing
+screen buffer in eight 128-byte bursts, then draws objects and HUD overlays.
+HUD fills use framebuffer page writes. The AVR benchmark measures 34–58% less
+render/presentation time in dev mode, with identical frame checksums.
+See [render timings and reproduction commands](docs/render-performance.md).
+
+The paused chart now holds its image between sub/destination blink changes
+instead of redrawing at 60 Hz, so it redraws every 16 frames while open. Chart
+reads use eight bursts instead of 256 separate transactions. A fully explored
+chart renders in 4.96 ms versus 10.33 ms before, with repeatable frame
+checksums and the original blink cadence.
+
+## Developer map traversal
+
+```sh
+make dev                    # build and launch free-flight in Ardens
+make build DEV_MODE=1       # build only: dist/dev/full/
+make run                   # normal game
+```
+
+Developer mode starts directly in flight. D-pad moves directly through rock
+and equipment gates; hold **A** for faster movement (6 px/frame, versus 2).
+**B** opens/closes the fully revealed chart; the existing A+B pause gesture
+remains available. Air/hull stay full, currents/mines cannot affect travel,
+and station rings do not auto-dock. The bottom line reads `DEV NOCLIP A FAST`.
+Coves, closed gates and unclaimed rewards remain visible for inspection;
+free-flight does not collect finds or advance contracts. The hull/camera stay
+within the world bounds. Chart EEPROM loading/writing is disabled in this
+mode, including if the chart-save feature is explicitly enabled.
+
+`DEV_MODE` defaults to 0 and accepts only 0/1. Developer artifacts are isolated
+under `build/dev/<profile>/` and `dist/dev/<profile>/`. `make test DEV_MODE=1`
+runs the normal rules suite plus five free-flight cases (154 passing in full).
+The dev firmware measures 15,592 B flash / 1,582 B static RAM. All six device
+suites pass in both modes. `make dev` uses the full profile by default; other
+profiles retain their configured chart availability.
+
+## Historical checkpoint — 2026-10-24 (cargo-free resource pass)
 
 Content is frozen at commit `4f66830` (`sub-hauler-m9-save`); the working tree
 adds the post-release fixes, the cargo-packing removal, and the UI/art resource
@@ -61,9 +167,10 @@ default.
 
 The shipped `cargoBank` FX declaration stays at offset **0x001AC2** with its
 original bytes and order for flash ABI compatibility. The font, strings, and
-pilot sheets were appended after it; the FX payload in
-`fxdata/fxdata-data.bin` is **13,012 B**, while the padded flashable
-`fxdata/fxdata.bin` image is **13,056 B**. Only
+pilot sheets were appended after it. Six original underwater music
+loops now follow those sheets; the FX payload in
+`fxdata/fxdata-data.bin` is **34,540 B**, while the padded flashable
+`fxdata/fxdata.bin` image is **34,560 B**. Only
 the cargo runtime reader, screen, rules, and tests were removed.
 
 The default Arduboy font and `Print` path are absent from the ELF: the firmware
@@ -75,17 +182,27 @@ uses `Arduboy2Base` plus the external font adapter in `src/text.hpp`.
 make gen          # images/fonts -> Sprites/PilotSprites/fxdata.bin + headers
 make gen-check    # regeneration must be byte-identical
 make build        # dist/<profile>/<project>.ino.hex + .elf
-make test         # host rules tests (132 full / 99 lean / 75 core / 39 min)
-make test-tools   # Python tooling tests (77)
-make fxtest       # device smoke test through Ardens (3 suites, each P)
+make test         # host rules tests (150 full / 117 lean / 89 core / 44 min)
+make test-tools   # Python tooling tests (105)
+make fxtest       # device smoke/render tests through Ardens (6 suites, each P)
 make size         # flash/RAM headroom
 make size-matrix  # build and report full, lean, core, min
 make mini         # Arduboy Mini firmware for the selected profile
 make run          # Ardens with the ELF + FX image
+make dev          # developer noclip + full chart + A speed boost
+make render-world # native scene PNG + labeled full-world overview
+make music-viewer # audition the underwater loops in ATMlib2FX's jukebox
 ```
 
 Full release gate: `make gen-check`, `make test`, `make test-tools`,
 `make fxtest`, `make size`, `make size-matrix`, and `make mini PROFILE=full`.
+
+The editable music scores and viewer catalog live in [`music/`](music/README.md).
+`make gen` requires the sibling `../ATMlib2FX` checkout (override
+`ATMLIB2FX_ROOT` for another location). The six cues range from Abyssal Glass
+(40 BPM) through Tidepool Waltz (75 BPM, 3/4) to Bubblejet Run (100 BPM),
+with the original Harbor Bubbles, Kelp Drift and Sonar Lullaby loops included.
+The jukebox plays the packed assets; normal gameplay has no music player yet.
 
 ## Feature profiles
 
@@ -175,8 +292,9 @@ src/game.hpp        pure rules (host tests)
 src/render.hpp      1-bit scene + sprite draw
 src/lib/Blit.*      headerless plus-mask FX blitter
 src/fxdata.h        generated mirror of fxdata/fxdata.h
-src/generated/      generated sprite/world/route constants
+src/generated/      generated sprite/legacy-world/active-level/object constants
 fxdata/             fxdata.txt, Sprites.txt, PilotSprites.txt, packed .bin, fxdata.h
+levels/             authored exploration JSON and binary format contract
 images/pilot/       generated fixed-hull pilot sheets
 fxdata/fonts/       generated external 6x8 text font
 tst/                host tests + device suite

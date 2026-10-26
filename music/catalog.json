@@ -1,0 +1,55 @@
+{
+  "format": "atmlib-song-library-catalog",
+  "version": 1,
+  "note": "Original Sub-hauler cues; source paths resolve against the Sub-hauler repository root.",
+  "entries": [
+    {
+      "id": "sh_harbor_bubbles",
+      "name": "Harbor Bubbles",
+      "category": "Sub-hauler \u2014 underwater cues",
+      "context": "Warm station / harbor cue. C major, 62.50 BPM, 4/4, 16 bars, 61.44 s. Falling droplet motif, offbeat replies, root/fifth bass, tiny bubble noise.",
+      "source": "music/harbor_bubbles/song.json",
+      "folder": "Sub-hauler"
+    },
+    {
+      "id": "sh_kelp_drift",
+      "name": "Kelp Drift",
+      "category": "Sub-hauler \u2014 underwater cues",
+      "context": "Unhurried submarine travel. D Dorian, 55.56 BPM, 4/4, 16 bars, 69.12 s. Suspended bloops, spacious answers and a quiet ballast pulse.",
+      "source": "music/kelp_drift/song.json",
+      "folder": "Sub-hauler"
+    },
+    {
+      "id": "sh_sonar_lullaby",
+      "name": "Sonar Lullaby",
+      "category": "Sub-hauler \u2014 underwater cues",
+      "context": "Deep water / sonar exploration. E minor, 50.00 BPM, 4/4, 16 bars, 76.80 s. Short sonar pings answer low bloops over open fifths; sparse bubble accents.",
+      "source": "music/sonar_lullaby/song.json",
+      "folder": "Sub-hauler"
+    },
+    {
+      "id": "sh_abyssal_glass",
+      "name": "Abyssal Glass",
+      "category": "Sub-hauler \u2014 underwater cues",
+      "context": "Deep-water suspended drift. F# minor, 40.00 BPM, 4/4, 12 bars, 72.00 s. Long glassy calls, shallow vibrato, slow tremolo on the water voice and open-fifth ballast.",
+      "source": "music/abyssal_glass/song.json",
+      "folder": "Sub-hauler"
+    },
+    {
+      "id": "sh_tidepool_waltz",
+      "name": "Tidepool Waltz",
+      "category": "Sub-hauler \u2014 underwater cues",
+      "context": "Buoyant tidepool / station interlude. G major, 75.00 BPM, 3/4, 16 bars, 38.40 s. Three-beat sway, slow triad arpeggios, duty-modulation LFO and decaying pearl bloops.",
+      "source": "music/tidepool_waltz/song.json",
+      "folder": "Sub-hauler"
+    },
+    {
+      "id": "sh_bubblejet_run",
+      "name": "Bubblejet Run",
+      "category": "Sub-hauler \u2014 underwater cues",
+      "context": "Lively current-riding travel. A Dorian, 100.00 BPM, 4/4, 16 bars, 38.40 s. Note-cut pulse hooks, brief falling glissandos, volume-slide echoes and tiny retriggered wake rolls.",
+      "source": "music/bubblejet_run/song.json",
+      "folder": "Sub-hauler"
+    }
+  ]
+}

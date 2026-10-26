@@ -73,7 +73,12 @@ inline Result fire(game::State &state, chart::State &chartState, uint8_t upgrade
 
     state.air = static_cast<int16_t>(state.air - cost);
     state.sonarCooldown = kCooldownTicks;
-    chart::revealAtPixels(chartState, state.x, state.y, radiusForLevel(upgradeLevel));
+    uint8_t revealLevel = upgradeLevel;
+#if SH_FEATURE_EXPLORATION
+    if (state.tools & exploration_data::LENS)
+        revealLevel = static_cast<uint8_t>(revealLevel + 2);
+#endif
+    chart::revealAtPixels(chartState, state.x, state.y, radiusForLevel(revealLevel));
     return kFired;
 }
 

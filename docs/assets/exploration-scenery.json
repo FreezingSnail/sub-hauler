@@ -1,0 +1,272 @@
+{
+  "landmarks": [
+    {
+      "id": "harbor-tender",
+      "room": "T",
+      "kind": "tender",
+      "x": 372,
+      "y": 192
+    },
+    {
+      "id": "lantern-buoys",
+      "room": "L",
+      "kind": "buoy",
+      "x": 708,
+      "y": 192
+    },
+    {
+      "id": "mooring-anchor",
+      "room": "M",
+      "kind": "anchor",
+      "x": 292,
+      "y": 440
+    },
+    {
+      "id": "flooded-lock-winch",
+      "room": "Q",
+      "kind": "winch",
+      "x": 660,
+      "y": 480
+    },
+    {
+      "id": "cathedral-pump",
+      "room": "K",
+      "kind": "pump",
+      "x": 1324,
+      "y": 216
+    },
+    {
+      "id": "vent-gallery-pump",
+      "room": "V",
+      "kind": "pump",
+      "x": 1396,
+      "y": 440
+    },
+    {
+      "id": "pump-refuge",
+      "room": "P",
+      "kind": "pump",
+      "x": 2180,
+      "y": 224
+    },
+    {
+      "id": "relay-antenna",
+      "room": "N",
+      "kind": "relay",
+      "x": 1740,
+      "y": 464
+    },
+    {
+      "id": "broken-freighter",
+      "room": "R",
+      "kind": "wreck",
+      "x": 1372,
+      "y": 640
+    },
+    {
+      "id": "anchor-hall-crane",
+      "room": "A",
+      "kind": "crane",
+      "x": 2196,
+      "y": 848
+    },
+    {
+      "id": "freight-yard-crane",
+      "room": "Y",
+      "kind": "crane",
+      "x": 2156,
+      "y": 648
+    },
+    {
+      "id": "workshop-winch",
+      "room": "Z",
+      "kind": "winch",
+      "x": 1316,
+      "y": 752
+    },
+    {
+      "id": "lower-gantry-wreck",
+      "room": "U",
+      "kind": "wreck",
+      "x": 1804,
+      "y": 824
+    },
+    {
+      "id": "anchor-hall",
+      "room": "A",
+      "kind": "anchor",
+      "x": 2236,
+      "y": 832
+    },
+    {
+      "id": "trench-refuge-glass",
+      "room": "O",
+      "kind": "crystal",
+      "x": 332,
+      "y": 1016
+    },
+    {
+      "id": "deep-anchor-vent",
+      "room": "D",
+      "kind": "vent",
+      "x": 404,
+      "y": 1216
+    },
+    {
+      "id": "glass-chimney",
+      "room": "G",
+      "kind": "crystal",
+      "x": 1020,
+      "y": 1200
+    },
+    {
+      "id": "jet-approach-vent",
+      "room": "I",
+      "kind": "vent",
+      "x": 1740,
+      "y": 1160
+    }
+  ],
+  "ambient": {
+    "tide": 58,
+    "kelp": 25,
+    "works": 29,
+    "deep": 14
+  },
+  "white_pixels": 10357,
+  "rock_pixels": 41506,
+  "settlements": [
+    {
+      "id": 0,
+      "name": "TIDEWALL",
+      "x": 328,
+      "y": 240,
+      "floor_y": 258,
+      "modules": [
+        {
+          "x": 358,
+          "y": 262,
+          "w": 22,
+          "h": 16
+        },
+        {
+          "x": 382,
+          "y": 262,
+          "w": 22,
+          "h": 16
+        },
+        {
+          "x": 358,
+          "y": 286,
+          "w": 22,
+          "h": 16
+        },
+        {
+          "x": 382,
+          "y": 286,
+          "w": 22,
+          "h": 16
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "name": "BENTHOS",
+      "x": 1704,
+      "y": 256,
+      "floor_y": 264,
+      "modules": [
+        {
+          "x": 1638,
+          "y": 268,
+          "w": 22,
+          "h": 16
+        },
+        {
+          "x": 1662,
+          "y": 276,
+          "w": 22,
+          "h": 16
+        },
+        {
+          "x": 1686,
+          "y": 276,
+          "w": 22,
+          "h": 16
+        },
+        {
+          "x": 1710,
+          "y": 276,
+          "w": 22,
+          "h": 16
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "CORMORANT",
+      "x": 1776,
+      "y": 656,
+      "floor_y": 664,
+      "modules": [
+        {
+          "x": 1734,
+          "y": 668,
+          "w": 22,
+          "h": 16
+        },
+        {
+          "x": 1758,
+          "y": 668,
+          "w": 22,
+          "h": 16
+        },
+        {
+          "x": 1710,
+          "y": 668,
+          "w": 22,
+          "h": 16
+        },
+        {
+          "x": 1782,
+          "y": 676,
+          "w": 22,
+          "h": 16
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "name": "DEEP ANCHOR",
+      "x": 352,
+      "y": 1216,
+      "floor_y": 1224,
+      "modules": [
+        {
+          "x": 310,
+          "y": 1228,
+          "w": 22,
+          "h": 16
+        },
+        {
+          "x": 334,
+          "y": 1228,
+          "w": 22,
+          "h": 16
+        },
+        {
+          "x": 358,
+          "y": 1228,
+          "w": 22,
+          "h": 16
+        },
+        {
+          "x": 382,
+          "y": 1228,
+          "w": 22,
+          "h": 16
+        }
+      ]
+    }
+  ]
+}

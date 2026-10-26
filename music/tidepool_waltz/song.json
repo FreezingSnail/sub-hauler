@@ -1,0 +1,1195 @@
+{
+  "format": "atmlib-score",
+  "version": 1,
+  "id": "sh_tidepool_waltz",
+  "clock": {
+    "tick_rate": 50,
+    "ticks_per_beat": 40,
+    "beats_per_bar": 3
+  },
+  "instruments": {
+    "pearl": {
+      "voice": "pulse",
+      "volume": 54,
+      "duty": 120
+    },
+    "ripple": {
+      "voice": "pulse",
+      "volume": 19,
+      "duty": 128
+    },
+    "anchor": {
+      "voice": "pulse",
+      "volume": 32,
+      "duty": 128
+    },
+    "foam": {
+      "voice": "noise",
+      "volume": 6
+    }
+  },
+  "patterns": {
+    "pearl_01": {
+      "ticks": 120,
+      "events": [
+        {"at": 0, "note": "D4", "duration": 27, "instrument": "pearl"},
+        {"at": 40, "note": "G4", "duration": 27, "instrument": "pearl"},
+        {"at": 80, "note": "B4", "duration": 32, "instrument": "pearl"}
+      ],
+      "effects": [
+        {
+          "at": 1,
+          "until": 118,
+          "type": "slide",
+          "param": "volume",
+          "amount": -2,
+          "every": 2
+        },
+        {
+          "at": 2,
+          "until": 118,
+          "type": "lfo",
+          "mode": "modulation",
+          "depth": 2,
+          "period": 32
+        }
+      ]
+    },
+    "ripple_01": {
+      "ticks": 120,
+      "events": [
+        {"at": 40, "note": "G3", "duration": 70, "instrument": "ripple"}
+      ],
+      "effects": [
+        {
+          "at": 40,
+          "until": 110,
+          "type": "arpeggio",
+          "offsets": [
+            4,
+            7
+          ],
+          "period": 10,
+          "repeat": true
+        }
+      ]
+    },
+    "anchor_01": {
+      "ticks": 120,
+      "events": [
+        {"at": 0, "note": "G2", "duration": 34, "instrument": "anchor"}
+      ]
+    },
+    "foam_01": {
+      "ticks": 120,
+      "events": []
+    },
+    "pearl_02": {
+      "ticks": 120,
+      "events": [
+        {"at": 0, "note": "G4", "duration": 55, "instrument": "pearl"},
+        {"at": 80, "note": "E4", "duration": 30, "instrument": "pearl"}
+      ],
+      "effects": [
+        {
+          "at": 1,
+          "until": 118,
+          "type": "slide",
+          "param": "volume",
+          "amount": -2,
+          "every": 2
+        },
+        {
+          "at": 2,
+          "until": 118,
+          "type": "lfo",
+          "mode": "modulation",
+          "depth": 2,
+          "period": 32
+        }
+      ]
+    },
+    "ripple_02": {
+      "ticks": 120,
+      "events": [
+        {"at": 40, "note": "E3", "duration": 70, "instrument": "ripple"}
+      ],
+      "effects": [
+        {
+          "at": 40,
+          "until": 110,
+          "type": "arpeggio",
+          "offsets": [
+            3,
+            7
+          ],
+          "period": 10,
+          "repeat": true
+        }
+      ]
+    },
+    "anchor_02": {
+      "ticks": 120,
+      "events": [
+        {"at": 0, "note": "E3", "duration": 34, "instrument": "anchor"}
+      ]
+    },
+    "foam_02": {
+      "ticks": 120,
+      "events": [
+        {"at": 100, "note": "C4", "duration": 2, "instrument": "foam"}
+      ]
+    },
+    "pearl_03": {
+      "ticks": 120,
+      "events": [
+        {"at": 0, "note": "E4", "duration": 27, "instrument": "pearl"},
+        {"at": 40, "note": "G4", "duration": 27, "instrument": "pearl"},
+        {"at": 80, "note": "C5", "duration": 30, "instrument": "pearl"}
+      ],
+      "effects": [
+        {
+          "at": 1,
+          "until": 118,
+          "type": "slide",
+          "param": "volume",
+          "amount": -2,
+          "every": 2
+        },
+        {
+          "at": 2,
+          "until": 118,
+          "type": "lfo",
+          "mode": "modulation",
+          "depth": 2,
+          "period": 32
+        }
+      ]
+    },
+    "ripple_03": {
+      "ticks": 120,
+      "events": [
+        {"at": 40, "note": "C4", "duration": 70, "instrument": "ripple"}
+      ],
+      "effects": [
+        {
+          "at": 40,
+          "until": 110,
+          "type": "arpeggio",
+          "offsets": [
+            4,
+            7
+          ],
+          "period": 10,
+          "repeat": true
+        }
+      ]
+    },
+    "anchor_03": {
+      "ticks": 120,
+      "events": [
+        {"at": 0, "note": "C3", "duration": 34, "instrument": "anchor"}
+      ]
+    },
+    "foam_03": {
+      "ticks": 120,
+      "events": []
+    },
+    "pearl_04": {
+      "ticks": 120,
+      "events": [
+        {"at": 0, "note": "A4", "duration": 45, "instrument": "pearl"},
+        {"at": 60, "note": "F#4", "duration": 15, "instrument": "pearl"},
+        {"at": 80, "note": "D4", "duration": 30, "instrument": "pearl"}
+      ],
+      "effects": [
+        {
+          "at": 1,
+          "until": 118,
+          "type": "slide",
+          "param": "volume",
+          "amount": -2,
+          "every": 2
+        },
+        {
+          "at": 2,
+          "until": 118,
+          "type": "lfo",
+          "mode": "modulation",
+          "depth": 2,
+          "period": 32
+        }
+      ]
+    },
+    "ripple_04": {
+      "ticks": 120,
+      "events": [
+        {"at": 40, "note": "D3", "duration": 70, "instrument": "ripple"}
+      ],
+      "effects": [
+        {
+          "at": 40,
+          "until": 110,
+          "type": "arpeggio",
+          "offsets": [
+            4,
+            7
+          ],
+          "period": 10,
+          "repeat": true
+        }
+      ]
+    },
+    "anchor_04": {
+      "ticks": 120,
+      "events": [
+        {"at": 0, "note": "D3", "duration": 34, "instrument": "anchor"}
+      ]
+    },
+    "foam_04": {
+      "ticks": 120,
+      "events": [
+        {"at": 100, "note": "C4", "duration": 2, "instrument": "foam"}
+      ]
+    },
+    "pearl_05": {
+      "ticks": 120,
+      "events": [
+        {"at": 0, "note": "B4", "duration": 27, "instrument": "pearl"},
+        {"at": 40, "note": "A4", "duration": 15, "instrument": "pearl"},
+        {"at": 60, "note": "G4", "duration": 15, "instrument": "pearl"},
+        {"at": 80, "note": "D4", "duration": 30, "instrument": "pearl"}
+      ],
+      "effects": [
+        {
+          "at": 1,
+          "until": 118,
+          "type": "slide",
+          "param": "volume",
+          "amount": -2,
+          "every": 2
+        },
+        {
+          "at": 2,
+          "until": 118,
+          "type": "lfo",
+          "mode": "modulation",
+          "depth": 2,
+          "period": 32
+        }
+      ]
+    },
+    "ripple_05": {
+      "ticks": 120,
+      "events": [
+        {"at": 40, "note": "G3", "duration": 70, "instrument": "ripple"}
+      ],
+      "effects": [
+        {
+          "at": 40,
+          "until": 110,
+          "type": "arpeggio",
+          "offsets": [
+            4,
+            7
+          ],
+          "period": 10,
+          "repeat": true
+        }
+      ]
+    },
+    "anchor_05": {
+      "ticks": 120,
+      "events": [
+        {"at": 0, "note": "G2", "duration": 34, "instrument": "anchor"}
+      ]
+    },
+    "foam_05": {
+      "ticks": 120,
+      "events": []
+    },
+    "pearl_06": {
+      "ticks": 120,
+      "events": [
+        {"at": 0, "note": "B4", "duration": 27, "instrument": "pearl"},
+        {"at": 40, "note": "G4", "duration": 27, "instrument": "pearl"},
+        {"at": 80, "note": "E4", "duration": 30, "instrument": "pearl"}
+      ],
+      "effects": [
+        {
+          "at": 1,
+          "until": 118,
+          "type": "slide",
+          "param": "volume",
+          "amount": -2,
+          "every": 2
+        },
+        {
+          "at": 2,
+          "until": 118,
+          "type": "lfo",
+          "mode": "modulation",
+          "depth": 2,
+          "period": 32
+        }
+      ]
+    },
+    "ripple_06": {
+      "ticks": 120,
+      "events": [
+        {"at": 40, "note": "E3", "duration": 70, "instrument": "ripple"}
+      ],
+      "effects": [
+        {
+          "at": 40,
+          "until": 110,
+          "type": "arpeggio",
+          "offsets": [
+            3,
+            7
+          ],
+          "period": 10,
+          "repeat": true
+        }
+      ]
+    },
+    "anchor_06": {
+      "ticks": 120,
+      "events": [
+        {"at": 0, "note": "E3", "duration": 34, "instrument": "anchor"}
+      ]
+    },
+    "foam_06": {
+      "ticks": 120,
+      "events": [
+        {"at": 100, "note": "C4", "duration": 2, "instrument": "foam"}
+      ]
+    },
+    "pearl_07": {
+      "ticks": 120,
+      "events": [
+        {"at": 0, "note": "C5", "duration": 45, "instrument": "pearl"},
+        {"at": 60, "note": "B4", "duration": 15, "instrument": "pearl"},
+        {"at": 80, "note": "G4", "duration": 30, "instrument": "pearl"}
+      ],
+      "effects": [
+        {
+          "at": 1,
+          "until": 118,
+          "type": "slide",
+          "param": "volume",
+          "amount": -2,
+          "every": 2
+        },
+        {
+          "at": 2,
+          "until": 118,
+          "type": "lfo",
+          "mode": "modulation",
+          "depth": 2,
+          "period": 32
+        }
+      ]
+    },
+    "ripple_07": {
+      "ticks": 120,
+      "events": [
+        {"at": 40, "note": "C4", "duration": 70, "instrument": "ripple"}
+      ],
+      "effects": [
+        {
+          "at": 40,
+          "until": 110,
+          "type": "arpeggio",
+          "offsets": [
+            4,
+            7
+          ],
+          "period": 10,
+          "repeat": true
+        }
+      ]
+    },
+    "anchor_07": {
+      "ticks": 120,
+      "events": [
+        {"at": 0, "note": "C3", "duration": 34, "instrument": "anchor"}
+      ]
+    },
+    "foam_07": {
+      "ticks": 120,
+      "events": []
+    },
+    "pearl_08": {
+      "ticks": 120,
+      "events": [
+        {"at": 0, "note": "F#4", "duration": 45, "instrument": "pearl"},
+        {"at": 60, "note": "A4", "duration": 15, "instrument": "pearl"},
+        {"at": 80, "note": "D5", "duration": 30, "instrument": "pearl"}
+      ],
+      "effects": [
+        {
+          "at": 1,
+          "until": 118,
+          "type": "slide",
+          "param": "volume",
+          "amount": -2,
+          "every": 2
+        },
+        {
+          "at": 2,
+          "until": 118,
+          "type": "lfo",
+          "mode": "modulation",
+          "depth": 2,
+          "period": 32
+        }
+      ]
+    },
+    "ripple_08": {
+      "ticks": 120,
+      "events": [
+        {"at": 40, "note": "D3", "duration": 70, "instrument": "ripple"}
+      ],
+      "effects": [
+        {
+          "at": 40,
+          "until": 110,
+          "type": "arpeggio",
+          "offsets": [
+            4,
+            7
+          ],
+          "period": 10,
+          "repeat": true
+        }
+      ]
+    },
+    "anchor_08": {
+      "ticks": 120,
+      "events": [
+        {"at": 0, "note": "D3", "duration": 34, "instrument": "anchor"}
+      ]
+    },
+    "foam_08": {
+      "ticks": 120,
+      "events": [
+        {"at": 100, "note": "C4", "duration": 2, "instrument": "foam"}
+      ]
+    },
+    "pearl_09": {
+      "ticks": 120,
+      "events": [
+        {"at": 0, "note": "D5", "duration": 27, "instrument": "pearl"},
+        {"at": 40, "note": "B4", "duration": 27, "instrument": "pearl"},
+        {"at": 80, "note": "G4", "duration": 30, "instrument": "pearl"}
+      ],
+      "effects": [
+        {
+          "at": 1,
+          "until": 118,
+          "type": "slide",
+          "param": "volume",
+          "amount": -2,
+          "every": 2
+        },
+        {
+          "at": 2,
+          "until": 118,
+          "type": "lfo",
+          "mode": "modulation",
+          "depth": 2,
+          "period": 32
+        }
+      ]
+    },
+    "ripple_09": {
+      "ticks": 120,
+      "events": [
+        {"at": 40, "note": "G3", "duration": 70, "instrument": "ripple"}
+      ],
+      "effects": [
+        {
+          "at": 40,
+          "until": 110,
+          "type": "arpeggio",
+          "offsets": [
+            4,
+            7
+          ],
+          "period": 10,
+          "repeat": true
+        }
+      ]
+    },
+    "anchor_09": {
+      "ticks": 120,
+      "events": [
+        {"at": 0, "note": "G2", "duration": 34, "instrument": "anchor"}
+      ]
+    },
+    "foam_09": {
+      "ticks": 120,
+      "events": []
+    },
+    "pearl_10": {
+      "ticks": 120,
+      "events": [
+        {"at": 0, "note": "B4", "duration": 55, "instrument": "pearl"},
+        {"at": 80, "note": "G4", "duration": 30, "instrument": "pearl"}
+      ],
+      "effects": [
+        {
+          "at": 1,
+          "until": 118,
+          "type": "slide",
+          "param": "volume",
+          "amount": -2,
+          "every": 2
+        },
+        {
+          "at": 2,
+          "until": 118,
+          "type": "lfo",
+          "mode": "modulation",
+          "depth": 2,
+          "period": 32
+        }
+      ]
+    },
+    "ripple_10": {
+      "ticks": 120,
+      "events": [
+        {"at": 40, "note": "E3", "duration": 70, "instrument": "ripple"}
+      ],
+      "effects": [
+        {
+          "at": 40,
+          "until": 110,
+          "type": "arpeggio",
+          "offsets": [
+            3,
+            7
+          ],
+          "period": 10,
+          "repeat": true
+        }
+      ]
+    },
+    "anchor_10": {
+      "ticks": 120,
+      "events": [
+        {"at": 0, "note": "E3", "duration": 34, "instrument": "anchor"}
+      ]
+    },
+    "foam_10": {
+      "ticks": 120,
+      "events": [
+        {"at": 100, "note": "C4", "duration": 2, "instrument": "foam"}
+      ]
+    },
+    "pearl_11": {
+      "ticks": 120,
+      "events": [
+        {"at": 0, "note": "G4", "duration": 27, "instrument": "pearl"},
+        {"at": 40, "note": "E4", "duration": 27, "instrument": "pearl"},
+        {"at": 80, "note": "C4", "duration": 30, "instrument": "pearl"}
+      ],
+      "effects": [
+        {
+          "at": 1,
+          "until": 118,
+          "type": "slide",
+          "param": "volume",
+          "amount": -2,
+          "every": 2
+        },
+        {
+          "at": 2,
+          "until": 118,
+          "type": "lfo",
+          "mode": "modulation",
+          "depth": 2,
+          "period": 32
+        }
+      ]
+    },
+    "ripple_11": {
+      "ticks": 120,
+      "events": [
+        {"at": 40, "note": "C4", "duration": 70, "instrument": "ripple"}
+      ],
+      "effects": [
+        {
+          "at": 40,
+          "until": 110,
+          "type": "arpeggio",
+          "offsets": [
+            4,
+            7
+          ],
+          "period": 10,
+          "repeat": true
+        }
+      ]
+    },
+    "anchor_11": {
+      "ticks": 120,
+      "events": [
+        {"at": 0, "note": "C3", "duration": 34, "instrument": "anchor"}
+      ]
+    },
+    "foam_11": {
+      "ticks": 120,
+      "events": []
+    },
+    "pearl_12": {
+      "ticks": 120,
+      "events": [
+        {"at": 0, "note": "F#4", "duration": 45, "instrument": "pearl"},
+        {"at": 60, "note": "G4", "duration": 15, "instrument": "pearl"},
+        {"at": 80, "note": "A4", "duration": 30, "instrument": "pearl"}
+      ],
+      "effects": [
+        {
+          "at": 1,
+          "until": 118,
+          "type": "slide",
+          "param": "volume",
+          "amount": -2,
+          "every": 2
+        },
+        {
+          "at": 2,
+          "until": 118,
+          "type": "lfo",
+          "mode": "modulation",
+          "depth": 2,
+          "period": 32
+        }
+      ]
+    },
+    "ripple_12": {
+      "ticks": 120,
+      "events": [
+        {"at": 40, "note": "D3", "duration": 70, "instrument": "ripple"}
+      ],
+      "effects": [
+        {
+          "at": 40,
+          "until": 110,
+          "type": "arpeggio",
+          "offsets": [
+            4,
+            7
+          ],
+          "period": 10,
+          "repeat": true
+        }
+      ]
+    },
+    "anchor_12": {
+      "ticks": 120,
+      "events": [
+        {"at": 0, "note": "D3", "duration": 34, "instrument": "anchor"}
+      ]
+    },
+    "foam_12": {
+      "ticks": 120,
+      "events": [
+        {"at": 100, "note": "C4", "duration": 2, "instrument": "foam"}
+      ]
+    },
+    "pearl_13": {
+      "ticks": 120,
+      "events": [
+        {"at": 0, "note": "B4", "duration": 27, "instrument": "pearl"},
+        {"at": 40, "note": "D5", "duration": 27, "instrument": "pearl"},
+        {"at": 80, "note": "B4", "duration": 30, "instrument": "pearl"}
+      ],
+      "effects": [
+        {
+          "at": 1,
+          "until": 118,
+          "type": "slide",
+          "param": "volume",
+          "amount": -2,
+          "every": 2
+        },
+        {
+          "at": 2,
+          "until": 118,
+          "type": "lfo",
+          "mode": "modulation",
+          "depth": 2,
+          "period": 32
+        }
+      ]
+    },
+    "ripple_13": {
+      "ticks": 120,
+      "events": [
+        {"at": 40, "note": "G3", "duration": 70, "instrument": "ripple"}
+      ],
+      "effects": [
+        {
+          "at": 40,
+          "until": 110,
+          "type": "arpeggio",
+          "offsets": [
+            4,
+            7
+          ],
+          "period": 10,
+          "repeat": true
+        }
+      ]
+    },
+    "anchor_13": {
+      "ticks": 120,
+      "events": [
+        {"at": 0, "note": "G2", "duration": 34, "instrument": "anchor"}
+      ]
+    },
+    "foam_13": {
+      "ticks": 120,
+      "events": []
+    },
+    "pearl_14": {
+      "ticks": 120,
+      "events": [
+        {"at": 0, "note": "G4", "duration": 27, "instrument": "pearl"},
+        {"at": 40, "note": "B4", "duration": 27, "instrument": "pearl"},
+        {"at": 80, "note": "E5", "duration": 30, "instrument": "pearl"}
+      ],
+      "effects": [
+        {
+          "at": 1,
+          "until": 118,
+          "type": "slide",
+          "param": "volume",
+          "amount": -2,
+          "every": 2
+        },
+        {
+          "at": 2,
+          "until": 118,
+          "type": "lfo",
+          "mode": "modulation",
+          "depth": 2,
+          "period": 32
+        }
+      ]
+    },
+    "ripple_14": {
+      "ticks": 120,
+      "events": [
+        {"at": 40, "note": "E3", "duration": 70, "instrument": "ripple"}
+      ],
+      "effects": [
+        {
+          "at": 40,
+          "until": 110,
+          "type": "arpeggio",
+          "offsets": [
+            3,
+            7
+          ],
+          "period": 10,
+          "repeat": true
+        }
+      ]
+    },
+    "anchor_14": {
+      "ticks": 120,
+      "events": [
+        {"at": 0, "note": "E3", "duration": 34, "instrument": "anchor"}
+      ]
+    },
+    "foam_14": {
+      "ticks": 120,
+      "events": [
+        {"at": 100, "note": "C4", "duration": 2, "instrument": "foam"}
+      ]
+    },
+    "pearl_15": {
+      "ticks": 120,
+      "events": [
+        {"at": 0, "note": "E5", "duration": 45, "instrument": "pearl"},
+        {"at": 60, "note": "D5", "duration": 15, "instrument": "pearl"},
+        {"at": 80, "note": "C5", "duration": 30, "instrument": "pearl"}
+      ],
+      "effects": [
+        {
+          "at": 1,
+          "until": 118,
+          "type": "slide",
+          "param": "volume",
+          "amount": -2,
+          "every": 2
+        },
+        {
+          "at": 2,
+          "until": 118,
+          "type": "lfo",
+          "mode": "modulation",
+          "depth": 2,
+          "period": 32
+        }
+      ]
+    },
+    "ripple_15": {
+      "ticks": 120,
+      "events": [
+        {"at": 40, "note": "C4", "duration": 70, "instrument": "ripple"}
+      ],
+      "effects": [
+        {
+          "at": 40,
+          "until": 110,
+          "type": "arpeggio",
+          "offsets": [
+            4,
+            7
+          ],
+          "period": 10,
+          "repeat": true
+        }
+      ]
+    },
+    "anchor_15": {
+      "ticks": 120,
+      "events": [
+        {"at": 0, "note": "C3", "duration": 34, "instrument": "anchor"}
+      ]
+    },
+    "foam_15": {
+      "ticks": 120,
+      "events": []
+    },
+    "pearl_16": {
+      "ticks": 120,
+      "events": [
+        {"at": 0, "note": "A4", "duration": 27, "instrument": "pearl"},
+        {"at": 40, "note": "F#4", "duration": 27, "instrument": "pearl"},
+        {"at": 80, "note": "D4", "duration": 30, "instrument": "pearl"}
+      ],
+      "effects": [
+        {
+          "at": 1,
+          "until": 118,
+          "type": "slide",
+          "param": "volume",
+          "amount": -2,
+          "every": 2
+        },
+        {
+          "at": 2,
+          "until": 118,
+          "type": "lfo",
+          "mode": "modulation",
+          "depth": 2,
+          "period": 32
+        }
+      ]
+    },
+    "ripple_16": {
+      "ticks": 120,
+      "events": [
+        {"at": 40, "note": "D3", "duration": 70, "instrument": "ripple"}
+      ],
+      "effects": [
+        {
+          "at": 40,
+          "until": 110,
+          "type": "arpeggio",
+          "offsets": [
+            4,
+            7
+          ],
+          "period": 10,
+          "repeat": true
+        }
+      ]
+    },
+    "anchor_16": {
+      "ticks": 120,
+      "events": [
+        {"at": 0, "note": "D3", "duration": 34, "instrument": "anchor"}
+      ]
+    },
+    "foam_16": {
+      "ticks": 120,
+      "events": [
+        {"at": 100, "note": "C4", "duration": 2, "instrument": "foam"}
+      ]
+    }
+  },
+  "tracks": {
+    "pulse0": [
+      {
+        "pattern": "pearl_01",
+        "repeat": 1
+      },
+      {
+        "pattern": "pearl_02",
+        "repeat": 1
+      },
+      {
+        "pattern": "pearl_03",
+        "repeat": 1
+      },
+      {
+        "pattern": "pearl_04",
+        "repeat": 1
+      },
+      {
+        "pattern": "pearl_05",
+        "repeat": 1
+      },
+      {
+        "pattern": "pearl_06",
+        "repeat": 1
+      },
+      {
+        "pattern": "pearl_07",
+        "repeat": 1
+      },
+      {
+        "pattern": "pearl_08",
+        "repeat": 1
+      },
+      {
+        "pattern": "pearl_09",
+        "repeat": 1
+      },
+      {
+        "pattern": "pearl_10",
+        "repeat": 1
+      },
+      {
+        "pattern": "pearl_11",
+        "repeat": 1
+      },
+      {
+        "pattern": "pearl_12",
+        "repeat": 1
+      },
+      {
+        "pattern": "pearl_13",
+        "repeat": 1
+      },
+      {
+        "pattern": "pearl_14",
+        "repeat": 1
+      },
+      {
+        "pattern": "pearl_15",
+        "repeat": 1
+      },
+      {
+        "pattern": "pearl_16",
+        "repeat": 1
+      }
+    ],
+    "pulse1": [
+      {
+        "pattern": "ripple_01",
+        "repeat": 1
+      },
+      {
+        "pattern": "ripple_02",
+        "repeat": 1
+      },
+      {
+        "pattern": "ripple_03",
+        "repeat": 1
+      },
+      {
+        "pattern": "ripple_04",
+        "repeat": 1
+      },
+      {
+        "pattern": "ripple_05",
+        "repeat": 1
+      },
+      {
+        "pattern": "ripple_06",
+        "repeat": 1
+      },
+      {
+        "pattern": "ripple_07",
+        "repeat": 1
+      },
+      {
+        "pattern": "ripple_08",
+        "repeat": 1
+      },
+      {
+        "pattern": "ripple_09",
+        "repeat": 1
+      },
+      {
+        "pattern": "ripple_10",
+        "repeat": 1
+      },
+      {
+        "pattern": "ripple_11",
+        "repeat": 1
+      },
+      {
+        "pattern": "ripple_12",
+        "repeat": 1
+      },
+      {
+        "pattern": "ripple_13",
+        "repeat": 1
+      },
+      {
+        "pattern": "ripple_14",
+        "repeat": 1
+      },
+      {
+        "pattern": "ripple_15",
+        "repeat": 1
+      },
+      {
+        "pattern": "ripple_16",
+        "repeat": 1
+      }
+    ],
+    "pulse2": [
+      {
+        "pattern": "anchor_01",
+        "repeat": 1
+      },
+      {
+        "pattern": "anchor_02",
+        "repeat": 1
+      },
+      {
+        "pattern": "anchor_03",
+        "repeat": 1
+      },
+      {
+        "pattern": "anchor_04",
+        "repeat": 1
+      },
+      {
+        "pattern": "anchor_05",
+        "repeat": 1
+      },
+      {
+        "pattern": "anchor_06",
+        "repeat": 1
+      },
+      {
+        "pattern": "anchor_07",
+        "repeat": 1
+      },
+      {
+        "pattern": "anchor_08",
+        "repeat": 1
+      },
+      {
+        "pattern": "anchor_09",
+        "repeat": 1
+      },
+      {
+        "pattern": "anchor_10",
+        "repeat": 1
+      },
+      {
+        "pattern": "anchor_11",
+        "repeat": 1
+      },
+      {
+        "pattern": "anchor_12",
+        "repeat": 1
+      },
+      {
+        "pattern": "anchor_13",
+        "repeat": 1
+      },
+      {
+        "pattern": "anchor_14",
+        "repeat": 1
+      },
+      {
+        "pattern": "anchor_15",
+        "repeat": 1
+      },
+      {
+        "pattern": "anchor_16",
+        "repeat": 1
+      }
+    ],
+    "noise": [
+      {
+        "pattern": "foam_01",
+        "repeat": 1
+      },
+      {
+        "pattern": "foam_02",
+        "repeat": 1
+      },
+      {
+        "pattern": "foam_03",
+        "repeat": 1
+      },
+      {
+        "pattern": "foam_04",
+        "repeat": 1
+      },
+      {
+        "pattern": "foam_05",
+        "repeat": 1
+      },
+      {
+        "pattern": "foam_06",
+        "repeat": 1
+      },
+      {
+        "pattern": "foam_07",
+        "repeat": 1
+      },
+      {
+        "pattern": "foam_08",
+        "repeat": 1
+      },
+      {
+        "pattern": "foam_09",
+        "repeat": 1
+      },
+      {
+        "pattern": "foam_10",
+        "repeat": 1
+      },
+      {
+        "pattern": "foam_11",
+        "repeat": 1
+      },
+      {
+        "pattern": "foam_12",
+        "repeat": 1
+      },
+      {
+        "pattern": "foam_13",
+        "repeat": 1
+      },
+      {
+        "pattern": "foam_14",
+        "repeat": 1
+      },
+      {
+        "pattern": "foam_15",
+        "repeat": 1
+      },
+      {
+        "pattern": "foam_16",
+        "repeat": 1
+      }
+    ]
+  },
+  "loop": true
+}

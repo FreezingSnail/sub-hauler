@@ -16,6 +16,7 @@ namespace chart_test {
 struct FakeReader {
     uint8_t water[world::CHART_BYTES];
     uint16_t reads;
+    uint16_t bursts = 0;
 
     FakeReader() : reads(0) {
         for (uint16_t i = 0; i < world::CHART_BYTES; ++i)
@@ -25,6 +26,12 @@ struct FakeReader {
     uint8_t chartByte(uint16_t index) {
         ++reads;
         return water[index];
+    }
+
+    void chartBytes(uint16_t index, uint8_t *buffer, uint8_t length) {
+        ++bursts;
+        for (uint8_t i = 0; i < length; ++i)
+            buffer[i] = chartByte(index + i);
     }
 
     void setWater(int16_t cellX, int16_t cellY, bool value) {
@@ -60,12 +67,12 @@ inline void ChartSuite(TestRunner &runner) {
         int16_t cellX = -1;
         int16_t cellY = -1;
         test.assertTrue(chart::cellFromPixels(world::SPAWN_SUB_X, world::SPAWN_SUB_Y, cellX, cellY), "spawn pixel maps");
-        test.assertEqual(cellX, static_cast<int16_t>(7), "spawn chart x");
-        test.assertEqual(cellY, static_cast<int16_t>(9), "spawn chart y");
+        test.assertEqual(cellX, static_cast<int16_t>(world::SPAWN_TILE_X / 5), "spawn chart x");
+        test.assertEqual(cellY, static_cast<int16_t>(world::SPAWN_TILE_Y / 5), "spawn chart y");
 
-        test.assertTrue(chart::cellFromTile(38, 48, cellX, cellY), "spawn tile maps");
-        test.assertEqual(cellX, static_cast<int16_t>(7), "spawn tile chart x");
-        test.assertEqual(cellY, static_cast<int16_t>(9), "spawn tile chart y");
+        test.assertTrue(chart::cellFromTile(world::SPAWN_TILE_X, world::SPAWN_TILE_Y, cellX, cellY), "spawn tile maps");
+        test.assertEqual(cellX, static_cast<int16_t>(world::SPAWN_TILE_X / 5), "spawn tile chart x");
+        test.assertEqual(cellY, static_cast<int16_t>(world::SPAWN_TILE_Y / 5), "spawn tile chart y");
         test.assertTrue(chart::cellFromTile(0, 0, cellX, cellY), "origin tile maps");
         test.assertTrue(chart::cellFromTile(world::TILES_X - 1, world::TILES_Y - 1, cellX, cellY), "last tile maps");
         test.assertEqual(cellX, static_cast<int16_t>(63), "last tile chart x");
@@ -118,8 +125,8 @@ inline void ChartSuite(TestRunner &runner) {
         chart::State state;
         chart::reset(state);
         chart::revealInitial(state, gameState);
-        test.assertTrue(chart::isExplored(state, 7, 9), "spawn cell is explored");
-        test.assertTrue(chart::isExplored(state, 8, 9), "spawn reveal radius reaches a neighbour");
+        test.assertTrue(chart::isExplored(state, world::SPAWN_TILE_X / 5, world::SPAWN_TILE_Y / 5), "spawn cell is explored");
+        test.assertTrue(chart::isExplored(state, world::SPAWN_TILE_X / 5 + 1, world::SPAWN_TILE_Y / 5), "spawn reveal radius reaches a neighbour");
 
         gameState.x = 1000;
         gameState.y = 800;
@@ -133,7 +140,7 @@ inline void ChartSuite(TestRunner &runner) {
         test.assertTrue(chart::isExplored(state, 24, 20), "movement reveal radius is one cell");
 
         chart::revealInitial(state, gameState);
-        test.assertTrue(chart::isExplored(state, 7, 9), "a later spawn reveal cannot wipe the map");
+        test.assertTrue(chart::isExplored(state, world::SPAWN_TILE_X / 5, world::SPAWN_TILE_Y / 5), "a later spawn reveal cannot wipe the map");
         test.assertTrue(!chart::isExplored(state, 30, 20), "the later reveal only adds cells around the current position");
 
         gameState.x = 1200;

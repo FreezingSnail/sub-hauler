@@ -17,6 +17,9 @@
 #include "src/pilot.hpp"
 #include "src/render.hpp"
 #include "src/world_fx.hpp"
+#if SH_DEV_MODE
+#include "src/dev_mode.hpp"
+#endif
 
 #if SH_FEATURE_MULTI_HULL
 #include "src/roster_view.hpp"
@@ -34,7 +37,7 @@
 #include "src/chart.hpp"
 #include "src/chart_view.hpp"
 #endif
-#if SH_FEATURE_SAVE_CHART
+#if SH_FEATURE_SAVE_CHART && !SH_DEV_MODE
 #include "src/chart_save.hpp"
 #endif
 #if SH_FEATURE_SONAR
@@ -72,7 +75,11 @@ enum class Screen : uint8_t {
 };
 
 #if SH_FEATURE_MULTI_HULL
+#if SH_DEV_MODE
+static Screen s_screen = Screen::Pilot;
+#else
 static Screen s_screen = Screen::Title;
+#endif
 #else
 static Screen s_screen = Screen::Pilot;
 #endif
@@ -109,13 +116,20 @@ static void drawPilot() {
 // by the failure entry.
 static void resetRun() {
     game::resetWorld(s_state);
+#if SH_DEV_MODE
+    dev_mode::prepare(s_state);
+#endif
 #if SH_FEATURE_FOG_CHART
     chart::reset(s_chart);
+#if SH_DEV_MODE
+    dev_mode::revealChart(s_chart);
+#else
     chart::revealInitial(s_chart, s_state);
+#endif
 #endif
 }
 
-#if SH_FEATURE_SAVE_CHART
+#if SH_FEATURE_SAVE_CHART && !SH_DEV_MODE
 // Load once from EEPROM during setup. A blank, corrupt, wrong-version, or
 // wrong-checksum block is ignored and the reset chart stays empty; the loader
 // validates the whole block before copying, so there is never a partial map.
@@ -188,8 +202,8 @@ static void updateTitle() {
 // display transaction, and no world step runs.
 static void drawChart() {
     // The frame counter is the blink phase: no extra state, and a paused chart
-    // still redraws deterministically from the frame number rather than the
-    // frozen simulation clock.
+    // redraws on blink changes from the frame number rather than the frozen
+    // simulation clock.
     chart_view::draw(Arduboy2Base::sBuffer, s_chart, s_state, s_tables, static_cast<uint8_t>(Arduboy2Base::frameCount));
 }
 #endif
@@ -249,6 +263,10 @@ static void updateFlight() {
     // (sink). A/B stay free for station actions once docked.
     const game::Input input{arduboy.pressed(UP_BUTTON), arduboy.pressed(DOWN_BUTTON), arduboy.pressed(LEFT_BUTTON), arduboy.pressed(RIGHT_BUTTON)};
 
+#if SH_DEV_MODE
+    dev_mode::step(s_state, input, arduboy.pressed(A_BUTTON));
+    drawPilot();
+#else
 #if SH_FEATURE_STATIONS
 #if SH_FEATURE_FOG_CHART
     const bool docked = station::stepFlight(s_state, input, s_tables, &s_cache);
@@ -302,6 +320,7 @@ static void updateFlight() {
 #endif
 
     drawPilot();
+#endif // SH_DEV_MODE
 }
 
 #if SH_FEATURE_FOG_CHART
@@ -310,7 +329,7 @@ static void updateFlight() {
 // Arduboy frame counter because game::State.ticks cannot advance here.
 static void updateChart() {
     if (arduboy.justPressed(B_BUTTON)) {
-#if SH_FEATURE_SAVE_CHART
+#if SH_FEATURE_SAVE_CHART && !SH_DEV_MODE
         saveChartOnClose();
 #endif
         s_screen = Screen::Pilot;
@@ -318,7 +337,10 @@ static void updateChart() {
         return;
     }
 
-    drawChart();
+    if (chart_view::needsRedraw(s_state, static_cast<uint8_t>(Arduboy2Base::frameCount)))
+        drawChart();
+    else
+        s_present = false;
 }
 #endif
 
@@ -419,7 +441,7 @@ void setup() {
 
     resetRun();
 
-#if SH_FEATURE_SAVE_CHART
+#if SH_FEATURE_SAVE_CHART && !SH_DEV_MODE
     // Restore the explored set once at boot; resetRun() already revealed the
     // spawn, and a valid save overwrites that with the exact stored mask.
     loadChartSave();

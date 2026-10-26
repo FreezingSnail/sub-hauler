@@ -1,0 +1,1324 @@
+{
+  "format": "atmlib-score",
+  "version": 1,
+  "id": "sh_bubblejet_run",
+  "clock": {
+    "tick_rate": 100,
+    "ticks_per_beat": 60,
+    "beats_per_bar": 4
+  },
+  "instruments": {
+    "jet": {
+      "voice": "pulse",
+      "volume": 52,
+      "duty": 128
+    },
+    "bubble": {
+      "voice": "pulse",
+      "volume": 26,
+      "duty": 128
+    },
+    "motor": {
+      "voice": "pulse",
+      "volume": 32,
+      "duty": 128
+    },
+    "wake": {
+      "voice": "noise",
+      "volume": 7
+    }
+  },
+  "patterns": {
+    "jet_01": {
+      "ticks": 240,
+      "events": [
+        {"at": 0, "note": "E4", "duration": 24, "instrument": "jet"},
+        {"at": 60, "note": "A4", "duration": 24, "instrument": "jet"},
+        {"at": 90, "note": "C5", "duration": 24, "instrument": "jet"},
+        {"at": 150, "note": "B4", "duration": 24, "instrument": "jet"},
+        {"at": 180, "note": "A4", "duration": 45, "instrument": "jet"}
+      ],
+      "effects": [
+        {
+          "at": 1,
+          "until": 238,
+          "type": "note_cut",
+          "period": 14,
+          "repeat": false
+        }
+      ]
+    },
+    "bubbles_01": {
+      "ticks": 240,
+      "events": [
+        {"at": 30, "note": "D5", "duration": 23, "instrument": "bubble"},
+        {"at": 120, "note": "E4", "duration": 20, "instrument": "bubble"}
+      ],
+      "effects": [
+        {
+          "at": 30,
+          "until": 51,
+          "type": "glissando",
+          "direction": "down",
+          "period": 7
+        },
+        {
+          "at": 120,
+          "until": 140,
+          "type": "slide",
+          "param": "volume",
+          "amount": -2,
+          "every": 2
+        }
+      ]
+    },
+    "motor_01": {
+      "ticks": 240,
+      "events": [
+        {"at": 0, "note": "A2", "duration": 42, "instrument": "motor"},
+        {"at": 90, "note": "E3", "duration": 36, "instrument": "motor"},
+        {"at": 180, "note": "A2", "duration": 42, "instrument": "motor"}
+      ]
+    },
+    "wake_01": {
+      "ticks": 240,
+      "events": [
+        {"at": 120, "note": "C3", "duration": 4, "instrument": "wake"}
+      ]
+    },
+    "jet_02": {
+      "ticks": 240,
+      "events": [
+        {"at": 0, "note": "F#4", "duration": 24, "instrument": "jet"},
+        {"at": 60, "note": "A4", "duration": 24, "instrument": "jet"},
+        {"at": 90, "note": "B4", "duration": 24, "instrument": "jet"},
+        {"at": 150, "note": "A4", "duration": 24, "instrument": "jet"},
+        {"at": 180, "note": "F#4", "duration": 45, "instrument": "jet"}
+      ],
+      "effects": [
+        {
+          "at": 1,
+          "until": 238,
+          "type": "note_cut",
+          "period": 14,
+          "repeat": false
+        }
+      ]
+    },
+    "bubbles_02": {
+      "ticks": 240,
+      "events": [
+        {"at": 30, "note": "G#4", "duration": 23, "instrument": "bubble"},
+        {"at": 120, "note": "A4", "duration": 20, "instrument": "bubble"}
+      ],
+      "effects": [
+        {
+          "at": 30,
+          "until": 51,
+          "type": "glissando",
+          "direction": "down",
+          "period": 7
+        },
+        {
+          "at": 120,
+          "until": 140,
+          "type": "slide",
+          "param": "volume",
+          "amount": -2,
+          "every": 2
+        }
+      ]
+    },
+    "motor_02": {
+      "ticks": 240,
+      "events": [
+        {"at": 0, "note": "D3", "duration": 42, "instrument": "motor"},
+        {"at": 90, "note": "A2", "duration": 36, "instrument": "motor"},
+        {"at": 180, "note": "D3", "duration": 42, "instrument": "motor"}
+      ]
+    },
+    "wake_02": {
+      "ticks": 240,
+      "events": [
+        {"at": 120, "note": "C3", "duration": 4, "instrument": "wake"},
+        {"at": 210, "note": "C4", "duration": 12, "instrument": "wake"}
+      ],
+      "effects": [
+        {
+          "at": 210,
+          "until": 222,
+          "type": "noise_retrig",
+          "period": 3,
+          "note": "C4"
+        }
+      ]
+    },
+    "jet_03": {
+      "ticks": 240,
+      "events": [
+        {"at": 0, "note": "D4", "duration": 24, "instrument": "jet"},
+        {"at": 60, "note": "G4", "duration": 24, "instrument": "jet"},
+        {"at": 90, "note": "B4", "duration": 24, "instrument": "jet"},
+        {"at": 150, "note": "A4", "duration": 24, "instrument": "jet"},
+        {"at": 180, "note": "G4", "duration": 45, "instrument": "jet"}
+      ],
+      "effects": [
+        {
+          "at": 1,
+          "until": 238,
+          "type": "note_cut",
+          "period": 14,
+          "repeat": false
+        }
+      ]
+    },
+    "bubbles_03": {
+      "ticks": 240,
+      "events": [
+        {"at": 30, "note": "C#5", "duration": 23, "instrument": "bubble"},
+        {"at": 120, "note": "D4", "duration": 20, "instrument": "bubble"}
+      ],
+      "effects": [
+        {
+          "at": 30,
+          "until": 51,
+          "type": "glissando",
+          "direction": "down",
+          "period": 7
+        },
+        {
+          "at": 120,
+          "until": 140,
+          "type": "slide",
+          "param": "volume",
+          "amount": -2,
+          "every": 2
+        }
+      ]
+    },
+    "motor_03": {
+      "ticks": 240,
+      "events": [
+        {"at": 0, "note": "G2", "duration": 42, "instrument": "motor"},
+        {"at": 90, "note": "D3", "duration": 36, "instrument": "motor"},
+        {"at": 180, "note": "G2", "duration": 42, "instrument": "motor"}
+      ]
+    },
+    "wake_03": {
+      "ticks": 240,
+      "events": [
+        {"at": 120, "note": "C3", "duration": 4, "instrument": "wake"}
+      ]
+    },
+    "jet_04": {
+      "ticks": 240,
+      "events": [
+        {"at": 0, "note": "E4", "duration": 24, "instrument": "jet"},
+        {"at": 60, "note": "G4", "duration": 24, "instrument": "jet"},
+        {"at": 90, "note": "B4", "duration": 24, "instrument": "jet"},
+        {"at": 150, "note": "A4", "duration": 24, "instrument": "jet"},
+        {"at": 180, "note": "G4", "duration": 45, "instrument": "jet"}
+      ],
+      "effects": [
+        {
+          "at": 1,
+          "until": 238,
+          "type": "note_cut",
+          "period": 14,
+          "repeat": false
+        }
+      ]
+    },
+    "bubbles_04": {
+      "ticks": 240,
+      "events": [
+        {"at": 30, "note": "F#5", "duration": 23, "instrument": "bubble"},
+        {"at": 120, "note": "B4", "duration": 20, "instrument": "bubble"},
+        {"at": 210, "note": "E4", "duration": 24, "instrument": "bubble"}
+      ],
+      "effects": [
+        {
+          "at": 30,
+          "until": 51,
+          "type": "glissando",
+          "direction": "down",
+          "period": 7
+        },
+        {
+          "at": 120,
+          "until": 140,
+          "type": "slide",
+          "param": "volume",
+          "amount": -2,
+          "every": 2
+        },
+        {
+          "at": 210,
+          "until": 234,
+          "type": "note_cut",
+          "period": 6,
+          "repeat": true
+        }
+      ]
+    },
+    "motor_04": {
+      "ticks": 240,
+      "events": [
+        {"at": 0, "note": "E3", "duration": 42, "instrument": "motor"},
+        {"at": 90, "note": "B2", "duration": 36, "instrument": "motor"},
+        {"at": 180, "note": "E3", "duration": 42, "instrument": "motor"}
+      ]
+    },
+    "wake_04": {
+      "ticks": 240,
+      "events": [
+        {"at": 120, "note": "C3", "duration": 4, "instrument": "wake"},
+        {"at": 210, "note": "C4", "duration": 12, "instrument": "wake"}
+      ],
+      "effects": [
+        {
+          "at": 210,
+          "until": 222,
+          "type": "noise_retrig",
+          "period": 3,
+          "note": "C4"
+        }
+      ]
+    },
+    "jet_05": {
+      "ticks": 240,
+      "events": [
+        {"at": 0, "note": "A4", "duration": 24, "instrument": "jet"},
+        {"at": 60, "note": "C5", "duration": 24, "instrument": "jet"},
+        {"at": 90, "note": "E5", "duration": 24, "instrument": "jet"},
+        {"at": 150, "note": "D5", "duration": 24, "instrument": "jet"},
+        {"at": 180, "note": "C5", "duration": 45, "instrument": "jet"}
+      ],
+      "effects": [
+        {
+          "at": 1,
+          "until": 238,
+          "type": "note_cut",
+          "period": 14,
+          "repeat": false
+        }
+      ]
+    },
+    "bubbles_05": {
+      "ticks": 240,
+      "events": [
+        {"at": 30, "note": "D5", "duration": 23, "instrument": "bubble"},
+        {"at": 120, "note": "E4", "duration": 20, "instrument": "bubble"}
+      ],
+      "effects": [
+        {
+          "at": 30,
+          "until": 51,
+          "type": "glissando",
+          "direction": "down",
+          "period": 7
+        },
+        {
+          "at": 120,
+          "until": 140,
+          "type": "slide",
+          "param": "volume",
+          "amount": -2,
+          "every": 2
+        }
+      ]
+    },
+    "motor_05": {
+      "ticks": 240,
+      "events": [
+        {"at": 0, "note": "A2", "duration": 42, "instrument": "motor"},
+        {"at": 90, "note": "E3", "duration": 36, "instrument": "motor"},
+        {"at": 180, "note": "A2", "duration": 42, "instrument": "motor"}
+      ]
+    },
+    "wake_05": {
+      "ticks": 240,
+      "events": [
+        {"at": 120, "note": "C3", "duration": 4, "instrument": "wake"}
+      ]
+    },
+    "jet_06": {
+      "ticks": 240,
+      "events": [
+        {"at": 0, "note": "A4", "duration": 24, "instrument": "jet"},
+        {"at": 60, "note": "F#4", "duration": 24, "instrument": "jet"},
+        {"at": 90, "note": "A4", "duration": 24, "instrument": "jet"},
+        {"at": 150, "note": "B4", "duration": 24, "instrument": "jet"},
+        {"at": 180, "note": "A4", "duration": 45, "instrument": "jet"}
+      ],
+      "effects": [
+        {
+          "at": 1,
+          "until": 238,
+          "type": "note_cut",
+          "period": 14,
+          "repeat": false
+        }
+      ]
+    },
+    "bubbles_06": {
+      "ticks": 240,
+      "events": [
+        {"at": 30, "note": "G#4", "duration": 23, "instrument": "bubble"},
+        {"at": 120, "note": "A4", "duration": 20, "instrument": "bubble"}
+      ],
+      "effects": [
+        {
+          "at": 30,
+          "until": 51,
+          "type": "glissando",
+          "direction": "down",
+          "period": 7
+        },
+        {
+          "at": 120,
+          "until": 140,
+          "type": "slide",
+          "param": "volume",
+          "amount": -2,
+          "every": 2
+        }
+      ]
+    },
+    "motor_06": {
+      "ticks": 240,
+      "events": [
+        {"at": 0, "note": "D3", "duration": 42, "instrument": "motor"},
+        {"at": 90, "note": "A2", "duration": 36, "instrument": "motor"},
+        {"at": 180, "note": "D3", "duration": 42, "instrument": "motor"}
+      ]
+    },
+    "wake_06": {
+      "ticks": 240,
+      "events": [
+        {"at": 120, "note": "C3", "duration": 4, "instrument": "wake"},
+        {"at": 210, "note": "C4", "duration": 12, "instrument": "wake"}
+      ],
+      "effects": [
+        {
+          "at": 210,
+          "until": 222,
+          "type": "noise_retrig",
+          "period": 3,
+          "note": "C4"
+        }
+      ]
+    },
+    "jet_07": {
+      "ticks": 240,
+      "events": [
+        {"at": 0, "note": "B4", "duration": 24, "instrument": "jet"},
+        {"at": 60, "note": "D5", "duration": 24, "instrument": "jet"},
+        {"at": 90, "note": "B4", "duration": 24, "instrument": "jet"},
+        {"at": 150, "note": "A4", "duration": 24, "instrument": "jet"},
+        {"at": 180, "note": "G4", "duration": 45, "instrument": "jet"}
+      ],
+      "effects": [
+        {
+          "at": 1,
+          "until": 238,
+          "type": "note_cut",
+          "period": 14,
+          "repeat": false
+        }
+      ]
+    },
+    "bubbles_07": {
+      "ticks": 240,
+      "events": [
+        {"at": 30, "note": "C#5", "duration": 23, "instrument": "bubble"},
+        {"at": 120, "note": "D4", "duration": 20, "instrument": "bubble"}
+      ],
+      "effects": [
+        {
+          "at": 30,
+          "until": 51,
+          "type": "glissando",
+          "direction": "down",
+          "period": 7
+        },
+        {
+          "at": 120,
+          "until": 140,
+          "type": "slide",
+          "param": "volume",
+          "amount": -2,
+          "every": 2
+        }
+      ]
+    },
+    "motor_07": {
+      "ticks": 240,
+      "events": [
+        {"at": 0, "note": "G2", "duration": 42, "instrument": "motor"},
+        {"at": 90, "note": "D3", "duration": 36, "instrument": "motor"},
+        {"at": 180, "note": "G2", "duration": 42, "instrument": "motor"}
+      ]
+    },
+    "wake_07": {
+      "ticks": 240,
+      "events": [
+        {"at": 120, "note": "C3", "duration": 4, "instrument": "wake"}
+      ]
+    },
+    "jet_08": {
+      "ticks": 240,
+      "events": [
+        {"at": 0, "note": "G4", "duration": 24, "instrument": "jet"},
+        {"at": 60, "note": "B4", "duration": 24, "instrument": "jet"},
+        {"at": 90, "note": "G4", "duration": 24, "instrument": "jet"},
+        {"at": 150, "note": "F#4", "duration": 24, "instrument": "jet"},
+        {"at": 180, "note": "E4", "duration": 45, "instrument": "jet"}
+      ],
+      "effects": [
+        {
+          "at": 1,
+          "until": 238,
+          "type": "note_cut",
+          "period": 14,
+          "repeat": false
+        }
+      ]
+    },
+    "bubbles_08": {
+      "ticks": 240,
+      "events": [
+        {"at": 30, "note": "F#5", "duration": 23, "instrument": "bubble"},
+        {"at": 120, "note": "B4", "duration": 20, "instrument": "bubble"},
+        {"at": 210, "note": "E4", "duration": 24, "instrument": "bubble"}
+      ],
+      "effects": [
+        {
+          "at": 30,
+          "until": 51,
+          "type": "glissando",
+          "direction": "down",
+          "period": 7
+        },
+        {
+          "at": 120,
+          "until": 140,
+          "type": "slide",
+          "param": "volume",
+          "amount": -2,
+          "every": 2
+        },
+        {
+          "at": 210,
+          "until": 234,
+          "type": "note_cut",
+          "period": 6,
+          "repeat": true
+        }
+      ]
+    },
+    "motor_08": {
+      "ticks": 240,
+      "events": [
+        {"at": 0, "note": "E3", "duration": 42, "instrument": "motor"},
+        {"at": 90, "note": "B2", "duration": 36, "instrument": "motor"},
+        {"at": 180, "note": "E3", "duration": 42, "instrument": "motor"}
+      ]
+    },
+    "wake_08": {
+      "ticks": 240,
+      "events": [
+        {"at": 120, "note": "C3", "duration": 4, "instrument": "wake"},
+        {"at": 210, "note": "C4", "duration": 12, "instrument": "wake"}
+      ],
+      "effects": [
+        {
+          "at": 210,
+          "until": 222,
+          "type": "noise_retrig",
+          "period": 3,
+          "note": "C4"
+        }
+      ]
+    },
+    "jet_09": {
+      "ticks": 240,
+      "events": [
+        {"at": 0, "note": "E4", "duration": 24, "instrument": "jet"},
+        {"at": 60, "note": "A4", "duration": 24, "instrument": "jet"},
+        {"at": 90, "note": "B4", "duration": 24, "instrument": "jet"},
+        {"at": 150, "note": "C5", "duration": 24, "instrument": "jet"},
+        {"at": 180, "note": "A4", "duration": 45, "instrument": "jet"}
+      ],
+      "effects": [
+        {
+          "at": 1,
+          "until": 238,
+          "type": "note_cut",
+          "period": 14,
+          "repeat": false
+        }
+      ]
+    },
+    "bubbles_09": {
+      "ticks": 240,
+      "events": [
+        {"at": 30, "note": "D5", "duration": 23, "instrument": "bubble"},
+        {"at": 120, "note": "E4", "duration": 20, "instrument": "bubble"}
+      ],
+      "effects": [
+        {
+          "at": 30,
+          "until": 51,
+          "type": "glissando",
+          "direction": "down",
+          "period": 7
+        },
+        {
+          "at": 120,
+          "until": 140,
+          "type": "slide",
+          "param": "volume",
+          "amount": -2,
+          "every": 2
+        }
+      ]
+    },
+    "motor_09": {
+      "ticks": 240,
+      "events": [
+        {"at": 0, "note": "A2", "duration": 42, "instrument": "motor"},
+        {"at": 90, "note": "E3", "duration": 36, "instrument": "motor"},
+        {"at": 180, "note": "A2", "duration": 42, "instrument": "motor"}
+      ]
+    },
+    "wake_09": {
+      "ticks": 240,
+      "events": [
+        {"at": 120, "note": "C3", "duration": 4, "instrument": "wake"}
+      ]
+    },
+    "jet_10": {
+      "ticks": 240,
+      "events": [
+        {"at": 0, "note": "D4", "duration": 24, "instrument": "jet"},
+        {"at": 60, "note": "F#4", "duration": 24, "instrument": "jet"},
+        {"at": 90, "note": "A4", "duration": 24, "instrument": "jet"},
+        {"at": 150, "note": "F#4", "duration": 24, "instrument": "jet"},
+        {"at": 180, "note": "E4", "duration": 45, "instrument": "jet"}
+      ],
+      "effects": [
+        {
+          "at": 1,
+          "until": 238,
+          "type": "note_cut",
+          "period": 14,
+          "repeat": false
+        }
+      ]
+    },
+    "bubbles_10": {
+      "ticks": 240,
+      "events": [
+        {"at": 30, "note": "G#4", "duration": 23, "instrument": "bubble"},
+        {"at": 120, "note": "A4", "duration": 20, "instrument": "bubble"}
+      ],
+      "effects": [
+        {
+          "at": 30,
+          "until": 51,
+          "type": "glissando",
+          "direction": "down",
+          "period": 7
+        },
+        {
+          "at": 120,
+          "until": 140,
+          "type": "slide",
+          "param": "volume",
+          "amount": -2,
+          "every": 2
+        }
+      ]
+    },
+    "motor_10": {
+      "ticks": 240,
+      "events": [
+        {"at": 0, "note": "D3", "duration": 42, "instrument": "motor"},
+        {"at": 90, "note": "A2", "duration": 36, "instrument": "motor"},
+        {"at": 180, "note": "D3", "duration": 42, "instrument": "motor"}
+      ]
+    },
+    "wake_10": {
+      "ticks": 240,
+      "events": [
+        {"at": 120, "note": "C3", "duration": 4, "instrument": "wake"},
+        {"at": 210, "note": "C4", "duration": 12, "instrument": "wake"}
+      ],
+      "effects": [
+        {
+          "at": 210,
+          "until": 222,
+          "type": "noise_retrig",
+          "period": 3,
+          "note": "C4"
+        }
+      ]
+    },
+    "jet_11": {
+      "ticks": 240,
+      "events": [
+        {"at": 0, "note": "G4", "duration": 24, "instrument": "jet"},
+        {"at": 60, "note": "B4", "duration": 24, "instrument": "jet"},
+        {"at": 90, "note": "D5", "duration": 24, "instrument": "jet"},
+        {"at": 150, "note": "B4", "duration": 24, "instrument": "jet"},
+        {"at": 180, "note": "A4", "duration": 45, "instrument": "jet"}
+      ],
+      "effects": [
+        {
+          "at": 1,
+          "until": 238,
+          "type": "note_cut",
+          "period": 14,
+          "repeat": false
+        }
+      ]
+    },
+    "bubbles_11": {
+      "ticks": 240,
+      "events": [
+        {"at": 30, "note": "C#5", "duration": 23, "instrument": "bubble"},
+        {"at": 120, "note": "D4", "duration": 20, "instrument": "bubble"}
+      ],
+      "effects": [
+        {
+          "at": 30,
+          "until": 51,
+          "type": "glissando",
+          "direction": "down",
+          "period": 7
+        },
+        {
+          "at": 120,
+          "until": 140,
+          "type": "slide",
+          "param": "volume",
+          "amount": -2,
+          "every": 2
+        }
+      ]
+    },
+    "motor_11": {
+      "ticks": 240,
+      "events": [
+        {"at": 0, "note": "G2", "duration": 42, "instrument": "motor"},
+        {"at": 90, "note": "D3", "duration": 36, "instrument": "motor"},
+        {"at": 180, "note": "G2", "duration": 42, "instrument": "motor"}
+      ]
+    },
+    "wake_11": {
+      "ticks": 240,
+      "events": [
+        {"at": 120, "note": "C3", "duration": 4, "instrument": "wake"}
+      ]
+    },
+    "jet_12": {
+      "ticks": 240,
+      "events": [
+        {"at": 0, "note": "E4", "duration": 24, "instrument": "jet"},
+        {"at": 60, "note": "G4", "duration": 24, "instrument": "jet"},
+        {"at": 90, "note": "B4", "duration": 24, "instrument": "jet"},
+        {"at": 150, "note": "G4", "duration": 24, "instrument": "jet"},
+        {"at": 180, "note": "E4", "duration": 45, "instrument": "jet"}
+      ],
+      "effects": [
+        {
+          "at": 1,
+          "until": 238,
+          "type": "note_cut",
+          "period": 14,
+          "repeat": false
+        }
+      ]
+    },
+    "bubbles_12": {
+      "ticks": 240,
+      "events": [
+        {"at": 30, "note": "F#5", "duration": 23, "instrument": "bubble"},
+        {"at": 120, "note": "B4", "duration": 20, "instrument": "bubble"},
+        {"at": 210, "note": "E4", "duration": 24, "instrument": "bubble"}
+      ],
+      "effects": [
+        {
+          "at": 30,
+          "until": 51,
+          "type": "glissando",
+          "direction": "down",
+          "period": 7
+        },
+        {
+          "at": 120,
+          "until": 140,
+          "type": "slide",
+          "param": "volume",
+          "amount": -2,
+          "every": 2
+        },
+        {
+          "at": 210,
+          "until": 234,
+          "type": "note_cut",
+          "period": 6,
+          "repeat": true
+        }
+      ]
+    },
+    "motor_12": {
+      "ticks": 240,
+      "events": [
+        {"at": 0, "note": "E3", "duration": 42, "instrument": "motor"},
+        {"at": 90, "note": "B2", "duration": 36, "instrument": "motor"},
+        {"at": 180, "note": "E3", "duration": 42, "instrument": "motor"}
+      ]
+    },
+    "wake_12": {
+      "ticks": 240,
+      "events": [
+        {"at": 120, "note": "C3", "duration": 4, "instrument": "wake"},
+        {"at": 210, "note": "C4", "duration": 12, "instrument": "wake"}
+      ],
+      "effects": [
+        {
+          "at": 210,
+          "until": 222,
+          "type": "noise_retrig",
+          "period": 3,
+          "note": "C4"
+        }
+      ]
+    },
+    "jet_13": {
+      "ticks": 240,
+      "events": [
+        {"at": 0, "note": "C5", "duration": 24, "instrument": "jet"},
+        {"at": 60, "note": "B4", "duration": 24, "instrument": "jet"},
+        {"at": 90, "note": "A4", "duration": 24, "instrument": "jet"},
+        {"at": 150, "note": "G4", "duration": 24, "instrument": "jet"},
+        {"at": 180, "note": "E4", "duration": 45, "instrument": "jet"}
+      ],
+      "effects": [
+        {
+          "at": 1,
+          "until": 238,
+          "type": "note_cut",
+          "period": 14,
+          "repeat": false
+        }
+      ]
+    },
+    "bubbles_13": {
+      "ticks": 240,
+      "events": [
+        {"at": 30, "note": "D5", "duration": 23, "instrument": "bubble"},
+        {"at": 120, "note": "E4", "duration": 20, "instrument": "bubble"}
+      ],
+      "effects": [
+        {
+          "at": 30,
+          "until": 51,
+          "type": "glissando",
+          "direction": "down",
+          "period": 7
+        },
+        {
+          "at": 120,
+          "until": 140,
+          "type": "slide",
+          "param": "volume",
+          "amount": -2,
+          "every": 2
+        }
+      ]
+    },
+    "motor_13": {
+      "ticks": 240,
+      "events": [
+        {"at": 0, "note": "A2", "duration": 42, "instrument": "motor"},
+        {"at": 90, "note": "E3", "duration": 36, "instrument": "motor"},
+        {"at": 180, "note": "A2", "duration": 42, "instrument": "motor"}
+      ]
+    },
+    "wake_13": {
+      "ticks": 240,
+      "events": [
+        {"at": 120, "note": "C3", "duration": 4, "instrument": "wake"}
+      ]
+    },
+    "jet_14": {
+      "ticks": 240,
+      "events": [
+        {"at": 0, "note": "F#4", "duration": 24, "instrument": "jet"},
+        {"at": 60, "note": "A4", "duration": 24, "instrument": "jet"},
+        {"at": 90, "note": "B4", "duration": 24, "instrument": "jet"},
+        {"at": 150, "note": "A4", "duration": 24, "instrument": "jet"},
+        {"at": 180, "note": "F#4", "duration": 45, "instrument": "jet"}
+      ],
+      "effects": [
+        {
+          "at": 1,
+          "until": 238,
+          "type": "note_cut",
+          "period": 14,
+          "repeat": false
+        }
+      ]
+    },
+    "bubbles_14": {
+      "ticks": 240,
+      "events": [
+        {"at": 30, "note": "G#4", "duration": 23, "instrument": "bubble"},
+        {"at": 120, "note": "A4", "duration": 20, "instrument": "bubble"}
+      ],
+      "effects": [
+        {
+          "at": 30,
+          "until": 51,
+          "type": "glissando",
+          "direction": "down",
+          "period": 7
+        },
+        {
+          "at": 120,
+          "until": 140,
+          "type": "slide",
+          "param": "volume",
+          "amount": -2,
+          "every": 2
+        }
+      ]
+    },
+    "motor_14": {
+      "ticks": 240,
+      "events": [
+        {"at": 0, "note": "D3", "duration": 42, "instrument": "motor"},
+        {"at": 90, "note": "A2", "duration": 36, "instrument": "motor"},
+        {"at": 180, "note": "D3", "duration": 42, "instrument": "motor"}
+      ]
+    },
+    "wake_14": {
+      "ticks": 240,
+      "events": [
+        {"at": 120, "note": "C3", "duration": 4, "instrument": "wake"},
+        {"at": 210, "note": "C4", "duration": 12, "instrument": "wake"}
+      ],
+      "effects": [
+        {
+          "at": 210,
+          "until": 222,
+          "type": "noise_retrig",
+          "period": 3,
+          "note": "C4"
+        }
+      ]
+    },
+    "jet_15": {
+      "ticks": 240,
+      "events": [
+        {"at": 0, "note": "D5", "duration": 24, "instrument": "jet"},
+        {"at": 60, "note": "B4", "duration": 24, "instrument": "jet"},
+        {"at": 90, "note": "G4", "duration": 24, "instrument": "jet"},
+        {"at": 150, "note": "A4", "duration": 24, "instrument": "jet"},
+        {"at": 180, "note": "B4", "duration": 45, "instrument": "jet"}
+      ],
+      "effects": [
+        {
+          "at": 1,
+          "until": 238,
+          "type": "note_cut",
+          "period": 14,
+          "repeat": false
+        }
+      ]
+    },
+    "bubbles_15": {
+      "ticks": 240,
+      "events": [
+        {"at": 30, "note": "C#5", "duration": 23, "instrument": "bubble"},
+        {"at": 120, "note": "D4", "duration": 20, "instrument": "bubble"}
+      ],
+      "effects": [
+        {
+          "at": 30,
+          "until": 51,
+          "type": "glissando",
+          "direction": "down",
+          "period": 7
+        },
+        {
+          "at": 120,
+          "until": 140,
+          "type": "slide",
+          "param": "volume",
+          "amount": -2,
+          "every": 2
+        }
+      ]
+    },
+    "motor_15": {
+      "ticks": 240,
+      "events": [
+        {"at": 0, "note": "G2", "duration": 42, "instrument": "motor"},
+        {"at": 90, "note": "D3", "duration": 36, "instrument": "motor"},
+        {"at": 180, "note": "G2", "duration": 42, "instrument": "motor"}
+      ]
+    },
+    "wake_15": {
+      "ticks": 240,
+      "events": [
+        {"at": 120, "note": "C3", "duration": 4, "instrument": "wake"}
+      ]
+    },
+    "jet_16": {
+      "ticks": 240,
+      "events": [
+        {"at": 0, "note": "G4", "duration": 24, "instrument": "jet"},
+        {"at": 60, "note": "F#4", "duration": 24, "instrument": "jet"},
+        {"at": 90, "note": "E4", "duration": 24, "instrument": "jet"},
+        {"at": 150, "note": "D4", "duration": 24, "instrument": "jet"},
+        {"at": 180, "note": "E4", "duration": 45, "instrument": "jet"}
+      ],
+      "effects": [
+        {
+          "at": 1,
+          "until": 238,
+          "type": "note_cut",
+          "period": 14,
+          "repeat": false
+        }
+      ]
+    },
+    "bubbles_16": {
+      "ticks": 240,
+      "events": [
+        {"at": 30, "note": "F#5", "duration": 23, "instrument": "bubble"},
+        {"at": 120, "note": "B4", "duration": 20, "instrument": "bubble"},
+        {"at": 210, "note": "E4", "duration": 24, "instrument": "bubble"}
+      ],
+      "effects": [
+        {
+          "at": 30,
+          "until": 51,
+          "type": "glissando",
+          "direction": "down",
+          "period": 7
+        },
+        {
+          "at": 120,
+          "until": 140,
+          "type": "slide",
+          "param": "volume",
+          "amount": -2,
+          "every": 2
+        },
+        {
+          "at": 210,
+          "until": 234,
+          "type": "note_cut",
+          "period": 6,
+          "repeat": true
+        }
+      ]
+    },
+    "motor_16": {
+      "ticks": 240,
+      "events": [
+        {"at": 0, "note": "E3", "duration": 42, "instrument": "motor"},
+        {"at": 90, "note": "B2", "duration": 36, "instrument": "motor"},
+        {"at": 180, "note": "E3", "duration": 42, "instrument": "motor"}
+      ]
+    },
+    "wake_16": {
+      "ticks": 240,
+      "events": [
+        {"at": 120, "note": "C3", "duration": 4, "instrument": "wake"},
+        {"at": 210, "note": "C4", "duration": 12, "instrument": "wake"}
+      ],
+      "effects": [
+        {
+          "at": 210,
+          "until": 222,
+          "type": "noise_retrig",
+          "period": 3,
+          "note": "C4"
+        }
+      ]
+    }
+  },
+  "tracks": {
+    "pulse0": [
+      {
+        "pattern": "jet_01",
+        "repeat": 1
+      },
+      {
+        "pattern": "jet_02",
+        "repeat": 1
+      },
+      {
+        "pattern": "jet_03",
+        "repeat": 1
+      },
+      {
+        "pattern": "jet_04",
+        "repeat": 1
+      },
+      {
+        "pattern": "jet_05",
+        "repeat": 1
+      },
+      {
+        "pattern": "jet_06",
+        "repeat": 1
+      },
+      {
+        "pattern": "jet_07",
+        "repeat": 1
+      },
+      {
+        "pattern": "jet_08",
+        "repeat": 1
+      },
+      {
+        "pattern": "jet_09",
+        "repeat": 1
+      },
+      {
+        "pattern": "jet_10",
+        "repeat": 1
+      },
+      {
+        "pattern": "jet_11",
+        "repeat": 1
+      },
+      {
+        "pattern": "jet_12",
+        "repeat": 1
+      },
+      {
+        "pattern": "jet_13",
+        "repeat": 1
+      },
+      {
+        "pattern": "jet_14",
+        "repeat": 1
+      },
+      {
+        "pattern": "jet_15",
+        "repeat": 1
+      },
+      {
+        "pattern": "jet_16",
+        "repeat": 1
+      }
+    ],
+    "pulse1": [
+      {
+        "pattern": "bubbles_01",
+        "repeat": 1
+      },
+      {
+        "pattern": "bubbles_02",
+        "repeat": 1
+      },
+      {
+        "pattern": "bubbles_03",
+        "repeat": 1
+      },
+      {
+        "pattern": "bubbles_04",
+        "repeat": 1
+      },
+      {
+        "pattern": "bubbles_05",
+        "repeat": 1
+      },
+      {
+        "pattern": "bubbles_06",
+        "repeat": 1
+      },
+      {
+        "pattern": "bubbles_07",
+        "repeat": 1
+      },
+      {
+        "pattern": "bubbles_08",
+        "repeat": 1
+      },
+      {
+        "pattern": "bubbles_09",
+        "repeat": 1
+      },
+      {
+        "pattern": "bubbles_10",
+        "repeat": 1
+      },
+      {
+        "pattern": "bubbles_11",
+        "repeat": 1
+      },
+      {
+        "pattern": "bubbles_12",
+        "repeat": 1
+      },
+      {
+        "pattern": "bubbles_13",
+        "repeat": 1
+      },
+      {
+        "pattern": "bubbles_14",
+        "repeat": 1
+      },
+      {
+        "pattern": "bubbles_15",
+        "repeat": 1
+      },
+      {
+        "pattern": "bubbles_16",
+        "repeat": 1
+      }
+    ],
+    "pulse2": [
+      {
+        "pattern": "motor_01",
+        "repeat": 1
+      },
+      {
+        "pattern": "motor_02",
+        "repeat": 1
+      },
+      {
+        "pattern": "motor_03",
+        "repeat": 1
+      },
+      {
+        "pattern": "motor_04",
+        "repeat": 1
+      },
+      {
+        "pattern": "motor_05",
+        "repeat": 1
+      },
+      {
+        "pattern": "motor_06",
+        "repeat": 1
+      },
+      {
+        "pattern": "motor_07",
+        "repeat": 1
+      },
+      {
+        "pattern": "motor_08",
+        "repeat": 1
+      },
+      {
+        "pattern": "motor_09",
+        "repeat": 1
+      },
+      {
+        "pattern": "motor_10",
+        "repeat": 1
+      },
+      {
+        "pattern": "motor_11",
+        "repeat": 1
+      },
+      {
+        "pattern": "motor_12",
+        "repeat": 1
+      },
+      {
+        "pattern": "motor_13",
+        "repeat": 1
+      },
+      {
+        "pattern": "motor_14",
+        "repeat": 1
+      },
+      {
+        "pattern": "motor_15",
+        "repeat": 1
+      },
+      {
+        "pattern": "motor_16",
+        "repeat": 1
+      }
+    ],
+    "noise": [
+      {
+        "pattern": "wake_01",
+        "repeat": 1
+      },
+      {
+        "pattern": "wake_02",
+        "repeat": 1
+      },
+      {
+        "pattern": "wake_03",
+        "repeat": 1
+      },
+      {
+        "pattern": "wake_04",
+        "repeat": 1
+      },
+      {
+        "pattern": "wake_05",
+        "repeat": 1
+      },
+      {
+        "pattern": "wake_06",
+        "repeat": 1
+      },
+      {
+        "pattern": "wake_07",
+        "repeat": 1
+      },
+      {
+        "pattern": "wake_08",
+        "repeat": 1
+      },
+      {
+        "pattern": "wake_09",
+        "repeat": 1
+      },
+      {
+        "pattern": "wake_10",
+        "repeat": 1
+      },
+      {
+        "pattern": "wake_11",
+        "repeat": 1
+      },
+      {
+        "pattern": "wake_12",
+        "repeat": 1
+      },
+      {
+        "pattern": "wake_13",
+        "repeat": 1
+      },
+      {
+        "pattern": "wake_14",
+        "repeat": 1
+      },
+      {
+        "pattern": "wake_15",
+        "repeat": 1
+      },
+      {
+        "pattern": "wake_16",
+        "repeat": 1
+      }
+    ]
+  },
+  "loop": true
+}

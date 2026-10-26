@@ -11,10 +11,10 @@
 //
 // Layout (little-endian byte order is irrelevant: every field is one byte):
 //   0..1  magic 'S' 'H' (0x53 0x48)
-//   2     version (1)
+//   2     current world layout version
 //   3     CRC-8/ATM over the 256 explored bytes
 //   4..   explored[world::CHART_BYTES] (256 B)
-// Total 260 B. There is no migration: version 1 is the only accepted layout,
+// Total 260 B. There is no migration: only the current world version is accepted,
 // and blank/corrupt/bad-version/bad-checksum blocks are ignored as a whole.
 //
 // The save/load functions are templates over a Storage concept so the host
@@ -38,7 +38,7 @@ namespace chart_save {
 
 constexpr uint8_t kMagic0 = 0x53;   // 'S'
 constexpr uint8_t kMagic1 = 0x48;   // 'H'
-constexpr uint8_t kVersion = 1;
+constexpr uint8_t kVersion = world::LAYOUT_VERSION;
 constexpr uint16_t kHeaderBytes = 4;
 constexpr uint16_t kDataAddress = kHeaderBytes;
 constexpr uint16_t kTotalBytes = kHeaderBytes + world::CHART_BYTES;

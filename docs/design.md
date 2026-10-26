@@ -7,6 +7,20 @@ fixed pilot art into FX and compacted the generated world metadata and AVR run
 state. The browser slices in `spike-trim/` remain a historical reference; the
 shipped device path is the cargo-free contract loop described below.
 
+## Active exploration map — 2026-10-25
+
+The device now loads the authored `levels/exploration.json` world, with
+32 rooms, 42 passages, nine equipment gates and eight cove rewards. The high
+pressure region is lowest. `make gen` appends its collision/chart/object
+sections and writes the active `src/generated/level.hpp`; legacy seed-4242
+sections and `src/generated/world.hpp` stay unchanged for ABI compatibility.
+The active terrain uses winding, variable-width passages and asymmetric
+caverns with 31 solid pillars, shelves, wall teeth and wreck ribs. Freight
+allowances follow authored route lengths; optional shortcuts save travel time.
+See [the level contract](../levels/README.md) for encoding, controls and limits.
+The older baked-world measurements below are historical. The campaign/ending
+and persistent voyage save in `campaign-exploration.md` remain proposed work.
+
 ## Direction
 
 - The cutaway is the identity of the game. The external sub is the travel view;

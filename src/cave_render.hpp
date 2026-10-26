@@ -46,12 +46,22 @@ inline void fillRect(uint8_t *buffer, int16_t x, int16_t y, uint8_t width, uint8
         right = VIEW_WIDTH;
     if (bottom > VIEW_HEIGHT)
         bottom = VIEW_HEIGHT;
-    for (int16_t py = y; py < bottom; ++py) {
-        for (int16_t px = x; px < right; ++px) {
+    if (x >= right || y >= bottom)
+        return;
+    const uint8_t firstPage = static_cast<uint8_t>(y >> 3);
+    const uint8_t lastPage = static_cast<uint8_t>((bottom - 1) >> 3);
+    for (uint8_t page = firstPage; page <= lastPage; ++page) {
+        uint8_t mask = 0xFF;
+        if (page == firstPage)
+            mask &= static_cast<uint8_t>(0xFFu << (y & 7));
+        if (page == lastPage)
+            mask &= static_cast<uint8_t>(0xFFu >> (7 - ((bottom - 1) & 7)));
+        uint8_t *dest = buffer + page * VIEW_WIDTH + x;
+        for (int16_t px = x; px < right; ++px, ++dest) {
             if (color)
-                setPixel(buffer, px, py);
+                *dest |= mask;
             else
-                clearPixel(buffer, px, py);
+                *dest &= static_cast<uint8_t>(~mask);
         }
     }
 }
@@ -79,8 +89,7 @@ inline void drawGantry(uint8_t *buffer, int16_t x, int16_t y) {
     fillRect(buffer, static_cast<int16_t>(x + 2), static_cast<int16_t>(y - 12), 3, 2, false);
 
     // Beam and its two supports.
-    fillRect(buffer, static_cast<int16_t>(x - GANTRY_HALF_WIDTH), static_cast<int16_t>(y - 8),
-             GANTRY_HALF_WIDTH * 2, 2, true);
+    fillRect(buffer, static_cast<int16_t>(x - GANTRY_HALF_WIDTH), static_cast<int16_t>(y - 8), GANTRY_HALF_WIDTH * 2, 2, true);
     fillRect(buffer, static_cast<int16_t>(x - GANTRY_HALF_WIDTH), static_cast<int16_t>(y - 6), 2, 4, true);
     fillRect(buffer, static_cast<int16_t>(x + GANTRY_HALF_WIDTH - 2), static_cast<int16_t>(y - 6), 2, 4, true);
 
@@ -106,28 +115,86 @@ inline void drawSettlements(uint8_t *buffer, const Camera &camera) {
     }
 }
 
+// One 18-bit row from the densely packed cache. Row alignment repeats every
+// four rows (0/2/4/6 bits); three bytes always cover it, including the last
+// row at bytes 20..22. No temporary unpacked cache or cart reads.
+inline uint32_t cacheRowBits(const world::TileCache &cache, uint8_t row) {
+    const uint8_t bit = row * world::CACHE_TILES_X;
+    const uint8_t *src = cache.bits + (bit >> 3);
+    return (static_cast<uint32_t>(src[0]) | (static_cast<uint32_t>(src[1]) << 8) | (static_cast<uint32_t>(src[2]) << 16)) >> (bit & 7);
+}
+
 // Compose the visible 16x8 tile window and the settlement gantries. Reads only
 // the supplied cache, so the caller owns cart access through refreshCache().
 inline void composeFrame(const Camera &camera, const world::TileCache &cache, uint8_t *buffer) {
     for (uint16_t i = 0; i < static_cast<uint16_t>(VIEW_WIDTH) * VIEW_HEIGHT / 8; ++i)
         buffer[i] = 0;
 
-    for (uint8_t row = 0; row < VIEW_TILES_Y; ++row) {
-        const int16_t tileY = static_cast<int16_t>(camera.tileY + row);
-        for (uint8_t column = 0; column < VIEW_TILES_X; ++column) {
-            const int16_t tileX = static_cast<int16_t>(camera.tileX + column);
+    if (cache.valid && cache.originTileX == cacheOriginTileX(camera) && cache.originTileY == cacheOriginTileY(camera)) {
+        // The normal view has a complete neighbour margin. Decode each row
+        // once, then slide its bits across the screen instead of making up to
+        // 640 checked world-coordinate lookups per frame.
+        uint32_t north = cacheRowBits(cache, 0);
+        uint32_t middle = cacheRowBits(cache, 1);
+        for (uint8_t row = 0; row < VIEW_TILES_Y; ++row) {
+            const uint32_t south = cacheRowBits(cache, row + 2);
+            uint32_t n = north >> 1, m = middle, s = south >> 1;
+            for (uint8_t column = 0; column < VIEW_TILES_X; ++column) {
+                if (m & 2) {
+                    uint8_t mask = 0;
+                    if (!(n & 1))
+                        mask |= OPEN_NORTH;
+                    if (!(s & 1))
+                        mask |= OPEN_SOUTH;
+                    if (!(m & 1))
+                        mask |= OPEN_WEST;
+                    if (!(m & 4))
+                        mask |= OPEN_EAST;
+                    drawTile(buffer, column, row, mask);
+                    if (!mask)
+                        speckleTile(buffer, camera.tileX + column, camera.tileY + row, column, row);
+                }
+                n >>= 1;
+                m >>= 1;
+                s >>= 1;
+            }
+            north = middle;
+            middle = south;
+        }
+    } else {
+        for (uint8_t row = 0; row < VIEW_TILES_Y; ++row) {
+            // Keep cache-miss and partial-window behavior for other callers.
+            const int16_t tileY = static_cast<int16_t>(camera.tileY + row);
+            for (uint8_t column = 0; column < VIEW_TILES_X; ++column) {
+                const int16_t tileX = static_cast<int16_t>(camera.tileX + column);
 
-            bool solid = false;
-            if (!world::cacheLookup(cache, tileX, tileY, solid) || !solid)
-                continue;
+                bool solid = false;
+                if (!world::cacheLookup(cache, tileX, tileY, solid) || !solid)
+                    continue;
 
-            const uint8_t mask = openMask(cache, tileX, tileY);
-            drawTile(buffer, column, row, mask);
-            if (mask == 0)
-                speckleTile(buffer, tileX, tileY, column, row);
+                const uint8_t mask = openMask(cache, tileX, tileY);
+                drawTile(buffer, column, row, mask);
+                if (mask == 0)
+                    speckleTile(buffer, tileX, tileY, column, row);
+            }
         }
     }
 
+    drawSettlements(buffer, camera);
+}
+
+constexpr uint16_t TERRAIN_ROW_BYTES = world::PIXELS_X;
+constexpr uint32_t TERRAIN_BYTES = static_cast<uint32_t>(world::PIXELS_X) * world::PIXELS_Y / 8;
+
+// The camera is tile/page aligned. Each visible OLED page is one contiguous
+// strip in the baked terrain panorama, with no tile selection or bit shifts.
+// Reader owns cart access; all eight reads finish before OLED presentation.
+template <typename Reader> inline void streamFrame(const Camera &camera, Reader &reader, uint8_t *buffer) {
+    uint32_t offset = static_cast<uint32_t>(camera.tileY) * TERRAIN_ROW_BYTES + camera.tileX * world::TILE_PIXELS;
+    for (uint8_t page = 0; page < VIEW_TILES_Y; ++page) {
+        reader.terrainBytes(offset, buffer + page * VIEW_WIDTH, VIEW_WIDTH);
+        offset += TERRAIN_ROW_BYTES;
+    }
     drawSettlements(buffer, camera);
 }
 

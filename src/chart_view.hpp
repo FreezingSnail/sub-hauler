@@ -9,17 +9,20 @@
 #include "chart.hpp"
 #include "game.hpp"
 #include "world.hpp"
+#if SH_FEATURE_EXPLORATION
+#include "exploration.hpp"
+#endif
 
 // Paused 128x64 chart. The pure page-major drawing code is shared by the host
 // tests and the firmware.
 //
-// Water comes from the baked 64x32 cart mask through Reader::chartByte: exactly
-// one read per byte, eight bytes per chart row, with no map-sized cache beyond
-// the 256 B explored set. Large chart cells are drawn as 2x2 pixel blocks.
+// Water comes from the baked 64x32 cart mask through Reader::chartBytes: eight
+// 32-byte bursts, with one scratch page on the stack and no persistent cache
+// beyond the 256 B explored set. Chart cells expand to 2x2 pixel blocks.
 //
 // Markers are black cut-outs with white strokes so they stay visible on lit
-// water. Settlement crosses only appear once their cell is explored. The
-// active job destination is an X that blinks from blinkPhase; chart frames do
+// water. Settlement crosses only appear once their cell is explored. The sub
+// block and the active job destination X blink from blinkPhase; chart frames do
 // not step the world, so the caller supplies that phase. B closes the screen;
 // no text is drawn, which keeps the map area clear.
 namespace chart_view {
@@ -107,28 +110,65 @@ inline void drawSub(uint8_t *buffer, int16_t cellX, int16_t cellY) {
     fillCell(buffer, x, y);
 }
 
+#if SH_FEATURE_EXPLORATION
+inline void drawDiscoveries(uint8_t *buffer, const chart::State &chartState, const game::State &s) {
+    for (uint8_t i = 0; i < exploration_data::PICKUP_COUNT; ++i) {
+        const exploration_data::Pickup p = exploration_data::pickup(i);
+        int16_t cx, cy;
+        if (!chart::cellFromPixels(p.x, p.y, cx, cy) || !chart::isExplored(chartState, cx, cy))
+            continue;
+        if (s.pickups & (1u << i))
+            setPixel(buffer, cx * 2 + 1, cy * 2 + 1);
+        else
+            drawDestinationMark(buffer, cx, cy);
+    }
+    for (uint8_t i = 0; i < exploration_data::GATE_COUNT; ++i) {
+        if (!(s.seenGates & (static_cast<uint16_t>(1u) << i)))
+            continue;
+        const exploration_data::Gate g = exploration_data::gate(i);
+        int16_t cx, cy;
+        if (!chart::cellFromPixels(g.x + g.w / 2, g.y + g.h / 2, cx, cy))
+            continue;
+        if (exploration::closed(s, i, g))
+            drawDestinationMark(buffer, cx, cy);
+        else
+            setPixel(buffer, cx * 2, cy * 2);
+    }
+}
+#endif
+
 // ---------------------------------------------------------------------------
 // Frame composition
 // ---------------------------------------------------------------------------
 
 template <typename Reader> inline void drawWater(uint8_t *buffer, const chart::State &chartState, Reader &reader) {
-    for (uint8_t row = 0; row < world::CHART_TILES_Y; ++row) {
-        const uint16_t rowIndex = static_cast<uint16_t>(row) * world::CHART_ROW_BYTES;
+    constexpr uint8_t pageBytes = world::CHART_ROW_BYTES * 4;
+    uint8_t water[pageBytes];
+    for (uint8_t page = 0; page < kFrameHeight / 8; ++page) {
+        const uint16_t index = static_cast<uint16_t>(page) * pageBytes;
+        reader.chartBytes(index, water, pageBytes);
+        for (uint8_t i = 0; i < pageBytes; ++i)
+            water[i] &= chartState.explored[index + i];
+        uint8_t *out = buffer + static_cast<uint16_t>(page) * kFrameWidth;
         for (uint8_t byte = 0; byte < world::CHART_ROW_BYTES; ++byte) {
-            // One cart read per chart byte; the explored bitmap is the only
-            // persistent map storage.
-            const uint8_t water = reader.chartByte(static_cast<uint16_t>(rowIndex + byte));
-            const uint8_t lit = static_cast<uint8_t>(water & chartState.explored[rowIndex + byte]);
-            if (lit == 0)
-                continue;
+            uint8_t a = water[byte], b = water[byte + 8];
+            uint8_t c = water[byte + 16], d = water[byte + 24];
             for (uint8_t bit = 0; bit < 8; ++bit) {
-                if ((lit & (1u << bit)) != 0) {
-                    const uint8_t cellX = static_cast<uint8_t>(byte * 8 + bit);
-                    drawCell(buffer, cellX, row);
-                }
+                const uint8_t pixels = ((a & 1) ? 0x03 : 0) | ((b & 1) ? 0x0C : 0) |
+                                       ((c & 1) ? 0x30 : 0) | ((d & 1) ? 0xC0 : 0);
+                *out++ = pixels;
+                *out++ = pixels;
+                a >>= 1; b >>= 1; c >>= 1; d >>= 1;
             }
         }
     }
+}
+
+// Entry always composes immediately. Once paused, only the markers can change:
+// redraw at each 16-frame blink boundary, including counter wrap.
+inline bool needsRedraw(const game::State &state, uint8_t phase) {
+    (void)state;
+    return (phase & (kBlinkMask - 1)) == 0;
 }
 
 // Settlements are landmarks, not omniscient map data: an unexplored cell draws
@@ -168,7 +208,9 @@ inline void drawDestination(uint8_t *buffer, const game::State &gameState, uint8
 }
 #endif
 
-inline void drawSubMarker(uint8_t *buffer, const game::State &gameState) {
+inline void drawSubMarker(uint8_t *buffer, const game::State &gameState, uint8_t blinkPhase) {
+    if ((blinkPhase & kBlinkMask) != 0)
+        return;
     int16_t cellX;
     int16_t cellY;
     if (!chart::cellFromPixels(gameState.x, gameState.y, cellX, cellY))
@@ -178,17 +220,17 @@ inline void drawSubMarker(uint8_t *buffer, const game::State &gameState) {
 
 // Compose the whole 128x64 chart. Cart reads happen here, before the single
 // display transaction. The caller owns the persistent chart::State.
-template <typename Reader>
-inline void draw(uint8_t *buffer, const chart::State &chartState, const game::State &gameState, Reader &reader, uint8_t blinkPhase) {
-    for (uint16_t i = 0; i < kFrameBytes; ++i)
-        buffer[i] = 0;
-
+template <typename Reader> inline void draw(uint8_t *buffer, const chart::State &chartState, const game::State &gameState, Reader &reader, uint8_t blinkPhase) {
+    // Water expansion overwrites all 1024 bytes, including fogged/land cells.
     drawWater(buffer, chartState, reader);
+#if SH_FEATURE_EXPLORATION
+    drawDiscoveries(buffer, chartState, gameState);
+#endif
     drawSettlements(buffer, chartState);
 #if SH_FEATURE_JOBS
     drawDestination(buffer, gameState, blinkPhase);
 #endif
-    drawSubMarker(buffer, gameState);
+    drawSubMarker(buffer, gameState, blinkPhase);
 }
 
 }   // namespace chart_view

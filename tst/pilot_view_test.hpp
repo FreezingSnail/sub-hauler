@@ -33,10 +33,10 @@ inline void PilotViewSuite(TestRunner &runner) {
         game::resetWorld(state);
 
         const cave::Camera camera = pilot_view::cameraForState(state);
-        test.assertEqual(camera.tileX, static_cast<int16_t>(30), "spawn camera tile x");
-        test.assertEqual(camera.tileY, static_cast<int16_t>(44), "spawn camera tile y");
-        test.assertEqual(pilot_view::screenX(state, camera), static_cast<int16_t>(51), "spawn screen x");
-        test.assertEqual(pilot_view::screenY(state, camera), static_cast<int16_t>(36), "spawn screen y");
+        test.assertEqual(camera.tileX, static_cast<int16_t>(world::SPAWN_TILE_X - 6), "spawn camera tile x");
+        test.assertEqual(camera.tileY, static_cast<int16_t>(world::SPAWN_TILE_Y - 4), "spawn camera tile y");
+        test.assertEqual(pilot_view::screenX(state, camera), static_cast<int16_t>(48), "spawn screen x");
+        test.assertEqual(pilot_view::screenY(state, camera), static_cast<int16_t>(32), "spawn screen y");
 
         // Sub-tile camera offsets floor down; the display still clamps at the
         // same far-edge tile as the cave window.

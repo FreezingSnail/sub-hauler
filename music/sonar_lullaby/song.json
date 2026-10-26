@@ -1,0 +1,1022 @@
+{
+  "format": "atmlib-score",
+  "version": 1,
+  "id": "sh_sonar_lullaby",
+  "clock": {
+    "tick_rate": 50,
+    "ticks_per_beat": 60,
+    "beats_per_bar": 4
+  },
+  "instruments": {
+    "bloop": {
+      "voice": "pulse",
+      "volume": 48,
+      "duty": 128
+    },
+    "echo": {
+      "voice": "pulse",
+      "volume": 24,
+      "duty": 112
+    },
+    "keel": {
+      "voice": "pulse",
+      "volume": 36,
+      "duty": 128
+    },
+    "bubble": {
+      "voice": "noise",
+      "volume": 6
+    }
+  },
+  "patterns": {
+    "bloop_01": {
+      "ticks": 240,
+      "events": [
+        {"at": 0, "note": "B4", "duration": 15, "instrument": "bloop"},
+        {"at": 60, "note": "E4", "duration": 30, "instrument": "bloop"},
+        {"at": 180, "note": "B3", "duration": 30, "instrument": "bloop"}
+      ],
+      "effects": [
+        {
+          "at": 0,
+          "until": 240,
+          "type": "slide",
+          "param": "volume",
+          "amount": -3,
+          "every": 2
+        }
+      ]
+    },
+    "reply_01": {
+      "ticks": 240,
+      "events": [
+        {"at": 90, "note": "B2", "duration": 20, "instrument": "echo"}
+      ],
+      "effects": [
+        {
+          "at": 0,
+          "until": 240,
+          "type": "slide",
+          "param": "volume",
+          "amount": -2,
+          "every": 2
+        }
+      ]
+    },
+    "keel_01": {
+      "ticks": 240,
+      "events": [
+        {"at": 0, "note": "E2", "duration": 90, "instrument": "keel"}
+      ]
+    },
+    "water_01": {
+      "ticks": 240,
+      "events": []
+    },
+    "bloop_02": {
+      "ticks": 240,
+      "events": [
+        {"at": 0, "note": "G4", "duration": 15, "instrument": "bloop"},
+        {"at": 60, "note": "E4", "duration": 30, "instrument": "bloop"}
+      ],
+      "effects": [
+        {
+          "at": 0,
+          "until": 240,
+          "type": "slide",
+          "param": "volume",
+          "amount": -3,
+          "every": 2
+        }
+      ]
+    },
+    "reply_02": {
+      "ticks": 240,
+      "events": [
+        {"at": 90, "note": "G3", "duration": 20, "instrument": "echo"}
+      ],
+      "effects": [
+        {
+          "at": 0,
+          "until": 240,
+          "type": "slide",
+          "param": "volume",
+          "amount": -2,
+          "every": 2
+        }
+      ]
+    },
+    "keel_02": {
+      "ticks": 240,
+      "events": [
+        {"at": 0, "note": "C3", "duration": 90, "instrument": "keel"},
+        {"at": 120, "note": "G3", "duration": 60, "instrument": "keel"}
+      ]
+    },
+    "water_02": {
+      "ticks": 240,
+      "events": [
+        {"at": 210, "note": "C3", "duration": 2, "instrument": "bubble"}
+      ]
+    },
+    "bloop_03": {
+      "ticks": 240,
+      "events": [
+        {"at": 0, "note": "E5", "duration": 15, "instrument": "bloop"},
+        {"at": 60, "note": "A4", "duration": 30, "instrument": "bloop"},
+        {"at": 180, "note": "E4", "duration": 30, "instrument": "bloop"}
+      ],
+      "effects": [
+        {
+          "at": 0,
+          "until": 240,
+          "type": "slide",
+          "param": "volume",
+          "amount": -3,
+          "every": 2
+        }
+      ]
+    },
+    "reply_03": {
+      "ticks": 240,
+      "events": [
+        {"at": 90, "note": "E3", "duration": 20, "instrument": "echo"}
+      ],
+      "effects": [
+        {
+          "at": 0,
+          "until": 240,
+          "type": "slide",
+          "param": "volume",
+          "amount": -2,
+          "every": 2
+        }
+      ]
+    },
+    "keel_03": {
+      "ticks": 240,
+      "events": [
+        {"at": 0, "note": "A2", "duration": 90, "instrument": "keel"}
+      ]
+    },
+    "water_03": {
+      "ticks": 240,
+      "events": []
+    },
+    "bloop_04": {
+      "ticks": 240,
+      "events": [
+        {"at": 0, "note": "F#4", "duration": 15, "instrument": "bloop"},
+        {"at": 60, "note": "D4", "duration": 30, "instrument": "bloop"}
+      ],
+      "effects": [
+        {
+          "at": 0,
+          "until": 240,
+          "type": "slide",
+          "param": "volume",
+          "amount": -3,
+          "every": 2
+        }
+      ]
+    },
+    "reply_04": {
+      "ticks": 240,
+      "events": [
+        {"at": 90, "note": "F#3", "duration": 20, "instrument": "echo"}
+      ],
+      "effects": [
+        {
+          "at": 0,
+          "until": 240,
+          "type": "slide",
+          "param": "volume",
+          "amount": -2,
+          "every": 2
+        }
+      ]
+    },
+    "keel_04": {
+      "ticks": 240,
+      "events": [
+        {"at": 0, "note": "B2", "duration": 90, "instrument": "keel"},
+        {"at": 120, "note": "F#3", "duration": 60, "instrument": "keel"}
+      ]
+    },
+    "water_04": {
+      "ticks": 240,
+      "events": [
+        {"at": 210, "note": "C3", "duration": 2, "instrument": "bubble"}
+      ]
+    },
+    "bloop_05": {
+      "ticks": 240,
+      "events": [
+        {"at": 0, "note": "G4", "duration": 15, "instrument": "bloop"},
+        {"at": 60, "note": "B4", "duration": 30, "instrument": "bloop"},
+        {"at": 180, "note": "E4", "duration": 30, "instrument": "bloop"}
+      ],
+      "effects": [
+        {
+          "at": 0,
+          "until": 240,
+          "type": "slide",
+          "param": "volume",
+          "amount": -3,
+          "every": 2
+        }
+      ]
+    },
+    "reply_05": {
+      "ticks": 240,
+      "events": [
+        {"at": 90, "note": "B2", "duration": 20, "instrument": "echo"}
+      ],
+      "effects": [
+        {
+          "at": 0,
+          "until": 240,
+          "type": "slide",
+          "param": "volume",
+          "amount": -2,
+          "every": 2
+        }
+      ]
+    },
+    "keel_05": {
+      "ticks": 240,
+      "events": [
+        {"at": 0, "note": "E2", "duration": 90, "instrument": "keel"}
+      ]
+    },
+    "water_05": {
+      "ticks": 240,
+      "events": []
+    },
+    "bloop_06": {
+      "ticks": 240,
+      "events": [
+        {"at": 0, "note": "B4", "duration": 15, "instrument": "bloop"},
+        {"at": 60, "note": "G4", "duration": 30, "instrument": "bloop"}
+      ],
+      "effects": [
+        {
+          "at": 0,
+          "until": 240,
+          "type": "slide",
+          "param": "volume",
+          "amount": -3,
+          "every": 2
+        }
+      ]
+    },
+    "reply_06": {
+      "ticks": 240,
+      "events": [
+        {"at": 90, "note": "G3", "duration": 20, "instrument": "echo"}
+      ],
+      "effects": [
+        {
+          "at": 0,
+          "until": 240,
+          "type": "slide",
+          "param": "volume",
+          "amount": -2,
+          "every": 2
+        }
+      ]
+    },
+    "keel_06": {
+      "ticks": 240,
+      "events": [
+        {"at": 0, "note": "C3", "duration": 90, "instrument": "keel"},
+        {"at": 120, "note": "G3", "duration": 60, "instrument": "keel"}
+      ]
+    },
+    "water_06": {
+      "ticks": 240,
+      "events": [
+        {"at": 210, "note": "C3", "duration": 2, "instrument": "bubble"}
+      ]
+    },
+    "bloop_07": {
+      "ticks": 240,
+      "events": [
+        {"at": 0, "note": "C5", "duration": 15, "instrument": "bloop"},
+        {"at": 60, "note": "A4", "duration": 30, "instrument": "bloop"},
+        {"at": 180, "note": "E4", "duration": 30, "instrument": "bloop"}
+      ],
+      "effects": [
+        {
+          "at": 0,
+          "until": 240,
+          "type": "slide",
+          "param": "volume",
+          "amount": -3,
+          "every": 2
+        }
+      ]
+    },
+    "reply_07": {
+      "ticks": 240,
+      "events": [
+        {"at": 90, "note": "E3", "duration": 20, "instrument": "echo"}
+      ],
+      "effects": [
+        {
+          "at": 0,
+          "until": 240,
+          "type": "slide",
+          "param": "volume",
+          "amount": -2,
+          "every": 2
+        }
+      ]
+    },
+    "keel_07": {
+      "ticks": 240,
+      "events": [
+        {"at": 0, "note": "A2", "duration": 90, "instrument": "keel"}
+      ]
+    },
+    "water_07": {
+      "ticks": 240,
+      "events": []
+    },
+    "bloop_08": {
+      "ticks": 240,
+      "events": [
+        {"at": 0, "note": "F#4", "duration": 15, "instrument": "bloop"},
+        {"at": 60, "note": "B3", "duration": 30, "instrument": "bloop"},
+        {"at": 210, "note": "D4", "duration": 15, "instrument": "bloop"}
+      ],
+      "effects": [
+        {
+          "at": 0,
+          "until": 240,
+          "type": "slide",
+          "param": "volume",
+          "amount": -3,
+          "every": 2
+        }
+      ]
+    },
+    "reply_08": {
+      "ticks": 240,
+      "events": [
+        {"at": 90, "note": "F#3", "duration": 20, "instrument": "echo"}
+      ],
+      "effects": [
+        {
+          "at": 0,
+          "until": 240,
+          "type": "slide",
+          "param": "volume",
+          "amount": -2,
+          "every": 2
+        }
+      ]
+    },
+    "keel_08": {
+      "ticks": 240,
+      "events": [
+        {"at": 0, "note": "B2", "duration": 90, "instrument": "keel"},
+        {"at": 120, "note": "F#3", "duration": 60, "instrument": "keel"}
+      ]
+    },
+    "water_08": {
+      "ticks": 240,
+      "events": [
+        {"at": 210, "note": "C3", "duration": 2, "instrument": "bubble"}
+      ]
+    },
+    "bloop_09": {
+      "ticks": 240,
+      "events": [
+        {"at": 0, "note": "B4", "duration": 15, "instrument": "bloop"},
+        {"at": 60, "note": "E5", "duration": 30, "instrument": "bloop"},
+        {"at": 180, "note": "G4", "duration": 30, "instrument": "bloop"}
+      ],
+      "effects": [
+        {
+          "at": 0,
+          "until": 240,
+          "type": "slide",
+          "param": "volume",
+          "amount": -3,
+          "every": 2
+        }
+      ]
+    },
+    "reply_09": {
+      "ticks": 240,
+      "events": [
+        {"at": 90, "note": "B2", "duration": 20, "instrument": "echo"}
+      ],
+      "effects": [
+        {
+          "at": 0,
+          "until": 240,
+          "type": "slide",
+          "param": "volume",
+          "amount": -2,
+          "every": 2
+        }
+      ]
+    },
+    "keel_09": {
+      "ticks": 240,
+      "events": [
+        {"at": 0, "note": "E2", "duration": 90, "instrument": "keel"}
+      ]
+    },
+    "water_09": {
+      "ticks": 240,
+      "events": []
+    },
+    "bloop_10": {
+      "ticks": 240,
+      "events": [
+        {"at": 0, "note": "G4", "duration": 15, "instrument": "bloop"},
+        {"at": 60, "note": "E4", "duration": 30, "instrument": "bloop"}
+      ],
+      "effects": [
+        {
+          "at": 0,
+          "until": 240,
+          "type": "slide",
+          "param": "volume",
+          "amount": -3,
+          "every": 2
+        }
+      ]
+    },
+    "reply_10": {
+      "ticks": 240,
+      "events": [
+        {"at": 90, "note": "G3", "duration": 20, "instrument": "echo"}
+      ],
+      "effects": [
+        {
+          "at": 0,
+          "until": 240,
+          "type": "slide",
+          "param": "volume",
+          "amount": -2,
+          "every": 2
+        }
+      ]
+    },
+    "keel_10": {
+      "ticks": 240,
+      "events": [
+        {"at": 0, "note": "C3", "duration": 90, "instrument": "keel"},
+        {"at": 120, "note": "G3", "duration": 60, "instrument": "keel"}
+      ]
+    },
+    "water_10": {
+      "ticks": 240,
+      "events": [
+        {"at": 210, "note": "C3", "duration": 2, "instrument": "bubble"}
+      ]
+    },
+    "bloop_11": {
+      "ticks": 240,
+      "events": [
+        {"at": 0, "note": "A4", "duration": 15, "instrument": "bloop"},
+        {"at": 60, "note": "C5", "duration": 30, "instrument": "bloop"},
+        {"at": 180, "note": "E4", "duration": 30, "instrument": "bloop"}
+      ],
+      "effects": [
+        {
+          "at": 0,
+          "until": 240,
+          "type": "slide",
+          "param": "volume",
+          "amount": -3,
+          "every": 2
+        }
+      ]
+    },
+    "reply_11": {
+      "ticks": 240,
+      "events": [
+        {"at": 90, "note": "E3", "duration": 20, "instrument": "echo"}
+      ],
+      "effects": [
+        {
+          "at": 0,
+          "until": 240,
+          "type": "slide",
+          "param": "volume",
+          "amount": -2,
+          "every": 2
+        }
+      ]
+    },
+    "keel_11": {
+      "ticks": 240,
+      "events": [
+        {"at": 0, "note": "A2", "duration": 90, "instrument": "keel"}
+      ]
+    },
+    "water_11": {
+      "ticks": 240,
+      "events": []
+    },
+    "bloop_12": {
+      "ticks": 240,
+      "events": [
+        {"at": 0, "note": "F#4", "duration": 15, "instrument": "bloop"},
+        {"at": 60, "note": "D4", "duration": 30, "instrument": "bloop"}
+      ],
+      "effects": [
+        {
+          "at": 0,
+          "until": 240,
+          "type": "slide",
+          "param": "volume",
+          "amount": -3,
+          "every": 2
+        }
+      ]
+    },
+    "reply_12": {
+      "ticks": 240,
+      "events": [
+        {"at": 90, "note": "F#3", "duration": 20, "instrument": "echo"}
+      ],
+      "effects": [
+        {
+          "at": 0,
+          "until": 240,
+          "type": "slide",
+          "param": "volume",
+          "amount": -2,
+          "every": 2
+        }
+      ]
+    },
+    "keel_12": {
+      "ticks": 240,
+      "events": [
+        {"at": 0, "note": "B2", "duration": 90, "instrument": "keel"},
+        {"at": 120, "note": "F#3", "duration": 60, "instrument": "keel"}
+      ]
+    },
+    "water_12": {
+      "ticks": 240,
+      "events": [
+        {"at": 210, "note": "C3", "duration": 2, "instrument": "bubble"}
+      ]
+    },
+    "bloop_13": {
+      "ticks": 240,
+      "events": [
+        {"at": 0, "note": "E5", "duration": 15, "instrument": "bloop"},
+        {"at": 60, "note": "B4", "duration": 30, "instrument": "bloop"},
+        {"at": 180, "note": "G4", "duration": 30, "instrument": "bloop"}
+      ],
+      "effects": [
+        {
+          "at": 0,
+          "until": 240,
+          "type": "slide",
+          "param": "volume",
+          "amount": -3,
+          "every": 2
+        }
+      ]
+    },
+    "reply_13": {
+      "ticks": 240,
+      "events": [
+        {"at": 90, "note": "B2", "duration": 20, "instrument": "echo"}
+      ],
+      "effects": [
+        {
+          "at": 0,
+          "until": 240,
+          "type": "slide",
+          "param": "volume",
+          "amount": -2,
+          "every": 2
+        }
+      ]
+    },
+    "keel_13": {
+      "ticks": 240,
+      "events": [
+        {"at": 0, "note": "E2", "duration": 90, "instrument": "keel"}
+      ]
+    },
+    "water_13": {
+      "ticks": 240,
+      "events": []
+    },
+    "bloop_14": {
+      "ticks": 240,
+      "events": [
+        {"at": 0, "note": "E4", "duration": 15, "instrument": "bloop"},
+        {"at": 60, "note": "G4", "duration": 30, "instrument": "bloop"}
+      ],
+      "effects": [
+        {
+          "at": 0,
+          "until": 240,
+          "type": "slide",
+          "param": "volume",
+          "amount": -3,
+          "every": 2
+        }
+      ]
+    },
+    "reply_14": {
+      "ticks": 240,
+      "events": [
+        {"at": 90, "note": "G3", "duration": 20, "instrument": "echo"}
+      ],
+      "effects": [
+        {
+          "at": 0,
+          "until": 240,
+          "type": "slide",
+          "param": "volume",
+          "amount": -2,
+          "every": 2
+        }
+      ]
+    },
+    "keel_14": {
+      "ticks": 240,
+      "events": [
+        {"at": 0, "note": "C3", "duration": 90, "instrument": "keel"},
+        {"at": 120, "note": "G3", "duration": 60, "instrument": "keel"}
+      ]
+    },
+    "water_14": {
+      "ticks": 240,
+      "events": [
+        {"at": 210, "note": "C3", "duration": 2, "instrument": "bubble"}
+      ]
+    },
+    "bloop_15": {
+      "ticks": 240,
+      "events": [
+        {"at": 0, "note": "A4", "duration": 15, "instrument": "bloop"},
+        {"at": 60, "note": "E4", "duration": 30, "instrument": "bloop"},
+        {"at": 180, "note": "C4", "duration": 30, "instrument": "bloop"}
+      ],
+      "effects": [
+        {
+          "at": 0,
+          "until": 240,
+          "type": "slide",
+          "param": "volume",
+          "amount": -3,
+          "every": 2
+        }
+      ]
+    },
+    "reply_15": {
+      "ticks": 240,
+      "events": [
+        {"at": 90, "note": "E3", "duration": 20, "instrument": "echo"}
+      ],
+      "effects": [
+        {
+          "at": 0,
+          "until": 240,
+          "type": "slide",
+          "param": "volume",
+          "amount": -2,
+          "every": 2
+        }
+      ]
+    },
+    "keel_15": {
+      "ticks": 240,
+      "events": [
+        {"at": 0, "note": "A2", "duration": 90, "instrument": "keel"}
+      ]
+    },
+    "water_15": {
+      "ticks": 240,
+      "events": []
+    },
+    "bloop_16": {
+      "ticks": 240,
+      "events": [
+        {"at": 0, "note": "F#4", "duration": 15, "instrument": "bloop"},
+        {"at": 60, "note": "D4", "duration": 30, "instrument": "bloop"},
+        {"at": 180, "note": "B3", "duration": 30, "instrument": "bloop"}
+      ],
+      "effects": [
+        {
+          "at": 0,
+          "until": 240,
+          "type": "slide",
+          "param": "volume",
+          "amount": -3,
+          "every": 2
+        }
+      ]
+    },
+    "reply_16": {
+      "ticks": 240,
+      "events": [
+        {"at": 90, "note": "F#3", "duration": 20, "instrument": "echo"}
+      ],
+      "effects": [
+        {
+          "at": 0,
+          "until": 240,
+          "type": "slide",
+          "param": "volume",
+          "amount": -2,
+          "every": 2
+        }
+      ]
+    },
+    "keel_16": {
+      "ticks": 240,
+      "events": [
+        {"at": 0, "note": "B2", "duration": 90, "instrument": "keel"},
+        {"at": 120, "note": "F#3", "duration": 60, "instrument": "keel"}
+      ]
+    },
+    "water_16": {
+      "ticks": 240,
+      "events": [
+        {"at": 210, "note": "C3", "duration": 2, "instrument": "bubble"}
+      ]
+    }
+  },
+  "tracks": {
+    "pulse0": [
+      {
+        "pattern": "bloop_01",
+        "repeat": 1
+      },
+      {
+        "pattern": "bloop_02",
+        "repeat": 1
+      },
+      {
+        "pattern": "bloop_03",
+        "repeat": 1
+      },
+      {
+        "pattern": "bloop_04",
+        "repeat": 1
+      },
+      {
+        "pattern": "bloop_05",
+        "repeat": 1
+      },
+      {
+        "pattern": "bloop_06",
+        "repeat": 1
+      },
+      {
+        "pattern": "bloop_07",
+        "repeat": 1
+      },
+      {
+        "pattern": "bloop_08",
+        "repeat": 1
+      },
+      {
+        "pattern": "bloop_09",
+        "repeat": 1
+      },
+      {
+        "pattern": "bloop_10",
+        "repeat": 1
+      },
+      {
+        "pattern": "bloop_11",
+        "repeat": 1
+      },
+      {
+        "pattern": "bloop_12",
+        "repeat": 1
+      },
+      {
+        "pattern": "bloop_13",
+        "repeat": 1
+      },
+      {
+        "pattern": "bloop_14",
+        "repeat": 1
+      },
+      {
+        "pattern": "bloop_15",
+        "repeat": 1
+      },
+      {
+        "pattern": "bloop_16",
+        "repeat": 1
+      }
+    ],
+    "pulse1": [
+      {
+        "pattern": "reply_01",
+        "repeat": 1
+      },
+      {
+        "pattern": "reply_02",
+        "repeat": 1
+      },
+      {
+        "pattern": "reply_03",
+        "repeat": 1
+      },
+      {
+        "pattern": "reply_04",
+        "repeat": 1
+      },
+      {
+        "pattern": "reply_05",
+        "repeat": 1
+      },
+      {
+        "pattern": "reply_06",
+        "repeat": 1
+      },
+      {
+        "pattern": "reply_07",
+        "repeat": 1
+      },
+      {
+        "pattern": "reply_08",
+        "repeat": 1
+      },
+      {
+        "pattern": "reply_09",
+        "repeat": 1
+      },
+      {
+        "pattern": "reply_10",
+        "repeat": 1
+      },
+      {
+        "pattern": "reply_11",
+        "repeat": 1
+      },
+      {
+        "pattern": "reply_12",
+        "repeat": 1
+      },
+      {
+        "pattern": "reply_13",
+        "repeat": 1
+      },
+      {
+        "pattern": "reply_14",
+        "repeat": 1
+      },
+      {
+        "pattern": "reply_15",
+        "repeat": 1
+      },
+      {
+        "pattern": "reply_16",
+        "repeat": 1
+      }
+    ],
+    "pulse2": [
+      {
+        "pattern": "keel_01",
+        "repeat": 1
+      },
+      {
+        "pattern": "keel_02",
+        "repeat": 1
+      },
+      {
+        "pattern": "keel_03",
+        "repeat": 1
+      },
+      {
+        "pattern": "keel_04",
+        "repeat": 1
+      },
+      {
+        "pattern": "keel_05",
+        "repeat": 1
+      },
+      {
+        "pattern": "keel_06",
+        "repeat": 1
+      },
+      {
+        "pattern": "keel_07",
+        "repeat": 1
+      },
+      {
+        "pattern": "keel_08",
+        "repeat": 1
+      },
+      {
+        "pattern": "keel_09",
+        "repeat": 1
+      },
+      {
+        "pattern": "keel_10",
+        "repeat": 1
+      },
+      {
+        "pattern": "keel_11",
+        "repeat": 1
+      },
+      {
+        "pattern": "keel_12",
+        "repeat": 1
+      },
+      {
+        "pattern": "keel_13",
+        "repeat": 1
+      },
+      {
+        "pattern": "keel_14",
+        "repeat": 1
+      },
+      {
+        "pattern": "keel_15",
+        "repeat": 1
+      },
+      {
+        "pattern": "keel_16",
+        "repeat": 1
+      }
+    ],
+    "noise": [
+      {
+        "pattern": "water_01",
+        "repeat": 1
+      },
+      {
+        "pattern": "water_02",
+        "repeat": 1
+      },
+      {
+        "pattern": "water_03",
+        "repeat": 1
+      },
+      {
+        "pattern": "water_04",
+        "repeat": 1
+      },
+      {
+        "pattern": "water_05",
+        "repeat": 1
+      },
+      {
+        "pattern": "water_06",
+        "repeat": 1
+      },
+      {
+        "pattern": "water_07",
+        "repeat": 1
+      },
+      {
+        "pattern": "water_08",
+        "repeat": 1
+      },
+      {
+        "pattern": "water_09",
+        "repeat": 1
+      },
+      {
+        "pattern": "water_10",
+        "repeat": 1
+      },
+      {
+        "pattern": "water_11",
+        "repeat": 1
+      },
+      {
+        "pattern": "water_12",
+        "repeat": 1
+      },
+      {
+        "pattern": "water_13",
+        "repeat": 1
+      },
+      {
+        "pattern": "water_14",
+        "repeat": 1
+      },
+      {
+        "pattern": "water_15",
+        "repeat": 1
+      },
+      {
+        "pattern": "water_16",
+        "repeat": 1
+      }
+    ]
+  },
+  "loop": true
+}

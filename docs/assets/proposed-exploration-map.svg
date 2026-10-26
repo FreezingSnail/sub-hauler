@@ -1,0 +1,435 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2000" height="2660" viewBox="0 0 2000 2660" role="img" aria-labelledby="title desc">
+<title id="title">Sub-hauler — continuous exploration map</title>
+<desc id="desc">One continuous cave network with four regions, four settlements, 24 main locations, eight hidden coves, and 42 physically drawn passages. Amber cutter gates, violet pressure gates and cyan thruster gates block specific passages. Depth increases downward; the high-pressure Glass Trench and Deep Anchor are lowest. All secrets are visible for design review.</desc>
+<defs>
+ <pattern id="dots" width="32" height="32" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1" fill="#32505d" opacity=".28"/></pattern>
+ <style>
+ text{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
+ .ink{fill:#e5efed}.muted{fill:#9bb5bd}
+ .label{font-size:18px;font-weight:650;fill:#dcebe8;paint-order:stroke;stroke:#0b202d;stroke-width:7;stroke-linejoin:round}
+ </style>
+</defs>
+<rect width="2000" height="2660" fill="#091b28"/>
+<rect width="2000" height="2660" fill="url(#dots)"/>
+<text x="60" y="58" font-size="16" font-weight="750" letter-spacing="4" fill="#83d9bd">SUB-HAULER / EXPLORATION DESIGN</text>
+<text x="60" y="115" font-size="45" font-weight="750" fill="#e5efed">One connected world. New tools open new routes.</text>
+<text x="60" y="154" font-size="20" fill="#9bb5bd">Depth increases downward · discover equipment in coves · descend through the pressure boundary</text>
+<rect x="1625" y="28" width="315" height="44" rx="11" fill="#18323e" stroke="#3b5865"/>
+<text x="1782" y="56" text-anchor="middle" font-size="14" font-weight="750" letter-spacing="1" fill="#c5d9d7">PROPOSED WORLD · ALL SECRETS SHOWN</text>
+
+<ellipse cx="500" cy="550" rx="520" ry="345" fill="#153b3a" opacity=".25"/>
+<ellipse cx="1510" cy="550" rx="500" ry="345" fill="#293b29" opacity=".25"/>
+<ellipse cx="1510" cy="1210" rx="500" ry="360" fill="#3b2d2b" opacity=".25"/>
+<ellipse cx="900" cy="1920" rx="1020" ry="410" fill="#302a42" opacity=".25"/>
+<text x="175" y="290" font-size="27" font-weight="750" letter-spacing="2" fill="#83d9bd">LANTERN REACHES</text>
+<text x="175" y="316" font-size="13" letter-spacing="1" fill="#8eacb6">TIDEWALL / warm bays &amp; mooring chimneys</text>
+<text x="1120" y="290" font-size="27" font-weight="750" letter-spacing="2" fill="#b1d49b">KELP GALLERIES</text>
+<text x="1120" y="316" font-size="13" letter-spacing="1" fill="#8eacb6">BENTHOS / shelves, pumps &amp; pipe passages</text>
+<text x="1120" y="960" font-size="27" font-weight="750" letter-spacing="2" fill="#dfb28b">BROKEN WORKS</text>
+<text x="1120" y="986" font-size="13" letter-spacing="1" fill="#8eacb6">CORMORANT / ribs, workshops &amp; freight yards</text>
+<text x="175" y="1620" font-size="27" font-weight="750" letter-spacing="2" fill="#b5a7e5">GLASS TRENCH</text>
+<text x="175" y="1646" font-size="13" letter-spacing="1" fill="#8eacb6">DEEPEST WATER / Deep Anchor, basalt &amp; hidden jets</text>
+<path d="M70 1660 H1930" fill="none" stroke="#927fc2" stroke-width="2" stroke-dasharray="8 12" opacity=".7"/>
+<text x="1900" y="1635" text-anchor="end" font-size="16" font-weight="750" letter-spacing="1" fill="#b6a0ef">HIGH PRESSURE BELOW · SEAL REQUIRED</text>
+<text x="510" y="1220" text-anchor="middle" font-size="13" font-weight="700" letter-spacing="2" fill="#9bb5bd">RETURN SHAFT</text>
+<text x="510" y="1245" text-anchor="middle" font-size="13" fill="#b6a0ef">Seal + thruster</text>
+<g data-from="T" data-to="L" data-requires="base"><title>T to L: base</title>
+<path d="M250 420 C346.0 396 454.0 444 550 420" fill="none" stroke="#284655" stroke-width="68" stroke-linecap="round"/>
+<path d="M250 420 C346.0 396 454.0 444 550 420" fill="none" stroke="#0e2c3d" stroke-width="58" stroke-linecap="round"/>
+<path d="M250 420 C346.0 396 454.0 444 550 420" fill="none" stroke="#487281" stroke-width="3" stroke-linecap="round"/>
+</g>
+<g data-from="L" data-to="F" data-requires="base"><title>L to F: base</title>
+<path d="M550 420 C646.0 396 754.0 444 850 420" fill="none" stroke="#284655" stroke-width="68" stroke-linecap="round"/>
+<path d="M550 420 C646.0 396 754.0 444 850 420" fill="none" stroke="#0e2c3d" stroke-width="58" stroke-linecap="round"/>
+<path d="M550 420 C646.0 396 754.0 444 850 420" fill="none" stroke="#487281" stroke-width="3" stroke-linecap="round"/>
+</g>
+<g data-from="F" data-to="E" data-requires="base"><title>F to E: base</title>
+<path d="M850 420 C824 516.0 876 624.0 850 720" fill="none" stroke="#284655" stroke-width="68" stroke-linecap="round"/>
+<path d="M850 420 C824 516.0 876 624.0 850 720" fill="none" stroke="#0e2c3d" stroke-width="58" stroke-linecap="round"/>
+<path d="M850 420 C824 516.0 876 624.0 850 720" fill="none" stroke="#487281" stroke-width="3" stroke-linecap="round"/>
+</g>
+<g data-from="T" data-to="M" data-requires="base"><title>T to M: base</title>
+<path d="M250 420 C224 516.0 276 624.0 250 720" fill="none" stroke="#284655" stroke-width="68" stroke-linecap="round"/>
+<path d="M250 420 C224 516.0 276 624.0 250 720" fill="none" stroke="#0e2c3d" stroke-width="58" stroke-linecap="round"/>
+<path d="M250 420 C224 516.0 276 624.0 250 720" fill="none" stroke="#487281" stroke-width="3" stroke-linecap="round"/>
+</g>
+<g data-from="M" data-to="Q" data-requires="base"><title>M to Q: base</title>
+<path d="M250 720 C346.0 744 454.0 696 550 720" fill="none" stroke="#284655" stroke-width="68" stroke-linecap="round"/>
+<path d="M250 720 C346.0 744 454.0 696 550 720" fill="none" stroke="#0e2c3d" stroke-width="58" stroke-linecap="round"/>
+<path d="M250 720 C346.0 744 454.0 696 550 720" fill="none" stroke="#487281" stroke-width="3" stroke-linecap="round"/>
+</g>
+<g data-from="Q" data-to="E" data-requires="base"><title>Q to E: base</title>
+<path d="M550 720 C646.0 696 754.0 744 850 720" fill="none" stroke="#284655" stroke-width="68" stroke-linecap="round"/>
+<path d="M550 720 C646.0 696 754.0 744 850 720" fill="none" stroke="#0e2c3d" stroke-width="58" stroke-linecap="round"/>
+<path d="M550 720 C646.0 696 754.0 744 850 720" fill="none" stroke="#487281" stroke-width="3" stroke-linecap="round"/>
+</g>
+<g data-from="L" data-to="Q" data-requires="base"><title>L to Q: base</title>
+<path d="M550 420 C576 516.0 524 624.0 550 720" fill="none" stroke="#284655" stroke-width="68" stroke-linecap="round"/>
+<path d="M550 420 C576 516.0 524 624.0 550 720" fill="none" stroke="#0e2c3d" stroke-width="58" stroke-linecap="round"/>
+<path d="M550 420 C576 516.0 524 624.0 550 720" fill="none" stroke="#487281" stroke-width="3" stroke-linecap="round"/>
+</g>
+<g data-from="M" data-to="W" data-requires="base"><title>M to W: base</title>
+<path d="M250 720 C194.0 697.5 149.2 600.0 110 570" fill="none" stroke="#284655" stroke-width="68" stroke-linecap="round"/>
+<path d="M250 720 C194.0 697.5 149.2 600.0 110 570" fill="none" stroke="#0e2c3d" stroke-width="58" stroke-linecap="round"/>
+<path d="M250 720 C194.0 697.5 149.2 600.0 110 570" fill="none" stroke="#487281" stroke-width="3" stroke-linecap="round"/>
+</g>
+<g data-from="F" data-to="TC" data-requires="base"><title>F to TC: base</title>
+<path d="M850 420 C876 364.0 824 301.0 850 245" fill="none" stroke="#284655" stroke-width="68" stroke-linecap="round"/>
+<path d="M850 420 C876 364.0 824 301.0 850 245" fill="none" stroke="#0e2c3d" stroke-width="58" stroke-linecap="round"/>
+<path d="M850 420 C876 364.0 824 301.0 850 245" fill="none" stroke="#487281" stroke-width="3" stroke-linecap="round"/>
+</g>
+<g data-from="K" data-to="B" data-requires="base"><title>K to B: base</title>
+<path d="M1150 420 C1246.0 396 1354.0 444 1450 420" fill="none" stroke="#284655" stroke-width="68" stroke-linecap="round"/>
+<path d="M1150 420 C1246.0 396 1354.0 444 1450 420" fill="none" stroke="#0e2c3d" stroke-width="58" stroke-linecap="round"/>
+<path d="M1150 420 C1246.0 396 1354.0 444 1450 420" fill="none" stroke="#487281" stroke-width="3" stroke-linecap="round"/>
+</g>
+<g data-from="B" data-to="P" data-requires="base"><title>B to P: base</title>
+<path d="M1450 420 C1546.0 444 1654.0 396 1750 420" fill="none" stroke="#284655" stroke-width="68" stroke-linecap="round"/>
+<path d="M1450 420 C1546.0 444 1654.0 396 1750 420" fill="none" stroke="#0e2c3d" stroke-width="58" stroke-linecap="round"/>
+<path d="M1450 420 C1546.0 444 1654.0 396 1750 420" fill="none" stroke="#487281" stroke-width="3" stroke-linecap="round"/>
+</g>
+<g data-from="P" data-to="S" data-requires="base"><title>P to S: base</title>
+<path d="M1750 420 C1776 516.0 1724 624.0 1750 720" fill="none" stroke="#284655" stroke-width="68" stroke-linecap="round"/>
+<path d="M1750 420 C1776 516.0 1724 624.0 1750 720" fill="none" stroke="#0e2c3d" stroke-width="58" stroke-linecap="round"/>
+<path d="M1750 420 C1776 516.0 1724 624.0 1750 720" fill="none" stroke="#487281" stroke-width="3" stroke-linecap="round"/>
+</g>
+<g data-from="S" data-to="N" data-requires="base"><title>S to N: base</title>
+<path d="M1750 720 C1654.0 696 1546.0 744 1450 720" fill="none" stroke="#284655" stroke-width="68" stroke-linecap="round"/>
+<path d="M1750 720 C1654.0 696 1546.0 744 1450 720" fill="none" stroke="#0e2c3d" stroke-width="58" stroke-linecap="round"/>
+<path d="M1750 720 C1654.0 696 1546.0 744 1450 720" fill="none" stroke="#487281" stroke-width="3" stroke-linecap="round"/>
+</g>
+<g data-from="N" data-to="V" data-requires="base"><title>N to V: base</title>
+<path d="M1450 720 C1354.0 744 1246.0 696 1150 720" fill="none" stroke="#284655" stroke-width="68" stroke-linecap="round"/>
+<path d="M1450 720 C1354.0 744 1246.0 696 1150 720" fill="none" stroke="#0e2c3d" stroke-width="58" stroke-linecap="round"/>
+<path d="M1450 720 C1354.0 744 1246.0 696 1150 720" fill="none" stroke="#487281" stroke-width="3" stroke-linecap="round"/>
+</g>
+<g data-from="K" data-to="V" data-requires="base"><title>K to V: base</title>
+<path d="M1150 420 C1176 516.0 1124 624.0 1150 720" fill="none" stroke="#284655" stroke-width="68" stroke-linecap="round"/>
+<path d="M1150 420 C1176 516.0 1124 624.0 1150 720" fill="none" stroke="#0e2c3d" stroke-width="58" stroke-linecap="round"/>
+<path d="M1150 420 C1176 516.0 1124 624.0 1150 720" fill="none" stroke="#487281" stroke-width="3" stroke-linecap="round"/>
+</g>
+<g data-from="B" data-to="N" data-requires="base"><title>B to N: base</title>
+<path d="M1450 420 C1476 516.0 1424 624.0 1450 720" fill="none" stroke="#284655" stroke-width="68" stroke-linecap="round"/>
+<path d="M1450 420 C1476 516.0 1424 624.0 1450 720" fill="none" stroke="#0e2c3d" stroke-width="58" stroke-linecap="round"/>
+<path d="M1450 420 C1476 516.0 1424 624.0 1450 720" fill="none" stroke="#487281" stroke-width="3" stroke-linecap="round"/>
+</g>
+<g data-from="N" data-to="BR" data-requires="C"><title>N to BR: C</title>
+<path d="M1450 720 C1382.0 744.75 1327.6 852.0 1280 885" fill="none" stroke="#284655" stroke-width="68" stroke-linecap="round"/>
+<path d="M1450 720 C1382.0 744.75 1327.6 852.0 1280 885" fill="none" stroke="#0e2c3d" stroke-width="58" stroke-linecap="round"/>
+<path d="M1450 720 C1382.0 744.75 1327.6 852.0 1280 885" fill="none" stroke="#487281" stroke-width="3" stroke-linecap="round"/>
+<path d="M1450 720 C1382.0 744.75 1327.6 852.0 1280 885" fill="none" stroke="#f4bb67" stroke-width="4" stroke-dasharray="6 14" stroke-linecap="round"/>
+</g>
+<g data-from="P" data-to="BC" data-requires="base"><title>P to BC: base</title>
+<path d="M1750 420 C1806.0 442.5 1850.8 540.0 1890 570" fill="none" stroke="#284655" stroke-width="68" stroke-linecap="round"/>
+<path d="M1750 420 C1806.0 442.5 1850.8 540.0 1890 570" fill="none" stroke="#0e2c3d" stroke-width="58" stroke-linecap="round"/>
+<path d="M1750 420 C1806.0 442.5 1850.8 540.0 1890 570" fill="none" stroke="#487281" stroke-width="3" stroke-linecap="round"/>
+</g>
+<g data-from="R" data-to="C" data-requires="base"><title>R to C: base</title>
+<path d="M1150 1050 C1246.0 1026 1354.0 1074 1450 1050" fill="none" stroke="#284655" stroke-width="68" stroke-linecap="round"/>
+<path d="M1150 1050 C1246.0 1026 1354.0 1074 1450 1050" fill="none" stroke="#0e2c3d" stroke-width="58" stroke-linecap="round"/>
+<path d="M1150 1050 C1246.0 1026 1354.0 1074 1450 1050" fill="none" stroke="#487281" stroke-width="3" stroke-linecap="round"/>
+</g>
+<g data-from="C" data-to="Y" data-requires="base"><title>C to Y: base</title>
+<path d="M1450 1050 C1546.0 1074 1654.0 1026 1750 1050" fill="none" stroke="#284655" stroke-width="68" stroke-linecap="round"/>
+<path d="M1450 1050 C1546.0 1074 1654.0 1026 1750 1050" fill="none" stroke="#0e2c3d" stroke-width="58" stroke-linecap="round"/>
+<path d="M1450 1050 C1546.0 1074 1654.0 1026 1750 1050" fill="none" stroke="#487281" stroke-width="3" stroke-linecap="round"/>
+</g>
+<g data-from="Y" data-to="A" data-requires="base"><title>Y to A: base</title>
+<path d="M1750 1050 C1724 1146.0 1776 1254.0 1750 1350" fill="none" stroke="#284655" stroke-width="68" stroke-linecap="round"/>
+<path d="M1750 1050 C1724 1146.0 1776 1254.0 1750 1350" fill="none" stroke="#0e2c3d" stroke-width="58" stroke-linecap="round"/>
+<path d="M1750 1050 C1724 1146.0 1776 1254.0 1750 1350" fill="none" stroke="#487281" stroke-width="3" stroke-linecap="round"/>
+</g>
+<g data-from="A" data-to="U" data-requires="base"><title>A to U: base</title>
+<path d="M1750 1350 C1654.0 1374 1546.0 1326 1450 1350" fill="none" stroke="#284655" stroke-width="68" stroke-linecap="round"/>
+<path d="M1750 1350 C1654.0 1374 1546.0 1326 1450 1350" fill="none" stroke="#0e2c3d" stroke-width="58" stroke-linecap="round"/>
+<path d="M1750 1350 C1654.0 1374 1546.0 1326 1450 1350" fill="none" stroke="#487281" stroke-width="3" stroke-linecap="round"/>
+</g>
+<g data-from="U" data-to="Z" data-requires="base"><title>U to Z: base</title>
+<path d="M1450 1350 C1354.0 1374 1246.0 1326 1150 1350" fill="none" stroke="#284655" stroke-width="68" stroke-linecap="round"/>
+<path d="M1450 1350 C1354.0 1374 1246.0 1326 1150 1350" fill="none" stroke="#0e2c3d" stroke-width="58" stroke-linecap="round"/>
+<path d="M1450 1350 C1354.0 1374 1246.0 1326 1150 1350" fill="none" stroke="#487281" stroke-width="3" stroke-linecap="round"/>
+</g>
+<g data-from="R" data-to="Z" data-requires="base"><title>R to Z: base</title>
+<path d="M1150 1050 C1176 1146.0 1124 1254.0 1150 1350" fill="none" stroke="#284655" stroke-width="68" stroke-linecap="round"/>
+<path d="M1150 1050 C1176 1146.0 1124 1254.0 1150 1350" fill="none" stroke="#0e2c3d" stroke-width="58" stroke-linecap="round"/>
+<path d="M1150 1050 C1176 1146.0 1124 1254.0 1150 1350" fill="none" stroke="#487281" stroke-width="3" stroke-linecap="round"/>
+</g>
+<g data-from="C" data-to="U" data-requires="base"><title>C to U: base</title>
+<path d="M1450 1050 C1476 1146.0 1424 1254.0 1450 1350" fill="none" stroke="#284655" stroke-width="68" stroke-linecap="round"/>
+<path d="M1450 1050 C1476 1146.0 1424 1254.0 1450 1350" fill="none" stroke="#0e2c3d" stroke-width="58" stroke-linecap="round"/>
+<path d="M1450 1050 C1476 1146.0 1424 1254.0 1450 1350" fill="none" stroke="#487281" stroke-width="3" stroke-linecap="round"/>
+</g>
+<g data-from="Z" data-to="CW" data-requires="C"><title>Z to CW: C</title>
+<path d="M1150 1350 C1138.0 1372.5 1128.4 1470.0 1120 1500" fill="none" stroke="#284655" stroke-width="68" stroke-linecap="round"/>
+<path d="M1150 1350 C1138.0 1372.5 1128.4 1470.0 1120 1500" fill="none" stroke="#0e2c3d" stroke-width="58" stroke-linecap="round"/>
+<path d="M1150 1350 C1138.0 1372.5 1128.4 1470.0 1120 1500" fill="none" stroke="#487281" stroke-width="3" stroke-linecap="round"/>
+<path d="M1150 1350 C1138.0 1372.5 1128.4 1470.0 1120 1500" fill="none" stroke="#f4bb67" stroke-width="4" stroke-dasharray="6 14" stroke-linecap="round"/>
+</g>
+<g data-from="Y" data-to="CC" data-requires="C"><title>Y to CC: C</title>
+<path d="M1750 1050 C1806.0 1072.5 1850.8 1170.0 1890 1200" fill="none" stroke="#284655" stroke-width="68" stroke-linecap="round"/>
+<path d="M1750 1050 C1806.0 1072.5 1850.8 1170.0 1890 1200" fill="none" stroke="#0e2c3d" stroke-width="58" stroke-linecap="round"/>
+<path d="M1750 1050 C1806.0 1072.5 1850.8 1170.0 1890 1200" fill="none" stroke="#487281" stroke-width="3" stroke-linecap="round"/>
+<path d="M1750 1050 C1806.0 1072.5 1850.8 1170.0 1890 1200" fill="none" stroke="#f4bb67" stroke-width="4" stroke-dasharray="6 14" stroke-linecap="round"/>
+</g>
+<g data-from="H" data-to="J" data-requires="S"><title>H to J: S</title>
+<path d="M1250 1550 C1090.0 1580.0 962.0 1710.0 850 1750" fill="none" stroke="#284655" stroke-width="68" stroke-linecap="round"/>
+<path d="M1250 1550 C1090.0 1580.0 962.0 1710.0 850 1750" fill="none" stroke="#0e2c3d" stroke-width="58" stroke-linecap="round"/>
+<path d="M1250 1550 C1090.0 1580.0 962.0 1710.0 850 1750" fill="none" stroke="#487281" stroke-width="3" stroke-linecap="round"/>
+<path d="M1250 1550 C1090.0 1580.0 962.0 1710.0 850 1750" fill="none" stroke="#b6a0ef" stroke-width="4" stroke-dasharray="6 14" stroke-linecap="round"/>
+</g>
+<g data-from="J" data-to="O" data-requires="base"><title>J to O: base</title>
+<path d="M850 1750 C658.0 1774 441.99999999999994 1726 250 1750" fill="none" stroke="#284655" stroke-width="68" stroke-linecap="round"/>
+<path d="M850 1750 C658.0 1774 441.99999999999994 1726 250 1750" fill="none" stroke="#0e2c3d" stroke-width="58" stroke-linecap="round"/>
+<path d="M850 1750 C658.0 1774 441.99999999999994 1726 250 1750" fill="none" stroke="#487281" stroke-width="3" stroke-linecap="round"/>
+</g>
+<g data-from="O" data-to="D" data-requires="base"><title>O to D: base</title>
+<path d="M250 1750 C224 1846.0 276 1954.0 250 2050" fill="none" stroke="#284655" stroke-width="68" stroke-linecap="round"/>
+<path d="M250 1750 C224 1846.0 276 1954.0 250 2050" fill="none" stroke="#0e2c3d" stroke-width="58" stroke-linecap="round"/>
+<path d="M250 1750 C224 1846.0 276 1954.0 250 2050" fill="none" stroke="#487281" stroke-width="3" stroke-linecap="round"/>
+</g>
+<g data-from="D" data-to="G" data-requires="base"><title>D to G: base</title>
+<path d="M250 2050 C442.0 2074 658.0 2026 850 2050" fill="none" stroke="#284655" stroke-width="68" stroke-linecap="round"/>
+<path d="M250 2050 C442.0 2074 658.0 2026 850 2050" fill="none" stroke="#0e2c3d" stroke-width="58" stroke-linecap="round"/>
+<path d="M250 2050 C442.0 2074 658.0 2026 850 2050" fill="none" stroke="#487281" stroke-width="3" stroke-linecap="round"/>
+</g>
+<g data-from="G" data-to="I" data-requires="base"><title>G to I: base</title>
+<path d="M850 2050 C1042.0 2074 1258.0 2026 1450 2050" fill="none" stroke="#284655" stroke-width="68" stroke-linecap="round"/>
+<path d="M850 2050 C1042.0 2074 1258.0 2026 1450 2050" fill="none" stroke="#0e2c3d" stroke-width="58" stroke-linecap="round"/>
+<path d="M850 2050 C1042.0 2074 1258.0 2026 1450 2050" fill="none" stroke="#487281" stroke-width="3" stroke-linecap="round"/>
+</g>
+<g data-from="I" data-to="J" data-requires="base"><title>I to J: base</title>
+<path d="M1450 2050 C1210.0 2005.0 1018.0 1810.0 850 1750" fill="none" stroke="#284655" stroke-width="68" stroke-linecap="round"/>
+<path d="M1450 2050 C1210.0 2005.0 1018.0 1810.0 850 1750" fill="none" stroke="#0e2c3d" stroke-width="58" stroke-linecap="round"/>
+<path d="M1450 2050 C1210.0 2005.0 1018.0 1810.0 850 1750" fill="none" stroke="#487281" stroke-width="3" stroke-linecap="round"/>
+</g>
+<g data-from="J" data-to="G" data-requires="T"><title>J to G: T</title>
+<path d="M850 1750 C824 1846.0 876 1954.0 850 2050" fill="none" stroke="#284655" stroke-width="68" stroke-linecap="round"/>
+<path d="M850 1750 C824 1846.0 876 1954.0 850 2050" fill="none" stroke="#0e2c3d" stroke-width="58" stroke-linecap="round"/>
+<path d="M850 1750 C824 1846.0 876 1954.0 850 2050" fill="none" stroke="#487281" stroke-width="3" stroke-linecap="round"/>
+<path d="M850 1750 C824 1846.0 876 1954.0 850 2050" fill="none" stroke="#6dd8e2" stroke-width="4" stroke-dasharray="6 14" stroke-linecap="round"/>
+</g>
+<g data-from="O" data-to="DL" data-requires="base"><title>O to DL: base</title>
+<path d="M250 1750 C194.0 1772.5 149.2 1870.0 110 1900" fill="none" stroke="#284655" stroke-width="68" stroke-linecap="round"/>
+<path d="M250 1750 C194.0 1772.5 149.2 1870.0 110 1900" fill="none" stroke="#0e2c3d" stroke-width="58" stroke-linecap="round"/>
+<path d="M250 1750 C194.0 1772.5 149.2 1870.0 110 1900" fill="none" stroke="#487281" stroke-width="3" stroke-linecap="round"/>
+</g>
+<g data-from="I" data-to="DC" data-requires="T"><title>I to DC: T</title>
+<path d="M1450 2050 C1530.0 2072.5 1594.0 2170.0 1650 2200" fill="none" stroke="#284655" stroke-width="68" stroke-linecap="round"/>
+<path d="M1450 2050 C1530.0 2072.5 1594.0 2170.0 1650 2200" fill="none" stroke="#0e2c3d" stroke-width="58" stroke-linecap="round"/>
+<path d="M1450 2050 C1530.0 2072.5 1594.0 2170.0 1650 2200" fill="none" stroke="#487281" stroke-width="3" stroke-linecap="round"/>
+<path d="M1450 2050 C1530.0 2072.5 1594.0 2170.0 1650 2200" fill="none" stroke="#6dd8e2" stroke-width="4" stroke-dasharray="6 14" stroke-linecap="round"/>
+</g>
+<g data-from="F" data-to="K" data-requires="base"><title>F to K: base</title>
+<path d="M850 420 C946.0 444 1054.0 396 1150 420" fill="none" stroke="#284655" stroke-width="68" stroke-linecap="round"/>
+<path d="M850 420 C946.0 444 1054.0 396 1150 420" fill="none" stroke="#0e2c3d" stroke-width="58" stroke-linecap="round"/>
+<path d="M850 420 C946.0 444 1054.0 396 1150 420" fill="none" stroke="#487281" stroke-width="3" stroke-linecap="round"/>
+</g>
+<g data-from="E" data-to="V" data-requires="C"><title>E to V: C</title>
+<path d="M850 720 C946.0 744 1054.0 696 1150 720" fill="none" stroke="#284655" stroke-width="68" stroke-linecap="round"/>
+<path d="M850 720 C946.0 744 1054.0 696 1150 720" fill="none" stroke="#0e2c3d" stroke-width="58" stroke-linecap="round"/>
+<path d="M850 720 C946.0 744 1054.0 696 1150 720" fill="none" stroke="#487281" stroke-width="3" stroke-linecap="round"/>
+<path d="M850 720 C946.0 744 1054.0 696 1150 720" fill="none" stroke="#f4bb67" stroke-width="4" stroke-dasharray="6 14" stroke-linecap="round"/>
+</g>
+<g data-from="S" data-to="Y" data-requires="base"><title>S to Y: base</title>
+<path d="M1750 720 C1776 825.6 1724 944.4 1750 1050" fill="none" stroke="#284655" stroke-width="68" stroke-linecap="round"/>
+<path d="M1750 720 C1776 825.6 1724 944.4 1750 1050" fill="none" stroke="#0e2c3d" stroke-width="58" stroke-linecap="round"/>
+<path d="M1750 720 C1776 825.6 1724 944.4 1750 1050" fill="none" stroke="#487281" stroke-width="3" stroke-linecap="round"/>
+</g>
+<g data-from="N" data-to="C" data-requires="T"><title>N to C: T</title>
+<path d="M1450 720 C1424 825.6 1476 944.4 1450 1050" fill="none" stroke="#284655" stroke-width="68" stroke-linecap="round"/>
+<path d="M1450 720 C1424 825.6 1476 944.4 1450 1050" fill="none" stroke="#0e2c3d" stroke-width="58" stroke-linecap="round"/>
+<path d="M1450 720 C1424 825.6 1476 944.4 1450 1050" fill="none" stroke="#487281" stroke-width="3" stroke-linecap="round"/>
+<path d="M1450 720 C1424 825.6 1476 944.4 1450 1050" fill="none" stroke="#6dd8e2" stroke-width="4" stroke-dasharray="6 14" stroke-linecap="round"/>
+</g>
+<g data-from="U" data-to="H" data-requires="base"><title>U to H: base</title>
+<path d="M1450 1350 C1370.0 1380.0 1306.0 1510.0 1250 1550" fill="none" stroke="#284655" stroke-width="68" stroke-linecap="round"/>
+<path d="M1450 1350 C1370.0 1380.0 1306.0 1510.0 1250 1550" fill="none" stroke="#0e2c3d" stroke-width="58" stroke-linecap="round"/>
+<path d="M1450 1350 C1370.0 1380.0 1306.0 1510.0 1250 1550" fill="none" stroke="#487281" stroke-width="3" stroke-linecap="round"/>
+</g>
+<g data-from="Q" data-to="J" data-requires="ST"><title>Q to J: ST</title>
+<path d="M550 720 C670.0 874.5 766.0 1544.0 850 1750" fill="none" stroke="#284655" stroke-width="68" stroke-linecap="round"/>
+<path d="M550 720 C670.0 874.5 766.0 1544.0 850 1750" fill="none" stroke="#0e2c3d" stroke-width="58" stroke-linecap="round"/>
+<path d="M550 720 C670.0 874.5 766.0 1544.0 850 1750" fill="none" stroke="#487281" stroke-width="3" stroke-linecap="round"/>
+<path d="M550 720 C670.0 874.5 766.0 1544.0 850 1750" fill="none" stroke="#d5b3f2" stroke-width="4" stroke-dasharray="6 14" stroke-linecap="round"/>
+</g>
+<g id="room-T" data-kind="room"><title>Tidewall</title><ellipse cx="250" cy="420" rx="54" ry="36" fill="#0e2c3d" stroke="#284655" stroke-width="3"/>
+<circle cx="250" cy="420" r="23" fill="#153c42" stroke="#83d9bd" stroke-width="2"/><rect x="237" y="411" width="26" height="18" rx="3" fill="#83d9bd"/><path d="M242 418h5m6 0h5" stroke="#153c42" stroke-width="3"/>
+<text x="250" y="477" text-anchor="middle" class="label">Tidewall</text>
+<text x="250" y="371" text-anchor="middle" font-size="12" font-weight="750" letter-spacing="2" fill="#83d9bd">START / HOME</text>
+</g>
+<g id="room-L" data-kind="room"><title>Lantern Fork</title><ellipse cx="550" cy="420" rx="54" ry="36" fill="#0e2c3d" stroke="#284655" stroke-width="3"/>
+<circle cx="550" cy="420" r="7" fill="#83d9bd"/>
+<text x="550" y="477" text-anchor="middle" class="label">Lantern Fork</text>
+</g>
+<g id="room-F" data-kind="room"><title>Upper Shelf</title><ellipse cx="850" cy="420" rx="54" ry="36" fill="#0e2c3d" stroke="#284655" stroke-width="3"/>
+<circle cx="850" cy="420" r="7" fill="#83d9bd"/>
+<text x="850" y="477" text-anchor="middle" class="label">Upper Shelf</text>
+</g>
+<g id="room-M" data-kind="room"><title>Mooring Chimney</title><ellipse cx="250" cy="720" rx="54" ry="36" fill="#0e2c3d" stroke="#284655" stroke-width="3"/>
+<circle cx="250" cy="720" r="7" fill="#83d9bd"/>
+<text x="250" y="777" text-anchor="middle" class="label">Mooring Chimney</text>
+</g>
+<g id="room-Q" data-kind="room"><title>Flooded Lock</title><ellipse cx="550" cy="720" rx="54" ry="36" fill="#0e2c3d" stroke="#284655" stroke-width="3"/>
+<circle cx="550" cy="720" r="7" fill="#83d9bd"/>
+<text x="550" y="777" text-anchor="middle" class="label">Flooded Lock</text>
+</g>
+<g id="room-E" data-kind="room"><title>East Bay</title><ellipse cx="850" cy="720" rx="54" ry="36" fill="#0e2c3d" stroke="#284655" stroke-width="3"/>
+<circle cx="850" cy="720" r="7" fill="#83d9bd"/>
+<text x="850" y="777" text-anchor="middle" class="label">East Bay</text>
+</g>
+<g id="room-K" data-kind="room"><title>Kelp Cathedral</title><ellipse cx="1150" cy="420" rx="54" ry="36" fill="#0e2c3d" stroke="#284655" stroke-width="3"/>
+<circle cx="1150" cy="420" r="7" fill="#b1d49b"/>
+<text x="1150" y="477" text-anchor="middle" class="label">Kelp Cathedral</text>
+</g>
+<g id="room-B" data-kind="room"><title>Benthos</title><ellipse cx="1450" cy="420" rx="54" ry="36" fill="#0e2c3d" stroke="#284655" stroke-width="3"/>
+<circle cx="1450" cy="420" r="23" fill="#153c42" stroke="#b1d49b" stroke-width="2"/><rect x="1437" y="411" width="26" height="18" rx="3" fill="#b1d49b"/><path d="M1442 418h5m6 0h5" stroke="#153c42" stroke-width="3"/>
+<text x="1450" y="477" text-anchor="middle" class="label">Benthos</text>
+</g>
+<g id="room-P" data-kind="room"><title>Pump Refuge</title><ellipse cx="1750" cy="420" rx="54" ry="36" fill="#0e2c3d" stroke="#284655" stroke-width="3"/>
+<circle cx="1750" cy="420" r="7" fill="#b1d49b"/>
+<text x="1750" y="477" text-anchor="middle" class="label">Pump Refuge</text>
+</g>
+<g id="room-V" data-kind="room"><title>Vent Gallery</title><ellipse cx="1150" cy="720" rx="54" ry="36" fill="#0e2c3d" stroke="#284655" stroke-width="3"/>
+<circle cx="1150" cy="720" r="7" fill="#b1d49b"/>
+<text x="1150" y="777" text-anchor="middle" class="label">Vent Gallery</text>
+</g>
+<g id="room-N" data-kind="room"><title>Old Relay</title><ellipse cx="1450" cy="720" rx="54" ry="36" fill="#0e2c3d" stroke="#284655" stroke-width="3"/>
+<circle cx="1450" cy="720" r="7" fill="#b1d49b"/>
+<text x="1450" y="671" text-anchor="middle" class="label">Old Relay</text>
+</g>
+<g id="room-S" data-kind="room"><title>Pipe Junction</title><ellipse cx="1750" cy="720" rx="54" ry="36" fill="#0e2c3d" stroke="#284655" stroke-width="3"/>
+<circle cx="1750" cy="720" r="7" fill="#b1d49b"/>
+<text x="1750" y="777" text-anchor="middle" class="label">Pipe Junction</text>
+</g>
+<g id="room-R" data-kind="room"><title>Broken Ribs</title><ellipse cx="1150" cy="1050" rx="54" ry="36" fill="#0e2c3d" stroke="#284655" stroke-width="3"/>
+<circle cx="1150" cy="1050" r="7" fill="#dfb28b"/>
+<text x="1150" y="1107" text-anchor="middle" class="label">Broken Ribs</text>
+</g>
+<g id="room-C" data-kind="room"><title>Cormorant</title><ellipse cx="1450" cy="1050" rx="54" ry="36" fill="#0e2c3d" stroke="#284655" stroke-width="3"/>
+<circle cx="1450" cy="1050" r="23" fill="#153c42" stroke="#dfb28b" stroke-width="2"/><rect x="1437" y="1041" width="26" height="18" rx="3" fill="#dfb28b"/><path d="M1442 1048h5m6 0h5" stroke="#153c42" stroke-width="3"/>
+<text x="1450" y="1107" text-anchor="middle" class="label">Cormorant</text>
+</g>
+<g id="room-Y" data-kind="room"><title>Freight Yard</title><ellipse cx="1750" cy="1050" rx="54" ry="36" fill="#0e2c3d" stroke="#284655" stroke-width="3"/>
+<circle cx="1750" cy="1050" r="7" fill="#dfb28b"/>
+<text x="1750" y="1001" text-anchor="middle" class="label">Freight Yard</text>
+</g>
+<g id="room-Z" data-kind="room"><title>Workshop Approach</title><ellipse cx="1150" cy="1350" rx="54" ry="36" fill="#0e2c3d" stroke="#284655" stroke-width="3"/>
+<circle cx="1150" cy="1350" r="7" fill="#dfb28b"/>
+<text x="1150" y="1407" text-anchor="middle" class="label">Workshop Approach</text>
+</g>
+<g id="room-U" data-kind="room"><title>Lower Gantry</title><ellipse cx="1450" cy="1350" rx="54" ry="36" fill="#0e2c3d" stroke="#284655" stroke-width="3"/>
+<circle cx="1450" cy="1350" r="7" fill="#dfb28b"/>
+<text x="1450" y="1407" text-anchor="middle" class="label">Lower Gantry</text>
+</g>
+<g id="room-A" data-kind="room"><title>Anchor Hall</title><ellipse cx="1750" cy="1350" rx="54" ry="36" fill="#0e2c3d" stroke="#284655" stroke-width="3"/>
+<circle cx="1750" cy="1350" r="7" fill="#dfb28b"/>
+<text x="1750" y="1407" text-anchor="middle" class="label">Anchor Hall</text>
+</g>
+<g id="room-O" data-kind="room"><title>Trench Refuge</title><ellipse cx="250" cy="1750" rx="54" ry="36" fill="#0e2c3d" stroke="#284655" stroke-width="3"/>
+<circle cx="250" cy="1750" r="7" fill="#b5a7e5"/>
+<text x="250" y="1807" text-anchor="middle" class="label">Trench Refuge</text>
+</g>
+<g id="room-J" data-kind="room"><title>Basalt Junction</title><ellipse cx="850" cy="1750" rx="54" ry="36" fill="#0e2c3d" stroke="#284655" stroke-width="3"/>
+<circle cx="850" cy="1750" r="7" fill="#b5a7e5"/>
+<text x="838" y="1701" text-anchor="middle" class="label">Basalt Junction</text>
+</g>
+<g id="room-H" data-kind="room"><title>Pressure Boundary</title><ellipse cx="1250" cy="1550" rx="54" ry="36" fill="#0e2c3d" stroke="#284655" stroke-width="3"/>
+<circle cx="1250" cy="1550" r="7" fill="#b5a7e5"/>
+<text x="1320" y="1555" text-anchor="start" class="label">Pressure Boundary</text>
+</g>
+<g id="room-D" data-kind="room"><title>Deep Anchor</title><ellipse cx="250" cy="2050" rx="54" ry="36" fill="#0e2c3d" stroke="#284655" stroke-width="3"/>
+<circle cx="250" cy="2050" r="23" fill="#153c42" stroke="#b5a7e5" stroke-width="2"/><rect x="237" y="2041" width="26" height="18" rx="3" fill="#b5a7e5"/><path d="M242 2048h5m6 0h5" stroke="#153c42" stroke-width="3"/>
+<text x="250" y="2107" text-anchor="middle" class="label">Deep Anchor</text>
+<text x="250" y="2001" text-anchor="middle" font-size="12" font-weight="750" letter-spacing="2" fill="#b5a7e5">FINAL DELIVERY</text>
+</g>
+<g id="room-G" data-kind="room"><title>Glass Chimney</title><ellipse cx="850" cy="2050" rx="54" ry="36" fill="#0e2c3d" stroke="#284655" stroke-width="3"/>
+<circle cx="850" cy="2050" r="7" fill="#b5a7e5"/>
+<text x="850" y="2107" text-anchor="middle" class="label">Glass Chimney</text>
+</g>
+<g id="room-I" data-kind="room"><title>Jet Approach</title><ellipse cx="1450" cy="2050" rx="54" ry="36" fill="#0e2c3d" stroke="#284655" stroke-width="3"/>
+<circle cx="1450" cy="2050" r="7" fill="#b5a7e5"/>
+<text x="1450" y="2001" text-anchor="middle" class="label">Jet Approach</text>
+</g>
+<g data-gate="N-BR"><rect x="1344.7883999999995" y="743.3177499999998" width="95" height="34" rx="8" fill="#102330" stroke="#f4bb67" stroke-width="2"/>
+<text x="1392.2883999999995" y="765.3177499999998" text-anchor="middle" font-size="13" font-weight="750" fill="#f4bb67">CUTTER</text>
+</g>
+<g data-gate="Z-CW"><rect x="1081.81245" y="1432.8034374999997" width="95" height="34" rx="8" fill="#102330" stroke="#f4bb67" stroke-width="2"/>
+<text x="1129.31245" y="1454.8034374999997" text-anchor="middle" font-size="13" font-weight="750" fill="#f4bb67">CUTTER</text>
+</g>
+<g data-gate="Y-CC"><rect x="1750.0271999999995" y="1069.6525" width="95" height="34" rx="8" fill="#102330" stroke="#f4bb67" stroke-width="2"/>
+<text x="1797.5271999999995" y="1091.6525" text-anchor="middle" font-size="13" font-weight="750" fill="#f4bb67">CUTTER</text>
+</g>
+<g data-gate="H-J"><rect x="932.7409994420716" y="1643.000000110432" width="155" height="34" rx="8" fill="#102330" stroke="#b6a0ef" stroke-width="2"/>
+<text x="1010.2409994420716" y="1665.000000110432" text-anchor="middle" font-size="13" font-weight="750" fill="#b6a0ef">PRESSURE SEAL</text>
+</g>
+<g data-gate="J-G"><rect x="791.7787519999999" y="1889.119808" width="118" height="34" rx="8" fill="#102330" stroke="#6dd8e2" stroke-width="2"/>
+<text x="850.7787519999999" y="1911.119808" text-anchor="middle" font-size="13" font-weight="750" fill="#6dd8e2">THRUSTER</text>
+</g>
+<g data-gate="I-DC"><rect x="1458.8959999999995" y="2069.6524999999992" width="118" height="34" rx="8" fill="#102330" stroke="#6dd8e2" stroke-width="2"/>
+<text x="1517.8959999999995" y="2091.6524999999992" text-anchor="middle" font-size="13" font-weight="750" fill="#6dd8e2">THRUSTER</text>
+</g>
+<g data-gate="E-V"><rect x="958.6198079999999" y="702.281152" width="95" height="34" rx="8" fill="#102330" stroke="#f4bb67" stroke-width="2"/>
+<text x="1006.1198079999999" y="724.281152" text-anchor="middle" font-size="13" font-weight="750" fill="#f4bb67">CUTTER</text>
+</g>
+<g data-gate="N-C"><rect x="1391.778752" y="874.7317888" width="118" height="34" rx="8" fill="#102330" stroke="#6dd8e2" stroke-width="2"/>
+<text x="1450.778752" y="896.7317888" text-anchor="middle" font-size="13" font-weight="750" fill="#6dd8e2">THRUSTER</text>
+</g>
+<g data-gate="Q-J"><rect x="731.9385252096248" y="1642.9999991922105" width="176" height="34" rx="8" fill="#102330" stroke="#d5b3f2" stroke-width="2"/>
+<text x="819.9385252096248" y="1664.9999991922105" text-anchor="middle" font-size="13" font-weight="750" fill="#d5b3f2">SEAL + THRUSTER</text>
+</g>
+<g id="room-W" data-kind="cove"><title>Abandoned tender: SALVAGE CUTTER</title><rect x="12.5" y="532" width="195" height="76" rx="24" fill="#143340" stroke="#83d9bd" stroke-width="1.8" stroke-dasharray="5 5"/>
+<text x="110" y="553" text-anchor="middle" font-size="10" font-weight="750" letter-spacing="2" fill="#9bb5bd">HIDDEN COVE</text>
+<text x="110" y="575" text-anchor="middle" font-size="15" font-weight="750" fill="#83d9bd">SALVAGE CUTTER</text>
+<text x="110" y="595" text-anchor="middle" font-size="11" fill="#b5c9ce">Abandoned tender</text>
+</g>
+<g id="room-TC" data-kind="cove"><title>Hidden mooring cove: 40 CREDITS</title><rect x="752.5" y="207" width="195" height="76" rx="24" fill="#143340" stroke="#f4bb67" stroke-width="1.8" stroke-dasharray="5 5"/>
+<text x="850" y="228" text-anchor="middle" font-size="10" font-weight="750" letter-spacing="2" fill="#9bb5bd">HIDDEN COVE</text>
+<text x="850" y="250" text-anchor="middle" font-size="15" font-weight="750" fill="#f4bb67">40 CREDITS</text>
+<text x="850" y="270" text-anchor="middle" font-size="11" fill="#b5c9ce">Hidden mooring cove</text>
+</g>
+<g id="room-BR" data-kind="cove"><title>Old relay compartment: CURRENT THRUSTER</title><rect x="1173.0" y="847" width="214" height="76" rx="24" fill="#143340" stroke="#b1d49b" stroke-width="1.8" stroke-dasharray="5 5"/>
+<text x="1280" y="868" text-anchor="middle" font-size="10" font-weight="750" letter-spacing="2" fill="#9bb5bd">HIDDEN COVE</text>
+<text x="1280" y="890" text-anchor="middle" font-size="15" font-weight="750" fill="#b1d49b">CURRENT THRUSTER</text>
+<text x="1280" y="910" text-anchor="middle" font-size="11" fill="#b5c9ce">Old relay compartment</text>
+</g>
+<g id="room-BC" data-kind="cove"><title>Hidden silt pocket: 90 CREDITS</title><rect x="1792.5" y="532" width="195" height="76" rx="24" fill="#143340" stroke="#f4bb67" stroke-width="1.8" stroke-dasharray="5 5"/>
+<text x="1890" y="553" text-anchor="middle" font-size="10" font-weight="750" letter-spacing="2" fill="#9bb5bd">HIDDEN COVE</text>
+<text x="1890" y="575" text-anchor="middle" font-size="15" font-weight="750" fill="#f4bb67">90 CREDITS</text>
+<text x="1890" y="595" text-anchor="middle" font-size="11" fill="#b5c9ce">Hidden silt pocket</text>
+</g>
+<g id="room-CW" data-kind="cove"><title>Sealed workshop: PRESSURE SEAL</title><rect x="1013.0" y="1462" width="214" height="76" rx="24" fill="#143340" stroke="#dfb28b" stroke-width="1.8" stroke-dasharray="5 5"/>
+<text x="1120" y="1483" text-anchor="middle" font-size="10" font-weight="750" letter-spacing="2" fill="#9bb5bd">HIDDEN COVE</text>
+<text x="1120" y="1505" text-anchor="middle" font-size="15" font-weight="750" fill="#dfb28b">PRESSURE SEAL</text>
+<text x="1120" y="1525" text-anchor="middle" font-size="11" fill="#b5c9ce">Sealed workshop</text>
+</g>
+<g id="room-CC" data-kind="cove"><title>Hidden wreck compartment: HULL CAPACITY +</title><rect x="1792.5" y="1162" width="195" height="76" rx="24" fill="#143340" stroke="#dfb28b" stroke-width="1.8" stroke-dasharray="5 5"/>
+<text x="1890" y="1183" text-anchor="middle" font-size="10" font-weight="750" letter-spacing="2" fill="#9bb5bd">HIDDEN COVE</text>
+<text x="1890" y="1205" text-anchor="middle" font-size="15" font-weight="750" fill="#dfb28b">HULL CAPACITY +</text>
+<text x="1890" y="1225" text-anchor="middle" font-size="11" fill="#b5c9ce">Hidden wreck compartment</text>
+</g>
+<g id="room-DL" data-kind="cove"><title>Hidden trench cove: SURVEY LENS</title><rect x="12.5" y="1862" width="195" height="76" rx="24" fill="#143340" stroke="#b5a7e5" stroke-width="1.8" stroke-dasharray="5 5"/>
+<text x="110" y="1883" text-anchor="middle" font-size="10" font-weight="750" letter-spacing="2" fill="#9bb5bd">HIDDEN COVE</text>
+<text x="110" y="1905" text-anchor="middle" font-size="15" font-weight="750" fill="#b5a7e5">SURVEY LENS</text>
+<text x="110" y="1925" text-anchor="middle" font-size="11" fill="#b5c9ce">Hidden trench cove</text>
+</g>
+<g id="room-DC" data-kind="cove"><title>Hidden jet cove: 150 CREDITS</title><rect x="1552.5" y="2162" width="195" height="76" rx="24" fill="#143340" stroke="#f4bb67" stroke-width="1.8" stroke-dasharray="5 5"/>
+<text x="1650" y="2183" text-anchor="middle" font-size="10" font-weight="750" letter-spacing="2" fill="#9bb5bd">HIDDEN COVE</text>
+<text x="1650" y="2205" text-anchor="middle" font-size="15" font-weight="750" fill="#f4bb67">150 CREDITS</text>
+<text x="1650" y="2225" text-anchor="middle" font-size="11" fill="#b5c9ce">Hidden jet cove</text>
+</g>
+<rect x="60" y="2405" width="1880" height="195" rx="20" fill="#112b38" stroke="#35505e"/>
+<text x="90" y="2444" font-size="14" font-weight="750" letter-spacing="2" fill="#dcebe8">EXPLORATION ORDER</text>
+<text x="90" y="2482" font-size="21" font-weight="700" fill="#dfebe6">Find CUTTER → discover SEAL or THRUSTER in either order.</text>
+<text x="90" y="2517" font-size="18" fill="#9bb5bd">Seal opens deep water. Thruster opens jets, treasure and the return shortcut.</text>
+<text x="90" y="2561" font-size="18" fill="#a3d9c4">Repair the network → deliver the core to Deep Anchor → bring the dispatch home.</text>
+<path d="M1160 2430v140" stroke="#35505e" stroke-width="2"/>
+<path d="M1190 2441h50" stroke="#87b9c5" stroke-width="5" stroke-linecap="round"/>
+<text x="1260" y="2446" font-size="16" fill="#c5d9dc">Continuous passage / chamber</text>
+<path d="M1190 2481h50" stroke="#f4bb67" stroke-width="5" stroke-linecap="round"/>
+<text x="1260" y="2486" font-size="16" fill="#c5d9dc">Cutter gate · sealed grate</text>
+<path d="M1190 2521h50" stroke="#b6a0ef" stroke-width="5" stroke-linecap="round"/>
+<text x="1260" y="2526" font-size="16" fill="#c5d9dc">Pressure gate · reinforced approach</text>
+<path d="M1190 2561h50" stroke="#6dd8e2" stroke-width="5" stroke-linecap="round"/>
+<text x="1260" y="2566" font-size="16" fill="#c5d9dc">Thruster gate · opposing current</text>
+<text x="60" y="2635" font-size="14" fill="#839faa">DESIGN MAP · All 42 passages are drawn continuously. Hidden rewards shown for review; spatial distances await playtesting.</text>
+</svg>

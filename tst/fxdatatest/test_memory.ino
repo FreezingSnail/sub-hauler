@@ -79,7 +79,11 @@ Arduboy2Base arduboy;
 // The full AVR state budget is pinned here at 80 B after the gl1.3/gl1.4
 // compaction: diagnostic counters and the job clock were removed and route
 // reward fields were narrowed.
-static_assert(sizeof(game::State) == 80, "full game::State is 80 bytes on AVR");
+#if SH_FEATURE_EXPLORATION
+static_assert(sizeof(game::State) == 91, "full exploration run state is 91 bytes on AVR");
+#else
+static_assert(sizeof(game::State) == 80, "non-exploration state remains 80 bytes");
+#endif
 #endif
 
 #if SH_FEATURE_FOG_CHART
@@ -143,6 +147,23 @@ __attribute__((noinline)) void runRepresentativePath() {
         FX::display(CLEAR_BUFFER);
     }
 
+#if SH_FEATURE_EXPLORATION
+    // Exercise salvage, cutter operation, object rendering and discovery HUD
+    // in the measured stack window, using the same run state as flight.
+    const auto find=exploration_data::pickup(exploration_data::PICKUP_W);
+    state.x=find.x;state.y=find.y;state.vxQ8=0;state.vyQ8=0;
+    for(uint8_t tick=0;tick<exploration::kDwellTicks;++tick) exploration::update(state);
+    game::snapCamera(state);
+    view::frame(state,pilot_view::cameraForState(state),cache,tables);
+    hud::draw(state);FX::display(CLEAR_BUFFER);
+    const auto grate=exploration_data::gate(exploration_data::GATE_E_V);
+    state.x=grate.x-14;state.y=grate.y+grate.h/2;
+    for(uint8_t tick=0;tick<exploration::kDwellTicks;++tick) exploration::update(state);
+    game::snapCamera(state);
+    view::frame(state,pilot_view::cameraForState(state),cache,tables);
+    hud::draw(state);FX::display(CLEAR_BUFFER);
+#endif
+
 #if SH_FEATURE_FOG_CHART
     // Chart path: spawn reset/reveal, a few movement reveals, and real chart
     // frames. The destination X is drawn on the first frame and blinked off on
@@ -152,7 +173,11 @@ __attribute__((noinline)) void runRepresentativePath() {
     chart::reset(probeChart);
     chart::revealInitial(probeChart, state);
     chart::revealAtPixels(probeChart, state.x, state.y, chart::kMoveRevealRadius);
+#if SH_FEATURE_EXPLORATION
+    chart::revealAtPixels(probeChart, exploration_data::DOCK_D_X, exploration_data::DOCK_D_Y, 0);
+#else
     chart::revealAtPixels(probeChart, 1376, 1056, 0);
+#endif
     state.ticks = chart::kMoveRevealIntervalTicks;
     chart::revealOnStep(probeChart, state);
 #if SH_FEATURE_JOBS
