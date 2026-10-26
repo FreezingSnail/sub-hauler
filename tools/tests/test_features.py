@@ -37,6 +37,9 @@ class ProfileValuesTest(unittest.TestCase):
                 "MULTI_HULL": 1,
                 "SAVE_CHART": 0,
                 "EXPLORATION": 1,
+                "CAMPAIGN": 0,
+                "SAVE_VOYAGE": 0,
+                "MUSIC": 0,
             },
         )
 
@@ -56,6 +59,9 @@ class ProfileValuesTest(unittest.TestCase):
                 "MULTI_HULL": 1,
                 "SAVE_CHART": 0,
                 "EXPLORATION": 1,
+                "CAMPAIGN": 0,
+                "SAVE_VOYAGE": 0,
+                "MUSIC": 0,
             },
         )
 
@@ -75,6 +81,9 @@ class ProfileValuesTest(unittest.TestCase):
                 "MULTI_HULL": 0,
                 "SAVE_CHART": 0,
                 "EXPLORATION": 1,
+                "CAMPAIGN": 0,
+                "SAVE_VOYAGE": 0,
+                "MUSIC": 0,
             },
         )
 
@@ -94,6 +103,9 @@ class ProfileValuesTest(unittest.TestCase):
                 "MULTI_HULL": 0,
                 "SAVE_CHART": 0,
                 "EXPLORATION": 0,
+                "CAMPAIGN": 0,
+                "SAVE_VOYAGE": 0,
+                "MUSIC": 0,
             },
         )
 
@@ -122,6 +134,10 @@ class DependencyTest(unittest.TestCase):
             ("SAVE_CHART", "FOG_CHART"),
             ("SHOP", "STATIONS"),
             ("EXPLORATION", "JOBS"),
+            ("CAMPAIGN", "JOBS"),
+            ("CAMPAIGN", "STATIONS"),
+            ("CAMPAIGN", "EXPLORATION"),
+            ("SAVE_VOYAGE", "CAMPAIGN"),
         ]
         for feature, requirement in cases:
             with self.subTest(feature=feature, requirement=requirement):
@@ -137,6 +153,18 @@ class DependencyTest(unittest.TestCase):
                     ),
                     str(raised.exception),
                 )
+
+    def test_negated_dependency_and_exclusive_save_features(self):
+        values = features.profile_values("full")
+        values["CAMPAIGN"] = 1
+        values["SAVE_CHART"] = 1
+        values["SAVE_VOYAGE"] = 1
+        with self.assertRaises(features.FeatureError) as raised:
+            features.validate_features(values)
+        self.assertIn(
+            "SH_FEATURE_SAVE_VOYAGE requires !SH_FEATURE_SAVE_CHART",
+            str(raised.exception),
+        )
 
     def test_missing_flag_is_rejected(self):
         values = features.profile_values("lean")
@@ -194,6 +222,9 @@ class FlagOutputTest(unittest.TestCase):
                 "-DSH_FEATURE_MULTI_HULL=1",
                 "-DSH_FEATURE_SAVE_CHART=0",
                 "-DSH_FEATURE_EXPLORATION=1",
+                "-DSH_FEATURE_CAMPAIGN=0",
+                "-DSH_FEATURE_SAVE_VOYAGE=0",
+                "-DSH_FEATURE_MUSIC=0",
             ],
         )
 
@@ -207,15 +238,16 @@ class FlagOutputTest(unittest.TestCase):
             report,
         )
         self.assertIn(
-            "inactive (5): MINES CURRENTS SHOP PARTICLES SAVE_CHART", report
+            "inactive (8): MINES CURRENTS SHOP PARTICLES SAVE_CHART CAMPAIGN SAVE_VOYAGE MUSIC", report
         )
 
     def test_min_report_has_no_active_features(self):
         report = features.feature_report("min", features.profile_values("min"))
         self.assertIn("active (0): (none)", report)
         self.assertIn(
-            "inactive (12): STATIONS JOBS FOG_CHART SONAR "
-            "MINES CURRENTS SHOP HULL_DAMAGE PARTICLES MULTI_HULL SAVE_CHART EXPLORATION",
+            "inactive (15): STATIONS JOBS FOG_CHART SONAR "
+            "MINES CURRENTS SHOP HULL_DAMAGE PARTICLES MULTI_HULL SAVE_CHART EXPLORATION "
+            "CAMPAIGN SAVE_VOYAGE MUSIC",
             report,
         )
 
@@ -272,11 +304,14 @@ class HeaderParityTest(unittest.TestCase):
             dict.fromkeys(re.findall(r"#define SH_FEATURE_([A-Z0-9_]+)", header))
         )
         header_dependencies = {}
-        for feature, requirement in re.findall(
-            r"#if SH_FEATURE_([A-Z0-9_]+) && !SH_FEATURE_([A-Z0-9_]+)",
+        for feature, negated, requirement in re.findall(
+            r"#if SH_FEATURE_([A-Z0-9_]+) && (!)?SH_FEATURE_([A-Z0-9_]+)",
             header,
         ):
-            header_dependencies.setdefault(feature, []).append(requirement)
+            # Header dependency checks are written as "FEATURE && !REQ";
+            # the mutually-exclusive save check is "SAVE_VOYAGE && SAVE_CHART".
+            header_requirement = requirement if negated else "!" + requirement
+            header_dependencies.setdefault(feature, []).append(header_requirement)
         self.assertEqual(definition_order, features.FEATURES)
         self.assertEqual(
             {name: tuple(requirements) for name, requirements in header_dependencies.items()},

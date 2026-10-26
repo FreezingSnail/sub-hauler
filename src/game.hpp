@@ -123,19 +123,44 @@ constexpr uint8_t kJobNone = 0xFF;
 // "overdue": it can never wrap back into a payable window.
 constexpr uint16_t kJobElapsedLate = 0xFFFF;
 
+#if SH_FEATURE_CAMPAIGN
+// Explicit job kind, replacing the implicit "six-byte timed contract". The
+// saved payload freezes these values; see docs/progression-implementation.md.
+constexpr uint8_t kJobKindNone = 0;
+constexpr uint8_t kJobKindOrdinary = 1;
+constexpr uint8_t kJobKindExpress = 2;
+constexpr uint8_t kJobKindCampaign = 3;
+
+constexpr uint8_t kMissionNone = 0xFF;
+
+// Express pays a five-credit-rounded 125% of the generated route reward. The
+// integer shape is frozen by the implementation contract.
+constexpr uint8_t expressReward(uint8_t routeReward) {
+    return static_cast<uint8_t>(((static_cast<uint16_t>(routeReward) * 5u + 10u) / 20u) * 5u);
+}
+#endif
+
 struct JobOffer {
     uint8_t from;        // origin settlement id
     uint8_t to;          // destination settlement id
     uint8_t crates;      // required cargo units
     uint8_t reward;      // credits, a multiple of 5; generated bound-checked
-    uint16_t deadline;   // allowed flight ticks from acceptance
+#if SH_FEATURE_CAMPAIGN
+    uint8_t kind;        // ORDINARY or EXPRESS; row 0 / row 1
+#endif
+    uint16_t deadline;   // allowed flight ticks from acceptance; 0 = untimed
 };
 
 struct ActiveJob {
+#if SH_FEATURE_CAMPAIGN
+    uint8_t kind;        // kJobKindNone / ORDINARY / EXPRESS / CAMPAIGN
+    uint8_t mission;     // campaign mission id or kMissionNone
+    uint8_t from;        // origin berth or kJobNone
+#endif
     uint8_t to;
     uint8_t crates;
     uint8_t reward;      // promoted when credits are paid
-    uint16_t deadline;   // allowed flight ticks from acceptance
+    uint16_t deadline;   // allowed flight ticks from acceptance; 0 = untimed
     uint16_t elapsed;    // flight ticks since acceptance, saturating
 };
 #endif
@@ -204,10 +229,25 @@ struct State {
 #if SH_FEATURE_JOBS
     uint16_t credits;
     uint8_t lastDelivery;   // jobs::DeliveryResult from the last resolved contract
+#if SH_FEATURE_CAMPAIGN
+    // Campaign/voyage scalar state (the storage payload owns the fixed byte
+    // order; this struct order is not serialized).
+    uint8_t campaign;       // milestone bits FIRST..HOME
+    uint8_t surveys;        // recorded survey bits PUMP..LIFT
+    uint8_t visited;        // visited freight-settlement bits
+    uint32_t voyageTicks;   // flight ticks, saturating
+    uint16_t delivered;     // paid cargo jobs, saturating
+    uint16_t rescues;       // recovery requests, saturating
+    uint16_t boardSeed;     // offer serial origin; schema 1 writes 0
+    uint8_t ending;         // ending cards presented
+    uint16_t offerCursor;   // serial before the current station board
+    uint16_t offerSerial;   // working offer generator serial
+#else
     uint16_t offerSerial;   // deterministic offer generator cursor
+#endif
     uint8_t offerCount;     // 0..kJobOffers valid entries in offers
     JobOffer offers[kJobOffers];
-    ActiveJob activeJob;   // activeJob.to == kJobNone means no contract
+    ActiveJob activeJob;
 #endif
 #if SH_FEATURE_SHOP
     // Run-only shop levels: three bytes, no save field, no extra UI state.
@@ -219,21 +259,31 @@ struct State {
 
 #if SH_FEATURE_JOBS
 inline bool hasActiveJob(const State &state) {
+#if SH_FEATURE_CAMPAIGN
+    return state.activeJob.kind != kJobKindNone;
+#else
     return state.activeJob.to != kJobNone;
+#endif
 }
 
-// Charge one flight tick to the active contract. The age saturates at
-// kJobElapsedLate instead of wrapping; because every deadline is strictly
-// smaller, saturation is permanently overdue and a late contract cannot
-// revive. Docked/chart frames never call a world step, and the station guard
-// keeps a direct step() call honest too.
+// Charge one flight tick. Campaign/ordinary work is untimed and never ages;
+// only express work consumes its route deadline. The voyage clock advances on
+// every flight tick and saturates. Docked/chart frames never call a world step,
+// and the station guard keeps a direct step() call honest too.
 inline void tickJobElapsed(State &state) {
 #if SH_FEATURE_STATIONS
     if (state.docked >= 0)
         return;
 #endif
+#if SH_FEATURE_CAMPAIGN
+    if (state.voyageTicks != 0xFFFFFFFFu)
+        ++state.voyageTicks;
+    if (!hasActiveJob(state) || state.activeJob.kind != kJobKindExpress || state.activeJob.elapsed == kJobElapsedLate)
+        return;
+#else
     if (!hasActiveJob(state) || state.activeJob.elapsed == kJobElapsedLate)
         return;
+#endif
     ++state.activeJob.elapsed;
 }
 #endif
@@ -383,6 +433,14 @@ inline void reset(State &state) {
 #endif
 #if SH_FEATURE_JOBS
     state.activeJob.to = kJobNone;
+#if SH_FEATURE_CAMPAIGN
+    state.activeJob.kind = kJobKindNone;
+    state.activeJob.mission = kMissionNone;
+    state.activeJob.from = kJobNone;
+    // Schema 1 starts with boardSeed 0, preserving the historical sequence.
+    state.offerSerial = state.boardSeed;
+    state.offerCursor = state.boardSeed;
+#endif
 #endif
 }
 

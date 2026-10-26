@@ -111,7 +111,12 @@ inline void LoopSuite(TestRunner &runner) {
         test.assertEqual(station::activate(station::kActiveShopRow, state), station::kActionShop, "active SHOP row opens the shop");
         test.assertEqual(station::shopRow(state), station::kActiveShopRow, "active board returns to its SHOP row");
 #endif
+#if SH_FEATURE_CAMPAIGN
+        test.assertEqual(jobs::remainingTicks(state), 0, "ordinary work has no clock on the station");
+        test.assertEqual(state.activeJob.deadline, 0, "ordinary work stores an untimed deadline");
+#else
         test.assertEqual(jobs::remainingTicks(state), state.activeJob.deadline, "the contract clock is frozen on the station");
+#endif
         test.assertEqual(state.cargo, game::kJobCrates, "acceptance auto-loads four units");
         test.assertEqual(state.ballast, game::neutralFor(state.cargo), "the auto-load leaves neutral trim");
         test.assertEqual(state.docked, static_cast<int8_t>(station), "acceptance keeps the boat docked");
@@ -126,7 +131,12 @@ inline void LoopSuite(TestRunner &runner) {
         for (uint8_t i = 0; i < 30; ++i)
             station::stepFlight(state, idle(), fake);
         test.assertEqual(state.docked, static_cast<int8_t>(-1), "the origin ring stays inert during cooldown");
+#if SH_FEATURE_CAMPAIGN
+        test.assertEqual(jobs::remainingTicks(state), 0, "ordinary work never runs out of time");
+        test.assertEqual(state.activeJob.elapsed, 0, "ordinary work does not age in flight");
+#else
         test.assertTrue(jobs::remainingTicks(state) > 0, "the contract is still live in flight");
+#endif
 
         test.assertTrue(placeAtBerth(state, first.to), "destination metadata loads");
         test.assertTrue(station::stepFlight(state, idle(), fake), "the destination ring auto-docks");
@@ -155,6 +165,7 @@ inline void LoopSuite(TestRunner &runner) {
         runner.add(test);
     }
 
+#if !SH_FEATURE_CAMPAIGN
     {
         Test test("late contract loop: failed delivery clears the job and restores offers");
         Fixture fake;
@@ -194,6 +205,7 @@ inline void LoopSuite(TestRunner &runner) {
         test.assertEqual(state.cargo, game::kJobCrates, "the recovery contract auto-loads");
         runner.add(test);
     }
+#endif   // !SH_FEATURE_CAMPAIGN
 
     {
         Test test("abandon loop: ABANDON clears the hold and restores offers");

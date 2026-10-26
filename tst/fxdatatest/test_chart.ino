@@ -30,6 +30,11 @@ static bool sample(bool revealed, uint8_t phase) {
         memset(fog.explored, 0xFF, sizeof(fog.explored));
 #if SH_FEATURE_JOBS
     state.activeJob.to = 2;
+#if SH_FEATURE_CAMPAIGN
+    state.activeJob.kind = game::kJobKindOrdinary;
+    state.activeJob.mission = game::kMissionNone;
+    state.activeJob.from = 0;
+#endif
 #endif
 #if SH_FEATURE_EXPLORATION
     state.seenGates = 0x1FF;

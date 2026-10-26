@@ -80,7 +80,9 @@ Arduboy2Base arduboy;
 // compaction: diagnostic counters and the job clock were removed and route
 // reward fields were narrowed.
 #if SH_FEATURE_EXPLORATION
+#if !SH_FEATURE_CAMPAIGN
 static_assert(sizeof(game::State) == 91, "full exploration run state is 91 bytes on AVR");
+#endif
 #else
 static_assert(sizeof(game::State) == 80, "non-exploration state remains 80 bytes");
 #endif
@@ -182,6 +184,11 @@ __attribute__((noinline)) void runRepresentativePath() {
     chart::revealOnStep(probeChart, state);
 #if SH_FEATURE_JOBS
     state.activeJob.to = 1;
+#if SH_FEATURE_CAMPAIGN
+    state.activeJob.kind = game::kJobKindOrdinary;
+    state.activeJob.mission = game::kMissionNone;
+    state.activeJob.from = 0;
+#endif
 #endif
     for (uint8_t frame = 0; frame < 3; ++frame) {
         const uint8_t blink = (frame == 0) ? 0 : chart_view::kBlinkMask;

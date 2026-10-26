@@ -82,6 +82,43 @@
 #error "SH_FEATURE_EXPLORATION requires SH_FEATURE_JOBS"
 #endif
 
+// Pure campaign/untimed-freight rules. Off in shipped profiles until the
+// application integration tasks land; campaign-enabled host builds override
+// it explicitly. Requires the station, job and authored-map rules.
+#ifndef SH_FEATURE_CAMPAIGN
+#define SH_FEATURE_CAMPAIGN 0
+#endif
+
+// Atomic voyage save. It owns the same state as campaign and replaces the
+// standalone chart writer, so the two save features are mutually exclusive.
+#ifndef SH_FEATURE_SAVE_VOYAGE
+#define SH_FEATURE_SAVE_VOYAGE 0
+#endif
+
+// Music has no saved state dependency. It remains default-off until the
+// combined resource gate is measured.
+#ifndef SH_FEATURE_MUSIC
+#define SH_FEATURE_MUSIC 0
+#endif
+
+// Campaign requires the full station/contract/authored-map stack. The save
+// feature then requires campaign; it also replaces the standalone chart save.
+#if SH_FEATURE_CAMPAIGN && !SH_FEATURE_JOBS
+#error "SH_FEATURE_CAMPAIGN requires SH_FEATURE_JOBS"
+#endif
+#if SH_FEATURE_CAMPAIGN && !SH_FEATURE_STATIONS
+#error "SH_FEATURE_CAMPAIGN requires SH_FEATURE_STATIONS"
+#endif
+#if SH_FEATURE_CAMPAIGN && !SH_FEATURE_EXPLORATION
+#error "SH_FEATURE_CAMPAIGN requires SH_FEATURE_EXPLORATION"
+#endif
+#if SH_FEATURE_SAVE_VOYAGE && !SH_FEATURE_CAMPAIGN
+#error "SH_FEATURE_SAVE_VOYAGE requires SH_FEATURE_CAMPAIGN"
+#endif
+#if SH_FEATURE_SAVE_VOYAGE && SH_FEATURE_SAVE_CHART
+#error "SH_FEATURE_SAVE_VOYAGE requires !SH_FEATURE_SAVE_CHART"
+#endif
+
 // Development override, separate from shipped feature profiles.
 #ifndef SH_DEV_MODE
 #define SH_DEV_MODE 0
