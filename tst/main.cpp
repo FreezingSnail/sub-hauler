@@ -44,6 +44,9 @@
 #if SH_FEATURE_JOBS
 #include "jobs_test.hpp"
 #endif
+#if SH_FEATURE_CAMPAIGN
+#include "campaign_test.hpp"
+#endif
 #if SH_FEATURE_STATIONS && SH_FEATURE_JOBS
 #include "loop_test.hpp"
 #endif
@@ -94,6 +97,9 @@ int main() {
 #endif
 #if SH_FEATURE_JOBS
     JobsSuite(runner);
+#endif
+#if SH_FEATURE_CAMPAIGN
+    CampaignSuite(runner);
 #endif
 #if SH_FEATURE_STATIONS && SH_FEATURE_JOBS
     LoopSuite(runner);

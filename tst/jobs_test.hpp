@@ -154,8 +154,21 @@ inline void JobsSuite(TestRunner &runner) {
             test.assertEqual(first.offers[i].crates, game::kJobCrates, "contracts require four units");
             test.assertTrue(first.offers[i].reward > 0, "reward is positive");
             test.assertEqual(first.offers[i].reward % jobs::kRewardRound, 0, "reward is a multiple of five");
+#if SH_FEATURE_CAMPAIGN
+            if (i == jobs::kOrdinaryRow) {
+                test.assertEqual(first.offers[i].kind, game::kJobKindOrdinary, "row 0 is ordinary work");
+                test.assertEqual(first.offers[i].deadline, 0, "ordinary work is untimed");
+            } else {
+                test.assertEqual(first.offers[i].kind, game::kJobKindExpress, "row 1 is express work");
+                test.assertTrue(first.offers[i].deadline > 0, "express work keeps its route deadline");
+            }
+#else
             test.assertTrue(first.offers[i].deadline > 0, "deadline is positive");
+#endif
         }
+#if SH_FEATURE_CAMPAIGN
+        test.assertEqual(first.offerCursor, 0, "the fresh board records its pre-board cursor");
+#endif
         runner.add(test);
     }
 
@@ -218,8 +231,19 @@ inline void JobsSuite(TestRunner &runner) {
         test.assertTrue(jobs::refreshOffers(state, origin.id), "offers generate");
         for (uint8_t i = 0; i < state.offerCount; ++i) {
             const jobs::RouteEconomy route = jobs::routeEconomy(state.offers[i].from, state.offers[i].to);
+#if SH_FEATURE_CAMPAIGN
+            if (state.offers[i].kind == game::kJobKindExpress) {
+                test.assertEqual(state.offers[i].reward, game::expressReward(route.reward), "express reward uses the frozen formula");
+                test.assertEqual(state.offers[i].deadline, route.deadline, "express deadline comes from the table");
+            } else {
+                test.assertEqual(state.offers[i].kind, game::kJobKindOrdinary, "only ordinary and express rows are offered");
+                test.assertEqual(state.offers[i].reward, route.reward, "ordinary reward comes from the table");
+                test.assertEqual(state.offers[i].deadline, 0, "ordinary work carries no deadline");
+            }
+#else
             test.assertEqual(state.offers[i].reward, route.reward, "offer reward comes from the table");
             test.assertEqual(state.offers[i].deadline, route.deadline, "offer deadline comes from the table");
+#endif
         }
         runner.add(test);
     }
@@ -248,6 +272,11 @@ inline void JobsSuite(TestRunner &runner) {
         test.assertEqual(state.activeJob.reward, chosen.reward, "reward is fixed at acceptance");
         test.assertEqual(state.activeJob.deadline, chosen.deadline, "deadline is stored in flight ticks");
         test.assertEqual(state.activeJob.elapsed, 0, "contract age starts at acceptance");
+#if SH_FEATURE_CAMPAIGN
+        test.assertEqual(state.activeJob.kind, chosen.kind, "active kind comes from the offer row");
+        test.assertEqual(state.activeJob.mission, game::kMissionNone, "freight has no campaign mission");
+        test.assertEqual(state.activeJob.from, chosen.from, "active freight records its origin");
+#endif
         test.assertEqual(state.cargo, game::kJobCrates, "acceptance auto-loads four units");
         test.assertEqual(state.ballast, game::neutralFor(state.cargo), "trim is neutral for the auto-load");
         test.assertEqual(state.docked, static_cast<int8_t>(origin.id), "acceptance stays docked");
@@ -307,6 +336,7 @@ inline void JobsSuite(TestRunner &runner) {
         runner.add(test);
     }
 
+#if !SH_FEATURE_CAMPAIGN
     {
         Test test("late arrival fails without paying and clears the contract");
         world::Settlement origin;
@@ -331,6 +361,7 @@ inline void JobsSuite(TestRunner &runner) {
         test.assertTrue(!jobs::deliveryFailed(state), "the note does not outlive acceptance");
         runner.add(test);
     }
+#endif   // !SH_FEATURE_CAMPAIGN
 
     {
         Test test("insufficient cargo fails an otherwise on-time delivery");
@@ -380,6 +411,7 @@ inline void JobsSuite(TestRunner &runner) {
         runner.add(test);
     }
 
+#if !SH_FEATURE_CAMPAIGN
     {
         Test test("deadlines pause while docked and advance with flight ticks");
         world::Settlement origin;
@@ -404,7 +436,9 @@ inline void JobsSuite(TestRunner &runner) {
         test.assertEqual(state.activeJob.elapsed, static_cast<uint16_t>(flightElapsed + 10), "job age advances one tick per flight step");
         runner.add(test);
     }
+#endif   // !SH_FEATURE_CAMPAIGN
 
+#if !SH_FEATURE_CAMPAIGN
     {
         Test test("deadline is inclusive and a late contract never revives");
         world::Settlement origin;
@@ -462,7 +496,9 @@ inline void JobsSuite(TestRunner &runner) {
         test.assertEqual(fresh.activeJob.elapsed, 0, "abandon clears the age");
         runner.add(test);
     }
+#endif   // !SH_FEATURE_CAMPAIGN
 
+#if !SH_FEATURE_CAMPAIGN
     {
         Test test("balance: freight pays for upgrades and long hauls can resupply without losing the job");
         game::State fresh;
@@ -526,6 +562,7 @@ inline void JobsSuite(TestRunner &runner) {
         }
         runner.add(test);
     }
+#endif   // !SH_FEATURE_CAMPAIGN
 
     {
         Test test("active contract board selects ABANDON and UNDOCK only");

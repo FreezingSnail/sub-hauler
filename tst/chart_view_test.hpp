@@ -204,6 +204,11 @@ inline void ChartViewSuite(TestRunner &runner) {
         gameState.x = 820;
         gameState.y = 420;
         gameState.activeJob.to = 2;   // settlement 2 is chart cell 56,12
+#if SH_FEATURE_CAMPAIGN
+        gameState.activeJob.kind = game::kJobKindOrdinary;
+        gameState.activeJob.mission = game::kMissionNone;
+        gameState.activeJob.from = 0;
+#endif
         world::Settlement destination;
         world::settlementInfo(gameState.activeJob.to,destination);
         const int16_t destX=destination.tile_x/5*2+1;

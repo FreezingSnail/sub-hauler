@@ -34,6 +34,9 @@ FEATURES = (
     "MULTI_HULL",
     "SAVE_CHART",
     "EXPLORATION",
+    "CAMPAIGN",
+    "SAVE_VOYAGE",
+    "MUSIC",
 )
 
 # Direct dependency checks, matching src/features.hpp. Keep insertion order in
@@ -44,6 +47,8 @@ DEPENDENCIES = {
     "SAVE_CHART": ("FOG_CHART",),
     "SHOP": ("STATIONS",),
     "EXPLORATION": ("JOBS",),
+    "CAMPAIGN": ("JOBS", "STATIONS", "EXPLORATION"),
+    "SAVE_VOYAGE": ("CAMPAIGN", "!SAVE_CHART"),
 }
 
 PROFILES = {
@@ -60,6 +65,9 @@ PROFILES = {
         "MULTI_HULL": 1,
         "SAVE_CHART": 0,
         "EXPLORATION": 1,
+        "CAMPAIGN": 0,
+        "SAVE_VOYAGE": 0,
+        "MUSIC": 0,
     },
     "lean": {
         "STATIONS": 1,
@@ -74,6 +82,9 @@ PROFILES = {
         "MULTI_HULL": 1,
         "SAVE_CHART": 0,
         "EXPLORATION": 1,
+        "CAMPAIGN": 0,
+        "SAVE_VOYAGE": 0,
+        "MUSIC": 0,
     },
     "core": {
         "STATIONS": 1,
@@ -88,6 +99,9 @@ PROFILES = {
         "MULTI_HULL": 0,
         "SAVE_CHART": 0,
         "EXPLORATION": 1,
+        "CAMPAIGN": 0,
+        "SAVE_VOYAGE": 0,
+        "MUSIC": 0,
     },
     "min": {
         "STATIONS": 0,
@@ -102,6 +116,9 @@ PROFILES = {
         "MULTI_HULL": 0,
         "SAVE_CHART": 0,
         "EXPLORATION": 0,
+        "CAMPAIGN": 0,
+        "SAVE_VOYAGE": 0,
+        "MUSIC": 0,
     },
 }
 
@@ -189,6 +206,15 @@ def validate_features(values):
         if not values[feature]:
             continue
         for requirement in requirements:
+            if requirement.startswith("!"):
+                name = requirement[1:]
+                if values[name]:
+                    problems.append(
+                        "{} requires !{}".format(
+                            PREFIX + feature, PREFIX + name
+                        )
+                    )
+                continue
             if not values[requirement]:
                 problems.append(
                     "{} requires {}".format(PREFIX + feature, PREFIX + requirement)

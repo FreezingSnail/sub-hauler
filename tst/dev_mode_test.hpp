@@ -88,6 +88,11 @@ inline void DevModeSuite(TestRunner &runner) {
 #endif
 #if SH_FEATURE_JOBS
         s.activeJob.to = 1;
+#if SH_FEATURE_CAMPAIGN
+        s.activeJob.kind = game::kJobKindExpress;
+        s.activeJob.mission = game::kMissionNone;
+        s.activeJob.from = 0;
+#endif
         s.activeJob.elapsed = 41;
         s.activeJob.deadline = 42;
 #endif

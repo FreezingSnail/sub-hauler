@@ -11,6 +11,9 @@
 #if SH_FEATURE_EXPLORATION
 #include "exploration.hpp"
 #endif
+#if SH_FEATURE_CAMPAIGN
+#include "campaign.hpp"
+#endif
 
 // Contract economy. Pure C++: no heap, no dynamic containers, and no float.
 // Destination choice is a deterministic hash of the origin id and a
@@ -44,7 +47,7 @@ constexpr uint8_t kOfferAttempts = 12;   // browser guard against duplicate dest
 // multiples of five and tests assert the invariant.
 constexpr uint16_t kRewardRound = 5;
 
-// Generated route bounds live in src/generated/world.hpp, so the host and
+// Generated route bounds live in src/generated/level.hpp, so the host and
 // device consume one contract instead of duplicated literals. Credits stay
 // wide even though each contract reward fits one byte.
 constexpr uint16_t kCreditsMax = 0xFFFFu;
@@ -65,6 +68,14 @@ static_assert(game::kJobElapsedLate > 0, "late marker must leave a payable range
 // These fail at compile time if a future tuning pass exceeds either width.
 static_assert(world::ROUTE_REWARD_MAX <= 250, "route reward keeps uint8_t headroom");
 static_assert(world::ROUTE_DEADLINE_MAX < game::kJobElapsedLate, "route deadline must be strictly before the saturated late marker");
+
+#if SH_FEATURE_CAMPAIGN
+static_assert(sizeof(ActiveJob) == 10, "active job payload is frozen at ten bytes");
+static_assert(game::expressReward(world::ROUTE_REWARD_MAX) <= 250, "express reward keeps uint8_t headroom");
+#endif
+
+constexpr uint8_t kOrdinaryRow = 0;
+constexpr uint8_t kExpressRow = 1;
 
 #if !defined(__AVR__)
 constexpr bool routeRewardsRoundToFive() {
@@ -120,6 +131,44 @@ inline bool pickDestination(uint8_t fromId, uint16_t serial, uint8_t &toId) {
     return true;
 }
 
+#if SH_FEATURE_CAMPAIGN
+// Build one freight offer and advance the working serial. Ordinary work is
+// untimed and pays the generated route reward. Express work uses the same route
+// allowance and pays the frozen five-credit-rounded 125% formula.
+inline bool makeOffer(State &state, uint8_t fromId, uint8_t kind, JobOffer &out) {
+    if (kind != game::kJobKindOrdinary && kind != game::kJobKindExpress)
+        return false;
+    ++state.offerSerial;
+
+    if (fromId >= world::settlementCount())
+        return false;
+
+    uint8_t toId = game::kJobNone;
+    if (!pickDestination(fromId, state.offerSerial, toId))
+        return false;
+
+#if SH_FEATURE_EXPLORATION
+    // Do not send a new captain through a pressure boundary without the seal.
+    if (!exploration::stationAvailable(state, toId)) {
+        for (uint8_t offset = 1; offset < world::settlementCount(); ++offset) {
+            const uint8_t candidate = static_cast<uint8_t>((toId + offset) % world::settlementCount());
+            if (candidate != fromId && exploration::stationAvailable(state, candidate)) {
+                toId = candidate;
+                break;
+            }
+        }
+    }
+#endif
+    const RouteEconomy route = routeEconomy(fromId, toId);
+    out.from = fromId;
+    out.to = toId;
+    out.crates = kCrates;
+    out.kind = kind;
+    out.reward = kind == game::kJobKindExpress ? game::expressReward(route.reward) : route.reward;
+    out.deadline = kind == game::kJobKindExpress ? route.deadline : 0;
+    return true;
+}
+#else
 // Build one offer and advance the serial. Destination selection and the serial
 // cursor are unchanged; the economy comes from the baked ordered-pair table.
 // Returns false only when the world cannot supply the origin or destination.
@@ -153,6 +202,7 @@ inline bool makeOffer(State &state, uint8_t fromId, JobOffer &out) {
     out.deadline = route.deadline;
     return true;
 }
+#endif
 
 // Regenerate the fixed two-offer board for a station. Destinations are retried
 // when they collide with an earlier row; a settlement set with only one other
@@ -164,15 +214,36 @@ inline bool refreshOffers(State &state, uint8_t stationId) {
         state.offers[i].to = game::kJobNone;
         state.offers[i].crates = 0;
         state.offers[i].reward = 0;
+#if SH_FEATURE_CAMPAIGN
+        state.offers[i].kind = game::kJobKindNone;
+#endif
         state.offers[i].deadline = 0;
     }
 
+#if SH_FEATURE_CAMPAIGN
+    // The saved cursor is the serial before this board; the working serial
+    // advances exactly as the historical generator did. Restoring offerSerial
+    // from offerCursor reproduces this board without advancing saved state.
+    state.offerCursor = state.offerSerial;
+#endif
+
     for (uint8_t row = 0; row < game::kJobOffers; ++row) {
         bool placed = false;
+#if SH_FEATURE_CAMPAIGN
+        const uint8_t kind = row == kExpressRow ? game::kJobKindExpress : game::kJobKindOrdinary;
+#else
+        const uint8_t kind = 0;
+#endif
         for (uint8_t attempt = 0; attempt < kOfferAttempts && !placed; ++attempt) {
             JobOffer offer;
+#if SH_FEATURE_CAMPAIGN
+            if (!makeOffer(state, stationId, kind, offer))
+                return false;
+#else
+            (void)kind;
             if (!makeOffer(state, stationId, offer))
                 return false;
+#endif
 
             bool duplicate = false;
             for (uint8_t i = 0; i < state.offerCount; ++i) {
@@ -194,6 +265,11 @@ inline bool refreshOffers(State &state, uint8_t stationId) {
 }
 
 inline void clearActive(State &state) {
+#if SH_FEATURE_CAMPAIGN
+    state.activeJob.kind = game::kJobKindNone;
+    state.activeJob.mission = game::kMissionNone;
+    state.activeJob.from = game::kJobNone;
+#endif
     state.activeJob.to = game::kJobNone;
     state.activeJob.crates = 0;
     state.activeJob.reward = 0;
@@ -210,15 +286,34 @@ inline uint16_t elapsedTicks(const State &state) {
 inline uint16_t remainingTicks(const State &state) {
     if (!game::hasActiveJob(state))
         return 0;
+#if SH_FEATURE_CAMPAIGN
+    if (state.activeJob.deadline == 0)
+        return 0;
+#endif
     const uint16_t elapsed = elapsedTicks(state);
     if (elapsed >= state.activeJob.deadline)
         return 0;
     return static_cast<uint16_t>(state.activeJob.deadline - elapsed);
 }
 
+#if SH_FEATURE_CAMPAIGN
+inline void credit(State &state, uint16_t reward) {
+    if (state.credits > static_cast<uint16_t>(kCreditsMax - reward))
+        state.credits = kCreditsMax;
+    else
+        state.credits = static_cast<uint16_t>(state.credits + reward);
+}
+
+inline void countDelivered(State &state) {
+    if (state.delivered != 0xFFFFu)
+        ++state.delivered;
+}
+#endif
+
 // Accept an offer row. Auto-loads the contract's four cargo units, neutralizes
-// trim for that load, starts the contract clock, and consumes the offer. The
-// boat stays docked; the player starts travel with an explicit UNDOCK or B.
+// trim for that load, starts the contract clock when the kind is timed, and
+// consumes the offer. The boat stays docked; the player starts travel with an
+// explicit UNDOCK or B.
 inline bool accept(State &state, uint8_t offerIndex) {
     if (state.docked < 0 || game::hasActiveJob(state) || offerIndex >= state.offerCount)
         return false;
@@ -228,8 +323,17 @@ inline bool accept(State &state, uint8_t offerIndex) {
         return false;
     if (offer.from != static_cast<uint8_t>(state.docked))
         return false;
+#if SH_FEATURE_CAMPAIGN
+    if (offer.kind != game::kJobKindOrdinary && offer.kind != game::kJobKindExpress)
+        return false;
+#endif
 
     game::setCargo(state, 0);
+#if SH_FEATURE_CAMPAIGN
+    state.activeJob.kind = offer.kind;
+    state.activeJob.mission = game::kMissionNone;
+    state.activeJob.from = offer.from;
+#endif
     state.activeJob.to = offer.to;
     state.activeJob.crates = offer.crates;
     state.activeJob.reward = offer.reward;
@@ -247,6 +351,9 @@ inline bool accept(State &state, uint8_t offerIndex) {
     state.offers[state.offerCount].to = game::kJobNone;
     state.offers[state.offerCount].crates = 0;
     state.offers[state.offerCount].reward = 0;
+#if SH_FEATURE_CAMPAIGN
+    state.offers[state.offerCount].kind = game::kJobKindNone;
+#endif
     state.offers[state.offerCount].deadline = 0;
     return true;
 }
@@ -271,16 +378,33 @@ inline DeliveryResult deliver(State &state, uint8_t stationId) {
     if (!game::hasActiveJob(state) || state.activeJob.to != stationId)
         return kDeliveryNone;
 
-    const bool onTime = elapsedTicks(state) <= state.activeJob.deadline;
     const bool loaded = state.cargo >= state.activeJob.crates;
-    const bool paid = onTime && loaded;
+    bool paid = false;
+#if SH_FEATURE_CAMPAIGN
+    if (state.activeJob.kind == game::kJobKindCampaign) {
+        // A campaign load completes exactly once. A malformed or already
+        // completed job cannot pay; it still resolves and clears the hold.
+        paid = loaded && campaign::activeJobValid(state) && campaign::completeMission(state, state.activeJob.mission);
+    } else {
+        const bool onTime = state.activeJob.kind != game::kJobKindExpress || elapsedTicks(state) <= state.activeJob.deadline;
+        paid = loaded && onTime;
+    }
+#else
+    const bool onTime = elapsedTicks(state) <= state.activeJob.deadline;
+    paid = loaded && onTime;
+#endif
 
     if (paid) {
+#if SH_FEATURE_CAMPAIGN
+        credit(state, state.activeJob.reward);
+        countDelivered(state);
+#else
         const uint16_t reward = state.activeJob.reward;
         if (state.credits > static_cast<uint16_t>(kCreditsMax - reward))
             state.credits = kCreditsMax;
         else
             state.credits = static_cast<uint16_t>(state.credits + reward);
+#endif
     }
 
     clearActive(state);
@@ -290,10 +414,35 @@ inline DeliveryResult deliver(State &state, uint8_t stationId) {
     return paid ? kDeliveryPaid : kDeliveryFailed;
 }
 
+#if SH_FEATURE_CAMPAIGN
+// Express work expires permanently once its saturating age passes the route
+// deadline. Evaluation happens at docking, so exact-deadline arrival at the
+// destination still pays; any other berth clears the load with no fee.
+inline bool expireOverdue(State &state) {
+    if (!game::hasActiveJob(state) || state.activeJob.kind != game::kJobKindExpress)
+        return false;
+    if (state.activeJob.elapsed <= state.activeJob.deadline)
+        return false;
+
+    clearActive(state);
+    game::setCargo(state, 0);
+    state.ballast = static_cast<uint8_t>(game::neutralFor(state.cargo));
+    state.lastDelivery = kDeliveryFailed;
+    return true;
+}
+#endif
+
 // Dock hook: resolve any contract ending here, then refresh this station's
 // offers. Returns the delivery outcome for the sketch/tests.
 inline DeliveryResult onDock(State &state, uint8_t stationId) {
-    const DeliveryResult result = deliver(state, stationId);
+#if SH_FEATURE_CAMPAIGN
+    campaign::markVisited(state, stationId);
+#endif
+    DeliveryResult result = deliver(state, stationId);
+#if SH_FEATURE_CAMPAIGN
+    if (result == kDeliveryNone && expireOverdue(state))
+        result = kDeliveryFailed;
+#endif
     refreshOffers(state, stationId);
     return result;
 }
