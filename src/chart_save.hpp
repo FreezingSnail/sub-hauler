@@ -22,12 +22,14 @@
 // library. The device adapter is the only place this header touches Arduino.
 //
 // Everything is gated by SH_FEATURE_SAVE_CHART (which features.hpp already
-// requires FOG_CHART for). With the flag off this header contributes no code,
+// requires FOG_CHART for). Standalone chart saving is also excluded whenever
+// voyage saving is built: the voyage payload owns the chart and the two writers
+// must never target EEPROM. With the flag off this header contributes no code,
 // state, strings, or includes beyond features.hpp.
 
 #include "features.hpp"
 
-#if SH_FEATURE_SAVE_CHART
+#if SH_FEATURE_SAVE_CHART && !SH_FEATURE_SAVE_VOYAGE
 
 #include <stdint.h>
 
@@ -126,4 +128,4 @@ struct EepromStorage {
 
 }   // namespace chart_save
 
-#endif   // SH_FEATURE_SAVE_CHART
+#endif   // SH_FEATURE_SAVE_CHART && !SH_FEATURE_SAVE_VOYAGE
