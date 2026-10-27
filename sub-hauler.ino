@@ -29,6 +29,10 @@
 #include "src/station.hpp"
 #include "src/station_view.hpp"
 #endif
+#if SH_FEATURE_CAMPAIGN
+#include "src/campaign.hpp"
+#include "src/campaign_view.hpp"
+#endif
 #if SH_FEATURE_SHOP
 #include "src/shop.hpp"
 #include "src/shop_view.hpp"
@@ -71,6 +75,9 @@ enum class Screen : uint8_t {
 #if SH_FEATURE_STATIONS
     Station,
 #endif
+#if SH_FEATURE_CAMPAIGN
+    Work,
+#endif
 #if SH_FEATURE_SHOP
     Shop,
 #endif
@@ -103,6 +110,14 @@ static Screen s_screen = Screen::Pilot;
 // Every station and shop frame restores a valid row before drawing, so there is
 // no extra selection state.
 static uint8_t s_stationRow = station::kFirstRow;
+#endif
+
+#if SH_FEATURE_CAMPAIGN
+// WORK page selection. The compact mission list is derived from saved flags;
+// only the detail toggle and selected id are transient.
+static uint8_t s_workRow = 0;
+static uint8_t s_workMission = campaign::kMissionNone;
+static bool s_workDetail = false;
 #endif
 
 #if SH_VOYAGE_UI
@@ -743,6 +758,88 @@ static void leaveStation() {
 }
 #endif
 
+#if SH_FEATURE_CAMPAIGN
+static uint8_t workVisibleCount() {
+    uint8_t count = 0;
+    while (count < campaign_view::kWorkRows && campaign::workMissionAt(s_state, static_cast<uint8_t>(s_state.docked), count) != campaign::kMissionNone)
+        ++count;
+    return count;
+}
+
+static void drawWork() {
+    if (s_workDetail)
+        campaign_view::drawWorkDetail(s_state, s_workMission);
+    else
+        campaign_view::drawWorkList(s_state, s_workRow);
+}
+
+// WORK page: campaign rows are accepted only through a detail/LOAD step, so a
+// row press cannot accidentally load cargo. The station board's UNDOCK row is
+// still the only departure path.
+static void updateWork() {
+    if (!arduboy.justPressed(UP_BUTTON | DOWN_BUTTON | A_BUTTON | B_BUTTON)) {
+        s_present = false;
+        return;
+    }
+
+    if (s_workDetail) {
+        if (arduboy.justPressed(B_BUTTON)) {
+            s_workDetail = false;
+            drawWork();
+            return;
+        }
+        if (arduboy.justPressed(A_BUTTON) && campaign::accept(s_state, s_workMission)) {
+            s_workDetail = false;
+            s_stationRow = station::initialRow(s_state);
+            s_screen = Screen::Station;
+#if SH_VOYAGE_UI
+            if (!requestSave(kSaveResumeStation))
+                return;
+#endif
+            station_view::draw(s_state, s_stationRow);
+            return;
+        }
+        drawWork();
+        return;
+    }
+
+    if (arduboy.justPressed(B_BUTTON)) {
+        s_screen = Screen::Station;
+        s_stationRow = station::initialRow(s_state);
+        station_view::draw(s_state, s_stationRow);
+        return;
+    }
+
+    if (game::hasActiveJob(s_state)) {
+        drawWork();
+        return;
+    }
+
+    const uint8_t count = workVisibleCount();
+    if (count != 0 && (arduboy.justPressed(UP_BUTTON) || arduboy.justPressed(DOWN_BUTTON))) {
+        if (arduboy.justPressed(UP_BUTTON))
+            s_workRow = static_cast<uint8_t>(s_workRow == 0 ? count - 1 : s_workRow - 1);
+        else
+            s_workRow = static_cast<uint8_t>(s_workRow + 1 >= count ? 0 : s_workRow + 1);
+        drawWork();
+        return;
+    }
+
+    if (arduboy.justPressed(A_BUTTON) && count != 0) {
+        if (s_workRow >= count)
+            s_workRow = 0;
+        const uint8_t mission = campaign::workMissionAt(s_state, static_cast<uint8_t>(s_state.docked), s_workRow);
+        if (mission != campaign::kMissionNone) {
+            s_workMission = mission;
+            s_workDetail = true;
+            drawWork();
+            return;
+        }
+    }
+    drawWork();
+}
+#endif
+
 // Station frame: no world step, so travel time, air, and ballast are frozen.
 // D-pad moves the selection, A confirms, B always undocks.
 static void updateStation() {
@@ -797,6 +894,16 @@ static void updateStation() {
             s_screen = Screen::Pilot;
             s_stationRow = station::kFirstRow;
         }
+#if SH_FEATURE_CAMPAIGN
+        else if (action == station::kActionWork) {
+            s_workRow = 0;
+            s_workMission = campaign::kMissionNone;
+            s_workDetail = false;
+            s_screen = Screen::Work;
+            drawWork();
+            return;
+        }
+#endif
 #if SH_FEATURE_SHOP
         else if (action == station::kActionShop) {
             // The shop borrows s_stationRow as its 0..2 item selection.
@@ -946,6 +1053,10 @@ void loop() {
     else if (s_screen == Screen::Station)
         updateStation();
 #endif
+#if SH_FEATURE_CAMPAIGN
+    else if (s_screen == Screen::Work)
+        updateWork();
+#endif
 #if SH_FEATURE_SHOP
     else if (s_screen == Screen::Shop)
         updateShop();
@@ -956,6 +1067,10 @@ void loop() {
 #if SH_FEATURE_STATIONS
     else if (s_screen == Screen::Station)
         updateStation();
+#if SH_FEATURE_CAMPAIGN
+    else if (s_screen == Screen::Work)
+        updateWork();
+#endif
 #if SH_FEATURE_SHOP
     else if (s_screen == Screen::Shop)
         updateShop();

@@ -663,10 +663,13 @@ inline void applyScalar(const Scalar &scalar, State &state) {
     state.hull = game::hullCapacity(state);
 #endif
 
-    world::Settlement settlement;
-    if (world::settlementInfo(scalar.berth, settlement)) {
-        state.x = settlement.pixel_x;
-        state.y = settlement.pixel_y;
+    // Restore both freight settlements and generated service berths. The
+    // scalar validator has already accepted the berth only when its
+    // restoration milestone is present.
+    world::Berth berth;
+    if (world::berthInfo(scalar.berth, berth)) {
+        state.x = berth.pixel_x;
+        state.y = berth.pixel_y;
         state.xFrac = 0;
         state.yFrac = 0;
         state.vxQ8 = 0;

@@ -572,9 +572,13 @@ inline void JobsSuite(TestRunner &runner) {
         game::State state;
         game::reset(state);
         test.assertTrue(dockAt(state, origin.id), "dock at origin");
-        test.assertEqual(station::rowCount(state), station::kStationRowCount, "offer board shows offers, SERVICE, SHOP, UNDOCK");
+        test.assertEqual(station::rowCount(state), station::kStationRowCount, "offer board shows offers, WORK/SERVICE, SHOP, UNDOCK");
         test.assertEqual(station::rowKind(station::kFirstRow, state), station::kRowOffer, "first row is an offer");
+#if SH_FEATURE_CAMPAIGN
+        test.assertEqual(station::rowKind(station::kWorkRow, state), station::kRowWork, "WORK row");
+#else
         test.assertEqual(station::rowKind(station::kServiceRow, state), station::kRowService, "SERVICE row");
+#endif
         test.assertEqual(station::rowKind(station::kUndockRow, state), station::kRowUndock, "UNDOCK row");
         test.assertEqual(station::selectPrevious(station::kFirstRow, state), station::kUndockRow, "offer board wraps upward");
         test.assertEqual(station::selectNext(station::kUndockRow, state), station::kFirstRow, "offer board wraps downward");
@@ -587,9 +591,13 @@ inline void JobsSuite(TestRunner &runner) {
         test.assertEqual(station::selectNext(station::kActiveUndockRow, state), station::kAbandonRow, "down reaches ABANDON");
 #if SH_FEATURE_SHOP
         test.assertEqual(station::selectPrevious(station::kActiveUndockRow, state), station::kActiveShopRow, "up reaches SHOP");
+        test.assertEqual(station::selectPrevious(station::kActiveShopRow, state), station::kActiveWorkRow, "SHOP follows WORK");
+        test.assertEqual(station::selectPrevious(station::kActiveWorkRow, state), station::kAbandonRow, "WORK follows ABANDON");
 #else
-        test.assertEqual(station::selectPrevious(station::kActiveUndockRow, state), station::kAbandonRow, "up reaches ABANDON");
+        test.assertEqual(station::selectPrevious(station::kActiveUndockRow, state), station::kActiveWorkRow, "up reaches WORK");
+        test.assertEqual(station::selectPrevious(station::kActiveWorkRow, state), station::kAbandonRow, "WORK follows ABANDON");
 #endif
+        test.assertEqual(station::rowKind(station::kActiveWorkRow, state), station::kRowWork, "active WORK row");
 #else
         test.assertEqual(station::initialRow(state), station::kAbandonRow, "selection starts on ABANDON");
         test.assertEqual(station::selectPrevious(station::initialRow(state), state), station::kActiveUndockRow, "active board wraps upward");

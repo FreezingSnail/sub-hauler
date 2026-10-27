@@ -710,7 +710,7 @@ def _format_route_rows(values: tuple[int, ...], count: int) -> str:
     )
 
 
-def render_header(world: World, route_deadlines=None) -> str:
+def render_header(world: World, route_deadlines=None, service_berths=None, surveys=None) -> str:
     route_rewards, legacy_deadlines = build_route_economy(world)
     if route_deadlines is None:
         route_deadlines = legacy_deadlines
@@ -719,6 +719,180 @@ def render_header(world: World, route_deadlines=None) -> str:
     route_deadline_rows = _format_route_rows(route_deadlines, len(world.settlements))
     route_reward_max = max(route_rewards)
     route_deadline_max = max(route_deadlines)
+    service_berths = tuple(service_berths or ())
+    surveys = tuple(surveys or ())
+    berth_count = max([len(world.settlements)] + [b.id + 1 for b in service_berths])
+    service_structs = ""
+    service_avr = ""
+    service_host = ""
+    service_avr_accessors = ""
+    service_host_accessors = ""
+    survey_structs = ""
+    survey_avr = ""
+    survey_host = ""
+    survey_avr_accessors = ""
+    survey_host_accessors = ""
+    berth_constants = "\n".join(
+        f"constexpr uint8_t BERTH_{b.symbol} = {b.id};" for b in service_berths
+    )
+    survey_constants = "\n".join(
+        f"constexpr uint8_t SURVEY_{s.symbol} = {s.id};" for s in surveys
+    )
+    if service_berths:
+        service_meta = "\n".join(
+            f"    {{{b.id}, {b.milestone}, {b.pixel_x}, {b.pixel_y}}},"
+            for b in service_berths
+        )
+        service_rows = "\n".join(
+            f"    {{{b.id}, {b.milestone}, \"{b.name}\", {b.tile_x}, {b.tile_y}, {b.pixel_x}, {b.pixel_y}}},"
+            for b in service_berths
+        )
+        service_structs = """
+// Service-only berth: a generated docking point with its restoration
+// milestone bit. Berth ids 0..SETTLEMENT_COUNT-1 are freight settlements;
+// these records are appended ids and never enter the offer economy.
+struct Berth {
+    uint8_t id;
+    uint8_t milestone;
+    const char* name;
+    int16_t tile_x;
+    int16_t tile_y;
+    int16_t pixel_x;
+    int16_t pixel_y;
+};
+"""
+        service_avr = f"""
+struct ServiceBerthMeta {{
+    uint8_t id;
+    uint8_t milestone;
+    int16_t pixel_x;
+    int16_t pixel_y;
+}};
+
+const ServiceBerthMeta SERVICE_BERTH_META[SERVICE_BERTH_COUNT] PROGMEM = {{
+{service_meta}
+}};
+"""
+        service_host = f"""
+constexpr Berth SERVICE_BERTHS[SERVICE_BERTH_COUNT] = {{
+{service_rows}
+}};
+"""
+        service_avr_accessors = """
+inline bool serviceBerthMeta(uint8_t index, Berth &out) {
+    if (index >= SERVICE_BERTH_COUNT)
+        return false;
+    out.id = pgm_read_byte(&SERVICE_BERTH_META[index].id);
+    out.milestone = pgm_read_byte(&SERVICE_BERTH_META[index].milestone);
+    out.name = nullptr;
+    out.pixel_x = static_cast<int16_t>(pgm_read_word(&SERVICE_BERTH_META[index].pixel_x));
+    out.pixel_y = static_cast<int16_t>(pgm_read_word(&SERVICE_BERTH_META[index].pixel_y));
+    out.tile_x = static_cast<int16_t>(out.pixel_x / TILE_PIXELS);
+    out.tile_y = static_cast<int16_t>(out.pixel_y / TILE_PIXELS);
+    return true;
+}
+
+inline bool berthMeta(uint8_t id, Berth &out) {
+    if (id < SETTLEMENT_COUNT) {
+        out.id = id;
+        out.milestone = 0;
+        out.name = nullptr;
+        out.pixel_x = static_cast<int16_t>(pgm_read_word(&SETTLEMENT_META[id].pixel_x));
+        out.pixel_y = static_cast<int16_t>(pgm_read_word(&SETTLEMENT_META[id].pixel_y));
+        out.tile_x = static_cast<int16_t>(out.pixel_x / TILE_PIXELS);
+        out.tile_y = static_cast<int16_t>(out.pixel_y / TILE_PIXELS);
+        return true;
+    }
+    for (uint8_t i = 0; i < SERVICE_BERTH_COUNT; ++i) {
+        if (pgm_read_byte(&SERVICE_BERTH_META[i].id) == id)
+            return serviceBerthMeta(i, out);
+    }
+    return false;
+}
+"""
+        service_host_accessors = """
+inline bool serviceBerthMeta(uint8_t index, Berth &out) {
+    if (index >= SERVICE_BERTH_COUNT)
+        return false;
+    out = SERVICE_BERTHS[index];
+    return true;
+}
+
+inline bool berthMeta(uint8_t id, Berth &out) {
+    if (id < SETTLEMENT_COUNT) {
+        const Settlement &settlement = SETTLEMENTS[id];
+        out.id = settlement.id;
+        out.milestone = 0;
+        out.name = settlement.name;
+        out.tile_x = settlement.tile_x;
+        out.tile_y = settlement.tile_y;
+        out.pixel_x = settlement.pixel_x;
+        out.pixel_y = settlement.pixel_y;
+        return true;
+    }
+    for (uint8_t i = 0; i < SERVICE_BERTH_COUNT; ++i) {
+        if (SERVICE_BERTHS[i].id == id) {
+            out = SERVICE_BERTHS[i];
+            return true;
+        }
+    }
+    return false;
+}
+"""
+    if surveys:
+        survey_meta = "\n".join(
+            f"    {{{s.id}, {s.pixel_x}, {s.pixel_y}}},"
+            for s in surveys
+        )
+        survey_rows = "\n".join(
+            f"    {{{s.id}, \"{s.name}\", {s.pixel_x}, {s.pixel_y}}},"
+            for s in surveys
+        )
+        survey_structs = """
+// Survey ring: a survey fact source in navigable water. Ids are stable and
+// distinct from pickup and gate ids; a ring never occupies the cargo slot.
+struct Survey {
+    uint8_t id;
+    const char* name;
+    int16_t pixel_x;
+    int16_t pixel_y;
+};
+"""
+        survey_avr = f"""
+struct SurveyMeta {{
+    uint8_t id;
+    int16_t pixel_x;
+    int16_t pixel_y;
+}};
+
+const SurveyMeta SURVEY_META[SURVEY_COUNT] PROGMEM = {{
+{survey_meta}
+}};
+"""
+        survey_host = f"""
+constexpr Survey SURVEYS[SURVEY_COUNT] = {{
+{survey_rows}
+}};
+"""
+        survey_avr_accessors = """
+inline bool surveyMeta(uint8_t index, Survey &out) {
+    if (index >= SURVEY_COUNT)
+        return false;
+    out.id = pgm_read_byte(&SURVEY_META[index].id);
+    out.name = nullptr;
+    out.pixel_x = static_cast<int16_t>(pgm_read_word(&SURVEY_META[index].pixel_x));
+    out.pixel_y = static_cast<int16_t>(pgm_read_word(&SURVEY_META[index].pixel_y));
+    return true;
+}
+"""
+        survey_host_accessors = """
+inline bool surveyMeta(uint8_t index, Survey &out) {
+    if (index >= SURVEY_COUNT)
+        return false;
+    out = SURVEYS[index];
+    return true;
+}
+"""
     settlements = "\n".join(
         "    {"
         f"{s.id}, \"{s.name}\", {s.tile_x}, {s.tile_y}, "
@@ -800,6 +974,11 @@ constexpr uint8_t  ROUTE_REWARD_MAX  = {route_reward_max};
 constexpr uint16_t ROUTE_DEADLINE_MAX = {route_deadline_max};
 constexpr uint8_t  MINE_COUNT        = {len(world.mines)};
 constexpr uint8_t  CURRENT_COUNT     = {len(world.currents)};
+constexpr uint8_t  BERTH_COUNT       = {berth_count};
+constexpr uint8_t  SERVICE_BERTH_COUNT = {len(service_berths)};
+constexpr uint8_t  SURVEY_COUNT      = {len(surveys)};
+{berth_constants}
+{survey_constants}
 constexpr int16_t  DOCK_CLEARANCE_PX = {DOCK_CLEARANCE_PX};
 constexpr uint8_t  MINE_RADIUS_PX    = {MINE_RADIUS_PX};
 constexpr uint8_t  CURRENT_WIDTH_PX  = {CURRENT_WIDTH_PX};
@@ -842,7 +1021,7 @@ struct Current {{
     int16_t ax_q8;
     int16_t ay_q8;
 }};
-
+{service_structs}{survey_structs}
 #if defined(__AVR__)
 
 // Compact position-only copy: {len(world.settlements)} * 4 B + {len(world.mines)} * 4 B + {len(world.currents)} * 5 B in program flash.
@@ -928,7 +1107,7 @@ inline bool currentMeta(uint8_t id, Current &out) {{
                     : (direction == CURRENT_DIR_YNEG ? static_cast<int16_t>(-CURRENT_ACCEL_Q8) : 0);
     return true;
 }}
-
+{service_avr}{service_avr_accessors}{survey_avr}{survey_avr_accessors}
 #else
 
 constexpr Settlement SETTLEMENTS[SETTLEMENT_COUNT] = {{
@@ -982,7 +1161,7 @@ inline bool currentMeta(uint8_t id, Current &out) {{
     out = CURRENTS[id];
     return true;
 }}
-
+{service_host}{service_host_accessors}{survey_host}{survey_host_accessors}
 #endif
 
 }}  // namespace world

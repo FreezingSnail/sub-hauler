@@ -25,6 +25,10 @@ ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / 'levels/exploration.json'
 TOOLS = {'cutter': 1, 'seal': 2, 'thruster': 4, 'lens': 8}
 KINDS = {'cutter': 1, 'seal': 2, 'thruster': 3, 'credits': 4, 'hull': 5, 'lens': 6}
+# Campaign milestone bits are a flash/save ABI even though they live in a
+# generated header, so the names are frozen here.
+MILESTONES = {'first': 1, 'pump': 2, 'lift': 4, 'beacon': 8, 'home': 16}
+SURVEY_IDS = {'pump': 0, 'lift': 1}
 
 @dataclass(frozen=True)
 class Gate:
@@ -43,12 +47,37 @@ class Pickup:
     kind: int
     amount: int
 
+@dataclass(frozen=True)
+class ServiceBerth:
+    id: int
+    name: str
+    symbol: str
+    tile_x: int
+    tile_y: int
+    pixel_x: int
+    pixel_y: int
+    milestone: int
+
+
+@dataclass(frozen=True)
+class Survey:
+    id: int
+    name: str
+    symbol: str
+    tile_x: int
+    tile_y: int
+    pixel_x: int
+    pixel_y: int
+
+
 @dataclass
 class Level:
     source: dict
     world: old.World
     gates: list[Gate]
     pickups: list[Pickup]
+    service_berths: list[ServiceBerth]
+    surveys: list[Survey]
 
 
 def shape_cavern(grid, cx, cy, rx, ry, phase=0.0, solid=False):
@@ -258,31 +287,110 @@ def build(source: dict) -> Level:
     world=replace(world,settlements=tuple(docks),spawn_tile_x=home.tile_x,spawn_tile_y=home.tile_y,
                   spawn_pixel_x=home.pixel_x,spawn_pixel_y=home.pixel_y,
                   spawn_sub_x=home.pixel_x,spawn_sub_y=home.pixel_y)
-    level=Level(source,world,gates,pickups)
+
+    service_berths=[]
+    seen_berths={d.id for d in docks}
+    for item in source.get('service_berths',[]):
+        if item.get('room') not in rooms:
+            raise ValueError('service berth references unknown room')
+        if item.get('milestone') not in MILESTONES:
+            raise ValueError('service berth milestone is not a frozen campaign bit')
+        berth_id=item.get('id')
+        if type(berth_id) is not int or berth_id < len(docks) or berth_id >= 255:
+            raise ValueError('service berth id must be a stable id after the freight settlements')
+        if berth_id in seen_berths:
+            raise ValueError('duplicate berth id')
+        seen_berths.add(berth_id)
+        dx,dy=item.get('dock',[None,None])
+        if any(type(v) is not int for v in (dx,dy)) or not (2<=dx<318 and 2<=dy<158):
+            raise ValueError('invalid service berth dock coordinates')
+        symbol=item.get('symbol')
+        if not isinstance(symbol,str) or not re.fullmatch(r'[A-Z][A-Z0-9_]*',symbol):
+            raise ValueError('service berth needs a stable C++ symbol')
+        service_berths.append(ServiceBerth(berth_id,item.get('name','SERVICE').upper(),symbol,
+                                           dx,dy,dx*8,dy*8,MILESTONES[item['milestone']]))
+
+    surveys=[]
+    seen_surveys=set()
+    for item in source.get('surveys',[]):
+        if item.get('room') not in rooms:
+            raise ValueError('survey references unknown room')
+        survey_id=item.get('id')
+        if survey_id not in SURVEY_IDS.values():
+            raise ValueError('survey id is not a frozen campaign bit')
+        if survey_id in seen_surveys:
+            raise ValueError('duplicate survey id')
+        seen_surveys.add(survey_id)
+        x,y=item.get('position',[None,None])
+        if any(type(v) is not int for v in (x,y)) or not (2<=x<318 and 2<=y<158):
+            raise ValueError('invalid survey marker coordinates')
+        symbol=item.get('symbol')
+        if not isinstance(symbol,str) or not re.fullmatch(r'[A-Z][A-Z0-9_]*',symbol):
+            raise ValueError('survey needs a stable C++ symbol')
+        surveys.append(Survey(survey_id,item.get('name',rooms[item['room']]['name']).upper(),symbol,
+                              x,y,x*8,y*8))
+
+    level=Level(source,world,gates,pickups,service_berths,surveys)
     validate_docks(level)
+    validate_surveys(level)
     return level
 
 
-def validate_docks(level):
+def _validate_one_dock(level, dock):
     grid=level.world.grid
+    # Docked hull and straight water approach must both be safe. The pier is
+    # scenery; the boat's 26x8 collision footprint stays in open water.
+    for rise in range(0,49,4):
+        px,py=dock.pixel_x,dock.pixel_y-rise
+        if any(grid[y*320+x] for y in range((py-4)//8,(py+3)//8+1)
+               for x in range((px-13)//8,(px+12)//8+1)):
+            raise ValueError('wall dock blocks hull or approach: '+dock.name)
+    floor=next((y for y in range(dock.tile_y+1,min(160,dock.tile_y+5)) if grid[y*320+dock.tile_x]),None)
+    if floor is None:raise ValueError('dock is not attached to a wall: '+dock.name)
+    for hazard in level.world.mines:
+        if math.hypot(hazard.x-dock.pixel_x,hazard.y-dock.pixel_y)<old.DOCK_CLEARANCE_PX:
+            raise ValueError('mine inside wall dock approach')
+    for current in level.world.currents:
+        px=max(current.x,min(dock.pixel_x,current.x+current.w))
+        py=max(current.y,min(dock.pixel_y,current.y+current.h))
+        if math.hypot(px-dock.pixel_x,py-dock.pixel_y)<old.DOCK_CLEARANCE_PX:
+            raise ValueError('current inside wall dock approach')
+
+
+def validate_docks(level):
     for dock in level.world.settlements:
-        # Docked hull and straight water approach must both be safe. The pier
-        # is scenery; the boat's 26x8 collision footprint stays in open water.
-        for rise in range(0,49,4):
-            px,py=dock.pixel_x,dock.pixel_y-rise
-            if any(grid[y*320+x] for y in range((py-4)//8,(py+3)//8+1)
-                   for x in range((px-13)//8,(px+12)//8+1)):
-                raise ValueError('wall dock blocks hull or approach: '+dock.name)
-        floor=next((y for y in range(dock.tile_y+1,min(160,dock.tile_y+5)) if grid[y*320+dock.tile_x]),None)
-        if floor is None:raise ValueError('dock is not attached to a wall: '+dock.name)
-        for hazard in level.world.mines:
-            if math.hypot(hazard.x-dock.pixel_x,hazard.y-dock.pixel_y)<old.DOCK_CLEARANCE_PX:
-                raise ValueError('mine inside wall dock approach')
-        for current in level.world.currents:
-            px=max(current.x,min(dock.pixel_x,current.x+current.w))
-            py=max(current.y,min(dock.pixel_y,current.y+current.h))
-            if math.hypot(px-dock.pixel_x,py-dock.pixel_y)<old.DOCK_CLEARANCE_PX:
-                raise ValueError('current inside wall dock approach')
+        _validate_one_dock(level,dock)
+    seen=set()
+    for berth in level.service_berths:
+        dock=old.Settlement(berth.id,berth.name,berth.tile_x,berth.tile_y,berth.pixel_x,berth.pixel_y)
+        _validate_one_dock(level,dock)
+        # A service berth is a distinct docking point, never a copy of a
+        # freight settlement's berth.
+        if (dock.pixel_x,dock.pixel_y) in seen:
+            raise ValueError('service berth duplicates another dock: '+dock.name)
+        seen.add((dock.pixel_x,dock.pixel_y))
+        for settlement in level.world.settlements:
+            if math.hypot(settlement.pixel_x-dock.pixel_x,settlement.pixel_y-dock.pixel_y)<old.DOCK_CLEARANCE_PX:
+                raise ValueError('service berth overlaps freight dock: '+dock.name)
+
+
+def validate_surveys(level):
+    grid=level.world.grid
+    for survey in level.surveys:
+        px,py=survey.pixel_x,survey.pixel_y
+        # The boat's 26x8 hull must fit at the marker itself.
+        if any(grid[ty*320+tx] for ty in range((py-4)//8,(py+3)//8+1)
+               for tx in range((px-13)//8,(px+12)//8+1)):
+            raise ValueError('survey marker is not navigable: '+survey.name)
+        for settlement in level.world.settlements:
+            if math.hypot(settlement.pixel_x-px,settlement.pixel_y-py)<old.DOCK_CLEARANCE_PX:
+                raise ValueError('survey marker sits in a freight dock ring: '+survey.name)
+        for gate in level.gates:
+            if px+13>gate.x and px-13<gate.x+gate.w and py+8>gate.y and py-8<gate.y+gate.h:
+                raise ValueError('survey marker overlaps a gate: '+survey.name)
+        for pickup in level.pickups:
+            if math.hypot(pickup.x-px,pickup.y-py)<2*old.DOCK_CLEARANCE_PX:
+                raise ValueError('survey marker overlaps a pickup: '+survey.name)
 
 
 def freight_deadlines(level: Level):
@@ -376,6 +484,15 @@ def validate_access(level: Level) -> None:
     for key,tools in required.items():
         if tuple(rooms[key]['position']) not in reachable_tiles(level,tools):
             raise ValueError('unobtainable required equipment or destination: '+key)
+    # Service berths and survey rings must be reachable with the base boat;
+    # neither may put a mandatory tool behind its own restoration branch.
+    base_reach=reachable_tiles(level,0)
+    for berth in level.service_berths:
+        if (berth.tile_x,berth.tile_y) not in base_reach:
+            raise ValueError('unreachable service berth without optional tools: '+berth.name)
+    for survey in level.surveys:
+        if (survey.tile_x,survey.tile_y) not in base_reach:
+            raise ValueError('unreachable survey without optional tools: '+survey.name)
     if rooms['D']['position'][1] != max(r['position'][1] for r in level.source['rooms'] if 'station' in r):
         raise ValueError('Deep Anchor must be the deepest station')
 
@@ -537,12 +654,12 @@ def main() -> None:
     (root/'exploration-terrain.bin').write_bytes(terrain)
     (ROOT/'docs/assets/exploration-scenery.json').write_text(json.dumps(scenery,indent=2)+'\n')
     print(f'gen_scenery: {json.dumps(scenery, separators=(",", ":"))}')
-    header=old.render_header(level.world,freight_deadlines(level)).replace('Generated by tools/gen_world.py.','Generated by tools/gen_level.py.').replace('LAYOUT_VERSION    = 1',f'LAYOUT_VERSION    = {level.source.get("layout_version",2)}').replace('world.bin','exploration.bin').replace('world-chart.bin','exploration-chart.bin')
+    header=old.render_header(level.world,freight_deadlines(level),level.service_berths,level.surveys).replace('Generated by tools/gen_world.py.','Generated by tools/gen_level.py.').replace('LAYOUT_VERSION    = 1',f'LAYOUT_VERSION    = {level.source.get("layout_version",2)}').replace('world.bin','exploration.bin').replace('world-chart.bin','exploration-chart.bin')
     (ROOT/'src/generated/level.hpp').write_text(header)
     (ROOT/'src/generated/exploration.hpp').write_text(render_objects(level))
     (ROOT/'docs/assets/exploration-terrain.svg').write_text(render_preview(level))
     rocks=len(level.source.get('obstacles',[]))+sum(len(r.get('obstacles',[])) for r in level.source['routes'])
-    print(f'gen_level: rooms={len(level.source["rooms"])} passages={len(level.source["routes"])} physical_obstacles={rocks} layout={level.source["layout_version"]} gates={len(level.gates)} pickups={len(level.pickups)} tiles=6400B chart=256B objects={len(object_bytes(level))}B terrain={len(terrain)}B hull/tool validation=pass')
+    print(f'gen_level: rooms={len(level.source["rooms"])} passages={len(level.source["routes"])} physical_obstacles={rocks} layout={level.source["layout_version"]} gates={len(level.gates)} pickups={len(level.pickups)} service_berths={len(level.service_berths)} surveys={len(level.surveys)} tiles=6400B chart=256B objects={len(object_bytes(level))}B terrain={len(terrain)}B hull/tool validation=pass')
 
 if __name__=='__main__':
     main()

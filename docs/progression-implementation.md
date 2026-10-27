@@ -553,3 +553,68 @@ Consequences:
   playtest targets, not measured.
 - Physical speaker listening, manual playthroughs, soak tests and audio timing
   under combined load were not performed in this audit.
+
+## 16. First-slice implementation and pacing (sub-hauler-7px.5)
+
+This section records what the first playable slice actually implements and
+separates generated/runtime measurements from checks that still need a person
+at a device.
+
+Implemented in this slice:
+
+- FIRST (Tidewall → Benthos, 145 once) and PUMP (Cormorant → Benthos, 85 once)
+  are explicit one-slot campaign cargo jobs. Accepting fills the existing
+  four-unit hold; wrong berths retain it; only the matching destination pays.
+- PUMP_SURVEY is a generated ring beside the Pump Refuge pump. It uses the
+  existing slow half-second dwell, records before FIRST, never occupies the
+  cargo slot and is idempotent. The Benthos and Cormorant WORK pages carry the
+  pump clues; the cutter and seal rumours remain useful text-only hints.
+- WORK replaces the redundant SERVICE row on freight boards. Campaign rows
+  require a DETAILS page and LOAD, so a single A press cannot load cargo.
+  Active-job boards keep UNDOCK as the initial selection and place ABANDON and
+  WORK behind deliberate movement.
+- Pump Refuge (berth 4) and Lower Gantry (berth 5) have generated service
+  metadata in `src/generated/level.hpp`: stable symbolic ids, dock pixels and
+  restoration milestone bits. Both docks pass the wall-attach, hull/approach,
+  hazard-clearance and base-tool reachability validators. Neither enters the
+  four-settlement route economy.
+- PUMP opens Pump Refuge as a service-only berth: docking refills air, repairs
+  hull and saves loaded cargo, but shows only the smaller UNDOCK board. It
+  publishes no freight offers and sells nothing.
+- Native overlays are derived only from saved milestone bits: inactive
+  moorings, active gantries, pump flow, Benthos lamp banks and survey rings.
+  They do not change collision, chart water or terrain.
+- Continue restores berth 4 through generated berth metadata instead of the
+  freight-only settlement table. A test saves and reloads at Pump Refuge with
+  an active four-unit ordinary load and checks the generated pixel position,
+  full air, cargo and the empty freight board.
+
+Generated route budget (`tools/gen_level.py`, conservative, not a play
+measurement): the loaded base boat's shortest first-slice loop is Tidewall →
+Benthos → Pump Refuge → Cormorant → Benthos. Packed passage lengths are 1,627
+px, 537 px, 1,117 px and 1,539 px; at the loaded 18 px/s top speed that is
+about 90 + 30 + 62 + 86 = 268 s of continuous straight-line travel. The
+generated freight deadlines include maneuvering slack and are much larger
+(293 s and 280 s for the two delivery legs). Adding docking, the half-second
+survey dwell, reading the WORK clues and real obstacle steering puts the
+first-time slice in the design's 5–10 minute target range, but that is an
+estimate from generated geometry, not a stopwatch result.
+
+Manual checks still outstanding for this slice:
+
+- a person plays FIRST → PUMP with a physical D-pad and confirms the WORK text
+  fits and reads on the 128×64 panel;
+- a person confirms the survey ring is noticeable beside the pump scenery and
+  that the dwell feels short rather than accidental;
+- a person confirms the Pump Refuge service save survives power-off on a real
+  device and that the inactive mooring does not invite a failed approach;
+- the physical speaker is not relevant here because this slice does not add or
+  change music.
+
+Production profile flags remain unchanged: CAMPAIGN and SAVE_VOYAGE stay off
+in every shipped profile until task .6 integrates the complete sequence. Host
+campaign overrides build the same source. The full AVR campaign override now
+compiles to 29,998 B flash / 1,660 B static and does not link (302 B over
+hardware, 998 B over the 29,000 B planning line); task .6 must trim the combined
+campaign sequence before enabling it. Music remains default-off pending its own
+measured combined-fit task.

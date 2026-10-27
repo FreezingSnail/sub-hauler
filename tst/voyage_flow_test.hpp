@@ -220,6 +220,53 @@ inline void VoyageFlowSuite(TestRunner &runner) {
     }
 
     {
+        Test test("Continue at Pump Refuge restores the generated berth and loaded cargo");
+        world::Berth berth;
+        test.assertTrue(world::serviceBerthInfo(0, berth), "generated Pump Refuge berth");
+        uint8_t routeReward = 0;
+        uint16_t routeDeadline = 0;
+        test.assertTrue(world::routeEconomy(campaign::kTidewall, campaign::kBenthos, routeReward, routeDeadline), "ordinary route exists");
+
+        Fixture source;
+        source.reset();
+        source.state.docked = static_cast<int8_t>(campaign::kPumpRefuge);
+        source.state.campaign = campaign::kMilestonePump;
+        source.state.activeJob.kind = game::kJobKindOrdinary;
+        source.state.activeJob.mission = game::kMissionNone;
+        source.state.activeJob.from = campaign::kTidewall;
+        source.state.activeJob.to = campaign::kBenthos;
+        source.state.activeJob.crates = game::kJobCrates;
+        source.state.activeJob.reward = routeReward;
+        source.state.activeJob.deadline = 0;
+        source.state.activeJob.elapsed = 0;
+        source.state.cargo = game::kJobCrates;
+        source.state.ballast = static_cast<uint8_t>(game::neutralFor(source.state.cargo));
+        test.assertTrue(campaign::activeJobValid(source.state), "service-berth cargo checkpoint is semantically valid");
+
+        FakeStorage storage(0xFF);
+        test.assertEqual(source.save(storage), voyage_save::kSaved, "Pump Refuge cargo checkpoint saves");
+        Fixture restored;
+        restored.reset();
+        test.assertEqual(voyage_flow::loadCheckpoint(restored.state
+#if SH_FEATURE_FOG_CHART
+                                                     ,
+                                                     restored.chart
+#endif
+                                                     ,
+                                                     storage),
+                         voyage_save::kLoaded, "Continue loads the service-berth checkpoint");
+        test.assertEqual(restored.state.docked, campaign::kPumpRefuge, "Pump Refuge id restored");
+        test.assertEqual(restored.state.x, berth.pixel_x, "generated service berth x restored");
+        test.assertEqual(restored.state.y, berth.pixel_y, "generated service berth y restored");
+        test.assertEqual(restored.state.cargo, game::kJobCrates, "loaded cargo survives the service berth");
+        test.assertEqual(restored.state.activeJob.kind, game::kJobKindOrdinary, "active cargo job restored");
+        test.assertEqual(restored.state.air, game::airCapacity(restored.state), "service berth restores full air");
+        test.assertEqual(restored.state.vxQ8, 0, "transient velocity resets");
+        test.assertEqual(restored.state.offerCount, 0, "service berth has no freight board");
+        runner.add(test);
+    }
+
+    {
         Test test("failed rescue commit keeps the restored state for an honest retry");
         FakeStorage storage(0xFF);
         Fixture source;

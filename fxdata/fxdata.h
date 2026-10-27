@@ -6,8 +6,8 @@ using uint24_t = __uint24;
 
 // Initialize FX hardware using  FX::begin(FX_DATA_PAGE); in the setup() function.
 
-constexpr uint16_t FX_DATA_PAGE  = 0xf91c;
-constexpr uint24_t FX_DATA_BYTES = 451483;
+constexpr uint16_t FX_DATA_PAGE  = 0xf91a;
+constexpr uint24_t FX_DATA_BYTES = 451871;
 
 constexpr uint24_t hero = 0x000000;
 constexpr uint24_t worldTiles = 0x0000C2;
@@ -105,3 +105,30 @@ constexpr uint24_t txt_pause_hint = 0x06E35B;
 constexpr uint24_t txt_save_hint = 0x06E370;
 constexpr uint24_t txt_title_save_hint = 0x06E37B;
 constexpr uint24_t txt_abandon_job = 0x06E38E;
+constexpr uint24_t txt_work = 0x06E39B;
+constexpr uint24_t txt_first = 0x06E3A0;
+constexpr uint24_t txt_pump = 0x06E3A6;
+constexpr uint24_t txt_first_purpose = 0x06E3AB;
+constexpr uint24_t txt_pump_purpose = 0x06E3BF;
+constexpr uint24_t txt_pays = 0x06E3D4;
+constexpr uint24_t txt_work_hint = 0x06E3D9;
+constexpr uint24_t txt_load_hint = 0x06E3EB;
+constexpr uint24_t txt_back_hint = 0x06E3FA;
+constexpr uint24_t txt_carrying = 0x06E401;
+constexpr uint24_t txt_deliver_to = 0x06E407;
+constexpr uint24_t txt_no_work = 0x06E412;
+constexpr uint24_t txt_pump_refuge = 0x06E41E;
+constexpr uint24_t txt_lower_gantry = 0x06E42A;
+constexpr uint24_t txt_service_berth_hint = 0x06E437;
+constexpr uint24_t txt_benthos_lamps_on = 0x06E44C;
+constexpr uint24_t txt_first_clue = 0x06E45D;
+constexpr uint24_t txt_pump_survey_clue = 0x06E470;
+constexpr uint24_t txt_pump_source_clue = 0x06E482;
+constexpr uint24_t txt_pump_restored = 0x06E492;
+constexpr uint24_t txt_survey_pump_clue = 0x06E4A0;
+constexpr uint24_t txt_pump_part_ready = 0x06E4B3;
+constexpr uint24_t txt_beacon_clue = 0x06E4C3;
+constexpr uint24_t txt_repair_pump = 0x06E4D6;
+constexpr uint24_t txt_repair_lift = 0x06E4E8;
+constexpr uint24_t txt_survey_hint = 0x06E4FA;
+constexpr uint24_t txt_survey_recorded = 0x06E50F;

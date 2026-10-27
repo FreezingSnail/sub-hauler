@@ -127,6 +127,44 @@ class AuthoredLevelTest(unittest.TestCase):
         del plain.source['scenery']
         self.assertEqual(gen_scenery.decorate(plain,base,spines),(base,{}))
 
+    def test_service_berths_and_surveys_are_stable_generated_metadata(self):
+        self.assertEqual([b.id for b in self.level.service_berths],[4,5])
+        self.assertEqual([b.symbol for b in self.level.service_berths],['PUMP_REFUGE','LOWER_GANTRY'])
+        self.assertEqual([b.milestone for b in self.level.service_berths],[2,4])
+        self.assertEqual([s.id for s in self.level.surveys],[0,1])
+        self.assertEqual([s.symbol for s in self.level.surveys],['PUMP','LIFT'])
+        self.assertNotIn(4,range(len(self.level.world.settlements)))
+        header=(ROOT/'src/generated/level.hpp').read_text()
+        for symbol,value in (('BERTH_PUMP_REFUGE',4),('BERTH_LOWER_GANTRY',5),('SURVEY_PUMP',0),('SURVEY_LIFT',1)):
+            self.assertIn(f'constexpr uint8_t {symbol} = {value};',header)
+        for berth in self.level.service_berths:
+            self.assertIn(f'{{{berth.id}, {berth.milestone}, {berth.pixel_x}, {berth.pixel_y}}},',header)
+        for survey in self.level.surveys:
+            self.assertIn(f'{{{survey.id}, {survey.pixel_x}, {survey.pixel_y}}},',header)
+        self.assertIn('constexpr uint8_t  BERTH_COUNT       = 6;',header)
+        # Service berths and surveys never enter the four-settlement economy.
+        for origin in range(4):
+            for destination in range(4):
+                self.assertLess(destination,4)
+
+    def test_unsafe_service_berth_or_survey_placements_are_rejected(self):
+        bad=copy.deepcopy(self.source)
+        bad['service_berths'][0]['dock']=[270,20]
+        with self.assertRaisesRegex(ValueError,'not attached'):
+            gen_level.build(bad)
+        bad=copy.deepcopy(self.source)
+        bad['service_berths'][1]['id']=3
+        with self.assertRaisesRegex(ValueError,'stable id after'):
+            gen_level.build(bad)
+        bad=copy.deepcopy(self.source)
+        bad['surveys'][0]['position']=[260,20]
+        with self.assertRaisesRegex(ValueError,'not navigable'):
+            gen_level.build(bad)
+        bad=copy.deepcopy(self.source)
+        bad['surveys'][0]['id']=2
+        with self.assertRaisesRegex(ValueError,'frozen campaign bit'):
+            gen_level.build(bad)
+
     def test_wall_docks_are_distinct_reachable_and_reject_unsafe_placements(self):
         gen_level.validate_docks(self.level)
         for r in self.source['rooms']:

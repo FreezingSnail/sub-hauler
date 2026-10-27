@@ -86,6 +86,12 @@ inline uint24_t nameFor(uint8_t id) {
         return txt_cormorant;
     case 3:
         return txt_deep_anchor;
+#if SH_FEATURE_CAMPAIGN
+    case 4:
+        return txt_pump_refuge;
+    case 5:
+        return txt_lower_gantry;
+#endif
     default:
         return txt_station;
     }
@@ -96,8 +102,13 @@ inline uint24_t rowLabel(uint8_t row, const game::State &state) {
 #if SH_FEATURE_SHOP
     // The shop label is folded into an if-chain instead of the switch: adding a
     // sixth RowKind would widen the compiler's jump table by two bytes of RAM.
+#if SH_FEATURE_CAMPAIGN
+    if (kind == station::kRowWork)
+        return txt_work;
+#else
     if (kind == station::kRowService)
         return txt_service;
+#endif
     if (kind == station::kRowShop)
         return txt_shop;
     if (kind == station::kRowUndock)
@@ -109,8 +120,13 @@ inline uint24_t rowLabel(uint8_t row, const game::State &state) {
     return 0;
 #else
     switch (kind) {
+#if SH_FEATURE_CAMPAIGN
+    case station::kRowWork:
+        return txt_work;
+#else
     case station::kRowService:
         return txt_service;
+#endif
     case station::kRowUndock:
         return txt_undock;
 #if SH_FEATURE_JOBS
@@ -153,6 +169,11 @@ inline void printRow(uint8_t row, const game::State &state) {
     case station::kRowJob:
         printDestination(state.activeJob.to, state.activeJob.reward, jobs::remainingTicks(state));
         break;
+#if SH_FEATURE_CAMPAIGN
+    case station::kRowWork:
+        text::print(txt_work);
+        break;
+#endif
     case station::kRowAbandon:
         text::print(txt_abandon);
         break;
@@ -217,6 +238,12 @@ inline void draw(const game::State &state, uint8_t selected) {
     text::normal();
 
     text::at(kHintX, kHintY);
+#if SH_FEATURE_CAMPAIGN
+    if (station::serviceBerth(state)) {
+        text::print(txt_service_berth_hint);
+        return;
+    }
+#endif
 #if SH_FEATURE_JOBS
     // A failed delivery replaces the control hint until the next accept or
     // abandon. Treat it as a transient board note, not a permanent flag.

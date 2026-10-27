@@ -2,6 +2,9 @@
 
 #include "cave.hpp"
 #include "cave_render.hpp"
+#if SH_FEATURE_CAMPAIGN
+#include "campaign_view.hpp"
+#endif
 #include "common.hpp"
 #if SH_FEATURE_HULL_DAMAGE || SH_FEATURE_PARTICLES
 #include "damage_view.hpp"
@@ -33,6 +36,9 @@ namespace view {
 inline void frame(const game::State &state, const cave::Camera &camera, world::TileCache &cache, world::FxTables &tables) {
     world::refreshCache(cache, tables, cave::cacheOriginTileX(camera), cave::cacheOriginTileY(camera));
     cave::streamFrame(camera, tables, Arduboy2Base::sBuffer);
+#if SH_FEATURE_CAMPAIGN
+    campaign_view::drawRestoration(Arduboy2Base::sBuffer, state, camera);
+#endif
 #if SH_FEATURE_SONAR
     // Ring first: the filled HAULER silhouette stays solid and readable.
     sonar_view::draw(Arduboy2Base::sBuffer, state, camera);

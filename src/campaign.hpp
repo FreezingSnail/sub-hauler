@@ -63,6 +63,12 @@ enum Berth : uint8_t {
 };
 constexpr uint8_t kBerthCount = 6;
 constexpr uint8_t kSettlementCount = world::SETTLEMENT_COUNT;
+static_assert(world::BERTH_COUNT == kBerthCount, "generated berth ids match the frozen campaign count");
+static_assert(world::SERVICE_BERTH_COUNT == 2, "both restoration berths have generated geography");
+static_assert(world::BERTH_PUMP_REFUGE == kPumpRefuge, "Pump Refuge keeps its frozen berth id");
+static_assert(world::BERTH_LOWER_GANTRY == kLowerGantry, "Lower Gantry keeps its frozen berth id");
+static_assert(world::SURVEY_PUMP == kPumpSurveyId, "pump survey keeps its frozen id");
+static_assert(world::SURVEY_LIFT == kLiftSurveyId, "lift survey keeps its frozen id");
 
 struct MissionSpec {
     uint8_t from;
@@ -194,6 +200,25 @@ inline bool missionAvailable(const State &state, uint8_t id) {
     return missionInfo(id, spec) && !missionCompleted(state, id) && missionPrerequisites(state, id);
 }
 
+// First-slice WORK page rows. The lift/beacon/home sequence stays behind its
+// own integration task, so these two missions are the only campaign work the
+// station page exposes now. Rows are compacted in stable mission-id order.
+inline uint8_t workMissionAt(const State &state, uint8_t berth, uint8_t row) {
+    const uint8_t ids[2] = {kFirst, kPump};
+    uint8_t visible = 0;
+    for (uint8_t i = 0; i < 2; ++i) {
+        MissionSpec spec;
+        if (!missionInfo(ids[i], spec) || !spec.cargo || spec.from != berth)
+            continue;
+        if (!missionAvailable(state, ids[i]))
+            continue;
+        if (visible == row)
+            return ids[i];
+        ++visible;
+    }
+    return kMissionNone;
+}
+
 // A recorded survey is a fact, not a cargo job: it never occupies the slot and
 // cannot be repeated. Returns false only for an unknown survey id.
 inline bool recordSurvey(State &state, uint8_t surveyId) {
@@ -236,11 +261,10 @@ inline bool completeMission(State &state, uint8_t id) {
 inline bool berthAvailable(const State &state, uint8_t berth) {
     if (berth < world::SETTLEMENT_COUNT)
         return true;
-    if (berth == kPumpRefuge)
-        return hasMilestone(state, kMilestonePump);
-    if (berth == kLowerGantry)
-        return hasMilestone(state, kMilestoneLift);
-    return false;
+    world::Berth info;
+    if (!world::berthInfo(berth, info) || info.milestone == 0)
+        return false;
+    return hasMilestone(state, info.milestone);
 }
 
 inline bool freightBerth(uint8_t berth) {
