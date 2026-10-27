@@ -44,6 +44,14 @@
 #include "src/sonar.hpp"
 #endif
 
+#if SH_FEATURE_SAVE_VOYAGE && !SH_DEV_MODE
+#define SH_VOYAGE_UI 1
+#include "src/voyage_flow.hpp"
+#include "src/voyage_view.hpp"
+#else
+#define SH_VOYAGE_UI 0
+#endif
+
 decltype(arduboy) arduboy;
 
 static game::State s_state;
@@ -53,9 +61,9 @@ static world::TileCache s_cache;
 // The screen tag exists whenever more than one screen can be reached. With
 // stations, chart, multi-hull, and hull damage all off the pilot frame is the
 // only path, matching the pre-feature image exactly.
-#if SH_FEATURE_STATIONS || SH_FEATURE_FOG_CHART || SH_FEATURE_MULTI_HULL || SH_FEATURE_HULL_DAMAGE
+#if SH_FEATURE_STATIONS || SH_FEATURE_FOG_CHART || SH_FEATURE_MULTI_HULL || SH_FEATURE_HULL_DAMAGE || SH_VOYAGE_UI
 enum class Screen : uint8_t {
-#if SH_FEATURE_MULTI_HULL
+#if SH_FEATURE_MULTI_HULL || SH_VOYAGE_UI
     Title,
 #endif
     Pilot,
@@ -72,9 +80,14 @@ enum class Screen : uint8_t {
 #if SH_FEATURE_HULL_DAMAGE
     Failure,
 #endif
+#if SH_VOYAGE_UI
+    SaveFailed,
+#endif
 };
 
-#if SH_FEATURE_MULTI_HULL
+#if SH_VOYAGE_UI
+static Screen s_screen = Screen::Title;
+#elif SH_FEATURE_MULTI_HULL
 #if SH_DEV_MODE
 static Screen s_screen = Screen::Pilot;
 #else
@@ -92,7 +105,28 @@ static Screen s_screen = Screen::Pilot;
 static uint8_t s_stationRow = station::kFirstRow;
 #endif
 
-#if SH_FEATURE_STATIONS || SH_FEATURE_FOG_CHART || SH_FEATURE_MULTI_HULL || SH_FEATURE_HULL_DAMAGE
+#if SH_VOYAGE_UI
+// Save integration state. Writes are synchronous transitions; while the save
+// failure frame is showing the world is frozen and departure input is ignored.
+enum SaveResume : uint8_t {
+    kSaveResumeStation,
+    kSaveResumeShop,
+    kSaveResumePilot,
+};
+
+static voyage_flow::BootStatus s_bootStatus;
+static voyage_view::TitleMode s_titleMode = voyage_view::kTitleMenu;
+static uint8_t s_titleRow = voyage_view::kTitleNewVoyage;
+static bool s_voyageDirty = false;
+static SaveResume s_saveResume = kSaveResumeStation;
+static uint8_t s_saveRow = 0;
+static uint8_t s_pauseRow = 0;
+static bool s_pauseConfirm = false;
+static uint8_t s_failureRow = 0;
+static bool s_abandonConfirm = false;
+#endif
+
+#if SH_FEATURE_STATIONS || SH_FEATURE_FOG_CHART || SH_FEATURE_MULTI_HULL || SH_FEATURE_HULL_DAMAGE || SH_VOYAGE_UI
 // Static screens own a mutating buffer: they are composed once on entry and
 // again only when an input edge can change what is on screen. s_present is
 // cleared on idle frames, so the loop omits the OLED transaction too; the
@@ -147,26 +181,272 @@ static void saveChartOnClose() {
 }
 #endif
 
-#if SH_FEATURE_STATIONS || SH_FEATURE_FOG_CHART || SH_FEATURE_MULTI_HULL || SH_FEATURE_HULL_DAMAGE
+#if SH_VOYAGE_UI
+// One checkpoint transaction. Storage only touches EEPROM bytes 16..655; the
+// caller owns the UI decision after the result. The write is synchronous, so
+// no world step, chart read or departure input can run during it.
+static voyage_save::SaveResult saveVoyageNow() {
+    voyage_save::EepromStorage storage;
+    return voyage_flow::saveCheckpoint(s_state
+#if SH_FEATURE_FOG_CHART
+                                       ,
+                                       s_chart
+#endif
+                                       ,
+                                       storage);
+}
+
+static void beginSaveFailure(SaveResume resume) {
+    s_saveResume = resume;
+    s_saveRow = 0;
+    s_voyageDirty = true;
+    s_screen = Screen::SaveFailed;
+    voyage_view::drawSaveFailed(0);
+}
+
+// Report SAVED only after read-back validation. A failed write keeps the live
+// state and the previous checkpoint intact, then freezes on RETRY/CONTINUE
+// UNSAVED. No caller may show a success notice before this returns true.
+static bool requestSave(SaveResume resume) {
+    if (saveVoyageNow() == voyage_save::kSaved) {
+        s_voyageDirty = false;
+        return true;
+    }
+    beginSaveFailure(resume);
+    return false;
+}
+
+static void finishSaveResume() {
+    switch (s_saveResume) {
+    case kSaveResumePilot:
+        if (s_state.docked >= 0)
+            station::undock(s_state);
+        s_screen = Screen::Pilot;
+        s_stationRow = station::kFirstRow;
+        drawPilot();
+        return;
+#if SH_FEATURE_SHOP
+    case kSaveResumeShop:
+        s_screen = Screen::Shop;
+        if (s_stationRow >= shop::kItemCount)
+            s_stationRow = shop::kFirstItem;
+        shop_view::draw(s_state, s_stationRow);
+        return;
+#endif
+    default:
+        s_screen = Screen::Station;
+        station_view::draw(s_state, s_stationRow);
+        return;
+    }
+}
+
+static void drawTitleScreen() {
+    s_screen = Screen::Title;
+#if SH_FEATURE_MULTI_HULL
+    const uint8_t hullClass = s_state.hullClass;
+#else
+    const uint8_t hullClass = 0;
+#endif
+    voyage_view::drawTitle(s_bootStatus, s_titleRow, hullClass, s_titleMode);
+}
+
+static void refreshBootStatus() {
+    voyage_save::EepromStorage storage;
+    s_bootStatus = voyage_flow::inspectBoot(storage);
+    s_titleMode = voyage_view::kTitleMenu;
+    s_titleRow = s_bootStatus.hasValid ? voyage_view::kTitleContinue : voyage_view::kTitleNewVoyage;
+}
+
+#if SH_FEATURE_FOG_CHART
+static bool legacyChartAvailable() {
+    if (s_bootStatus.needsReplaceConfirm())
+        return false;
+    voyage_save::EepromStorage storage;
+    return voyage_save::legacyChartValid(storage);
+}
+#endif
+
+static void startNewVoyage(voyage_save::LegacyChart legacy) {
+    voyage_save::EepromStorage storage;
+    const voyage_save::SaveResult result = voyage_flow::startNewVoyage(s_state
+#if SH_FEATURE_FOG_CHART
+                                                                       ,
+                                                                       s_chart
+#endif
+                                                                       ,
+                                                                       legacy, storage);
+#if SH_FEATURE_FOG_CHART
+    // New voyage starts with the spawn cell revealed. The first checkpoint was
+    // already committed, so keep the difference dirty and let the next berth
+    // transition persist it.
+    chart::revealInitial(s_chart, s_state);
+#endif
+    s_stationRow = station::initialRow(s_state);
+    s_screen = Screen::Station;
+    if (result == voyage_save::kSaved) {
+        s_voyageDirty =
+#if SH_FEATURE_FOG_CHART
+            true;
+#else
+            false;
+#endif
+        station_view::draw(s_state, s_stationRow);
+    } else {
+        beginSaveFailure(kSaveResumeStation);
+    }
+}
+
+static void continueVoyage() {
+    voyage_save::EepromStorage storage;
+    const voyage_save::LoadResult result = voyage_flow::loadCheckpoint(s_state
+#if SH_FEATURE_FOG_CHART
+                                                                       ,
+                                                                       s_chart
+#endif
+                                                                       ,
+                                                                       storage);
+    if (result != voyage_save::kLoaded) {
+        refreshBootStatus();
+        drawTitleScreen();
+        return;
+    }
+    s_voyageDirty = false;
+    s_stationRow = station::initialRow(s_state);
+    s_screen = Screen::Station;
+    station_view::draw(s_state, s_stationRow);
+}
+
+// Free rescue and wreck recovery share one path. The complete checkpoint is
+// restored first, then the rescue count is committed before the station board
+// resumes. A failed commit keeps the restored state live and asks honestly.
+static void performRecovery() {
+    voyage_save::EepromStorage storage;
+    const voyage_flow::Recovery result = voyage_flow::recoverCheckpoint(s_state
+#if SH_FEATURE_FOG_CHART
+                                                                        ,
+                                                                        s_chart
+#endif
+                                                                        ,
+                                                                        storage);
+    if (result.load != voyage_save::kLoaded) {
+        refreshBootStatus();
+        drawTitleScreen();
+        return;
+    }
+    s_stationRow = station::initialRow(s_state);
+    s_screen = Screen::Station;
+    if (result.save == voyage_save::kSaved) {
+        s_voyageDirty = false;
+        station_view::draw(s_state, s_stationRow);
+    } else {
+        beginSaveFailure(kSaveResumeStation);
+    }
+}
+#endif   // SH_VOYAGE_UI
+
+
+#if SH_FEATURE_STATIONS || SH_FEATURE_FOG_CHART || SH_FEATURE_MULTI_HULL || SH_FEATURE_HULL_DAMAGE || SH_VOYAGE_UI
 // Paused/failure frames deliberately draw no world and read no cart: the
 // buffer is blank after the previous FX::display(CLEAR_BUFFER), so one short
 // text line is enough at 128x64.
 static void drawPause() {
+#if SH_VOYAGE_UI
+    if (s_pauseConfirm)
+        voyage_view::drawRescueConfirm();
+    else
+        voyage_view::drawPauseRescue(s_pauseRow);
+#else
     text::normal();
     text::at(10, 30);
     text::print(txt_paused);
+#endif
 }
 
 #if SH_FEATURE_HULL_DAMAGE
 static void drawFailure() {
+#if SH_VOYAGE_UI
+    voyage_view::drawWreck(s_failureRow);
+#else
     text::normal();
     text::at(4, 30);
     text::print(txt_hull_lost);
+#endif
 }
 #endif
 #endif
 
+#if SH_VOYAGE_UI
+// Title with CONTINUE/NEW VOYAGE. No world step and no cart reads. CONTINUE is
+// only selectable for a valid checkpoint; NEW VOYAGE confirms before replacing
+// any present (valid, corrupt or incompatible) record. On the first blank
+// voyage a valid legacy chart offers to be kept.
+static void updateTitle() {
+    if (s_titleMode == voyage_view::kTitleConfirmReplace) {
+        if (arduboy.justPressed(A_BUTTON)) {
+            s_titleMode = voyage_view::kTitleMenu;
+            startNewVoyage(voyage_save::kDropLegacyChart);
+            return;
+        }
+        if (arduboy.justPressed(B_BUTTON)) {
+            s_titleMode = voyage_view::kTitleMenu;
+            drawTitleScreen();
+            return;
+        }
+        s_present = false;
+        return;
+    }
+
+    if (s_titleMode == voyage_view::kTitleKeepChart) {
+        if (arduboy.justPressed(A_BUTTON)) {
+            s_titleMode = voyage_view::kTitleMenu;
+            startNewVoyage(voyage_save::kKeepLegacyChart);
+            return;
+        }
+        if (arduboy.justPressed(B_BUTTON)) {
+            s_titleMode = voyage_view::kTitleMenu;
+            startNewVoyage(voyage_save::kDropLegacyChart);
+            return;
+        }
+        s_present = false;
+        return;
+    }
+
 #if SH_FEATURE_MULTI_HULL
+    roster::HullClass hull = roster::sanitize(static_cast<roster::HullClass>(s_state.hullClass));
+    if (arduboy.justPressed(LEFT_BUTTON))
+        hull = roster::previous(hull);
+    if (arduboy.justPressed(RIGHT_BUTTON))
+        hull = roster::next(hull);
+    if (arduboy.justPressed(B_BUTTON))
+        hull = roster::kDefault;
+    s_state.hullClass = static_cast<uint8_t>(hull);
+#endif
+
+    if (arduboy.justPressed(UP_BUTTON))
+        s_titleRow = voyage_view::previousRow(s_titleRow, s_bootStatus);
+    if (arduboy.justPressed(DOWN_BUTTON))
+        s_titleRow = voyage_view::nextRow(s_titleRow, s_bootStatus);
+
+    if (arduboy.justPressed(A_BUTTON)) {
+        if (s_titleRow == voyage_view::kTitleContinue && s_bootStatus.hasValid) {
+            continueVoyage();
+            return;
+        }
+        if (s_bootStatus.needsReplaceConfirm())
+            s_titleMode = voyage_view::kTitleConfirmReplace;
+#if SH_FEATURE_FOG_CHART
+        else if (legacyChartAvailable())
+            s_titleMode = voyage_view::kTitleKeepChart;
+#endif
+        else {
+            startNewVoyage(voyage_save::kDropLegacyChart);
+            return;
+        }
+    }
+
+    drawTitleScreen();
+}
+#elif SH_FEATURE_MULTI_HULL
 // Title frame: no world step. The only cart reads are the selected hull's
 // baked sprite and the external labels, all before the display transaction.
 // Left/right cycles the roster,
@@ -208,27 +488,114 @@ static void drawChart() {
 }
 #endif
 
-#if SH_FEATURE_STATIONS || SH_FEATURE_FOG_CHART || SH_FEATURE_MULTI_HULL || SH_FEATURE_HULL_DAMAGE
+#if SH_FEATURE_STATIONS || SH_FEATURE_FOG_CHART || SH_FEATURE_MULTI_HULL || SH_FEATURE_HULL_DAMAGE || SH_VOYAGE_UI
 // Pause frame: no world step, no air/ballast drain, no job clock, and no cart
-// reads. A or B resumes on the frozen pilot frame without stepping.
+// reads. With voyage saving the pause menu offers RESUME or a confirmed free
+// rescue; otherwise A or B resumes on the frozen pilot frame without stepping.
 static void updatePause() {
+#if SH_VOYAGE_UI
+    if (s_pauseConfirm) {
+        if (arduboy.justPressed(A_BUTTON)) {
+            s_pauseConfirm = false;
+            performRecovery();
+            return;
+        }
+        if (arduboy.justPressed(B_BUTTON)) {
+            s_pauseConfirm = false;
+            voyage_view::drawPauseRescue(s_pauseRow);
+            return;
+        }
+        s_present = false;
+        return;
+    }
+
+    if (arduboy.justPressed(UP_BUTTON) || arduboy.justPressed(DOWN_BUTTON)) {
+        s_pauseRow = s_pauseRow == 0 ? 1 : 0;
+        voyage_view::drawPauseRescue(s_pauseRow);
+        return;
+    }
+
+    if (arduboy.justPressed(A_BUTTON)) {
+        if (s_pauseRow == 0) {
+            s_screen = Screen::Pilot;
+            drawPilot();
+        } else {
+            s_pauseConfirm = true;
+            voyage_view::drawRescueConfirm();
+        }
+        return;
+    }
+    if (arduboy.justPressed(B_BUTTON)) {
+        s_screen = Screen::Pilot;
+        drawPilot();
+        return;
+    }
+    s_present = false;
+#else
     if (arduboy.justPressed(A_BUTTON) || arduboy.justPressed(B_BUTTON)) {
         s_screen = Screen::Pilot;
         drawPilot();
         return;
     }
     s_present = false;
+#endif
 }
 
 #if SH_FEATURE_HULL_DAMAGE
-// Hull failure frame. A restarts the run: world, job/economy state, and the
-// chart return to their boot values, so the player can never be stranded at
-// zero hull. No extra save byte is involved.
+// Hull failure frame. With voyage saving, RETRY BERTH restores and commits the
+// last checkpoint for free; TITLE leaves the wreck for CONTINUE/NEW VOYAGE.
+// Without voyage saving, A restarts the run as before.
 static void updateFailure() {
+#if SH_VOYAGE_UI
+    if (arduboy.justPressed(UP_BUTTON) || arduboy.justPressed(DOWN_BUTTON)) {
+        s_failureRow = s_failureRow == 0 ? 1 : 0;
+        voyage_view::drawWreck(s_failureRow);
+        return;
+    }
+    if (arduboy.justPressed(A_BUTTON)) {
+        if (s_failureRow == 0) {
+            performRecovery();
+        } else {
+            refreshBootStatus();
+            drawTitleScreen();
+        }
+        return;
+    }
+    s_present = false;
+#else
     if (arduboy.justPressed(A_BUTTON)) {
         resetRun();
         s_screen = Screen::Pilot;
         drawPilot();
+        return;
+    }
+    s_present = false;
+#endif
+}
+#endif
+
+#if SH_VOYAGE_UI
+// SAVE FAILED freezes the world. RETRY re-runs the same checkpoint transaction;
+// CONTINUE UNSAVED resumes the already-applied live state and keeps it dirty,
+// so the HUD/title never claim it is safely stored.
+static void updateSaveFailed() {
+    if (arduboy.justPressed(UP_BUTTON) || arduboy.justPressed(DOWN_BUTTON)) {
+        s_saveRow = s_saveRow == 0 ? 1 : 0;
+        voyage_view::drawSaveFailed(s_saveRow);
+        return;
+    }
+    if (arduboy.justPressed(A_BUTTON)) {
+        if (s_saveRow == 0) {
+            if (saveVoyageNow() == voyage_save::kSaved) {
+                s_voyageDirty = false;
+                finishSaveResume();
+            } else {
+                voyage_view::drawSaveFailed(s_saveRow);
+            }
+        } else {
+            s_voyageDirty = true;
+            finishSaveResume();
+        }
         return;
     }
     s_present = false;
@@ -239,12 +606,16 @@ static void updateFailure() {
 // Flight frame: step once, then either redraw the cave or switch to the
 // station board on the frame that docked.
 static void updateFlight() {
-#if SH_FEATURE_STATIONS || SH_FEATURE_FOG_CHART || SH_FEATURE_MULTI_HULL || SH_FEATURE_HULL_DAMAGE
+#if SH_FEATURE_STATIONS || SH_FEATURE_FOG_CHART || SH_FEATURE_MULTI_HULL || SH_FEATURE_HULL_DAMAGE || SH_VOYAGE_UI
     // A+B is the free-flight pause gesture. Require fresh edges: a held chord
     // must not re-enter Pause after a resume or station transition.
     if (pause::resolve(false, arduboy.justPressed(A_BUTTON), arduboy.justPressed(B_BUTTON)) ==
         pause::kEnter) {
         s_screen = Screen::Pause;
+#if SH_VOYAGE_UI
+        s_pauseRow = 0;
+        s_pauseConfirm = false;
+#endif
         drawPause();
         return;
     }
@@ -273,15 +644,26 @@ static void updateFlight() {
     // Coarse reveal rides flight ticks, including the step that docked.
     chart::revealOnStep(s_chart, s_state);
     if (docked) {
-        s_screen = Screen::Station;
         s_stationRow = station::initialRow(s_state);
+#if SH_VOYAGE_UI
+        // Delivery/repair/service are resolved inside the dock step. Commit
+        // that complete post-delivery checkpoint before any board celebration
+        // or further input. A failed write stays frozen on the save prompt.
+        if (!requestSave(kSaveResumeStation))
+            return;
+#endif
+        s_screen = Screen::Station;
         station_view::draw(s_state, s_stationRow);
         return;
     }
 #else
     if (station::stepFlight(s_state, input, s_tables, &s_cache)) {
-        s_screen = Screen::Station;
         s_stationRow = station::initialRow(s_state);
+#if SH_VOYAGE_UI
+        if (!requestSave(kSaveResumeStation))
+            return;
+#endif
+        s_screen = Screen::Station;
         station_view::draw(s_state, s_stationRow);
         return;
     }
@@ -345,9 +727,46 @@ static void updateChart() {
 #endif
 
 #if SH_FEATURE_STATIONS
+#if SH_VOYAGE_UI
+// Departure is a save boundary only when the live state is dirty (for example
+// after CONTINUE UNSAVED on an earlier failed write). Save while still docked:
+// a checkpoint is never midwater. A failed write freezes on the prompt instead
+// of leaving the berth.
+static void leaveStation() {
+    if (s_voyageDirty && !requestSave(kSaveResumePilot))
+        return;
+    if (station::undock(s_state)) {
+        s_screen = Screen::Pilot;
+        s_stationRow = station::kFirstRow;
+        drawPilot();
+    }
+}
+#endif
+
 // Station frame: no world step, so travel time, air, and ballast are frozen.
 // D-pad moves the selection, A confirms, B always undocks.
 static void updateStation() {
+#if SH_VOYAGE_UI && SH_FEATURE_CAMPAIGN
+    if (s_abandonConfirm) {
+        if (arduboy.justPressed(A_BUTTON)) {
+            s_abandonConfirm = false;
+            station::activate(station::kAbandonRow, s_state);
+            s_stationRow = station::initialRow(s_state);
+            if (!requestSave(kSaveResumeStation))
+                return;
+            station_view::draw(s_state, s_stationRow);
+            return;
+        }
+        if (arduboy.justPressed(B_BUTTON)) {
+            s_abandonConfirm = false;
+            station_view::draw(s_state, s_stationRow);
+            return;
+        }
+        s_present = false;
+        return;
+    }
+#endif
+
     if (!arduboy.justPressed(UP_BUTTON | DOWN_BUTTON | A_BUTTON | B_BUTTON)) {
         s_present = false;
         return;
@@ -359,6 +778,20 @@ static void updateStation() {
         s_stationRow = station::selectNext(s_stationRow, s_state);
 
     if (arduboy.justPressed(A_BUTTON)) {
+#if SH_VOYAGE_UI
+        if (station::rowKind(s_stationRow, s_state) == station::kRowUndock) {
+            leaveStation();
+            return;
+        }
+#if SH_FEATURE_CAMPAIGN
+        // ABANDON is never the initial row and needs its own confirmation.
+        if (station::rowKind(s_stationRow, s_state) == station::kRowAbandon) {
+            s_abandonConfirm = true;
+            voyage_view::drawAbandonConfirm();
+            return;
+        }
+#endif
+#endif
         const station::Action action = station::activate(s_stationRow, s_state);
         if (action == station::kActionUndocked) {
             s_screen = Screen::Pilot;
@@ -377,19 +810,32 @@ static void updateStation() {
         else if (action == station::kActionAbandoned) {
             // The board shape changed: summary -> offers.
             s_stationRow = station::initialRow(s_state);
+#if SH_VOYAGE_UI
+            if (!requestSave(kSaveResumeStation))
+                return;
+#endif
         } else if (action == station::kActionAccepted) {
             // Acceptance auto-loads the contract hold; the boat stays docked
             // until the player confirms UNDOCK or presses B.
             s_stationRow = station::initialRow(s_state);
+#if SH_VOYAGE_UI
+            if (!requestSave(kSaveResumeStation))
+                return;
+#endif
         }
 #endif
     }
 
     if (arduboy.justPressed(B_BUTTON)) {
+#if SH_VOYAGE_UI
+        leaveStation();
+        return;
+#else
         if (station::undock(s_state)) {
             s_screen = Screen::Pilot;
             s_stationRow = station::kFirstRow;
         }
+#endif
     }
 
     if (s_screen == Screen::Station) {
@@ -417,8 +863,16 @@ static void updateShop() {
     if (arduboy.justPressed(DOWN_BUTTON))
         s_stationRow = shop::selectNext(s_stationRow);
 
-    if (arduboy.justPressed(A_BUTTON))
-        shop::buy(s_state, static_cast<shop::Item>(s_stationRow));
+    if (arduboy.justPressed(A_BUTTON)) {
+        if (shop::buy(s_state, static_cast<shop::Item>(s_stationRow)) == shop::kBought) {
+#if SH_VOYAGE_UI
+            // Only a successful purchase is a save boundary. A failed write
+            // stays frozen on RETRY / CONTINUE UNSAVED.
+            if (!requestSave(kSaveResumeShop))
+                return;
+#endif
+        }
+    }
 
     if (arduboy.justPressed(B_BUTTON)) {
         s_screen = Screen::Station;
@@ -446,24 +900,37 @@ void setup() {
     // spawn, and a valid save overwrites that with the exact stored mask.
     loadChartSave();
 #endif
+
+#if SH_VOYAGE_UI
+    // Never read voyage storage in developer mode. Normal boot inspects once so
+    // the title can distinguish blank, corrupt and incompatible records before
+    // offering CONTINUE or NEW VOYAGE; the checkpoint itself loads only after
+    // an explicit CONTINUE.
+    refreshBootStatus();
+#endif
 }
 
 void loop() {
     if (!arduboy.nextFrame())
         return;
     arduboy.pollButtons();
-#if SH_FEATURE_STATIONS || SH_FEATURE_FOG_CHART || SH_FEATURE_MULTI_HULL || SH_FEATURE_HULL_DAMAGE
+#if SH_FEATURE_STATIONS || SH_FEATURE_FOG_CHART || SH_FEATURE_MULTI_HULL || SH_FEATURE_HULL_DAMAGE || SH_VOYAGE_UI
     s_present = true;
 #endif
 
-#if SH_FEATURE_MULTI_HULL
-    // Title boots the run and owns hull selection. It has no world step and no
-    // cart reads; A draws the first pilot frame before the display transaction.
+#if SH_FEATURE_MULTI_HULL || SH_VOYAGE_UI
+    // Title boots the run and owns Continue/New Voyage (and hull selection when
+    // the roster is present). It has no world step and no cart reads.
     if (s_screen == Screen::Title)
         updateTitle();
     else
 #endif
-#if SH_FEATURE_STATIONS || SH_FEATURE_FOG_CHART || SH_FEATURE_MULTI_HULL || SH_FEATURE_HULL_DAMAGE
+#if SH_VOYAGE_UI
+    if (s_screen == Screen::SaveFailed)
+        updateSaveFailed();
+    else
+#endif
+#if SH_FEATURE_STATIONS || SH_FEATURE_FOG_CHART || SH_FEATURE_MULTI_HULL || SH_FEATURE_HULL_DAMAGE || SH_VOYAGE_UI
     if (s_screen == Screen::Pause)
         updatePause();
 #if SH_FEATURE_HULL_DAMAGE
@@ -505,7 +972,7 @@ void loop() {
     // this single buffered display transaction. A static screen with no input
     // edge clears s_present and keeps the previous panel image; the buffer is
     // already clear from the last display.
-#if SH_FEATURE_STATIONS || SH_FEATURE_FOG_CHART || SH_FEATURE_MULTI_HULL || SH_FEATURE_HULL_DAMAGE
+#if SH_FEATURE_STATIONS || SH_FEATURE_FOG_CHART || SH_FEATURE_MULTI_HULL || SH_FEATURE_HULL_DAMAGE || SH_VOYAGE_UI
     if (s_present)
 #endif
         FX::display(CLEAR_BUFFER);

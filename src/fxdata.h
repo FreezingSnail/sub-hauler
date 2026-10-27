@@ -6,8 +6,8 @@ using uint24_t = __uint24;
 
 // Initialize FX hardware using  FX::begin(FX_DATA_PAGE); in the setup() function.
 
-constexpr uint16_t FX_DATA_PAGE  = 0xf91d;
-constexpr uint24_t FX_DATA_BYTES = 451172;
+constexpr uint16_t FX_DATA_PAGE  = 0xf91c;
+constexpr uint24_t FX_DATA_BYTES = 451483;
 
 constexpr uint24_t hero = 0x000000;
 constexpr uint24_t worldTiles = 0x0000C2;
@@ -81,3 +81,27 @@ constexpr uint24_t txt_thruster_rumor = 0x00A22B;
 constexpr uint24_t txt_seal_rumor = 0x00A23D;
 constexpr uint24_t txt_dev_noclip = 0x00A251;
 constexpr uint24_t explorationTerrain = 0x00A264;
+constexpr uint24_t txt_sub_hauler = 0x06E264;
+constexpr uint24_t txt_continue = 0x06E26F;
+constexpr uint24_t txt_new_voyage = 0x06E278;
+constexpr uint24_t txt_save_ready = 0x06E283;
+constexpr uint24_t txt_no_save = 0x06E28E;
+constexpr uint24_t txt_save_corrupt = 0x06E296;
+constexpr uint24_t txt_save_incompatible = 0x06E2A3;
+constexpr uint24_t txt_save_unreadable = 0x06E2B5;
+constexpr uint24_t txt_replace_voyage = 0x06E2C5;
+constexpr uint24_t txt_keep_chart = 0x06E2D5;
+constexpr uint24_t txt_yes_no = 0x06E2E5;
+constexpr uint24_t txt_save_failed = 0x06E2F1;
+constexpr uint24_t txt_retry = 0x06E2FD;
+constexpr uint24_t txt_continue_unsaved = 0x06E303;
+constexpr uint24_t txt_resume = 0x06E314;
+constexpr uint24_t txt_rescue = 0x06E31B;
+constexpr uint24_t txt_back_last_berth = 0x06E322;
+constexpr uint24_t txt_unsaved_lost = 0x06E336;
+constexpr uint24_t txt_retry_berth = 0x06E349;
+constexpr uint24_t txt_title = 0x06E355;
+constexpr uint24_t txt_pause_hint = 0x06E35B;
+constexpr uint24_t txt_save_hint = 0x06E370;
+constexpr uint24_t txt_title_save_hint = 0x06E37B;
+constexpr uint24_t txt_abandon_job = 0x06E38E;

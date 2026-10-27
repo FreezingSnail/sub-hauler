@@ -160,12 +160,32 @@ inline RowKind rowKind(uint8_t row, const State &state) {
     return kRowUndock;
 }
 
-// First selectable row for a freshly docked boat: offer 0, or the safe ABANDON
-// row when a contract is already running (wrong-station dock).
+// First selectable row for a freshly docked boat. No job starts on offer 0. An
+// active campaign contract starts on the safe UNDOCK row, never on ABANDON; the
+// sketch intercepts ABANDON for its own confirmation. The pre-campaign jobs
+// contract keeps its historical ABANDON start.
 inline uint8_t initialRow(const State &state) {
+#if SH_FEATURE_JOBS
+    if (jobActive(state)) {
+#if SH_FEATURE_CAMPAIGN
+        return kActiveUndockRow;
+#else
+        return kAbandonRow;
+#endif
+    }
+#endif
+    return kFirstRow;
+}
+
+// First row in the selection cycle. The active campaign board keeps its inert
+// summary row out of the cycle but still allows UNDOCK to be the initial
+// selection, so ABANDON stays reachable but never accidental.
+inline uint8_t firstSelectable(const State &state) {
 #if SH_FEATURE_JOBS
     if (jobActive(state))
         return kAbandonRow;
+#else
+    (void)state;
 #endif
     return kFirstRow;
 }
@@ -185,16 +205,22 @@ inline uint8_t shopRow(const State &state) {
 
 inline uint8_t selectableCount(const State &state) {
 #if SH_FEATURE_JOBS
-    if (jobActive(state))
+    if (jobActive(state)) {
+#if SH_FEATURE_CAMPAIGN
+        return static_cast<uint8_t>(kActiveRowCount - kAbandonRow);
+#else
         return static_cast<uint8_t>(kActiveRowCount - initialRow(state));
 #endif
+    }
+#endif
+    (void)state;
     return kStationRowCount;
 }
 
 // Selection wraps across selectable rows only, so a two-row active board never
 // dead-ends. The caller keeps the selected row in range via initialRow().
 inline uint8_t selectPrevious(uint8_t selected, const State &state) {
-    const uint8_t first = initialRow(state);
+    const uint8_t first = firstSelectable(state);
     const uint8_t last = static_cast<uint8_t>(first + selectableCount(state) - 1);
     if (selected <= first || selected > last)
         return last;
@@ -202,7 +228,7 @@ inline uint8_t selectPrevious(uint8_t selected, const State &state) {
 }
 
 inline uint8_t selectNext(uint8_t selected, const State &state) {
-    const uint8_t first = initialRow(state);
+    const uint8_t first = firstSelectable(state);
     const uint8_t last = static_cast<uint8_t>(first + selectableCount(state) - 1);
     if (selected < first || selected >= last)
         return first;
