@@ -120,7 +120,11 @@ inline void LoopSuite(TestRunner &runner) {
         test.assertEqual(state.cargo, game::kJobCrates, "acceptance auto-loads four units");
         test.assertEqual(state.ballast, game::neutralFor(state.cargo), "the auto-load leaves neutral trim");
         test.assertEqual(state.docked, static_cast<int8_t>(station), "acceptance keeps the boat docked");
+#if SH_FEATURE_CAMPAIGN
+        test.assertEqual(station::initialRow(state), station::kActiveUndockRow, "selection starts on safe UNDOCK");
+#else
         test.assertEqual(station::initialRow(state), station::kAbandonRow, "selection starts on ABANDON");
+#endif
         test.assertEqual(station::activate(station::kActiveUndockRow, state), station::kActionUndocked, "A on UNDOCK leaves the berth");
         test.assertEqual(state.docked, static_cast<int8_t>(-1), "undock returns to free flight");
         test.assertEqual(state.dockCooldown, station::kUndockCooldown, "undock arms the re-dock cooldown");

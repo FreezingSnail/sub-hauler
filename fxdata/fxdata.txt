@@ -111,3 +111,31 @@ string txt_dev_noclip = 'DEV NOCLIP  A FAST'
 // Native terrain panorama: 2560 columns x 160 eight-pixel pages, no header.
 // Static rock only; stations and dynamic overlays compose after streaming.
 raw_t explorationTerrain = "../fxdata/tables/exploration-terrain.bin"
+
+// Voyage app integration (sub-hauler-7px.4): Continue, checkpoints, rescue and
+// save-failure UX. Appended after every shipped symbol so all prior FX offsets
+// remain flash ABI.
+string txt_sub_hauler = 'SUB-HAULER'
+string txt_continue = 'CONTINUE'
+string txt_new_voyage = 'NEW VOYAGE'
+string txt_save_ready = 'SAVE READY'
+string txt_no_save = 'NO SAVE'
+string txt_save_corrupt = 'SAVE CORRUPT'
+string txt_save_incompatible = 'SAVE INCOMPATIBLE'
+string txt_save_unreadable = 'SAVE UNREADABLE'
+string txt_replace_voyage = 'REPLACE VOYAGE?'
+string txt_keep_chart = 'KEEP OLD CHART?'
+string txt_yes_no = 'A YES  B NO'
+string txt_save_failed = 'SAVE FAILED'
+string txt_retry = 'RETRY'
+string txt_continue_unsaved = 'CONTINUE UNSAVED'
+string txt_resume = 'RESUME'
+string txt_rescue = 'RESCUE'
+string txt_back_last_berth = 'BACK TO LAST BERTH?'
+string txt_unsaved_lost = 'UNSAVED FINDS LOST'
+string txt_retry_berth = 'RETRY BERTH'
+string txt_title = 'TITLE'
+string txt_pause_hint = 'UP/DN A OK  B RESUME'
+string txt_save_hint = 'UP/DN A OK'
+string txt_title_save_hint = 'A SELECT  L/R HULL'
+string txt_abandon_job = 'ABANDON JOB?'

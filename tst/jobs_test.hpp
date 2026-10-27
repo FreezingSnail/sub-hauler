@@ -582,11 +582,21 @@ inline void JobsSuite(TestRunner &runner) {
         test.assertTrue(jobs::accept(state, 0), "contract accepted");
         test.assertEqual(station::rowCount(state), station::kActiveRowCount, "active board has summary, ABANDON, SHOP, UNDOCK");
         test.assertEqual(station::rowKind(station::kActiveSummaryRow, state), station::kRowJob, "summary row");
+#if SH_FEATURE_CAMPAIGN
+        test.assertEqual(station::initialRow(state), station::kActiveUndockRow, "safe UNDOCK starts the active board");
+        test.assertEqual(station::selectNext(station::kActiveUndockRow, state), station::kAbandonRow, "down reaches ABANDON");
+#if SH_FEATURE_SHOP
+        test.assertEqual(station::selectPrevious(station::kActiveUndockRow, state), station::kActiveShopRow, "up reaches SHOP");
+#else
+        test.assertEqual(station::selectPrevious(station::kActiveUndockRow, state), station::kAbandonRow, "up reaches ABANDON");
+#endif
+#else
         test.assertEqual(station::initialRow(state), station::kAbandonRow, "selection starts on ABANDON");
-        test.assertEqual(station::rowKind(station::kAbandonRow, state), station::kRowAbandon, "ABANDON row");
-        test.assertEqual(station::rowKind(station::kActiveUndockRow, state), station::kRowUndock, "UNDOCK row");
         test.assertEqual(station::selectPrevious(station::initialRow(state), state), station::kActiveUndockRow, "active board wraps upward");
         test.assertEqual(station::selectNext(station::kActiveUndockRow, state), station::initialRow(state), "active board wraps downward");
+#endif
+        test.assertEqual(station::rowKind(station::kAbandonRow, state), station::kRowAbandon, "ABANDON row");
+        test.assertEqual(station::rowKind(station::kActiveUndockRow, state), station::kRowUndock, "UNDOCK row");
         test.assertEqual(station::activate(station::kActiveSummaryRow, state), station::kActionNone, "summary row is inert");
         test.assertEqual(station::activate(station::kAbandonRow, state), station::kActionAbandoned, "ABANDON action works");
         test.assertEqual(station::rowCount(state), station::kStationRowCount, "board returns to offers after abandonment");

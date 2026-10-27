@@ -29,6 +29,7 @@
 #endif
 #include "chart_save_test.hpp"
 #include "voyage_save_test.hpp"
+#include "voyage_flow_test.hpp"
 
 #if SH_FEATURE_SONAR
 #include "sonar_test.hpp"
@@ -85,6 +86,7 @@ int main() {
 #endif
     ChartSaveSuite(runner);
     VoyageSaveSuite(runner);
+    VoyageFlowSuite(runner);
 #if SH_FEATURE_SONAR
     SonarSuite(runner);
     SonarViewSuite(runner);
