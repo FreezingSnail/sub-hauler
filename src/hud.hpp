@@ -3,6 +3,7 @@
 #include <stdint.h>
 
 #include "game.hpp"
+#include "world.hpp"
 #if SH_FEATURE_EXPLORATION
 #include "exploration_view.hpp"
 #endif
@@ -116,10 +117,22 @@ inline void draw(const game::State &state) {
 #if SH_FEATURE_EXPLORATION
     uint24_t notice = 0;
     if (state.discoveryTicks) {
-        const uint8_t kind = exploration_data::pickup(state.lastDiscovery).kind;
-        notice = kind == 1 ? txt_found_cutter : kind == 2 ? txt_found_seal : kind == 3 ? txt_found_thruster : kind == 4 ? txt_found_credits : kind == 5 ? txt_found_hull : txt_found_lens;
+#if SH_FEATURE_CAMPAIGN
+        if (state.lastDiscovery == exploration::kNone) {
+            notice = txt_survey_recorded;
+        } else
+#endif
+        {
+            const uint8_t kind = exploration_data::pickup(state.lastDiscovery).kind;
+            notice = kind == 1 ? txt_found_cutter : kind == 2 ? txt_found_seal : kind == 3 ? txt_found_thruster : kind == 4 ? txt_found_credits : kind == 5 ? txt_found_hull : txt_found_lens;
+        }
     } else if (state.contactId != exploration::kNone) {
-        notice = state.contactId < exploration_data::PICKUP_COUNT ? txt_salvage_hint : txt_cut_hint;
+#if SH_FEATURE_CAMPAIGN
+        if (state.contactId >= exploration::kSurveyBase)
+            notice = txt_survey_hint;
+        else
+#endif
+            notice = state.contactId < exploration_data::PICKUP_COUNT ? txt_salvage_hint : txt_cut_hint;
     } else {
         for (uint8_t i = 0; i < exploration_data::GATE_COUNT; ++i) {
             const exploration_data::Gate g = exploration_data::gate(i);
@@ -130,6 +143,23 @@ inline void draw(const game::State &state) {
                      : ((g.required & exploration_data::THRUSTER) && !(state.tools & exploration_data::THRUSTER)) ? txt_need_thruster
                                                                                                                   : txt_need_cutter;
         }
+#if SH_FEATURE_CAMPAIGN
+        // An inactive service mooring still reads as a clue, never as a
+        // dockable station. It never blocks travel or hides a pickup.
+        if (notice == 0) {
+            for (uint8_t i = 0; i < world::serviceBerthCount(); ++i) {
+                world::Berth berth;
+                if (!world::serviceBerthInfo(i, berth) || (state.campaign & berth.milestone) != 0)
+                    continue;
+                const int16_t dx = static_cast<int16_t>(berth.pixel_x - state.x);
+                const int16_t dy = static_cast<int16_t>(berth.pixel_y - state.y);
+                if (dx > -40 && dx < 40 && dy > -32 && dy < 32) {
+                    notice = berth.milestone == 2 ? txt_repair_pump : txt_repair_lift;
+                    break;
+                }
+            }
+        }
+#endif
     }
     if (notice) {
         text::at(kHintX, kHintY);

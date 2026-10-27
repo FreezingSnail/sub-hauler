@@ -205,4 +205,39 @@ inline void WorldSuite(TestRunner &runner) {
         test.assertTrue(!world::mineInfo(8, mine), "mine bounds");
         runner.add(test);
     }
+
+    {
+        Test test("generated service berth and survey metadata stays symbolic");
+        test.assertEqual(world::berthCount(), 6, "four freight berths plus two service berths");
+        test.assertEqual(world::serviceBerthCount(), 2, "both restoration berths generated");
+        test.assertEqual(world::surveyCount(), 2, "both survey rings generated");
+
+        world::Berth berth;
+        test.assertTrue(world::serviceBerthInfo(0, berth), "Pump Refuge metadata");
+        test.assertEqual(berth.id, world::BERTH_PUMP_REFUGE, "Pump Refuge berth id");
+        test.assertEqual(berth.milestone, 2, "Pump Refuge requires the PUMP bit");
+        test.assertEqual(berth.tile_x, 270, "Pump Refuge dock tile x");
+        test.assertEqual(berth.tile_y, 26, "Pump Refuge dock tile y");
+        test.assertEqual(berth.pixel_x, 2160, "Pump Refuge dock pixel x");
+        test.assertEqual(berth.pixel_y, 208, "Pump Refuge dock pixel y");
+        test.assertEqual(world::SETTLEMENTS[0].id, 0, "freight ids remain contiguous");
+
+        test.assertTrue(world::berthInfo(world::BERTH_PUMP_REFUGE, berth), "berthInfo resolves Pump Refuge");
+        test.assertEqual(berth.id, world::BERTH_PUMP_REFUGE, "Pump Refuge id through berthInfo");
+        test.assertTrue(world::berthInfo(world::BERTH_LOWER_GANTRY, berth), "berthInfo resolves Lower Gantry");
+        test.assertEqual(berth.milestone, 4, "Lower Gantry requires the LIFT bit");
+        test.assertTrue(world::berthInfo(2, berth), "berthInfo resolves a freight settlement");
+        test.assertEqual(berth.milestone, 0, "freight berths have no restoration milestone");
+        test.assertTrue(!world::berthInfo(6, berth), "no phantom berth id");
+
+        world::Survey survey;
+        test.assertTrue(world::surveyInfo(0, survey), "pump survey metadata");
+        test.assertEqual(survey.id, world::SURVEY_PUMP, "pump survey id");
+        test.assertEqual(survey.pixel_x, 2192, "pump survey pixel x");
+        test.assertEqual(survey.pixel_y, 176, "pump survey pixel y");
+        test.assertTrue(world::surveyInfo(1, survey), "lift survey metadata");
+        test.assertEqual(survey.id, world::SURVEY_LIFT, "lift survey id");
+        test.assertTrue(!world::surveyInfo(2, survey), "survey bounds");
+        runner.add(test);
+    }
 }

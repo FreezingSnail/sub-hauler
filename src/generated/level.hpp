@@ -52,6 +52,13 @@ constexpr uint8_t  ROUTE_REWARD_MAX  = 165;
 constexpr uint16_t ROUTE_DEADLINE_MAX = 49440;
 constexpr uint8_t  MINE_COUNT        = 8;
 constexpr uint8_t  CURRENT_COUNT     = 8;
+constexpr uint8_t  BERTH_COUNT       = 6;
+constexpr uint8_t  SERVICE_BERTH_COUNT = 2;
+constexpr uint8_t  SURVEY_COUNT      = 2;
+constexpr uint8_t BERTH_PUMP_REFUGE = 4;
+constexpr uint8_t BERTH_LOWER_GANTRY = 5;
+constexpr uint8_t SURVEY_PUMP = 0;
+constexpr uint8_t SURVEY_LIFT = 1;
 constexpr int16_t  DOCK_CLEARANCE_PX = 42;
 constexpr uint8_t  MINE_RADIUS_PX    = 3;
 constexpr uint8_t  CURRENT_WIDTH_PX  = 32;
@@ -93,6 +100,28 @@ struct Current {
     uint8_t h;
     int16_t ax_q8;
     int16_t ay_q8;
+};
+
+// Service-only berth: a generated docking point with its restoration
+// milestone bit. Berth ids 0..SETTLEMENT_COUNT-1 are freight settlements;
+// these records are appended ids and never enter the offer economy.
+struct Berth {
+    uint8_t id;
+    uint8_t milestone;
+    const char* name;
+    int16_t tile_x;
+    int16_t tile_y;
+    int16_t pixel_x;
+    int16_t pixel_y;
+};
+
+// Survey ring: a survey fact source in navigable water. Ids are stable and
+// distinct from pickup and gate ids; a ring never occupies the cargo slot.
+struct Survey {
+    uint8_t id;
+    const char* name;
+    int16_t pixel_x;
+    int16_t pixel_y;
 };
 
 #if defined(__AVR__)
@@ -204,6 +233,70 @@ inline bool currentMeta(uint8_t id, Current &out) {
     return true;
 }
 
+struct ServiceBerthMeta {
+    uint8_t id;
+    uint8_t milestone;
+    int16_t pixel_x;
+    int16_t pixel_y;
+};
+
+const ServiceBerthMeta SERVICE_BERTH_META[SERVICE_BERTH_COUNT] PROGMEM = {
+    {4, 2, 2160, 208},
+    {5, 4, 1776, 808},
+};
+
+inline bool serviceBerthMeta(uint8_t index, Berth &out) {
+    if (index >= SERVICE_BERTH_COUNT)
+        return false;
+    out.id = pgm_read_byte(&SERVICE_BERTH_META[index].id);
+    out.milestone = pgm_read_byte(&SERVICE_BERTH_META[index].milestone);
+    out.name = nullptr;
+    out.pixel_x = static_cast<int16_t>(pgm_read_word(&SERVICE_BERTH_META[index].pixel_x));
+    out.pixel_y = static_cast<int16_t>(pgm_read_word(&SERVICE_BERTH_META[index].pixel_y));
+    out.tile_x = static_cast<int16_t>(out.pixel_x / TILE_PIXELS);
+    out.tile_y = static_cast<int16_t>(out.pixel_y / TILE_PIXELS);
+    return true;
+}
+
+inline bool berthMeta(uint8_t id, Berth &out) {
+    if (id < SETTLEMENT_COUNT) {
+        out.id = id;
+        out.milestone = 0;
+        out.name = nullptr;
+        out.pixel_x = static_cast<int16_t>(pgm_read_word(&SETTLEMENT_META[id].pixel_x));
+        out.pixel_y = static_cast<int16_t>(pgm_read_word(&SETTLEMENT_META[id].pixel_y));
+        out.tile_x = static_cast<int16_t>(out.pixel_x / TILE_PIXELS);
+        out.tile_y = static_cast<int16_t>(out.pixel_y / TILE_PIXELS);
+        return true;
+    }
+    for (uint8_t i = 0; i < SERVICE_BERTH_COUNT; ++i) {
+        if (pgm_read_byte(&SERVICE_BERTH_META[i].id) == id)
+            return serviceBerthMeta(i, out);
+    }
+    return false;
+}
+
+struct SurveyMeta {
+    uint8_t id;
+    int16_t pixel_x;
+    int16_t pixel_y;
+};
+
+const SurveyMeta SURVEY_META[SURVEY_COUNT] PROGMEM = {
+    {0, 2192, 176},
+    {1, 2176, 632},
+};
+
+inline bool surveyMeta(uint8_t index, Survey &out) {
+    if (index >= SURVEY_COUNT)
+        return false;
+    out.id = pgm_read_byte(&SURVEY_META[index].id);
+    out.name = nullptr;
+    out.pixel_x = static_cast<int16_t>(pgm_read_word(&SURVEY_META[index].pixel_x));
+    out.pixel_y = static_cast<int16_t>(pgm_read_word(&SURVEY_META[index].pixel_y));
+    return true;
+}
+
 #else
 
 constexpr Settlement SETTLEMENTS[SETTLEMENT_COUNT] = {
@@ -278,6 +371,51 @@ inline bool currentMeta(uint8_t id, Current &out) {
     if (id >= CURRENT_COUNT)
         return false;
     out = CURRENTS[id];
+    return true;
+}
+
+constexpr Berth SERVICE_BERTHS[SERVICE_BERTH_COUNT] = {
+    {4, 2, "PUMP REFUGE", 270, 26, 2160, 208},
+    {5, 4, "LOWER GANTRY", 222, 101, 1776, 808},
+};
+
+inline bool serviceBerthMeta(uint8_t index, Berth &out) {
+    if (index >= SERVICE_BERTH_COUNT)
+        return false;
+    out = SERVICE_BERTHS[index];
+    return true;
+}
+
+inline bool berthMeta(uint8_t id, Berth &out) {
+    if (id < SETTLEMENT_COUNT) {
+        const Settlement &settlement = SETTLEMENTS[id];
+        out.id = settlement.id;
+        out.milestone = 0;
+        out.name = settlement.name;
+        out.tile_x = settlement.tile_x;
+        out.tile_y = settlement.tile_y;
+        out.pixel_x = settlement.pixel_x;
+        out.pixel_y = settlement.pixel_y;
+        return true;
+    }
+    for (uint8_t i = 0; i < SERVICE_BERTH_COUNT; ++i) {
+        if (SERVICE_BERTHS[i].id == id) {
+            out = SERVICE_BERTHS[i];
+            return true;
+        }
+    }
+    return false;
+}
+
+constexpr Survey SURVEYS[SURVEY_COUNT] = {
+    {0, "PUMP IMPELLER", 2192, 176},
+    {1, "LIFT CABLE", 2176, 632},
+};
+
+inline bool surveyMeta(uint8_t index, Survey &out) {
+    if (index >= SURVEY_COUNT)
+        return false;
+    out = SURVEYS[index];
     return true;
 }
 

@@ -27,6 +27,17 @@ void setup() {
     ok = world::settlementInfo(3, station) && ok;
     ok = ok && station.pixel_x == exploration_data::DOCK_D_X && station.pixel_y == exploration_data::DOCK_D_Y;
     ok = ok && station.pixel_y > exploration_data::PRESSURE_Y && !world::settlementInfo(world::SETTLEMENT_COUNT, station);
+    world::Berth berth;
+    ok = world::serviceBerthInfo(0, berth) && ok;
+    ok = ok && berth.id == world::BERTH_PUMP_REFUGE && berth.milestone == 2 && berth.pixel_x == 2160 && berth.pixel_y == 208;
+    ok = world::berthInfo(world::BERTH_LOWER_GANTRY, berth) && ok;
+    ok = ok && berth.milestone == 4 && berth.pixel_x == 1776 && berth.pixel_y == 808;
+    ok = ok && world::berthCount() == 6 && world::serviceBerthCount() == 2 && !world::berthInfo(6, berth);
+    world::Survey survey;
+    ok = world::surveyInfo(0, survey) && ok;
+    ok = ok && survey.id == world::SURVEY_PUMP && survey.pixel_x == 2192 && survey.pixel_y == 176;
+    ok = ok && world::surveyInfo(1, survey) && survey.id == world::SURVEY_LIFT;
+    ok = ok && world::surveyCount() == 2 && !world::surveyInfo(2, survey);
     world::Mine mine;
     ok = world::mineInfo(1, mine) && ok;
     ok = ok && mine.x == exploration_data::ROOM_K_X + 20 && mine.y == exploration_data::ROOM_K_Y - 20;

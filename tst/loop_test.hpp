@@ -106,7 +106,11 @@ inline void LoopSuite(TestRunner &runner) {
         test.assertEqual(station::rowCount(state), station::kActiveRowCount, "the board switches to the active shape");
         test.assertEqual(station::rowKind(station::kActiveSummaryRow, state), station::kRowJob, "summary row reports the contract");
 #if SH_FEATURE_SHOP
+#if SH_FEATURE_CAMPAIGN
+        test.assertEqual(station::kActiveRowCount, 5, "campaign active shop board has five rows");
+#else
         test.assertEqual(station::kActiveRowCount, 4, "active shop board has four rows");
+#endif
         test.assertEqual(station::rowKind(station::kActiveShopRow, state), station::kRowShop, "active board keeps a SHOP row");
         test.assertEqual(station::activate(station::kActiveShopRow, state), station::kActionShop, "active SHOP row opens the shop");
         test.assertEqual(station::shopRow(state), station::kActiveShopRow, "active board returns to its SHOP row");

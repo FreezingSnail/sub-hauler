@@ -5,6 +5,7 @@
 #if SH_FEATURE_CAMPAIGN
 
 #include "../src/campaign.hpp"
+#include "../src/exploration.hpp"
 #include "../src/game.hpp"
 #include "../src/jobs.hpp"
 #include "../src/station.hpp"
@@ -318,7 +319,6 @@ inline void CampaignSuite(TestRunner &runner) {
         test.assertTrue(jobs::accept(state, 1), "accept express work");
         test.assertEqual(state.activeJob.kind, game::kJobKindExpress, "express kind stored");
         const uint8_t expressDestination = state.activeJob.to;
-        const uint16_t expressReward = state.activeJob.reward;
         const uint16_t expressDeadline = state.activeJob.deadline;
         const uint16_t creditsBefore = state.credits;
         uint8_t wrong = game::kJobNone;
@@ -434,6 +434,84 @@ inline void CampaignSuite(TestRunner &runner) {
         test.assertTrue(!campaign::activeJobValid(state), "express needs its route deadline and reward");
         state.activeJob.kind = 9;
         test.assertTrue(!campaign::activeJobValid(state), "unknown job kind is invalid");
+        runner.add(test);
+    }
+
+    {
+        Test test("survey rings dwell slowly, record once and never occupy the cargo slot");
+        game::State state;
+        game::reset(state);
+        world::Survey survey;
+        test.assertTrue(world::surveyInfo(0, survey), "generated pump survey exists");
+        state.x = survey.pixel_x;
+        state.y = survey.pixel_y;
+        state.vxQ8 = 0;
+        state.vyQ8 = 0;
+        test.assertTrue(!campaign::surveyRecorded(state, campaign::kPumpSurveyId), "survey starts unrecorded");
+        for (uint8_t i = 0; i < exploration::kDwellTicks; ++i)
+            exploration::update(state);
+        test.assertTrue(campaign::surveyRecorded(state, campaign::kPumpSurveyId), "pump survey records after the dwell");
+        test.assertTrue(!game::hasActiveJob(state), "survey never occupies the cargo slot");
+        test.assertEqual(state.cargo, 0, "survey loads no cargo");
+        test.assertEqual(state.lastDiscovery, exploration::kNone, "survey discovery uses the survey marker");
+        test.assertTrue(state.discoveryTicks != 0, "survey finding is announced");
+        const uint8_t recorded = state.surveys;
+        for (uint8_t i = 0; i < exploration::kDwellTicks; ++i)
+            exploration::update(state);
+        test.assertEqual(state.surveys, recorded, "repeat dwell cannot change the survey mask");
+        test.assertTrue(campaign::recordSurvey(state, campaign::kPumpSurveyId), "survey record is repeat-safe");
+        runner.add(test);
+    }
+
+    {
+        Test test("WORK rows expose FIRST then PUMP without opening later branches");
+        game::State state;
+        game::reset(state);
+        test.assertTrue(at(state, campaign::kTidewall), "dock at Tidewall");
+        test.assertEqual(campaign::workMissionAt(state, campaign::kTidewall, 0), campaign::kFirst, "FIRST row");
+        test.assertEqual(campaign::workMissionAt(state, campaign::kTidewall, 1), campaign::kMissionNone, "no second early row");
+        test.assertEqual(campaign::workMissionAt(state, campaign::kBenthos, 0), campaign::kMissionNone, "Benthos has no cargo source");
+
+        test.assertTrue(campaign::recordSurvey(state, campaign::kPumpSurveyId), "pump survey can precede FIRST");
+        test.assertTrue(completeFirst(state), "FIRST completes");
+        test.assertEqual(campaign::workMissionAt(state, campaign::kCormorant, 0), campaign::kPump, "PUMP row at Cormorant");
+        test.assertEqual(campaign::workMissionAt(state, campaign::kCormorant, 1), campaign::kMissionNone, "later branches stay hidden");
+        test.assertEqual(campaign::workMissionAt(state, campaign::kBenthos, 0), campaign::kMissionNone, "LIFT waits for its integration");
+        runner.add(test);
+    }
+
+    {
+        Test test("Pump Refuge stays inactive until PUMP, then docks as a service berth");
+        world::Berth berth;
+        test.assertTrue(world::serviceBerthInfo(0, berth), "generated Pump Refuge berth");
+
+        game::State locked;
+        game::reset(locked);
+        locked.x = berth.pixel_x;
+        locked.y = berth.pixel_y;
+        locked.vxQ8 = 0;
+        locked.vyQ8 = 0;
+        test.assertTrue(!station::dock(locked), "inactive mooring cannot be docked");
+
+        game::State state;
+        game::reset(state);
+        state.campaign = campaign::kMilestonePump;
+        state.x = berth.pixel_x;
+        state.y = berth.pixel_y;
+        state.vxQ8 = 0;
+        state.vyQ8 = 0;
+        state.air = 1;
+        state.ballast = 100;
+        test.assertTrue(station::dock(state), "restored Pump Refuge docks");
+        test.assertEqual(state.docked, static_cast<int8_t>(campaign::kPumpRefuge), "Pump Refuge id");
+        test.assertEqual(state.x, berth.pixel_x, "dock snaps to generated x");
+        test.assertEqual(state.y, berth.pixel_y, "dock snaps to generated y");
+        test.assertEqual(state.air, game::airCapacity(state), "service refills air");
+        test.assertEqual(state.ballast, game::neutralFor(state.cargo), "service neutralizes trim");
+        test.assertEqual(state.offerCount, 0, "service berth publishes no freight offers");
+        test.assertEqual(station::rowCount(state), 1, "smaller service board");
+        test.assertEqual(station::rowKind(0, state), station::kRowUndock, "only UNDOCK is selectable");
+        test.assertTrue(station::undock(state), "service berth undocks");
         runner.add(test);
     }
 }

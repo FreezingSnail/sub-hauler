@@ -13,6 +13,9 @@
 #if SH_FEATURE_JOBS
 #include "jobs.hpp"
 #endif
+#if SH_FEATURE_CAMPAIGN
+#include "campaign.hpp"
+#endif
 
 // Docking, station service, and station-row rules. Pure C++: no Arduino
 // headers, no cart reads here, and no display access. The sketch owns the
@@ -65,7 +68,11 @@ constexpr uint8_t kOfferRows = game::kJobOffers;
 #else
 constexpr uint8_t kOfferRows = 0;
 #endif
+#if SH_FEATURE_CAMPAIGN
+constexpr uint8_t kWorkRow = kOfferRows;
+#else
 constexpr uint8_t kServiceRow = kOfferRows;
+#endif
 #if SH_FEATURE_SHOP
 constexpr uint8_t kShopRow = static_cast<uint8_t>(kOfferRows + 1);
 constexpr uint8_t kUndockRow = static_cast<uint8_t>(kOfferRows + 2);
@@ -79,7 +86,17 @@ constexpr uint8_t kFirstRow = 0;
 #if SH_FEATURE_JOBS
 constexpr uint8_t kActiveSummaryRow = 0;
 constexpr uint8_t kAbandonRow = 1;
+#if SH_FEATURE_CAMPAIGN
+constexpr uint8_t kActiveWorkRow = 2;
 #if SH_FEATURE_SHOP
+constexpr uint8_t kActiveShopRow = 3;
+constexpr uint8_t kActiveUndockRow = 4;
+constexpr uint8_t kActiveRowCount = 5;
+#else
+constexpr uint8_t kActiveUndockRow = 3;
+constexpr uint8_t kActiveRowCount = 4;
+#endif
+#elif SH_FEATURE_SHOP
 constexpr uint8_t kActiveShopRow = 2;
 constexpr uint8_t kActiveUndockRow = 3;
 constexpr uint8_t kActiveRowCount = 4;
@@ -91,7 +108,11 @@ constexpr uint8_t kActiveRowCount = 3;
 
 enum RowKind : uint8_t {
     kRowOffer,
+#if SH_FEATURE_CAMPAIGN
+    kRowWork,
+#else
     kRowService,
+#endif
 #if SH_FEATURE_SHOP
     kRowShop,
 #endif
@@ -107,6 +128,10 @@ enum Action : uint8_t {
     kActionNone,
     kActionServiced,
     kActionUndocked
+#if SH_FEATURE_CAMPAIGN
+    ,
+    kActionWork
+#endif
 #if SH_FEATURE_SHOP
     ,
     kActionShop
@@ -127,7 +152,18 @@ inline bool jobActive(const State &state) {
 #endif
 }
 
+inline bool serviceBerth(const State &state) {
+#if SH_FEATURE_CAMPAIGN
+    return state.docked >= 0 && !campaign::freightBerth(static_cast<uint8_t>(state.docked));
+#else
+    (void)state;
+    return false;
+#endif
+}
+
 inline uint8_t rowCount(const State &state) {
+    if (serviceBerth(state))
+        return 1;   // service-only berth: automatic service, B/A undocks
 #if SH_FEATURE_JOBS
     if (jobActive(state))
         return kActiveRowCount;
@@ -136,12 +172,18 @@ inline uint8_t rowCount(const State &state) {
 }
 
 inline RowKind rowKind(uint8_t row, const State &state) {
+    if (serviceBerth(state))
+        return kRowUndock;
 #if SH_FEATURE_JOBS
     if (jobActive(state)) {
         if (row == kActiveSummaryRow)
             return kRowJob;
         if (row == kAbandonRow)
             return kRowAbandon;
+#if SH_FEATURE_CAMPAIGN
+        if (row == kActiveWorkRow)
+            return kRowWork;
+#endif
 #if SH_FEATURE_SHOP
         if (row == kActiveShopRow)
             return kRowShop;
@@ -151,8 +193,13 @@ inline RowKind rowKind(uint8_t row, const State &state) {
 #endif
     if (row < kOfferRows)
         return kRowOffer;
+#if SH_FEATURE_CAMPAIGN
+    if (row == kWorkRow)
+        return kRowWork;
+#else
     if (row == kServiceRow)
         return kRowService;
+#endif
 #if SH_FEATURE_SHOP
     if (row == kShopRow)
         return kRowShop;
@@ -165,6 +212,8 @@ inline RowKind rowKind(uint8_t row, const State &state) {
 // sketch intercepts ABANDON for its own confirmation. The pre-campaign jobs
 // contract keeps its historical ABANDON start.
 inline uint8_t initialRow(const State &state) {
+    if (serviceBerth(state))
+        return kFirstRow;
 #if SH_FEATURE_JOBS
     if (jobActive(state)) {
 #if SH_FEATURE_CAMPAIGN
@@ -181,6 +230,8 @@ inline uint8_t initialRow(const State &state) {
 // summary row out of the cycle but still allows UNDOCK to be the initial
 // selection, so ABANDON stays reachable but never accidental.
 inline uint8_t firstSelectable(const State &state) {
+    if (serviceBerth(state))
+        return kFirstRow;
 #if SH_FEATURE_JOBS
     if (jobActive(state))
         return kAbandonRow;
@@ -204,6 +255,8 @@ inline uint8_t shopRow(const State &state) {
 #endif
 
 inline uint8_t selectableCount(const State &state) {
+    if (serviceBerth(state))
+        return 1;
 #if SH_FEATURE_JOBS
     if (jobActive(state)) {
 #if SH_FEATURE_CAMPAIGN
@@ -251,13 +304,28 @@ inline bool nearestDock(const State &state, uint8_t &settlementId) {
     int32_t bestSq = 0;
     bool found = false;
 
-    for (uint8_t id = 0; id < world::settlementCount(); ++id) {
+#if SH_FEATURE_CAMPAIGN
+    const uint8_t berthCount = world::berthCount();
+#else
+    const uint8_t berthCount = world::settlementCount();
+#endif
+    for (uint8_t id = 0; id < berthCount; ++id) {
+#if SH_FEATURE_CAMPAIGN
+        world::Berth berth;
+        if (!world::berthInfo(id, berth) || !campaign::berthAvailable(state, id))
+            continue;
+        const int16_t pixelX = berth.pixel_x;
+        const int16_t pixelY = berth.pixel_y;
+#else
         world::Settlement settlement;
         if (!world::settlementInfo(id, settlement))
             continue;
+        const int16_t pixelX = settlement.pixel_x;
+        const int16_t pixelY = settlement.pixel_y;
+#endif
 
-        const int32_t dx = static_cast<int32_t>(settlement.pixel_x) - state.x;
-        const int32_t dy = static_cast<int32_t>(settlement.pixel_y) - state.y;
+        const int32_t dx = static_cast<int32_t>(pixelX) - state.x;
+        const int32_t dy = static_cast<int32_t>(pixelY) - state.y;
         const int32_t distanceSq = dx * dx + dy * dy;
         if (distanceSq > kDockRadiusSq)
             continue;
@@ -303,14 +371,24 @@ inline bool dock(State &state) {
     if (!inRing || !slowEnoughToDock(state))
         return false;
 
+#if SH_FEATURE_CAMPAIGN
+    world::Berth berth;
+    if (!world::berthInfo(settlementId, berth))
+        return false;
+    const int16_t dockX = berth.pixel_x;
+    const int16_t dockY = berth.pixel_y;
+#else
     world::Settlement settlement;
     if (!world::settlementInfo(settlementId, settlement))
         return false;
+    const int16_t dockX = settlement.pixel_x;
+    const int16_t dockY = settlement.pixel_y;
+#endif
 
     state.docked = static_cast<int8_t>(settlementId);
     state.dockCooldown = 0;
-    state.x = settlement.pixel_x;
-    state.y = settlement.pixel_y;
+    state.x = dockX;
+    state.y = dockY;
     state.xFrac = 0;
     state.yFrac = 0;
     state.vxQ8 = 0;
@@ -318,8 +396,16 @@ inline bool dock(State &state) {
 
     service(state);
 #if SH_FEATURE_JOBS
-    // Resolve a contract ending at this station (if any), then restock offers.
+    // Freight berths resolve a contract ending here, then restock offers.
+    // Service-only berths refill/repair/save but never trade.
+#if SH_FEATURE_CAMPAIGN
+    if (campaign::freightBerth(settlementId))
+        jobs::onDock(state, settlementId);
+    else
+        state.offerCount = 0;
+#else
     jobs::onDock(state, settlementId);
+#endif
 #endif
     snapCamera(state);
     return true;
@@ -362,9 +448,14 @@ inline Action activate(uint8_t selected, State &state) {
         return kActionNone;
 
     switch (rowKind(selected, state)) {
+#if SH_FEATURE_CAMPAIGN
+    case kRowWork:
+        return kActionWork;
+#else
     case kRowService:
         service(state);
         return kActionServiced;
+#endif
 #if SH_FEATURE_SHOP
     case kRowShop:
         return kActionShop;

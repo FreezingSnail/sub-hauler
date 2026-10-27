@@ -3,6 +3,7 @@
 #if SH_FEATURE_EXPLORATION
 #include "game.hpp"
 #include "generated/exploration.hpp"
+#include "world.hpp"
 
 // Pure run-local exploration rules; immutable records stay in program flash.
 namespace exploration {
@@ -10,6 +11,12 @@ using game::State;
 namespace data = exploration_data;
 constexpr uint8_t kNone = 0xFF;
 constexpr uint8_t kDwellTicks = 30;
+// Contact-id namespace: pickup ids first, then gate dwell targets, then the
+// campaign survey rings. The ranges never share a value.
+#if SH_FEATURE_CAMPAIGN
+constexpr uint8_t kSurveyBase = static_cast<uint8_t>(data::PICKUP_COUNT + data::GATE_COUNT);
+constexpr uint8_t kSurveyLast = static_cast<uint8_t>(kSurveyBase + world::SURVEY_COUNT - 1);
+#endif
 constexpr int16_t kOperateSpeed = 10 * game::kQ8One;
 
 inline bool slow(const State &s) {
@@ -69,6 +76,19 @@ inline void update(State &s) {
     }
 #endif
     uint8_t target = kNone;
+#if SH_FEATURE_CAMPAIGN
+    // Survey rings record a fact without occupying the cargo slot. They can be
+    // found before the campaign asks for them and never repeat.
+    for (uint8_t i = 0; i < world::surveyCount(); ++i) {
+        world::Survey survey;
+        if (!world::surveyInfo(i, survey))
+            continue;
+        if (s.surveys & (static_cast<uint8_t>(1u) << survey.id))
+            continue;
+        if (s.x >= survey.pixel_x - 18 && s.x <= survey.pixel_x + 18 && s.y >= survey.pixel_y - 12 && s.y <= survey.pixel_y + 12 && slow(s))
+            target = static_cast<uint8_t>(kSurveyBase + i);
+    }
+#endif
     for (uint8_t i = 0; i < data::GATE_COUNT; ++i) {
         const data::Gate g = data::gate(i);
         if (nearGate(s, g, 48))
@@ -95,10 +115,22 @@ inline void update(State &s) {
     if (++s.contactTicks < kDwellTicks)
         return;
     s.contactTicks = 0;
-    if (target < data::PICKUP_COUNT)
+    if (target < data::PICKUP_COUNT) {
         claim(s, target, data::pickup(target));
-    else
+    } else {
+#if SH_FEATURE_CAMPAIGN
+        if (target >= kSurveyBase) {
+            world::Survey survey;
+            if (world::surveyInfo(static_cast<uint8_t>(target - kSurveyBase), survey)) {
+                s.surveys |= static_cast<uint8_t>(1u) << survey.id;
+                s.lastDiscovery = kNone;
+                s.discoveryTicks = 180;
+            }
+            return;
+        }
+#endif
         s.openGates |= static_cast<uint16_t>(1u) << (target - data::PICKUP_COUNT);
+    }
 }
 // The final berth is available to ordinary contracts only after its seal is found.
 inline bool stationAvailable(const State &s, uint8_t id) {

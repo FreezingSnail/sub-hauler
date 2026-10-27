@@ -1968,5 +1968,39 @@
   "freight_timing": {
     "pixels_per_second": 7,
     "slack_seconds": 45
-  }
+  },
+  "service_berths": [
+    {
+      "id": 4,
+      "name": "Pump Refuge",
+      "symbol": "PUMP_REFUGE",
+      "room": "P",
+      "dock": [270, 26],
+      "milestone": "pump"
+    },
+    {
+      "id": 5,
+      "name": "Lower Gantry",
+      "symbol": "LOWER_GANTRY",
+      "room": "U",
+      "dock": [222, 101],
+      "milestone": "lift"
+    }
+  ],
+  "surveys": [
+    {
+      "id": 0,
+      "name": "Pump impeller",
+      "symbol": "PUMP",
+      "room": "P",
+      "position": [274, 22]
+    },
+    {
+      "id": 1,
+      "name": "Lift cable",
+      "symbol": "LIFT",
+      "room": "Y",
+      "position": [272, 79]
+    }
+  ]
 }

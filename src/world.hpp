@@ -227,6 +227,18 @@ inline uint8_t settlementCount() {
     return SETTLEMENT_COUNT;
 }
 
+inline uint8_t berthCount() {
+    return BERTH_COUNT;
+}
+
+inline uint8_t serviceBerthCount() {
+    return SERVICE_BERTH_COUNT;
+}
+
+inline uint8_t surveyCount() {
+    return SURVEY_COUNT;
+}
+
 inline uint8_t mineCount() {
     return MINE_COUNT;
 }
@@ -257,6 +269,20 @@ inline bool mineInfo(uint8_t id, Mine &out) {
 
 inline bool currentInfo(uint8_t id, Current &out) {
     return currentMeta(id, out);
+}
+
+// A berth is either a freight settlement (0..SETTLEMENT_COUNT-1, milestone 0)
+// or a generated service-only berth (4.., gated by its restoration milestone).
+inline bool berthInfo(uint8_t id, Berth &out) {
+    return berthMeta(id, out);
+}
+
+inline bool serviceBerthInfo(uint8_t index, Berth &out) {
+    return serviceBerthMeta(index, out);
+}
+
+inline bool surveyInfo(uint8_t index, Survey &out) {
+    return surveyMeta(index, out);
 }
 
 static_assert(CACHE_BITS == 180, "18x10 tile cache must hold 180 tiles");

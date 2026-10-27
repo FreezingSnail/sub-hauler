@@ -298,7 +298,11 @@ inline void StationSuite(TestRunner &runner) {
         game::reset(board);
 #if SH_FEATURE_JOBS
         test.assertEqual(station::rowKind(station::kFirstRow, board), station::kRowOffer, "first row is an OFFER");
+#if SH_FEATURE_CAMPAIGN
+        test.assertEqual(station::rowKind(station::kWorkRow, board), station::kRowWork, "WORK follows the offers");
+#else
         test.assertEqual(station::rowKind(station::kServiceRow, board), station::kRowService, "SERVICE follows the offers");
+#endif
 #else
         test.assertEqual(station::rowKind(station::kFirstRow, board), station::kRowService, "first row is SERVICE");
 #endif
@@ -319,12 +323,17 @@ inline void StationSuite(TestRunner &runner) {
         state.hull = 0;
 #endif
 
+#if SH_FEATURE_CAMPAIGN
+        test.assertEqual(station::activate(station::kWorkRow, state), station::kActionWork, "A on WORK opens the campaign page");
+        test.assertEqual(state.docked, static_cast<int8_t>(settlement.id), "opening WORK keeps the boat docked");
+#else
         test.assertEqual(station::activate(station::kServiceRow, state), station::kActionServiced, "A on SERVICE services");
         test.assertEqual(state.air, game::airCapacity(state), "service refills air");
 #if SH_FEATURE_HULL_DAMAGE
         test.assertEqual(state.hull, game::hullCapacity(state), "service repairs hull");
 #endif
         test.assertEqual(state.docked, static_cast<int8_t>(settlement.id), "service keeps the boat docked");
+#endif
 
 #if SH_FEATURE_SHOP
         test.assertEqual(station::activate(station::kShopRow, state), station::kActionShop, "A on SHOP opens the shop");

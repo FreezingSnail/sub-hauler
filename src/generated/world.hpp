@@ -52,6 +52,11 @@ constexpr uint8_t  ROUTE_REWARD_MAX  = 180;
 constexpr uint16_t ROUTE_DEADLINE_MAX = 14760;
 constexpr uint8_t  MINE_COUNT        = 8;
 constexpr uint8_t  CURRENT_COUNT     = 8;
+constexpr uint8_t  BERTH_COUNT       = 4;
+constexpr uint8_t  SERVICE_BERTH_COUNT = 0;
+constexpr uint8_t  SURVEY_COUNT      = 0;
+
+
 constexpr int16_t  DOCK_CLEARANCE_PX = 42;
 constexpr uint8_t  MINE_RADIUS_PX    = 3;
 constexpr uint8_t  CURRENT_WIDTH_PX  = 32;
