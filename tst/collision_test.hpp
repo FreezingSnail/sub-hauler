@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../src/pilot.hpp"
+#include "../src/pilot_view.hpp"
 #include "test.hpp"
 #include "world_test.hpp"
 
@@ -231,6 +232,184 @@ inline void CollisionSuite(TestRunner &runner) {
             game::stepWorld(state, idle(), fake);
         test.assertEqual(state.cameraX, 0, "left edge clamps");
         test.assertEqual(state.cameraY, 0, "top edge clamps");
+        runner.add(test);
+    }
+
+    {
+        Test test("camera look-ahead leads travel and eases to a stop");
+        game::State state;
+        game::resetWorld(state);
+        place(state, 500, 300);
+
+        // Zero velocity reproduces the centred framing, including at spawn.
+        test.assertEqual(game::cameraLookAheadQ8(0), 0, "zero velocity has no look-ahead");
+        test.assertEqual(game::cameraLookAheadQ8(state.vxQ8), 0, "idle x look-ahead is zero");
+        test.assertEqual(game::cameraLookAheadQ8(state.vyQ8), 0, "idle y look-ahead is zero");
+        test.assertEqual(game::cameraLookAheadQ8(1), 0, "+1 truncates to zero");
+        test.assertEqual(game::cameraLookAheadQ8(-1), 0, "-1 truncates to zero");
+        test.assertEqual(game::cameraLookAheadQ8(511), 0, "+511 truncates to zero");
+        test.assertEqual(game::cameraLookAheadQ8(-511), 0, "-511 truncates to zero");
+        test.assertEqual(game::cameraLookAheadQ8(512), 1, "+512 leads one pixel");
+        test.assertEqual(game::cameraLookAheadQ8(-512), -1, "-512 leads one pixel symmetrically");
+        test.assertEqual(game::cameraTargetX(state), 456, "idle target keeps centred framing");
+        test.assertEqual(game::cameraTargetY(state), 268, "idle target keeps centred framing y");
+
+        state.vxQ8 = game::kMaxVxBaseQ8;
+        state.vyQ8 = game::kMaxVyQ8;
+        test.assertEqual(game::cameraLookAheadQ8(state.vxQ8), 15, "base top speed leads 15 px");
+        test.assertEqual(game::cameraLookAheadQ8(state.vyQ8), 10, "max vertical speed leads 10 px");
+        test.assertEqual(game::cameraTargetX(state), 471, "forward target adds x look-ahead");
+        test.assertEqual(game::cameraTargetY(state), 278, "down target adds y look-ahead");
+
+        for (int i = 0; i < 100; ++i)
+            game::updateCamera(state);
+        test.assertEqual(state.cameraX, 471, "camera converges to forward look-ahead");
+        test.assertEqual(state.cameraY, 278, "camera converges to down look-ahead");
+
+        const cave::Camera camera = pilot_view::cameraForState(state);
+        const int16_t left = static_cast<int16_t>(state.x - camera.tileX * world::TILE_PIXELS - game::kHullHalfW);
+        const int16_t top = static_cast<int16_t>(state.y - camera.tileY * world::TILE_PIXELS - game::kHullHalfH);
+        test.assertTrue(pilot_view::visible(left, top), "hull stays visible at full look-ahead");
+        test.assertEqual(left, 23, "look-ahead hull left stays on screen");
+        test.assertEqual(top, 24, "look-ahead hull top stays on screen");
+        runner.add(test);
+    }
+
+    {
+        Test test("camera reversal moves partway then converges to the opposite lead");
+        game::State state;
+        game::resetWorld(state);
+        place(state, 500, 300);
+        state.vxQ8 = game::kMaxVxBaseQ8;
+        state.vyQ8 = game::kMaxVyQ8;
+        for (int i = 0; i < 100; ++i)
+            game::updateCamera(state);
+
+        const int16_t aheadX = state.cameraX;
+        const int16_t aheadY = state.cameraY;
+        state.vxQ8 = static_cast<int16_t>(-game::kMaxVxBaseQ8);
+        state.vyQ8 = static_cast<int16_t>(-game::kMaxVyQ8);
+        test.assertEqual(game::cameraTargetX(state), 441, "reverse target flips x lead");
+        test.assertEqual(game::cameraTargetY(state), 258, "reverse target flips y lead");
+
+        game::updateCamera(state);
+        test.assertEqual(state.cameraX, 464, "reverse moves only one quarter step");
+        test.assertEqual(state.cameraY, 273, "reverse moves only one quarter step y");
+        test.assertTrue(state.cameraX > 441 && state.cameraX < aheadX, "reversed x stays between targets");
+        test.assertTrue(state.cameraY > 258 && state.cameraY < aheadY, "reversed y stays between targets");
+
+        for (int i = 0; i < 100; ++i) {
+            game::updateCamera(state);
+            test.assertTrue(state.cameraX >= 441 && state.cameraX <= aheadX, "reversed x never snaps");
+            test.assertTrue(state.cameraY >= 258 && state.cameraY <= aheadY, "reversed y never snaps");
+        }
+        test.assertEqual(state.cameraX, 441, "camera converges to reverse x lead");
+        test.assertEqual(state.cameraY, 258, "camera converges to reverse y lead");
+
+        const cave::Camera camera = pilot_view::cameraForState(state);
+        const int16_t left = static_cast<int16_t>(state.x - camera.tileX * world::TILE_PIXELS - game::kHullHalfW);
+        const int16_t top = static_cast<int16_t>(state.y - camera.tileY * world::TILE_PIXELS - game::kHullHalfH);
+        test.assertTrue(pilot_view::visible(left, top), "reversed hull stays visible");
+        runner.add(test);
+    }
+
+    {
+        Test test("camera stop eases back to the centred target");
+        game::State state;
+        game::resetWorld(state);
+        place(state, 500, 300);
+        state.vxQ8 = game::kMaxVxBaseQ8;
+        state.vyQ8 = game::kMaxVyQ8;
+        for (int i = 0; i < 100; ++i)
+            game::updateCamera(state);
+
+        state.vxQ8 = 0;
+        state.vyQ8 = 0;
+        test.assertEqual(game::cameraTargetX(state), 456, "stopped target returns to centre");
+        test.assertEqual(game::cameraTargetY(state), 268, "stopped target returns to centre y");
+
+        game::updateCamera(state);
+        test.assertEqual(state.cameraX, 468, "stop moves only one quarter step");
+        test.assertEqual(state.cameraY, 276, "stop moves only one quarter step y");
+        test.assertTrue(state.cameraX > 456, "stopped x eases back");
+        test.assertTrue(state.cameraY > 268, "stopped y eases back");
+
+        for (int i = 0; i < 100; ++i) {
+            game::updateCamera(state);
+            test.assertTrue(state.cameraX >= 456, "stopped x never overshoots centre");
+            test.assertTrue(state.cameraY >= 268, "stopped y never overshoots centre");
+        }
+        test.assertEqual(state.cameraX, 456, "camera settles on centred x");
+        test.assertEqual(state.cameraY, 268, "camera settles on centred y");
+        runner.add(test);
+    }
+
+    {
+        Test test("camera look-ahead clamps at world edges and keeps the hull visible");
+        game::State state;
+        game::resetWorld(state);
+
+        // Lead right/down from an unfollowed camera and park on both maxima.
+        place(state, 2500, 1250);
+        state.cameraX = 0;
+        state.cameraY = 0;
+        state.vxQ8 = game::kMaxVxBaseQ8;
+        state.vyQ8 = game::kMaxVyQ8;
+        test.assertEqual(game::cameraTargetX(state), game::kCameraMaxX, "right edge target clamps");
+        test.assertEqual(game::cameraTargetY(state), game::kCameraMaxY, "bottom edge target clamps");
+        for (int i = 0; i < 200; ++i) {
+            game::updateCamera(state);
+            test.assertTrue(state.cameraX >= 0 && state.cameraX <= game::kCameraMaxX, "camera x stays in world");
+            test.assertTrue(state.cameraY >= 0 && state.cameraY <= game::kCameraMaxY, "camera y stays in world");
+        }
+        test.assertEqual(state.cameraX, game::kCameraMaxX, "right edge camera clamps");
+        test.assertEqual(state.cameraY, game::kCameraMaxY, "bottom edge camera clamps");
+        {
+            const cave::Camera camera = pilot_view::cameraForState(state);
+            const int16_t left = static_cast<int16_t>(state.x - camera.tileX * world::TILE_PIXELS - game::kHullHalfW);
+            const int16_t top = static_cast<int16_t>(state.y - camera.tileY * world::TILE_PIXELS - game::kHullHalfH);
+            test.assertTrue(pilot_view::visible(left, top), "hull visible at right/bottom edge");
+        }
+
+        // Lead left/up from the far corner and park on both minima.
+        place(state, 50, 30);
+        state.cameraX = game::kCameraMaxX;
+        state.cameraY = game::kCameraMaxY;
+        state.vxQ8 = static_cast<int16_t>(-game::kMaxVxBaseQ8);
+        state.vyQ8 = static_cast<int16_t>(-game::kMaxVyQ8);
+        test.assertEqual(game::cameraTargetX(state), 0, "left edge target clamps");
+        test.assertEqual(game::cameraTargetY(state), 0, "top edge target clamps");
+        for (int i = 0; i < 200; ++i)
+            game::updateCamera(state);
+        test.assertEqual(state.cameraX, 0, "left edge camera clamps");
+        test.assertEqual(state.cameraY, 0, "top edge camera clamps");
+        {
+            const cave::Camera camera = pilot_view::cameraForState(state);
+            const int16_t left = static_cast<int16_t>(state.x - camera.tileX * world::TILE_PIXELS - game::kHullHalfW);
+            const int16_t top = static_cast<int16_t>(state.y - camera.tileY * world::TILE_PIXELS - game::kHullHalfH);
+            test.assertTrue(pilot_view::visible(left, top), "hull visible at left/top edge");
+        }
+        runner.add(test);
+    }
+
+    {
+        Test test("zero velocity spawn target matches snapCamera");
+        game::State state;
+        game::resetWorld(state);
+        test.assertEqual(state.vxQ8, 0, "spawn velocity x is zero");
+        test.assertEqual(state.vyQ8, 0, "spawn velocity y is zero");
+        test.assertEqual(game::cameraLookAheadQ8(state.vxQ8), 0, "spawn x has no look-ahead");
+        test.assertEqual(game::cameraLookAheadQ8(state.vyQ8), 0, "spawn y has no look-ahead");
+        test.assertEqual(state.cameraX, game::cameraTargetX(state), "spawn camera x snapped");
+        test.assertEqual(state.cameraY, game::cameraTargetY(state), "spawn camera y snapped");
+        test.assertEqual(state.cameraX, state.x - game::kCameraScreenX, "spawn x uses centred framing");
+        test.assertEqual(state.cameraY, state.y - game::kCameraScreenY, "spawn y uses centred framing");
+
+        state.cameraX = 0;
+        state.cameraY = 0;
+        game::snapCamera(state);
+        test.assertEqual(state.cameraX, game::cameraTargetX(state), "snap lands on idle target x");
+        test.assertEqual(state.cameraY, game::cameraTargetY(state), "snap lands on idle target y");
         runner.add(test);
     }
 
