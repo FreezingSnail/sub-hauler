@@ -486,6 +486,9 @@ def validate_access(level: Level) -> None:
             raise ValueError('unobtainable required equipment or destination: '+key)
     # Service berths and survey rings must be reachable with the base boat;
     # neither may put a mandatory tool behind its own restoration branch.
+    for berth in level.service_berths:
+        if berth.milestone == MILESTONES['lift'] and berth.tile_y >= level.source['pressure_y']:
+            raise ValueError('Lower Gantry service berth must stay above the pressure boundary: '+berth.name)
     base_reach=reachable_tiles(level,0)
     for berth in level.service_berths:
         if (berth.tile_x,berth.tile_y) not in base_reach:

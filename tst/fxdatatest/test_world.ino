@@ -32,6 +32,7 @@ void setup() {
     ok = ok && berth.id == world::BERTH_PUMP_REFUGE && berth.milestone == 2 && berth.pixel_x == 2160 && berth.pixel_y == 208;
     ok = world::berthInfo(world::BERTH_LOWER_GANTRY, berth) && ok;
     ok = ok && berth.milestone == 4 && berth.pixel_x == 1776 && berth.pixel_y == 808;
+    ok = ok && berth.pixel_y < exploration_data::PRESSURE_Y;
     ok = ok && world::berthCount() == 6 && world::serviceBerthCount() == 2 && !world::berthInfo(6, berth);
     world::Survey survey;
     ok = world::surveyInfo(0, survey) && ok;

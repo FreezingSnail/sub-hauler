@@ -6,8 +6,8 @@ using uint24_t = __uint24;
 
 // Initialize FX hardware using  FX::begin(FX_DATA_PAGE); in the setup() function.
 
-constexpr uint16_t FX_DATA_PAGE  = 0xf91a;
-constexpr uint24_t FX_DATA_BYTES = 451871;
+constexpr uint16_t FX_DATA_PAGE  = 0xf919;
+constexpr uint24_t FX_DATA_BYTES = 452259;
 
 constexpr uint24_t hero = 0x000000;
 constexpr uint24_t worldTiles = 0x0000C2;
@@ -132,3 +132,32 @@ constexpr uint24_t txt_repair_pump = 0x06E4D6;
 constexpr uint24_t txt_repair_lift = 0x06E4E8;
 constexpr uint24_t txt_survey_hint = 0x06E4FA;
 constexpr uint24_t txt_survey_recorded = 0x06E50F;
+constexpr uint24_t txt_lift = 0x06E51F;
+constexpr uint24_t txt_beacon = 0x06E524;
+constexpr uint24_t txt_home = 0x06E52B;
+constexpr uint24_t txt_view_ending = 0x06E530;
+constexpr uint24_t txt_lift_purpose = 0x06E53C;
+constexpr uint24_t txt_beacon_purpose = 0x06E550;
+constexpr uint24_t txt_home_purpose = 0x06E560;
+constexpr uint24_t txt_survey_lift_clue = 0x06E575;
+constexpr uint24_t txt_lift_clue = 0x06E589;
+constexpr uint24_t txt_lift_source_clue = 0x06E599;
+constexpr uint24_t txt_lift_restored = 0x06E5A8;
+constexpr uint24_t txt_beacon_needs_seal = 0x06E5B6;
+constexpr uint24_t txt_beacon_ready = 0x06E5C8;
+constexpr uint24_t txt_beacon_lit = 0x06E5DA;
+constexpr uint24_t txt_home_ready = 0x06E5EF;
+constexpr uint24_t txt_network_on = 0x06E5FF;
+constexpr uint24_t txt_network_lit = 0x06E610;
+constexpr uint24_t txt_net_online = 0x06E61C;
+constexpr uint24_t txt_a_message = 0x06E631;
+constexpr uint24_t txt_thank_you = 0x06E63B;
+constexpr uint24_t txt_thanks_from = 0x06E645;
+constexpr uint24_t txt_thanks_from2 = 0x06E656;
+constexpr uint24_t txt_keep_exploring = 0x06E667;
+constexpr uint24_t txt_voyage_stats = 0x06E676;
+constexpr uint24_t txt_time = 0x06E683;
+constexpr uint24_t txt_coves = 0x06E688;
+constexpr uint24_t txt_jobs = 0x06E68E;
+constexpr uint24_t txt_a_next = 0x06E693;
+constexpr uint24_t txt_a_finish = 0x06E69A;

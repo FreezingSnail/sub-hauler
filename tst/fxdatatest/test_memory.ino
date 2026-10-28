@@ -65,6 +65,11 @@
 #if SH_FEATURE_MULTI_HULL
 #include "src/roster_view.hpp"
 #endif
+#if SH_FEATURE_CAMPAIGN
+#include "src/campaign.hpp"
+#include "src/campaign_view.hpp"
+#include "src/ending_view.hpp"
+#endif
 
 #ifndef SH_STACK_DIAG
 #define SH_STACK_DIAG 0
@@ -306,6 +311,31 @@ __attribute__((noinline)) void runRepresentativePath() {
     shop::buy(state, shop::kAir);
     shop_view::draw(state, shop::kFirstItem);
     FX::display(CLEAR_BUFFER);
+#endif
+
+#if SH_FEATURE_CAMPAIGN
+    // Campaign app path: WORK rows at both source shapes, a completed Tidewall
+    // board with VIEW ENDING, and all three homecoming cards. This keeps the
+    // external text, restoration overlays and ending stats in the stack window.
+    game::reset(state);
+    state.docked = static_cast<int8_t>(campaign::kCormorant);
+    state.tools = static_cast<uint8_t>(exploration_data::SEAL);
+    state.campaign = static_cast<uint8_t>(campaign::kMilestoneFirst | campaign::kMilestonePump | campaign::kMilestoneLift | campaign::kMilestoneBeacon);
+    state.surveys = campaign::kSurveyMask;
+    campaign_view::drawWorkList(state, 0);
+    FX::display(CLEAR_BUFFER);
+
+    state.docked = static_cast<int8_t>(campaign::kTidewall);
+    state.campaign = static_cast<uint8_t>(campaign::kMilestoneFirst | campaign::kMilestonePump | campaign::kMilestoneLift | campaign::kMilestoneBeacon | campaign::kMilestoneHome);
+    state.ending = 0;
+    campaign_view::drawWorkList(state, 0);
+    FX::display(CLEAR_BUFFER);
+
+    for (uint8_t card = 0; card < ending_view::kCardCount; ++card) {
+        ending_view::draw(card, state);
+        FX::display(CLEAR_BUFFER);
+    }
+    state.ending = 1;
 #endif
 
 #if SH_FEATURE_STATIONS && SH_FEATURE_JOBS

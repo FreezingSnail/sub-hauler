@@ -32,6 +32,7 @@
 #if SH_FEATURE_CAMPAIGN
 #include "src/campaign.hpp"
 #include "src/campaign_view.hpp"
+#include "src/ending_view.hpp"
 #endif
 #if SH_FEATURE_SHOP
 #include "src/shop.hpp"
@@ -77,6 +78,7 @@ enum class Screen : uint8_t {
 #endif
 #if SH_FEATURE_CAMPAIGN
     Work,
+    Ending,
 #endif
 #if SH_FEATURE_SHOP
     Shop,
@@ -118,6 +120,7 @@ static uint8_t s_stationRow = station::kFirstRow;
 static uint8_t s_workRow = 0;
 static uint8_t s_workMission = campaign::kMissionNone;
 static bool s_workDetail = false;
+static uint8_t s_endingCard = 0;
 #endif
 
 #if SH_VOYAGE_UI
@@ -159,6 +162,20 @@ static void drawPilot() {
     view::frame(s_state, camera, s_cache, s_tables);
     hud::draw(s_state);
 }
+
+#if SH_FEATURE_STATIONS
+static void showPilot() {
+    s_screen = Screen::Pilot;
+    s_stationRow = station::kFirstRow;
+    drawPilot();
+}
+
+static void showStation() {
+    s_stationRow = station::initialRow(s_state);
+    s_screen = Screen::Station;
+    station_view::draw(s_state, s_stationRow);
+}
+#endif
 
 // One boot/restart path. The setup call and the failure-screen restart share
 // this function, so the full reset is linked once instead of being duplicated
@@ -230,15 +247,60 @@ static bool requestSave(SaveResume resume) {
     beginSaveFailure(resume);
     return false;
 }
+#endif   // SH_VOYAGE_UI
 
+#if SH_FEATURE_CAMPAIGN
+// HOME is paid and committed by the normal dock checkpoint before any card is
+// shown. The ending-presented flag is separate: cards can be replayed from
+// Tidewall WORK, and a reload with HOME complete but ending still zero resumes
+// the cards without paying again.
+static void drawEnding() {
+    ending_view::draw(s_endingCard, s_state);
+}
+
+static bool endingPending() {
+    return s_state.ending == 0 && campaign::missionCompleted(s_state, campaign::kHome);
+}
+
+static void beginEnding() {
+    s_endingCard = 0;
+    s_screen = Screen::Ending;
+    drawEnding();
+}
+
+static void finishEnding() {
+    if (s_state.ending == 0) {
+        campaign::markEndingPresented(s_state);
+#if SH_VOYAGE_UI
+        if (!requestSave(kSaveResumeStation))
+            return;
+#endif
+    }
+    showStation();
+}
+
+static void updateEnding() {
+    if (!arduboy.justPressed(A_BUTTON | B_BUTTON)) {
+        s_present = false;
+        return;
+    }
+    const uint8_t next = ending_view::nextCard(s_endingCard);
+    if (next >= ending_view::kCardCount) {
+        finishEnding();
+        return;
+    }
+    s_endingCard = next;
+    drawEnding();
+}
+#endif
+
+#if SH_VOYAGE_UI
 static void finishSaveResume() {
     switch (s_saveResume) {
     case kSaveResumePilot:
         if (s_state.docked >= 0)
             station::undock(s_state);
-        s_screen = Screen::Pilot;
-        s_stationRow = station::kFirstRow;
-        drawPilot();
+        showPilot();
         return;
 #if SH_FEATURE_SHOP
     case kSaveResumeShop:
@@ -249,8 +311,13 @@ static void finishSaveResume() {
         return;
 #endif
     default:
-        s_screen = Screen::Station;
-        station_view::draw(s_state, s_stationRow);
+#if SH_FEATURE_CAMPAIGN
+        if (endingPending()) {
+            beginEnding();
+            return;
+        }
+#endif
+        showStation();
         return;
     }
 }
@@ -326,9 +393,15 @@ static void continueVoyage() {
         return;
     }
     s_voyageDirty = false;
-    s_stationRow = station::initialRow(s_state);
-    s_screen = Screen::Station;
-    station_view::draw(s_state, s_stationRow);
+#if SH_FEATURE_CAMPAIGN
+    // A reload between the committed HOME delivery and its cards resumes the
+    // ending. Payment and the HOME milestone are already in the checkpoint.
+    if (endingPending()) {
+        beginEnding();
+        return;
+    }
+#endif
+    showStation();
 }
 
 // Free rescue and wreck recovery share one path. The complete checkpoint is
@@ -348,6 +421,12 @@ static void performRecovery() {
         drawTitleScreen();
         return;
     }
+#if SH_FEATURE_CAMPAIGN
+    if (endingPending()) {
+        beginEnding();
+        return;
+    }
+#endif
     s_stationRow = station::initialRow(s_state);
     s_screen = Screen::Station;
     if (result.save == voyage_save::kSaved) {
@@ -483,8 +562,7 @@ static void updateTitle() {
     s_state.hullClass = static_cast<uint8_t>(hull);
 
     if (arduboy.justPressed(A_BUTTON)) {
-        s_screen = Screen::Pilot;
-        drawPilot();
+        showPilot();
         return;
     }
 
@@ -541,15 +619,13 @@ static void updatePause() {
         return;
     }
     if (arduboy.justPressed(B_BUTTON)) {
-        s_screen = Screen::Pilot;
-        drawPilot();
+        showPilot();
         return;
     }
     s_present = false;
 #else
     if (arduboy.justPressed(A_BUTTON) || arduboy.justPressed(B_BUTTON)) {
-        s_screen = Screen::Pilot;
-        drawPilot();
+        showPilot();
         return;
     }
     s_present = false;
@@ -580,8 +656,7 @@ static void updateFailure() {
 #else
     if (arduboy.justPressed(A_BUTTON)) {
         resetRun();
-        s_screen = Screen::Pilot;
-        drawPilot();
+        showPilot();
         return;
     }
     s_present = false;
@@ -667,8 +742,13 @@ static void updateFlight() {
         if (!requestSave(kSaveResumeStation))
             return;
 #endif
-        s_screen = Screen::Station;
-        station_view::draw(s_state, s_stationRow);
+#if SH_FEATURE_CAMPAIGN
+        if (endingPending()) {
+            beginEnding();
+            return;
+        }
+#endif
+        showStation();
         return;
     }
 #else
@@ -678,8 +758,13 @@ static void updateFlight() {
         if (!requestSave(kSaveResumeStation))
             return;
 #endif
-        s_screen = Screen::Station;
-        station_view::draw(s_state, s_stationRow);
+#if SH_FEATURE_CAMPAIGN
+        if (endingPending()) {
+            beginEnding();
+            return;
+        }
+#endif
+        showStation();
         return;
     }
 #endif
@@ -729,8 +814,7 @@ static void updateChart() {
 #if SH_FEATURE_SAVE_CHART && !SH_DEV_MODE
         saveChartOnClose();
 #endif
-        s_screen = Screen::Pilot;
-        drawPilot();
+        showPilot();
         return;
     }
 
@@ -751,9 +835,7 @@ static void leaveStation() {
     if (s_voyageDirty && !requestSave(kSaveResumePilot))
         return;
     if (station::undock(s_state)) {
-        s_screen = Screen::Pilot;
-        s_stationRow = station::kFirstRow;
-        drawPilot();
+        showPilot();
     }
 }
 #endif
@@ -829,6 +911,10 @@ static void updateWork() {
         if (s_workRow >= count)
             s_workRow = 0;
         const uint8_t mission = campaign::workMissionAt(s_state, static_cast<uint8_t>(s_state.docked), s_workRow);
+        if (mission == campaign::kWorkEnding) {
+            beginEnding();
+            return;
+        }
         if (mission != campaign::kMissionNone) {
             s_workMission = mission;
             s_workDetail = true;
@@ -1056,6 +1142,8 @@ void loop() {
 #if SH_FEATURE_CAMPAIGN
     else if (s_screen == Screen::Work)
         updateWork();
+    else if (s_screen == Screen::Ending)
+        updateEnding();
 #endif
 #if SH_FEATURE_SHOP
     else if (s_screen == Screen::Shop)
@@ -1070,6 +1158,8 @@ void loop() {
 #if SH_FEATURE_CAMPAIGN
     else if (s_screen == Screen::Work)
         updateWork();
+    else if (s_screen == Screen::Ending)
+        updateEnding();
 #endif
 #if SH_FEATURE_SHOP
     else if (s_screen == Screen::Shop)

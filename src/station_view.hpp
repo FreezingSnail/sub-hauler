@@ -188,6 +188,22 @@ inline void printRow(uint8_t row, const game::State &state) {
 }
 #endif
 
+inline void drawStatus(const game::State &state) {
+    text::at(kStatusX, kStatusY);
+    text::print(txt_air_status);
+    text::number(state.air);
+    text::character('/');
+    text::number(game::airCapacity(state));
+
+#if SH_FEATURE_HULL_DAMAGE
+    text::at(kHullX, kStatusY);
+    text::print(txt_hull_status);
+    text::number(state.hull);
+    text::character('/');
+    text::number(game::hullCapacity(state));
+#endif
+}
+
 inline void draw(const game::State &state, uint8_t selected) {
     if (state.docked < 0)
         return;
@@ -203,20 +219,7 @@ inline void draw(const game::State &state, uint8_t selected) {
 #endif
 
     arduboy.drawFastHLine(0, kDividerY, 128, WHITE);
-
-    text::at(kStatusX, kStatusY);
-    text::print(txt_air_status);
-    text::number(state.air);
-    text::character('/');
-    text::number(game::airCapacity(state));
-
-#if SH_FEATURE_HULL_DAMAGE
-    text::at(kHullX, kStatusY);
-    text::print(txt_hull_status);
-    text::number(state.hull);
-    text::character('/');
-    text::number(game::hullCapacity(state));
-#endif
+    drawStatus(state);
 
     const uint8_t rowCount = station::rowCount(state);
     for (uint8_t row = 0; row < rowCount; ++row) {

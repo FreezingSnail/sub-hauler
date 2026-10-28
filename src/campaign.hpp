@@ -70,38 +70,46 @@ static_assert(world::BERTH_LOWER_GANTRY == kLowerGantry, "Lower Gantry keeps its
 static_assert(world::SURVEY_PUMP == kPumpSurveyId, "pump survey keeps its frozen id");
 static_assert(world::SURVEY_LIFT == kLiftSurveyId, "lift survey keeps its frozen id");
 
+constexpr uint8_t kNoBit = 0xFF;
+
+// Mission metadata is flash-resident. On AVR an odr-used constexpr array is
+// copied to SRAM by the startup code, so the device reads this table through
+// PROGMEM while the host keeps the plain constexpr copy.
 struct MissionSpec {
     uint8_t from;
     uint8_t to;
     bool cargo;
+    uint8_t milestone;   // kNoBit for survey missions
+    uint8_t survey;      // kNoBit for cargo missions
+};
+
+#if defined(__AVR__)
+const MissionSpec kMissions[kMissionCount] PROGMEM = {
+#else
+constexpr MissionSpec kMissions[kMissionCount] = {
+#endif
+    {kTidewall, kBenthos, true, kMilestoneFirst, kNoBit},        // FIRST
+    {game::kJobNone, game::kJobNone, false, kNoBit, kPumpSurveyId},   // PUMP_SURVEY
+    {kCormorant, kBenthos, true, kMilestonePump, kNoBit},        // PUMP
+    {game::kJobNone, game::kJobNone, false, kNoBit, kLiftSurveyId},   // LIFT_SURVEY
+    {kBenthos, kCormorant, true, kMilestoneLift, kNoBit},        // LIFT
+    {kCormorant, kDeepAnchor, true, kMilestoneBeacon, kNoBit},   // BEACON
+    {kDeepAnchor, kTidewall, true, kMilestoneHome, kNoBit},      // HOME
 };
 
 inline bool missionInfo(uint8_t id, MissionSpec &out) {
-    switch (id) {
-    case kFirst:
-        out = MissionSpec{kTidewall, kBenthos, true};
-        return true;
-    case kPumpSurvey:
-        out = MissionSpec{game::kJobNone, game::kJobNone, false};
-        return true;
-    case kPump:
-        out = MissionSpec{kCormorant, kBenthos, true};
-        return true;
-    case kLiftSurvey:
-        out = MissionSpec{game::kJobNone, game::kJobNone, false};
-        return true;
-    case kLift:
-        out = MissionSpec{kBenthos, kCormorant, true};
-        return true;
-    case kBeacon:
-        out = MissionSpec{kCormorant, kDeepAnchor, true};
-        return true;
-    case kHome:
-        out = MissionSpec{kDeepAnchor, kTidewall, true};
-        return true;
-    default:
+    if (id >= kMissionCount)
         return false;
-    }
+#if defined(__AVR__)
+    out.from = pgm_read_byte(&kMissions[id].from);
+    out.to = pgm_read_byte(&kMissions[id].to);
+    out.cargo = pgm_read_byte(&kMissions[id].cargo) != 0;
+    out.milestone = pgm_read_byte(&kMissions[id].milestone);
+    out.survey = pgm_read_byte(&kMissions[id].survey);
+#else
+    out = kMissions[id];
+#endif
+    return true;
 }
 
 inline bool isCargoMission(uint8_t id) {
@@ -153,24 +161,12 @@ inline bool surveyRecorded(const State &state, uint8_t surveyId) {
 }
 
 inline bool missionCompleted(const State &state, uint8_t id) {
-    switch (id) {
-    case kFirst:
-        return hasMilestone(state, kMilestoneFirst);
-    case kPumpSurvey:
-        return surveyRecorded(state, kPumpSurveyId);
-    case kPump:
-        return hasMilestone(state, kMilestonePump);
-    case kLiftSurvey:
-        return surveyRecorded(state, kLiftSurveyId);
-    case kLift:
-        return hasMilestone(state, kMilestoneLift);
-    case kBeacon:
-        return hasMilestone(state, kMilestoneBeacon);
-    case kHome:
-        return hasMilestone(state, kMilestoneHome);
-    default:
+    MissionSpec spec;
+    if (!missionInfo(id, spec))
         return false;
-    }
+    if (spec.milestone != kNoBit)
+        return hasMilestone(state, spec.milestone);
+    return surveyRecorded(state, spec.survey);
 }
 
 // Prerequisites without the "not already complete" test. Completion flags are
@@ -200,21 +196,30 @@ inline bool missionAvailable(const State &state, uint8_t id) {
     return missionInfo(id, spec) && !missionCompleted(state, id) && missionPrerequisites(state, id);
 }
 
-// First-slice WORK page rows. The lift/beacon/home sequence stays behind its
-// own integration task, so these two missions are the only campaign work the
-// station page exposes now. Rows are compacted in stable mission-id order.
+// WORK page rows. Cargo missions are compacted in stable mission-id order at
+// their source berth; surveys never occupy a row. After HOME, Tidewall adds a
+// replayable VIEW ENDING row. kWorkEnding is outside the frozen mission ids.
+constexpr uint8_t kWorkEnding = 0xFE;
+
+inline bool endingAvailable(const State &state) {
+    return missionCompleted(state, kHome);
+}
+
 inline uint8_t workMissionAt(const State &state, uint8_t berth, uint8_t row) {
-    const uint8_t ids[2] = {kFirst, kPump};
     uint8_t visible = 0;
-    for (uint8_t i = 0; i < 2; ++i) {
+    for (uint8_t id = kFirst; id <= kHome; ++id) {
         MissionSpec spec;
-        if (!missionInfo(ids[i], spec) || !spec.cargo || spec.from != berth)
+        if (!missionInfo(id, spec) || !spec.cargo || spec.from != berth)
             continue;
-        if (!missionAvailable(state, ids[i]))
+        if (!missionAvailable(state, id))
             continue;
         if (visible == row)
-            return ids[i];
+            return id;
         ++visible;
+    }
+    if (berth == kTidewall && endingAvailable(state)) {
+        if (visible == row)
+            return kWorkEnding;
     }
     return kMissionNone;
 }

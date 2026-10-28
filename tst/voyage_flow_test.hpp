@@ -267,6 +267,107 @@ inline void VoyageFlowSuite(TestRunner &runner) {
     }
 
     {
+        Test test("Continue at Lower Gantry restores its loaded service checkpoint");
+        world::Berth berth;
+        test.assertTrue(world::serviceBerthInfo(1, berth), "generated Lower Gantry berth");
+        uint8_t routeReward = 0;
+        uint16_t routeDeadline = 0;
+        test.assertTrue(world::routeEconomy(campaign::kTidewall, campaign::kBenthos, routeReward, routeDeadline), "ordinary route exists");
+
+        Fixture source;
+        source.reset();
+        source.state.docked = static_cast<int8_t>(campaign::kLowerGantry);
+        source.state.campaign = campaign::kMilestoneLift;
+        source.state.activeJob.kind = game::kJobKindOrdinary;
+        source.state.activeJob.mission = game::kMissionNone;
+        source.state.activeJob.from = campaign::kTidewall;
+        source.state.activeJob.to = campaign::kBenthos;
+        source.state.activeJob.crates = game::kJobCrates;
+        source.state.activeJob.reward = routeReward;
+        source.state.activeJob.deadline = 0;
+        source.state.activeJob.elapsed = 0;
+        source.state.cargo = game::kJobCrates;
+        source.state.ballast = static_cast<uint8_t>(game::neutralFor(source.state.cargo));
+        test.assertTrue(campaign::activeJobValid(source.state), "Lower Gantry cargo checkpoint is semantically valid");
+
+        FakeStorage storage(0xFF);
+        test.assertEqual(source.save(storage), voyage_save::kSaved, "Lower Gantry cargo checkpoint saves");
+        Fixture restored;
+        restored.reset();
+        test.assertEqual(voyage_flow::loadCheckpoint(restored.state
+#if SH_FEATURE_FOG_CHART
+                                                     ,
+                                                     restored.chart
+#endif
+                                                     ,
+                                                     storage),
+                         voyage_save::kLoaded, "Continue loads the Lower Gantry checkpoint");
+        test.assertEqual(restored.state.docked, campaign::kLowerGantry, "Lower Gantry id restored");
+        test.assertEqual(restored.state.x, berth.pixel_x, "generated Lower Gantry x restored");
+        test.assertEqual(restored.state.y, berth.pixel_y, "generated Lower Gantry y restored");
+        test.assertEqual(restored.state.cargo, game::kJobCrates, "loaded cargo survives the service berth");
+        test.assertEqual(restored.state.activeJob.kind, game::kJobKindOrdinary, "active cargo job restored");
+        test.assertEqual(restored.state.air, game::airCapacity(restored.state), "service berth restores full air");
+        test.assertEqual(restored.state.offerCount, 0, "Lower Gantry has no freight board");
+        runner.add(test);
+    }
+
+    {
+        Test test("HOME completion and ending presentation persist without a second payment");
+        Fixture source;
+        setValidPayload(source);
+        source.state.docked = static_cast<int8_t>(campaign::kTidewall);
+        source.state.campaign = static_cast<uint8_t>(campaign::kMilestoneFirst | campaign::kMilestonePump | campaign::kMilestoneLift | campaign::kMilestoneBeacon | campaign::kMilestoneHome);
+        source.state.ending = 0;
+        source.state.credits = 590;
+        source.state.delivered = 5;
+        source.state.activeJob.kind = game::kJobKindNone;
+        source.state.activeJob.mission = campaign::kMissionNone;
+        source.state.activeJob.from = game::kJobNone;
+        source.state.activeJob.to = game::kJobNone;
+        source.state.activeJob.crates = 0;
+        source.state.activeJob.reward = 0;
+        source.state.activeJob.deadline = 0;
+        source.state.activeJob.elapsed = 0;
+        source.state.cargo = 0;
+        test.assertTrue(campaign::stateValid(source.state), "post-HOME checkpoint is valid");
+        test.assertEqual(campaign::workMissionAt(source.state, campaign::kTidewall, 0), campaign::kWorkEnding, "VIEW ENDING is available");
+
+        FakeStorage storage(0xFF);
+        test.assertEqual(source.save(storage), voyage_save::kSaved, "HOME checkpoint commits before cards");
+        Fixture reloaded;
+        reloaded.reset();
+        test.assertEqual(voyage_flow::loadCheckpoint(reloaded.state
+#if SH_FEATURE_FOG_CHART
+                                                     ,
+                                                     reloaded.chart
+#endif
+                                                     ,
+                                                     storage),
+                         voyage_save::kLoaded, "reload between HOME and cards succeeds");
+        test.assertEqual(reloaded.state.ending, 0, "cards have not been marked yet");
+        test.assertEqual(reloaded.state.credits, 590, "HOME payment is committed exactly once");
+        test.assertEqual(reloaded.state.delivered, 5, "five deliveries are recorded");
+        test.assertTrue(campaign::markEndingPresented(reloaded.state), "cards can be marked after reload");
+        test.assertEqual(reloaded.state.ending, 1, "ending flag set");
+        test.assertEqual(reloaded.state.credits, 590, "marking the ending pays nothing");
+        test.assertEqual(reloaded.save(storage), voyage_save::kSaved, "ending flag commits");
+        test.assertEqual(reloaded.save(storage), voyage_save::kSaved, "repeat save remains idempotent");
+
+        Fixture postgame;
+        postgame.reset();
+        test.assertEqual(postgame.load(storage), voyage_save::kLoaded, "postgame checkpoint loads");
+        test.assertEqual(postgame.state.ending, 1, "ending presentation persists");
+        test.assertEqual(postgame.state.credits, 590, "postgame keeps the same credits");
+        test.assertEqual(campaign::workMissionAt(postgame.state, campaign::kTidewall, 0), campaign::kWorkEnding, "ending remains viewable");
+        test.assertEqual(jobs::deliver(postgame.state, campaign::kTidewall), jobs::kDeliveryNone, "postgame docking cannot pay HOME again");
+        test.assertTrue(!campaign::completeMission(postgame.state, campaign::kHome), "HOME cannot complete twice");
+        test.assertEqual(postgame.state.credits, 590, "replay never pays twice");
+        test.assertTrue(postgame.state.docked == static_cast<int8_t>(campaign::kTidewall), "postgame continues at Tidewall");
+        runner.add(test);
+    }
+
+    {
         Test test("failed rescue commit keeps the restored state for an honest retry");
         FakeStorage storage(0xFF);
         Fixture source;

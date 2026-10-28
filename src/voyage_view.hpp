@@ -148,38 +148,36 @@ inline void drawTitle(const voyage_flow::BootStatus &status, uint8_t selected, u
 #endif
 }
 
+inline void drawPrompt(uint24_t title, uint24_t first, uint24_t second, uint8_t selected, uint24_t hintLabel) {
+    text::normal();
+    centered(kMenuTitleY, title);
+    menuRow(kMenuRowY0, first, selected == 0);
+    menuRow(static_cast<uint8_t>(kMenuRowY0 + kMenuRowStep), second, selected == 1);
+    text::normal();
+    centered(kHintY, hintLabel);
+}
+
 inline void drawSaveFailed(uint8_t selected) {
-    text::normal();
-    centered(kMenuTitleY, txt_save_failed);
-    menuRow(kMenuRowY0, txt_retry, selected == 0);
-    menuRow(static_cast<uint8_t>(kMenuRowY0 + kMenuRowStep), txt_continue_unsaved, selected == 1);
-    text::normal();
-    centered(kHintY, txt_save_hint);
+    drawPrompt(txt_save_failed, txt_retry, txt_continue_unsaved, selected, txt_save_hint);
 }
 
 inline void drawPauseRescue(uint8_t selected) {
-    text::normal();
-    centered(kMenuTitleY, txt_paused);
-    menuRow(kMenuRowY0, txt_resume, selected == 0);
-    menuRow(static_cast<uint8_t>(kMenuRowY0 + kMenuRowStep), txt_rescue, selected == 1);
-    text::normal();
-    centered(kHintY, txt_pause_hint);
-}
-
-inline void drawRescueConfirm() {
-    text::normal();
-    centered(kMenuTitleY, txt_back_last_berth);
-    centered(kConfirmY, txt_unsaved_lost);
-    centered(static_cast<uint8_t>(kConfirmY + 14), txt_yes_no);
+    drawPrompt(txt_paused, txt_resume, txt_rescue, selected, txt_pause_hint);
 }
 
 inline void drawWreck(uint8_t selected) {
+    drawPrompt(txt_hull_lost, txt_retry_berth, txt_title, selected, txt_save_hint);
+}
+
+inline void drawConfirm(uint24_t title, uint24_t line) {
     text::normal();
-    centered(kMenuTitleY, txt_hull_lost);
-    menuRow(kMenuRowY0, txt_retry_berth, selected == 0);
-    menuRow(static_cast<uint8_t>(kMenuRowY0 + kMenuRowStep), txt_title, selected == 1);
-    text::normal();
-    centered(kHintY, txt_save_hint);
+    centered(kMenuTitleY, title);
+    centered(kConfirmY, line);
+    centered(static_cast<uint8_t>(kConfirmY + 14), txt_yes_no);
+}
+
+inline void drawRescueConfirm() {
+    drawConfirm(txt_back_last_berth, txt_unsaved_lost);
 }
 
 inline void drawAbandonConfirm() {

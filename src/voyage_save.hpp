@@ -204,57 +204,77 @@ inline bool isNewer(uint32_t a, uint32_t b) {
     return static_cast<int32_t>(a - b) > 0;
 }
 
-template <typename Storage> inline uint16_t readU16(Storage &storage, uint16_t address) {
-    const uint16_t low = storage.read(address);
-    const uint16_t high = storage.read(static_cast<uint16_t>(address + 1));
-    return static_cast<uint16_t>(low | (high << 8));
-}
-
-template <typename Storage> inline uint32_t readU32(Storage &storage, uint16_t address) {
-    uint32_t value = storage.read(address);
-    value |= static_cast<uint32_t>(storage.read(static_cast<uint16_t>(address + 1))) << 8;
-    value |= static_cast<uint32_t>(storage.read(static_cast<uint16_t>(address + 2))) << 16;
-    value |= static_cast<uint32_t>(storage.read(static_cast<uint16_t>(address + 3))) << 24;
-    return value;
-}
-
 // ---------------------------------------------------------------------------
 // Scalar payload (40 B, fixed field order)
 // ---------------------------------------------------------------------------
 
 // Transient only: 40 bytes, never persisted as a struct and never chart-sized.
+// Bytes are field-encoded in the frozen order below; the C++ struct layout is
+// deliberately not serialized.
 struct Scalar {
-    uint8_t berth;
-    uint8_t hullClass;
-    uint16_t credits;
-    uint8_t airLevel;
-    uint8_t hullLevel;
-    uint8_t sonarLevel;
-    uint8_t tools;
-    uint8_t pickups;
-    uint16_t openGates;
-    uint16_t seenGates;
-    uint8_t campaign;
-    uint8_t surveys;
-    uint8_t visited;
-    uint8_t jobKind;
-    uint8_t jobMission;
-    uint8_t jobFrom;
-    uint8_t jobTo;
-    uint8_t jobCrates;
-    uint8_t jobReward;
-    uint16_t jobDeadline;
-    uint16_t jobElapsed;
-    uint16_t offerCursor;
-    uint16_t boardSeed;
-    uint8_t mines;
-    uint32_t voyageTicks;
-    uint16_t delivered;
-    uint16_t rescues;
-    uint8_t ending;
+    uint8_t bytes[kScalarBytes];
 };
 
-static_assert(kScalarBytes == 40, "scalar payload size");
+enum ScalarOffset : uint8_t {
+    kFieldBerth = 0,
+    kFieldHullClass = 1,
+    kFieldCredits = 2,
+    kFieldAirLevel = 4,
+    kFieldHullLevel = 5,
+    kFieldSonarLevel = 6,
+    kFieldTools = 7,
+    kFieldPickups = 8,
+    kFieldOpenGates = 9,
+    kFieldSeenGates = 11,
+    kFieldCampaign = 13,
+    kFieldSurveys = 14,
+    kFieldVisited = 15,
+    kFieldJobKind = 16,
+    kFieldJobMission = 17,
+    kFieldJobFrom = 18,
+    kFieldJobTo = 19,
+    kFieldJobCrates = 20,
+    kFieldJobReward = 21,
+    kFieldJobDeadline = 22,
+    kFieldJobElapsed = 24,
+    kFieldOfferCursor = 26,
+    kFieldBoardSeed = 28,
+    kFieldMines = 30,
+    kFieldVoyageTicks = 31,
+    kFieldDelivered = 35,
+    kFieldRescues = 37,
+    kFieldEnding = 39,
+};
+
+static_assert(kFieldEnding + 1 == kScalarBytes, "scalar field table covers the payload");
+
+inline uint8_t scalarU8(const Scalar &scalar, uint8_t offset) {
+    return scalar.bytes[offset];
+}
+
+inline uint16_t scalarU16(const Scalar &scalar, uint8_t offset) {
+    return static_cast<uint16_t>(scalar.bytes[offset] | (static_cast<uint16_t>(scalar.bytes[offset + 1]) << 8));
+}
+
+inline uint32_t scalarU32(const Scalar &scalar, uint8_t offset) {
+    uint32_t value = scalar.bytes[offset];
+    value |= static_cast<uint32_t>(scalar.bytes[offset + 1]) << 8;
+    value |= static_cast<uint32_t>(scalar.bytes[offset + 2]) << 16;
+    value |= static_cast<uint32_t>(scalar.bytes[offset + 3]) << 24;
+    return value;
+}
+
+inline void scalarSetU16(Scalar &scalar, uint8_t offset, uint16_t value) {
+    scalar.bytes[offset] = static_cast<uint8_t>(value);
+    scalar.bytes[offset + 1] = static_cast<uint8_t>(value >> 8);
+}
+
+inline void scalarSetU32(Scalar &scalar, uint8_t offset, uint32_t value) {
+    scalar.bytes[offset] = static_cast<uint8_t>(value);
+    scalar.bytes[offset + 1] = static_cast<uint8_t>(value >> 8);
+    scalar.bytes[offset + 2] = static_cast<uint8_t>(value >> 16);
+    scalar.bytes[offset + 3] = static_cast<uint8_t>(value >> 24);
+}
 
 inline bool validHullClass(uint8_t value) {
     return roster::valid(static_cast<roster::HullClass>(value));
@@ -294,53 +314,55 @@ inline uint8_t minesMask() {
 
 inline bool levelsValid(const Scalar &scalar) {
 #if SH_FEATURE_SHOP
-    return scalar.airLevel <= 3 && scalar.hullLevel <= 3 && scalar.sonarLevel <= 3;
+    return scalarU8(scalar, kFieldAirLevel) <= 3 && scalarU8(scalar, kFieldHullLevel) <= 3 && scalarU8(scalar, kFieldSonarLevel) <= 3;
 #else
-    return scalar.airLevel == 0 && scalar.hullLevel == 0 && scalar.sonarLevel == 0;
+    return scalarU8(scalar, kFieldAirLevel) == 0 && scalarU8(scalar, kFieldHullLevel) == 0 && scalarU8(scalar, kFieldSonarLevel) == 0;
 #endif
 }
 
 inline bool scalarValid(const Scalar &scalar) {
-    if (scalar.berth >= campaign::kBerthCount)
+    if (scalarU8(scalar, kFieldBerth) >= campaign::kBerthCount)
         return false;
-    if (!validHullClass(scalar.hullClass))
+    if (!validHullClass(scalarU8(scalar, kFieldHullClass)))
         return false;
     if (!levelsValid(scalar))
         return false;
-    if ((scalar.tools & static_cast<uint8_t>(~toolsMask())) != 0)
+    if ((scalarU8(scalar, kFieldTools) & static_cast<uint8_t>(~toolsMask())) != 0)
         return false;
-    if ((scalar.pickups & static_cast<uint8_t>(~pickupsMask())) != 0)
+    if ((scalarU8(scalar, kFieldPickups) & static_cast<uint8_t>(~pickupsMask())) != 0)
         return false;
-    if ((scalar.openGates & static_cast<uint16_t>(~gatesMask())) != 0)
+    if ((scalarU16(scalar, kFieldOpenGates) & static_cast<uint16_t>(~gatesMask())) != 0)
         return false;
-    if ((scalar.seenGates & static_cast<uint16_t>(~gatesMask())) != 0)
+    if ((scalarU16(scalar, kFieldSeenGates) & static_cast<uint16_t>(~gatesMask())) != 0)
         return false;
-    if ((scalar.mines & static_cast<uint8_t>(~minesMask())) != 0)
+    if ((scalarU8(scalar, kFieldMines) & static_cast<uint8_t>(~minesMask())) != 0)
         return false;
-    if (scalar.boardSeed != 0)
+    if (scalarU16(scalar, kFieldBoardSeed) != 0)
         return false;   // schema 1 serial origin is frozen at zero
 
     // The campaign rules own milestone monotonicity, job-kind semantics,
     // route rewards, visits and the ending/HOME relationship. A checkpoint at
     // a service berth is valid only after its repair milestone.
-    State probe = State{};
-    probe.campaign = scalar.campaign;
-    probe.surveys = scalar.surveys;
-    probe.visited = scalar.visited;
-    probe.tools = scalar.tools;
-    probe.pickups = scalar.pickups;
-    probe.ending = scalar.ending;
-    probe.activeJob.kind = scalar.jobKind;
-    probe.activeJob.mission = scalar.jobMission;
-    probe.activeJob.from = scalar.jobFrom;
-    probe.activeJob.to = scalar.jobTo;
-    probe.activeJob.crates = scalar.jobCrates;
-    probe.activeJob.reward = scalar.jobReward;
-    probe.activeJob.deadline = scalar.jobDeadline;
-    probe.activeJob.elapsed = scalar.jobElapsed;
+    // Only the campaign-owned fields are needed by stateValid(); other probe
+    // bytes are deliberately left untouched so the save path does not clear a
+    // full State object just to re-validate a few serialized fields.
+    State probe;
+    probe.campaign = scalarU8(scalar, kFieldCampaign);
+    probe.surveys = scalarU8(scalar, kFieldSurveys);
+    probe.visited = scalarU8(scalar, kFieldVisited);
+    probe.tools = scalarU8(scalar, kFieldTools);
+    probe.ending = scalarU8(scalar, kFieldEnding);
+    probe.activeJob.kind = scalarU8(scalar, kFieldJobKind);
+    probe.activeJob.mission = scalarU8(scalar, kFieldJobMission);
+    probe.activeJob.from = scalarU8(scalar, kFieldJobFrom);
+    probe.activeJob.to = scalarU8(scalar, kFieldJobTo);
+    probe.activeJob.crates = scalarU8(scalar, kFieldJobCrates);
+    probe.activeJob.reward = scalarU8(scalar, kFieldJobReward);
+    probe.activeJob.deadline = scalarU16(scalar, kFieldJobDeadline);
+    probe.activeJob.elapsed = scalarU16(scalar, kFieldJobElapsed);
     if (!campaign::stateValid(probe))
         return false;
-    if (!campaign::berthAvailable(probe, scalar.berth))
+    if (!campaign::berthAvailable(probe, scalarU8(scalar, kFieldBerth)))
         return false;
     return true;
 }
@@ -349,80 +371,54 @@ inline bool captureState(const State &state, Scalar &scalar) {
     if (state.docked < 0 || state.docked >= static_cast<int8_t>(campaign::kBerthCount))
         return false;
 
-    scalar.berth = static_cast<uint8_t>(state.docked);
+    scalar.bytes[kFieldBerth] = static_cast<uint8_t>(state.docked);
 #if SH_FEATURE_MULTI_HULL
-    scalar.hullClass = state.hullClass;
+    scalar.bytes[kFieldHullClass] = state.hullClass;
 #else
-    scalar.hullClass = static_cast<uint8_t>(roster::kDefault);
+    scalar.bytes[kFieldHullClass] = static_cast<uint8_t>(roster::kDefault);
 #endif
-    scalar.credits = state.credits;
+    scalarSetU16(scalar, kFieldCredits, state.credits);
 #if SH_FEATURE_SHOP
-    scalar.airLevel = state.airLevel;
-    scalar.hullLevel = state.hullLevel;
-    scalar.sonarLevel = state.sonarLevel;
+    scalar.bytes[kFieldAirLevel] = state.airLevel;
+    scalar.bytes[kFieldHullLevel] = state.hullLevel;
+    scalar.bytes[kFieldSonarLevel] = state.sonarLevel;
 #else
-    scalar.airLevel = 0;
-    scalar.hullLevel = 0;
-    scalar.sonarLevel = 0;
+    scalar.bytes[kFieldAirLevel] = 0;
+    scalar.bytes[kFieldHullLevel] = 0;
+    scalar.bytes[kFieldSonarLevel] = 0;
 #endif
-    scalar.tools = state.tools;
-    scalar.pickups = state.pickups;
-    scalar.openGates = state.openGates;
-    scalar.seenGates = state.seenGates;
-    scalar.campaign = state.campaign;
-    scalar.surveys = state.surveys;
-    scalar.visited = state.visited;
-    scalar.jobKind = state.activeJob.kind;
-    scalar.jobMission = state.activeJob.mission;
-    scalar.jobFrom = state.activeJob.from;
-    scalar.jobTo = state.activeJob.to;
-    scalar.jobCrates = state.activeJob.crates;
-    scalar.jobReward = state.activeJob.reward;
-    scalar.jobDeadline = state.activeJob.deadline;
-    scalar.jobElapsed = state.activeJob.elapsed;
-    scalar.offerCursor = state.offerCursor;
-    scalar.boardSeed = state.boardSeed;
+    scalar.bytes[kFieldTools] = state.tools;
+    scalar.bytes[kFieldPickups] = state.pickups;
+    scalarSetU16(scalar, kFieldOpenGates, state.openGates);
+    scalarSetU16(scalar, kFieldSeenGates, state.seenGates);
+    scalar.bytes[kFieldCampaign] = state.campaign;
+    scalar.bytes[kFieldSurveys] = state.surveys;
+    scalar.bytes[kFieldVisited] = state.visited;
+    scalar.bytes[kFieldJobKind] = state.activeJob.kind;
+    scalar.bytes[kFieldJobMission] = state.activeJob.mission;
+    scalar.bytes[kFieldJobFrom] = state.activeJob.from;
+    scalar.bytes[kFieldJobTo] = state.activeJob.to;
+    scalar.bytes[kFieldJobCrates] = state.activeJob.crates;
+    scalar.bytes[kFieldJobReward] = state.activeJob.reward;
+    scalarSetU16(scalar, kFieldJobDeadline, state.activeJob.deadline);
+    scalarSetU16(scalar, kFieldJobElapsed, state.activeJob.elapsed);
+    scalarSetU16(scalar, kFieldOfferCursor, state.offerCursor);
+    scalarSetU16(scalar, kFieldBoardSeed, state.boardSeed);
 #if SH_FEATURE_MINES
-    scalar.mines = state.minesAlive;
+    scalar.bytes[kFieldMines] = state.minesAlive;
 #else
-    scalar.mines = 0;
+    scalar.bytes[kFieldMines] = 0;
 #endif
-    scalar.voyageTicks = state.voyageTicks;
-    scalar.delivered = state.delivered;
-    scalar.rescues = state.rescues;
-    scalar.ending = state.ending;
+    scalarSetU32(scalar, kFieldVoyageTicks, state.voyageTicks);
+    scalarSetU16(scalar, kFieldDelivered, state.delivered);
+    scalarSetU16(scalar, kFieldRescues, state.rescues);
+    scalar.bytes[kFieldEnding] = state.ending;
     return scalarValid(scalar);
 }
 
 template <typename Storage> inline void readScalar(Storage &storage, uint16_t payload, Scalar &scalar) {
-    scalar.berth = storage.read(payload + 0);
-    scalar.hullClass = storage.read(payload + 1);
-    scalar.credits = readU16(storage, static_cast<uint16_t>(payload + 2));
-    scalar.airLevel = storage.read(payload + 4);
-    scalar.hullLevel = storage.read(payload + 5);
-    scalar.sonarLevel = storage.read(payload + 6);
-    scalar.tools = storage.read(payload + 7);
-    scalar.pickups = storage.read(payload + 8);
-    scalar.openGates = readU16(storage, static_cast<uint16_t>(payload + 9));
-    scalar.seenGates = readU16(storage, static_cast<uint16_t>(payload + 11));
-    scalar.campaign = storage.read(payload + 13);
-    scalar.surveys = storage.read(payload + 14);
-    scalar.visited = storage.read(payload + 15);
-    scalar.jobKind = storage.read(payload + 16);
-    scalar.jobMission = storage.read(payload + 17);
-    scalar.jobFrom = storage.read(payload + 18);
-    scalar.jobTo = storage.read(payload + 19);
-    scalar.jobCrates = storage.read(payload + 20);
-    scalar.jobReward = storage.read(payload + 21);
-    scalar.jobDeadline = readU16(storage, static_cast<uint16_t>(payload + 22));
-    scalar.jobElapsed = readU16(storage, static_cast<uint16_t>(payload + 24));
-    scalar.offerCursor = readU16(storage, static_cast<uint16_t>(payload + 26));
-    scalar.boardSeed = readU16(storage, static_cast<uint16_t>(payload + 28));
-    scalar.mines = storage.read(payload + 30);
-    scalar.voyageTicks = readU32(storage, static_cast<uint16_t>(payload + 31));
-    scalar.delivered = readU16(storage, static_cast<uint16_t>(payload + 35));
-    scalar.rescues = readU16(storage, static_cast<uint16_t>(payload + 37));
-    scalar.ending = storage.read(payload + 39);
+    for (uint8_t i = 0; i < kScalarBytes; ++i)
+        scalar.bytes[i] = storage.read(static_cast<uint16_t>(payload + i));
 }
 
 // Stream one payload byte to storage while folding it into the CRC. The save
@@ -432,74 +428,35 @@ template <typename Storage> inline void streamByte(Storage &storage, uint16_t ad
     crc = crc16Update(crc, value);
 }
 
-template <typename Storage> inline void streamU16(Storage &storage, uint16_t address, uint16_t value, uint16_t &crc) {
-    streamByte(storage, address, static_cast<uint8_t>(value), crc);
-    streamByte(storage, static_cast<uint16_t>(address + 1), static_cast<uint8_t>(value >> 8), crc);
-}
-
-template <typename Storage> inline void streamU32(Storage &storage, uint16_t address, uint32_t value, uint16_t &crc) {
-    streamByte(storage, address, static_cast<uint8_t>(value), crc);
-    streamByte(storage, static_cast<uint16_t>(address + 1), static_cast<uint8_t>(value >> 8), crc);
-    streamByte(storage, static_cast<uint16_t>(address + 2), static_cast<uint8_t>(value >> 16), crc);
-    streamByte(storage, static_cast<uint16_t>(address + 3), static_cast<uint8_t>(value >> 24), crc);
-}
-
 template <typename Storage> inline void writeScalar(Storage &storage, uint16_t payload, const Scalar &scalar, uint16_t &crc) {
-    streamByte(storage, payload + 0, scalar.berth, crc);
-    streamByte(storage, payload + 1, scalar.hullClass, crc);
-    streamU16(storage, static_cast<uint16_t>(payload + 2), scalar.credits, crc);
-    streamByte(storage, payload + 4, scalar.airLevel, crc);
-    streamByte(storage, payload + 5, scalar.hullLevel, crc);
-    streamByte(storage, payload + 6, scalar.sonarLevel, crc);
-    streamByte(storage, payload + 7, scalar.tools, crc);
-    streamByte(storage, payload + 8, scalar.pickups, crc);
-    streamU16(storage, static_cast<uint16_t>(payload + 9), scalar.openGates, crc);
-    streamU16(storage, static_cast<uint16_t>(payload + 11), scalar.seenGates, crc);
-    streamByte(storage, payload + 13, scalar.campaign, crc);
-    streamByte(storage, payload + 14, scalar.surveys, crc);
-    streamByte(storage, payload + 15, scalar.visited, crc);
-    streamByte(storage, payload + 16, scalar.jobKind, crc);
-    streamByte(storage, payload + 17, scalar.jobMission, crc);
-    streamByte(storage, payload + 18, scalar.jobFrom, crc);
-    streamByte(storage, payload + 19, scalar.jobTo, crc);
-    streamByte(storage, payload + 20, scalar.jobCrates, crc);
-    streamByte(storage, payload + 21, scalar.jobReward, crc);
-    streamU16(storage, static_cast<uint16_t>(payload + 22), scalar.jobDeadline, crc);
-    streamU16(storage, static_cast<uint16_t>(payload + 24), scalar.jobElapsed, crc);
-    streamU16(storage, static_cast<uint16_t>(payload + 26), scalar.offerCursor, crc);
-    streamU16(storage, static_cast<uint16_t>(payload + 28), scalar.boardSeed, crc);
-    streamByte(storage, payload + 30, scalar.mines, crc);
-    streamU32(storage, static_cast<uint16_t>(payload + 31), scalar.voyageTicks, crc);
-    streamU16(storage, static_cast<uint16_t>(payload + 35), scalar.delivered, crc);
-    streamU16(storage, static_cast<uint16_t>(payload + 37), scalar.rescues, crc);
-    streamByte(storage, payload + 39, scalar.ending, crc);
+    for (uint8_t i = 0; i < kScalarBytes; ++i)
+        streamByte(storage, static_cast<uint16_t>(payload + i), scalar.bytes[i], crc);
 }
 
-// ---------------------------------------------------------------------------
-// Header validation and inventory
-// ---------------------------------------------------------------------------
-
-inline uint16_t feedHeaderStart(uint16_t crc, uint32_t sequence) {
-    crc = crc16Update(crc, kMagic0);
-    crc = crc16Update(crc, kMagic1);
-    crc = crc16Update(crc, kMagic2);
-    crc = crc16Update(crc, kMagic3);
-    crc = crc16Update(crc, kSchemaVersion);
-    crc = crc16Update(crc, world::LAYOUT_VERSION);
-    crc = crc16Update(crc, kCampaignContentVersion);
-    crc = crc16Update(crc, kProfileSignature);
-    crc = crc16Update(crc, static_cast<uint8_t>(sequence));
-    crc = crc16Update(crc, static_cast<uint8_t>(sequence >> 8));
-    crc = crc16Update(crc, static_cast<uint8_t>(sequence >> 16));
-    crc = crc16Update(crc, static_cast<uint8_t>(sequence >> 24));
-    crc = crc16Update(crc, static_cast<uint8_t>(kPayloadBytes));
-    crc = crc16Update(crc, static_cast<uint8_t>(kPayloadBytes >> 8));
-    return crc;
+// Read the 16-byte header once. Header fields and the CRC share these bytes,
+// so validation does not issue the same EEPROM reads twice.
+template <typename Storage> inline void readHeader(Storage &storage, uint16_t base, uint8_t *header) {
+    for (uint8_t i = 0; i < kHeaderBytes; ++i)
+        header[i] = storage.read(static_cast<uint16_t>(base + i));
 }
 
-template <typename Storage> inline bool magicMatches(Storage &storage, uint16_t base) {
-    return storage.read(base + kMagicOffset) == kMagic0 && storage.read(base + kMagicOffset + 1) == kMagic1 && storage.read(base + kMagicOffset + 2) == kMagic2 &&
-           storage.read(base + kMagicOffset + 3) == kMagic3;
+// Build header bytes 0..13. The CRC is computed over this block; the magic is
+// still physically written last so a torn header cannot look committed.
+inline void buildHeader(uint8_t *header, uint32_t sequence) {
+    header[kMagicOffset] = kMagic0;
+    header[kMagicOffset + 1] = kMagic1;
+    header[kMagicOffset + 2] = kMagic2;
+    header[kMagicOffset + 3] = kMagic3;
+    header[kSchemaOffset] = kSchemaVersion;
+    header[kLayoutOffset] = world::LAYOUT_VERSION;
+    header[kContentOffset] = kCampaignContentVersion;
+    header[kSignatureOffset] = kProfileSignature;
+    header[kSequenceOffset] = static_cast<uint8_t>(sequence);
+    header[kSequenceOffset + 1] = static_cast<uint8_t>(sequence >> 8);
+    header[kSequenceOffset + 2] = static_cast<uint8_t>(sequence >> 16);
+    header[kSequenceOffset + 3] = static_cast<uint8_t>(sequence >> 24);
+    header[kLengthOffset] = static_cast<uint8_t>(kPayloadBytes);
+    header[kLengthOffset + 1] = static_cast<uint8_t>(kPayloadBytes >> 8);
 }
 
 template <typename Storage> inline SlotInfo inspectSlot(Storage &storage, uint8_t index) {
@@ -508,44 +465,44 @@ template <typename Storage> inline SlotInfo inspectSlot(Storage &storage, uint8_
     info.sequence = 0;
 
     const uint16_t base = slotAddress(index);
+    uint8_t header[kHeaderBytes];
+    readHeader(storage, base, header);
     const uint8_t commit = storage.read(static_cast<uint16_t>(base + kCommitOffset));
-    const bool magic = magicMatches(storage, base);
 
     // Blank requires both a non-magic prefix and a non-committed byte. A
     // present magic or commit byte means the slot belongs to this game even if
     // it is torn, corrupt, incompatible or in progress.
+    const bool magic = header[kMagicOffset] == kMagic0 && header[kMagicOffset + 1] == kMagic1 && header[kMagicOffset + 2] == kMagic2 && header[kMagicOffset + 3] == kMagic3;
     if (!magic) {
         info.status = commit == kCommitValid ? kSlotCorrupt : kSlotBlank;
         return info;
     }
 
-    info.sequence = readU32(storage, static_cast<uint16_t>(base + kSequenceOffset));
+    info.sequence = static_cast<uint32_t>(header[kSequenceOffset]) | (static_cast<uint32_t>(header[kSequenceOffset + 1]) << 8) | (static_cast<uint32_t>(header[kSequenceOffset + 2]) << 16) |
+                    (static_cast<uint32_t>(header[kSequenceOffset + 3]) << 24);
     if (commit != kCommitValid) {
         info.status = kSlotCorrupt;
         return info;
     }
 
-    const uint8_t schema = storage.read(base + kSchemaOffset);
-    const uint8_t layout = storage.read(base + kLayoutOffset);
-    const uint8_t content = storage.read(base + kContentOffset);
-    const uint8_t signature = storage.read(base + kSignatureOffset);
-    if (schema != kSchemaVersion || layout != world::LAYOUT_VERSION || content != kCampaignContentVersion || signature != kProfileSignature) {
+    if (header[kSchemaOffset] != kSchemaVersion || header[kLayoutOffset] != world::LAYOUT_VERSION || header[kContentOffset] != kCampaignContentVersion || header[kSignatureOffset] != kProfileSignature) {
         info.status = kSlotIncompatible;
         return info;
     }
 
-    const uint16_t length = readU16(storage, static_cast<uint16_t>(base + kLengthOffset));
+    const uint16_t length = static_cast<uint16_t>(header[kLengthOffset] | (static_cast<uint16_t>(header[kLengthOffset + 1]) << 8));
     if (length != kPayloadBytes) {
         info.status = kSlotCorrupt;
         return info;
     }
 
     uint16_t crc = 0xFFFF;
-    for (uint16_t i = 0; i < kCrcOffset; ++i)
-        crc = crc16Update(crc, storage.read(static_cast<uint16_t>(base + i)));
+    for (uint8_t i = 0; i < kCrcOffset; ++i)
+        crc = crc16Update(crc, header[i]);
     for (uint16_t i = 0; i < length; ++i)
         crc = crc16Update(crc, storage.read(static_cast<uint16_t>(base + kPayloadOffset + i)));
-    if (crc != readU16(storage, static_cast<uint16_t>(base + kCrcOffset))) {
+    const uint16_t expected = static_cast<uint16_t>(header[kCrcOffset] | (static_cast<uint16_t>(header[kCrcOffset + 1]) << 8));
+    if (crc != expected) {
         info.status = kSlotCorrupt;
         return info;
     }
@@ -615,48 +572,48 @@ inline uint32_t nextSequence(const Inventory &inventory) {
 inline void applyScalar(const Scalar &scalar, State &state) {
     game::reset(state);
 
-    state.docked = static_cast<int8_t>(scalar.berth);
+    state.docked = static_cast<int8_t>(scalarU8(scalar, kFieldBerth));
     state.dockCooldown = 0;
 #if SH_FEATURE_MULTI_HULL
-    state.hullClass = scalar.hullClass;
+    state.hullClass = scalarU8(scalar, kFieldHullClass);
 #endif
 #if SH_FEATURE_SHOP
-    state.airLevel = scalar.airLevel;
-    state.hullLevel = scalar.hullLevel;
-    state.sonarLevel = scalar.sonarLevel;
+    state.airLevel = scalarU8(scalar, kFieldAirLevel);
+    state.hullLevel = scalarU8(scalar, kFieldHullLevel);
+    state.sonarLevel = scalarU8(scalar, kFieldSonarLevel);
 #endif
-    state.credits = scalar.credits;
-    state.tools = scalar.tools;
-    state.pickups = scalar.pickups;
-    state.openGates = scalar.openGates;
-    state.seenGates = scalar.seenGates;
-    state.campaign = scalar.campaign;
-    state.surveys = scalar.surveys;
-    state.visited = scalar.visited;
-    state.activeJob.kind = scalar.jobKind;
-    state.activeJob.mission = scalar.jobMission;
-    state.activeJob.from = scalar.jobFrom;
-    state.activeJob.to = scalar.jobTo;
-    state.activeJob.crates = scalar.jobCrates;
-    state.activeJob.reward = scalar.jobReward;
-    state.activeJob.deadline = scalar.jobDeadline;
-    state.activeJob.elapsed = scalar.jobElapsed;
-    state.offerCursor = scalar.offerCursor;
-    state.offerSerial = scalar.offerCursor;
-    state.boardSeed = scalar.boardSeed;
+    state.credits = scalarU16(scalar, kFieldCredits);
+    state.tools = scalarU8(scalar, kFieldTools);
+    state.pickups = scalarU8(scalar, kFieldPickups);
+    state.openGates = scalarU16(scalar, kFieldOpenGates);
+    state.seenGates = scalarU16(scalar, kFieldSeenGates);
+    state.campaign = scalarU8(scalar, kFieldCampaign);
+    state.surveys = scalarU8(scalar, kFieldSurveys);
+    state.visited = scalarU8(scalar, kFieldVisited);
+    state.activeJob.kind = scalarU8(scalar, kFieldJobKind);
+    state.activeJob.mission = scalarU8(scalar, kFieldJobMission);
+    state.activeJob.from = scalarU8(scalar, kFieldJobFrom);
+    state.activeJob.to = scalarU8(scalar, kFieldJobTo);
+    state.activeJob.crates = scalarU8(scalar, kFieldJobCrates);
+    state.activeJob.reward = scalarU8(scalar, kFieldJobReward);
+    state.activeJob.deadline = scalarU16(scalar, kFieldJobDeadline);
+    state.activeJob.elapsed = scalarU16(scalar, kFieldJobElapsed);
+    state.offerCursor = scalarU16(scalar, kFieldOfferCursor);
+    state.offerSerial = state.offerCursor;
+    state.boardSeed = scalarU16(scalar, kFieldBoardSeed);
     state.offerCount = 0;
     state.lastDelivery = 0;
 #if SH_FEATURE_MINES
-    state.minesAlive = scalar.mines;
+    state.minesAlive = scalarU8(scalar, kFieldMines);
 #endif
-    state.voyageTicks = scalar.voyageTicks;
-    state.delivered = scalar.delivered;
-    state.rescues = scalar.rescues;
-    state.ending = scalar.ending;
+    state.voyageTicks = scalarU32(scalar, kFieldVoyageTicks);
+    state.delivered = scalarU16(scalar, kFieldDelivered);
+    state.rescues = scalarU16(scalar, kFieldRescues);
+    state.ending = scalarU8(scalar, kFieldEnding);
 
     // A checkpoint is always at a berth. Cargo is derived from the active
     // job; service restores full air/hull and neutral trim for that load.
-    state.cargo = scalar.jobKind == game::kJobKindNone ? 0 : scalar.jobCrates;
+    state.cargo = state.activeJob.kind == game::kJobKindNone ? 0 : state.activeJob.crates;
     state.ballast = static_cast<uint8_t>(game::neutralFor(state.cargo));
     state.air = game::airCapacity(state);
 #if SH_FEATURE_HULL_DAMAGE
@@ -667,7 +624,7 @@ inline void applyScalar(const Scalar &scalar, State &state) {
     // scalar validator has already accepted the berth only when its
     // restoration milestone is present.
     world::Berth berth;
-    if (world::berthInfo(scalar.berth, berth)) {
+    if (world::berthInfo(state.docked, berth)) {
         state.x = berth.pixel_x;
         state.y = berth.pixel_y;
         state.xFrac = 0;
@@ -736,7 +693,12 @@ inline SaveResult save(const State &state
     // A torn or stale target is invalidated before any payload byte changes.
     storage.update(static_cast<uint16_t>(base + kCommitOffset), kCommitInvalid);
 
-    uint16_t crc = feedHeaderStart(0xFFFF, sequence);
+    uint8_t header[kCrcOffset];
+    buildHeader(header, sequence);
+    uint16_t crc = 0xFFFF;
+    for (uint8_t i = 0; i < kCrcOffset; ++i)
+        crc = crc16Update(crc, header[i]);
+
     const uint16_t payload = static_cast<uint16_t>(base + kPayloadOffset);
     writeScalar(storage, payload, scalar, crc);
 #if SH_FEATURE_FOG_CHART
@@ -746,22 +708,12 @@ inline SaveResult save(const State &state
 
     // Header write order is intentionally not address order: the magic and
     // commit bytes are last, so no torn header can look committed.
-    storage.update(base + kSchemaOffset, kSchemaVersion);
-    storage.update(base + kLayoutOffset, world::LAYOUT_VERSION);
-    storage.update(base + kContentOffset, kCampaignContentVersion);
-    storage.update(base + kSignatureOffset, kProfileSignature);
-    storage.update(base + kSequenceOffset, static_cast<uint8_t>(sequence));
-    storage.update(base + kSequenceOffset + 1, static_cast<uint8_t>(sequence >> 8));
-    storage.update(base + kSequenceOffset + 2, static_cast<uint8_t>(sequence >> 16));
-    storage.update(base + kSequenceOffset + 3, static_cast<uint8_t>(sequence >> 24));
-    storage.update(base + kLengthOffset, static_cast<uint8_t>(kPayloadBytes));
-    storage.update(base + kLengthOffset + 1, static_cast<uint8_t>(kPayloadBytes >> 8));
-    storage.update(base + kCrcOffset, static_cast<uint8_t>(crc));
-    storage.update(base + kCrcOffset + 1, static_cast<uint8_t>(crc >> 8));
-    storage.update(base + kMagicOffset, kMagic0);
-    storage.update(base + kMagicOffset + 1, kMagic1);
-    storage.update(base + kMagicOffset + 2, kMagic2);
-    storage.update(base + kMagicOffset + 3, kMagic3);
+    for (uint8_t i = kMagicOffset + 4; i < kCrcOffset; ++i)
+        storage.update(static_cast<uint16_t>(base + i), header[i]);
+    storage.update(static_cast<uint16_t>(base + kCrcOffset), static_cast<uint8_t>(crc));
+    storage.update(static_cast<uint16_t>(base + kCrcOffset + 1), static_cast<uint8_t>(crc >> 8));
+    for (uint8_t i = kMagicOffset; i < kMagicOffset + 4; ++i)
+        storage.update(static_cast<uint16_t>(base + i), header[i]);
     storage.update(static_cast<uint16_t>(base + kCommitOffset), kCommitValid);
 
     const SlotInfo written = inspectSlot(storage, target);
