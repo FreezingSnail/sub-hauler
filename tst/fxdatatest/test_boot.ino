@@ -63,7 +63,7 @@ static_assert(txt_found_cutter == explorationObjects + exploration_data::OBJECT_
 constexpr uint32_t NATIVE_TERRAIN_BYTES = static_cast<uint32_t>(world::PIXELS_X) * world::PIXELS_Y / 8;
 static_assert(explorationTerrain == txt_dev_noclip + sizeof("DEV NOCLIP  A FAST"), "native terrain appends after unchanged labels");
 static_assert(txt_sub_hauler == explorationTerrain + NATIVE_TERRAIN_BYTES, "voyage labels append after native terrain");
-static_assert(FX_DATA_BYTES == txt_survey_recorded + sizeof("SURVEY RECORDED"), "FX image ends after the appended campaign labels");
+static_assert(FX_DATA_BYTES == txt_a_finish + sizeof("A FINISH"), "FX image ends after the appended campaign and ending labels");
 
 // Cargo block layout: fixed counts and back-to-back hull blocks.
 static_assert(CARGO_MINNOW_OFFSET == 0, "MINNOW is the first hull block");

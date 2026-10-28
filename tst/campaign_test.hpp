@@ -53,14 +53,14 @@ inline bool completeFirst(game::State &state) {
 }
 
 inline bool completePump(game::State &state) {
-    if (campaign::surveyRecorded(state, campaign::kPumpSurveyId))
+    if (campaign::missionCompleted(state, campaign::kPump))
         return true;
     return campaign::recordSurvey(state, campaign::kPumpSurveyId) && acceptAt(state, campaign::kCormorant, campaign::kPump) && travelTo(state, campaign::kBenthos) &&
            campaign::missionCompleted(state, campaign::kPump);
 }
 
 inline bool completeLift(game::State &state) {
-    if (campaign::surveyRecorded(state, campaign::kLiftSurveyId))
+    if (campaign::missionCompleted(state, campaign::kLift))
         return true;
     return campaign::recordSurvey(state, campaign::kLiftSurveyId) && acceptAt(state, campaign::kBenthos, campaign::kLift) && travelTo(state, campaign::kCormorant) &&
            campaign::missionCompleted(state, campaign::kLift);
@@ -464,7 +464,7 @@ inline void CampaignSuite(TestRunner &runner) {
     }
 
     {
-        Test test("WORK rows expose FIRST then PUMP without opening later branches");
+        Test test("WORK rows expose both repair branches, beacon, explicit HOME and VIEW ENDING");
         game::State state;
         game::reset(state);
         test.assertTrue(at(state, campaign::kTidewall), "dock at Tidewall");
@@ -473,10 +473,32 @@ inline void CampaignSuite(TestRunner &runner) {
         test.assertEqual(campaign::workMissionAt(state, campaign::kBenthos, 0), campaign::kMissionNone, "Benthos has no cargo source");
 
         test.assertTrue(campaign::recordSurvey(state, campaign::kPumpSurveyId), "pump survey can precede FIRST");
+        test.assertTrue(campaign::recordSurvey(state, campaign::kLiftSurveyId), "lift survey can precede FIRST");
         test.assertTrue(completeFirst(state), "FIRST completes");
         test.assertEqual(campaign::workMissionAt(state, campaign::kCormorant, 0), campaign::kPump, "PUMP row at Cormorant");
-        test.assertEqual(campaign::workMissionAt(state, campaign::kCormorant, 1), campaign::kMissionNone, "later branches stay hidden");
-        test.assertEqual(campaign::workMissionAt(state, campaign::kBenthos, 0), campaign::kMissionNone, "LIFT waits for its integration");
+        test.assertEqual(campaign::workMissionAt(state, campaign::kCormorant, 1), campaign::kMissionNone, "BEACON waits for both repairs");
+        test.assertEqual(campaign::workMissionAt(state, campaign::kBenthos, 0), campaign::kLift, "LIFT row at Benthos");
+
+        test.assertTrue(completePump(state), "PUMP completes");
+        test.assertEqual(campaign::workMissionAt(state, campaign::kBenthos, 0), campaign::kLift, "LIFT remains the only repair at Benthos");
+        test.assertEqual(campaign::workMissionAt(state, campaign::kCormorant, 0), campaign::kMissionNone, "BEACON still waits for LIFT");
+        test.assertTrue(completeLift(state), "LIFT completes");
+
+        test.assertEqual(campaign::workMissionAt(state, campaign::kCormorant, 0), campaign::kMissionNone, "BEACON needs the seal");
+        state.tools |= exploration_data::SEAL;
+        test.assertEqual(campaign::workMissionAt(state, campaign::kCormorant, 0), campaign::kBeacon, "BEACON row at Cormorant");
+        test.assertEqual(campaign::workMissionAt(state, campaign::kDeepAnchor, 0), campaign::kMissionNone, "HOME is hidden before BEACON");
+
+        test.assertTrue(acceptAt(state, campaign::kCormorant, campaign::kBeacon), "BEACON accepted explicitly");
+        test.assertTrue(travelTo(state, campaign::kDeepAnchor), "BEACON delivered");
+        test.assertEqual(campaign::workMissionAt(state, campaign::kDeepAnchor, 0), campaign::kHome, "HOME row appears at Deep Anchor");
+        test.assertTrue(campaign::accept(state, campaign::kHome), "HOME is not auto-loaded by docking");
+        test.assertEqual(state.activeJob.mission, campaign::kHome, "HOME carries its own mission id");
+        test.assertTrue(travelTo(state, campaign::kTidewall), "HOME delivered");
+        test.assertEqual(campaign::workMissionAt(state, campaign::kTidewall, 0), campaign::kWorkEnding, "Tidewall offers VIEW ENDING");
+        test.assertEqual(campaign::workMissionAt(state, campaign::kBenthos, 0), campaign::kMissionNone, "completed LIFT never respawns");
+        test.assertEqual(campaign::workMissionAt(state, campaign::kCormorant, 0), campaign::kMissionNone, "completed BEACON never respawns");
+        test.assertEqual(campaign::workMissionAt(state, campaign::kDeepAnchor, 0), campaign::kMissionNone, "completed HOME never respawns");
         runner.add(test);
     }
 
@@ -512,6 +534,56 @@ inline void CampaignSuite(TestRunner &runner) {
         test.assertEqual(station::rowCount(state), 1, "smaller service board");
         test.assertEqual(station::rowKind(0, state), station::kRowUndock, "only UNDOCK is selectable");
         test.assertTrue(station::undock(state), "service berth undocks");
+        runner.add(test);
+    }
+
+    {
+        Test test("Lower Gantry stays service-only after LIFT and never posts freight");
+        world::Berth berth;
+        test.assertTrue(world::serviceBerthInfo(1, berth), "generated Lower Gantry berth");
+        test.assertEqual(berth.id, campaign::kLowerGantry, "stable Lower Gantry id");
+        test.assertTrue(berth.pixel_y < exploration_data::PRESSURE_Y, "Lower Gantry sits above the pressure boundary");
+
+        game::State locked;
+        game::reset(locked);
+        locked.x = berth.pixel_x;
+        locked.y = berth.pixel_y;
+        locked.vxQ8 = 0;
+        locked.vyQ8 = 0;
+        test.assertTrue(!station::dock(locked), "restoration gate blocks the mooring");
+
+        game::State state;
+        game::reset(state);
+        state.campaign = campaign::kMilestoneLift;
+        state.x = berth.pixel_x;
+        state.y = berth.pixel_y;
+        state.vxQ8 = 0;
+        state.vyQ8 = 0;
+        state.air = 1;
+        state.tools = exploration_data::SEAL;
+        game::setCargo(state, 0);
+        test.assertTrue(station::dock(state), "restored Lower Gantry docks");
+        test.assertEqual(state.docked, static_cast<int8_t>(campaign::kLowerGantry), "Lower Gantry id");
+        test.assertEqual(state.offerCount, 0, "service berth has no offers");
+        test.assertEqual(station::rowCount(state), 1, "service board stays minimal");
+        test.assertEqual(station::rowKind(0, state), station::kRowUndock, "only UNDOCK is selectable");
+        test.assertEqual(state.air, game::airCapacity(state), "service refills air");
+
+        // A loaded ordinary checkpoint at the service berth must restore the
+        // full generated position, cargo and job without a freight board.
+        state.activeJob.kind = game::kJobKindOrdinary;
+        state.activeJob.mission = game::kMissionNone;
+        state.activeJob.from = campaign::kTidewall;
+        state.activeJob.to = campaign::kBenthos;
+        state.activeJob.crates = game::kJobCrates;
+        uint8_t reward = 0;
+        uint16_t deadline = 0;
+        test.assertTrue(world::routeEconomy(campaign::kTidewall, campaign::kBenthos, reward, deadline), "route exists");
+        state.activeJob.reward = reward;
+        state.activeJob.deadline = 0;
+        state.activeJob.elapsed = 0;
+        game::setCargo(state, game::kJobCrates);
+        test.assertTrue(campaign::activeJobValid(state), "loaded service-berth job is valid");
         runner.add(test);
     }
 }

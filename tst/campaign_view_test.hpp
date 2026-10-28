@@ -87,6 +87,42 @@ inline void CampaignViewSuite(TestRunner &runner) {
     }
 
     {
+        Test test("LIFT and BEACON light their own overlays and no unrelated ones");
+        world::Berth liftBerth;
+        test.assertTrue(world::serviceBerthInfo(1, liftBerth), "generated Lower Gantry");
+        game::State state;
+        game::reset(state);
+        const cave::Camera liftCamera = cave::cameraCenteredAtPixel(liftBerth.pixel_x, liftBerth.pixel_y);
+        clear(a);
+        campaign_view::drawRestoration(a, state, liftCamera);
+        state.campaign = campaign::kMilestonePump;
+        clear(b);
+        campaign_view::drawRestoration(b, state, liftCamera);
+        test.assertTrue(same(a, b), "PUMP does not open the Lower Gantry gantry");
+        state.campaign = campaign::kMilestoneLift;
+        clear(b);
+        campaign_view::drawRestoration(b, state, liftCamera);
+        test.assertTrue(!same(a, b), "LIFT opens the Lower Gantry gantry");
+        test.assertTrue(lit(b) > lit(a), "lift gantry and cable draw more than the inactive posts");
+
+        world::Settlement anchor;
+        test.assertTrue(world::settlementInfo(campaign::kDeepAnchor, anchor), "Deep Anchor settlement");
+        const cave::Camera anchorCamera = cave::cameraCenteredAtPixel(anchor.pixel_x, anchor.pixel_y);
+        game::reset(state);
+        clear(a);
+        campaign_view::drawRestoration(a, state, anchorCamera);
+        state.campaign = static_cast<uint8_t>(campaign::kMilestonePump | campaign::kMilestoneLift);
+        clear(b);
+        campaign_view::drawRestoration(b, state, anchorCamera);
+        test.assertTrue(same(a, b), "repairs alone leave the beacon dark");
+        state.campaign |= campaign::kMilestoneBeacon;
+        clear(b);
+        campaign_view::drawRestoration(b, state, anchorCamera);
+        test.assertTrue(!same(a, b), "BEACON lights the anchor mast");
+        runner.add(test);
+    }
+
+    {
         Test test("Benthos lamps follow FIRST and PUMP flags only");
         world::Settlement benthos;
         test.assertTrue(world::settlementInfo(campaign::kBenthos, benthos), "Benthos settlement");

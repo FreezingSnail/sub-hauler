@@ -310,6 +310,13 @@ or new-game-plus system in this first campaign.
 
 ## Music follows place and recovery
 
+The user approved the sampled-audio resource implementation in
+[`story-resource-design.md`](story-resource-design.md) on 2026-10-27. The six
+score sources and cue behavior below remain authoritative; their admitted
+offline-rendered ADPCM assets replace the proposed live-synthesis player.
+The older decoder admission details below document the earlier approach and
+are superseded by that resource design's sampled-player allocation and gates.
+
 Music supports orientation and relief; it never carries essential clues.
 Use the [six existing cues](../music/README.md), with a MUSIC ON/OFF option in
 pause. Honor the device's audio setting; music has no per-voyage save field.

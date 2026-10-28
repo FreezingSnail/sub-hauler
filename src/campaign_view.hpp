@@ -97,44 +97,129 @@ inline void drawServiceBerths(uint8_t *buffer, const game::State &state, const c
         cave::drawGantry(buffer, x, y);
         if (berth.milestone == campaign::kMilestonePump)
             drawFlow(buffer, x, static_cast<int16_t>(y + 5));
+        else if (berth.milestone == campaign::kMilestoneLift) {
+            // Restored cable run: a short vertical hoist above the gantry.
+            cave::fillRect(buffer, x, static_cast<int16_t>(y - 14), 1, 9, true);
+            cave::fillRect(buffer, static_cast<int16_t>(x - 5), static_cast<int16_t>(y - 14), 11, 1, true);
+            cave::fillRect(buffer, static_cast<int16_t>(x - 3), static_cast<int16_t>(y - 11), 7, 1, true);
+        }
     }
+}
+
+// One table drives the three settlement overlays. Keeping the settlement id,
+// its opening milestone and the shared screen transform in one loop avoids
+// three copies of the same visibility test.
+struct RestorationSite {
+    uint8_t berth;
+    uint8_t milestone;
+};
+
+#if defined(__AVR__)
+const RestorationSite kRestorationSites[3] PROGMEM = {
+    {campaign::kBenthos, campaign::kMilestoneFirst},
+    {campaign::kCormorant, campaign::kMilestoneLift},
+    {campaign::kDeepAnchor, campaign::kMilestoneBeacon},
+};
+#else
+constexpr RestorationSite kRestorationSites[3] = {
+    {campaign::kBenthos, campaign::kMilestoneFirst},
+    {campaign::kCormorant, campaign::kMilestoneLift},
+    {campaign::kDeepAnchor, campaign::kMilestoneBeacon},
+};
+#endif
+
+inline void drawLamp(uint8_t *buffer, int16_t x, int16_t y) {
+    cave::fillRect(buffer, x, y, 2, 2, true);
 }
 
 inline void drawRestoration(uint8_t *buffer, const game::State &state, const cave::Camera &camera) {
     drawSurveyRings(buffer, state, camera);
     drawServiceBerths(buffer, state, camera);
 
-    // Benthos grow-room lamps. FIRST lights one bank; PUMP completes the row.
-    world::Settlement benthos;
-    if (world::settlementInfo(campaign::kBenthos, benthos)) {
-        const int16_t x = cave::dockScreenX(camera, benthos.pixel_x);
-        const int16_t y = cave::dockScreenY(camera, benthos.pixel_y);
-        if (cave::gantryVisible(x, y)) {
-            if (restored(state, campaign::kMilestoneFirst)) {
-                cave::fillRect(buffer, static_cast<int16_t>(x - 8), static_cast<int16_t>(y - 17), 2, 2, true);
-                cave::fillRect(buffer, static_cast<int16_t>(x), static_cast<int16_t>(y - 17), 2, 2, true);
-            }
+    for (uint8_t i = 0; i < 3; ++i) {
+#if defined(__AVR__)
+        const uint8_t berth = pgm_read_byte(&kRestorationSites[i].berth);
+        const uint8_t milestone = pgm_read_byte(&kRestorationSites[i].milestone);
+#else
+        const uint8_t berth = kRestorationSites[i].berth;
+        const uint8_t milestone = kRestorationSites[i].milestone;
+#endif
+        if (!restored(state, milestone))
+            continue;
+        world::Settlement site;
+        if (!world::settlementInfo(berth, site))
+            continue;
+        const int16_t x = cave::dockScreenX(camera, site.pixel_x);
+        const int16_t y = cave::dockScreenY(camera, site.pixel_y);
+        if (!cave::gantryVisible(x, y))
+            continue;
+
+        if (berth == campaign::kBenthos) {
+            // FIRST lights one bank; PUMP completes the row.
+            drawLamp(buffer, static_cast<int16_t>(x - 8), static_cast<int16_t>(y - 17));
+            drawLamp(buffer, x, static_cast<int16_t>(y - 17));
             if (restored(state, campaign::kMilestonePump))
-                cave::fillRect(buffer, static_cast<int16_t>(x + 8), static_cast<int16_t>(y - 17), 2, 2, true);
+                drawLamp(buffer, static_cast<int16_t>(x + 8), static_cast<int16_t>(y - 17));
+        } else if (berth == campaign::kCormorant) {
+            // LIFT lights the workshop hoist.
+            drawLamp(buffer, static_cast<int16_t>(x - 8), static_cast<int16_t>(y - 17));
+            drawLamp(buffer, static_cast<int16_t>(x + 8), static_cast<int16_t>(y - 17));
+        } else {
+            // BEACON lights the mast; HOME completes the signal arm.
+            cave::fillRect(buffer, static_cast<int16_t>(x - 1), static_cast<int16_t>(y - 22), 3, 6, true);
+            cave::fillRect(buffer, x, static_cast<int16_t>(y - 21), 1, 4, false);
+            if (restored(state, campaign::kMilestoneHome))
+                cave::fillRect(buffer, static_cast<int16_t>(x - 5), static_cast<int16_t>(y - 20), 3, 1, true);
         }
     }
 }
+
 
 #if defined(__AVR__)
 
 #include "common.hpp"
 
 inline uint24_t missionLabel(uint8_t mission) {
-    return mission == campaign::kFirst ? txt_first : txt_pump;
+    switch (mission) {
+    case campaign::kFirst:
+        return txt_first;
+    case campaign::kPump:
+        return txt_pump;
+    case campaign::kLift:
+        return txt_lift;
+    case campaign::kBeacon:
+        return txt_beacon;
+    case campaign::kHome:
+        return txt_home;
+    case campaign::kWorkEnding:
+        return txt_view_ending;
+    default:
+        return 0;
+    }
 }
 
 inline uint24_t missionPurpose(uint8_t mission) {
-    return mission == campaign::kFirst ? txt_first_purpose : txt_pump_purpose;
+    switch (mission) {
+    case campaign::kFirst:
+        return txt_first_purpose;
+    case campaign::kPump:
+        return txt_pump_purpose;
+    case campaign::kLift:
+        return txt_lift_purpose;
+    case campaign::kBeacon:
+        return txt_beacon_purpose;
+    case campaign::kHome:
+        return txt_home_purpose;
+    default:
+        return 0;
+    }
 }
 
 inline uint24_t clueFor(const game::State &state, uint8_t berth) {
     switch (berth) {
     case campaign::kTidewall:
+        if (campaign::missionCompleted(state, campaign::kHome))
+            return txt_network_on;
         return restored(state, campaign::kMilestoneFirst) ? txt_benthos_lamps_on : txt_first_clue;
     case campaign::kBenthos:
         if (!restored(state, campaign::kMilestoneFirst))
@@ -143,17 +228,33 @@ inline uint24_t clueFor(const game::State &state, uint8_t berth) {
             return txt_pump_survey_clue;
         if (!restored(state, campaign::kMilestonePump))
             return txt_pump_source_clue;
-        return txt_pump_restored;
+        if (!campaign::surveyRecorded(state, campaign::kLiftSurveyId))
+            return txt_lift_clue;
+        if (!restored(state, campaign::kMilestoneLift))
+            return txt_lift_source_clue;
+        return txt_lift_restored;
     case campaign::kCormorant:
         if (!restored(state, campaign::kMilestoneFirst))
             return txt_no_work;
+        // Cormorant carries the lift survey clue; the pump survey clue lives
+        // at Benthos. Both may be found before their repair is requested.
+        if (!campaign::surveyRecorded(state, campaign::kLiftSurveyId))
+            return txt_survey_lift_clue;
         if (!campaign::surveyRecorded(state, campaign::kPumpSurveyId))
             return txt_survey_pump_clue;
         if (!restored(state, campaign::kMilestonePump))
             return txt_pump_part_ready;
-        return txt_pump_restored;
+        if (!restored(state, campaign::kMilestoneLift))
+            return txt_lift_source_clue;
+        if (!campaign::sealOwned(state))
+            return txt_beacon_needs_seal;
+        return txt_beacon_ready;
     case campaign::kDeepAnchor:
-        return txt_beacon_clue;
+        if (!restored(state, campaign::kMilestoneBeacon))
+            return txt_beacon_clue;
+        if (!campaign::missionCompleted(state, campaign::kHome))
+            return txt_beacon_lit;
+        return txt_network_on;
     default:
         return 0;
     }
@@ -176,8 +277,10 @@ inline void printRow(uint8_t y, uint8_t mission, bool selected) {
     }
     text::at(4, y);
     text::print(missionLabel(mission));
-    text::character(' ');
-    text::number(campaign::missionReward(mission));
+    if (mission != campaign::kWorkEnding) {
+        text::character(' ');
+        text::number(campaign::missionReward(mission));
+    }
 }
 
 inline void drawWorkList(const game::State &state, uint8_t selected) {

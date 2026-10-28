@@ -1,5 +1,6 @@
 import copy
 import hashlib
+from dataclasses import replace
 import json
 import math
 from pathlib import Path
@@ -164,6 +165,19 @@ class AuthoredLevelTest(unittest.TestCase):
         bad['surveys'][0]['id']=2
         with self.assertRaisesRegex(ValueError,'frozen campaign bit'):
             gen_level.build(bad)
+
+    def test_lower_gantry_serves_above_the_pressure_boundary(self):
+        lift=next(b for b in self.level.service_berths if b.symbol=='LOWER_GANTRY')
+        self.assertLess(lift.tile_y,self.source['pressure_y'])
+        self.assertEqual(lift.milestone,gen_level.MILESTONES['lift'])
+        deep=next(r for r in self.source['rooms'] if r['id']=='D')
+        below=replace(lift,tile_x=deep['dock'][0],tile_y=deep['dock'][1],
+                      pixel_x=deep['dock'][0]*8,pixel_y=deep['dock'][1]*8)
+        bad=gen_level.Level(self.level.source,self.level.world,self.level.gates,
+                            self.level.pickups,[self.level.service_berths[0],below],
+                            self.level.surveys)
+        with self.assertRaisesRegex(ValueError,'above the pressure boundary'):
+            gen_level.validate_access(bad)
 
     def test_wall_docks_are_distinct_reachable_and_reject_unsafe_placements(self):
         gen_level.validate_docks(self.level)

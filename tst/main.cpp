@@ -48,6 +48,7 @@
 #if SH_FEATURE_CAMPAIGN
 #include "campaign_test.hpp"
 #include "campaign_view_test.hpp"
+#include "ending_view_test.hpp"
 #endif
 #if SH_FEATURE_STATIONS && SH_FEATURE_JOBS
 #include "loop_test.hpp"
@@ -104,6 +105,7 @@ int main() {
 #if SH_FEATURE_CAMPAIGN
     CampaignSuite(runner);
     CampaignViewSuite(runner);
+    EndingViewSuite(runner);
 #endif
 #if SH_FEATURE_STATIONS && SH_FEATURE_JOBS
     LoopSuite(runner);

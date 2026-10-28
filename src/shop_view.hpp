@@ -8,6 +8,7 @@
 
 #include "game.hpp"
 #include "shop.hpp"
+#include "station_view.hpp"
 
 // Shop board, 128x64. Pure layout is host-checkable; the draw function is
 // device-only because it uses the external FX font.
@@ -78,19 +79,7 @@ inline void draw(const game::State &state, uint8_t selected) {
     text::number(state.credits);
 
     arduboy.drawFastHLine(0, kDividerY, 128, WHITE);
-
-    text::at(kStatusX, kStatusY);
-    text::print(txt_air_status);
-    text::number(state.air);
-    text::character('/');
-    text::number(game::airCapacity(state));
-#if SH_FEATURE_HULL_DAMAGE
-    text::at(kHullX, kStatusY);
-    text::print(txt_hull_status);
-    text::number(state.hull);
-    text::character('/');
-    text::number(game::hullCapacity(state));
-#endif
+    station_view::drawStatus(state);
 
     for (uint8_t row = 0; row < shop::kItemCount; ++row) {
         const shop::Item item = static_cast<shop::Item>(row);
