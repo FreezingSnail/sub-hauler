@@ -5,11 +5,16 @@
 #include <Arduboy2.h>
 #include <ArduboyFX.h>
 #include "src/fxdata.h"
+#include "src/generated/campaign_sprites.hpp"
+#include "src/generated/music_regions.hpp"
+#include "src/generated/panel_sprites.hpp"
+#include "src/generated/pause_sprites.hpp"
 #include "src/generated/sprites.hpp"
 #include "src/generated/pilot_sprites.hpp"
 #include "src/generated/world.hpp"
 #include "src/generated/cargo.hpp"
 #include "src/generated/music.hpp"
+#include "src/generated/audio.hpp"
 #include "src/generated/exploration.hpp"
 
 // First byte of fxdata/tables/world.bin: tile row 0 is inside the sealed
@@ -63,8 +68,52 @@ static_assert(txt_found_cutter == explorationObjects + exploration_data::OBJECT_
 constexpr uint32_t NATIVE_TERRAIN_BYTES = static_cast<uint32_t>(world::PIXELS_X) * world::PIXELS_Y / 8;
 static_assert(explorationTerrain == txt_dev_noclip + sizeof("DEV NOCLIP  A FAST"), "native terrain appends after unchanged labels");
 static_assert(txt_sub_hauler == explorationTerrain + NATIVE_TERRAIN_BYTES, "voyage labels append after native terrain");
-static_assert(FX_DATA_BYTES == txt_a_finish + sizeof("A FINISH"), "FX image ends after the appended campaign and ending labels");
-
+static_assert(audio_harbor_bubbles == txt_a_finish + sizeof("A FINISH"), "sampled audio appends after every shipped symbol");
+static_assert(audio_kelp_drift == audio_harbor_bubbles + audio::kBytes[0], "Kelp Drift follows Harbor Bubbles");
+static_assert(audio_sonar_lullaby == audio_kelp_drift + audio::kBytes[1], "Sonar Lullaby follows Kelp Drift");
+static_assert(audio_abyssal_glass == audio_sonar_lullaby + audio::kBytes[2], "Abyssal Glass follows Sonar Lullaby");
+static_assert(audio_tidepool_waltz == audio_abyssal_glass + audio::kBytes[3], "Tidepool Waltz follows Abyssal Glass");
+static_assert(audio_bubblejet_run == audio_tidepool_waltz + audio::kBytes[4], "Bubblejet Run follows Tidepool Waltz");
+static_assert(txt_loader == audio_bubblejet_run + audio::kBytes[5], "loader label follows the sampled audio streams");
+static_assert(txt_roster_load_hint == txt_loader + sizeof("LOADER"), "roster loader hint follows the loader label");
+constexpr uint24_t spriteBytes(uint8_t width, uint8_t height, uint8_t frames, bool masked) {
+    return static_cast<uint24_t>(2) + static_cast<uint24_t>(width) * ((height + 7) / 8) * frames * (masked ? 2 : 1);
+}
+static_assert(panel_abandon_confirm == txt_roster_load_hint + sizeof("UP/DN A OK  L/R HULL"), "story panels append after the loader strings");
+static_assert(panel_ending_network == panel_abandon_confirm + spriteBytes(PANEL_ABANDON_CONFIRM_WIDTH, PANEL_ABANDON_CONFIRM_HEIGHT, PANEL_ABANDON_CONFIRM_FRAMES, PANEL_ABANDON_CONFIRM_MASKED), "ending network follows the first prompt");
+static_assert(panel_ending_stats == panel_ending_network + spriteBytes(PANEL_ENDING_NETWORK_WIDTH, PANEL_ENDING_NETWORK_HEIGHT, PANEL_ENDING_NETWORK_FRAMES, PANEL_ENDING_NETWORK_MASKED), "ending stats follow the network card");
+static_assert(panel_ending_thanks == panel_ending_stats + spriteBytes(PANEL_ENDING_STATS_WIDTH, PANEL_ENDING_STATS_HEIGHT, PANEL_ENDING_STATS_FRAMES, PANEL_ENDING_STATS_MASKED), "ending thanks follow the stats card");
+static_assert(panel_pause_rescue == panel_ending_thanks + spriteBytes(PANEL_ENDING_THANKS_WIDTH, PANEL_ENDING_THANKS_HEIGHT, PANEL_ENDING_THANKS_FRAMES, PANEL_ENDING_THANKS_MASKED), "pause panel follows the ending cards");
+static_assert(panel_pause_resume == panel_pause_rescue + spriteBytes(PANEL_PAUSE_RESCUE_WIDTH, PANEL_PAUSE_RESCUE_HEIGHT, PANEL_PAUSE_RESCUE_FRAMES, PANEL_PAUSE_RESCUE_MASKED), "pause selection variants stay adjacent");
+static_assert(panel_rescue_confirm == panel_pause_resume + spriteBytes(PANEL_PAUSE_RESUME_WIDTH, PANEL_PAUSE_RESUME_HEIGHT, PANEL_PAUSE_RESUME_FRAMES, PANEL_PAUSE_RESUME_MASKED), "rescue confirmation follows the pause variants");
+static_assert(panel_save_continue == panel_rescue_confirm + spriteBytes(PANEL_RESCUE_CONFIRM_WIDTH, PANEL_RESCUE_CONFIRM_HEIGHT, PANEL_RESCUE_CONFIRM_FRAMES, PANEL_RESCUE_CONFIRM_MASKED), "save failure variants follow the confirmations");
+static_assert(panel_save_retry == panel_save_continue + spriteBytes(PANEL_SAVE_CONTINUE_WIDTH, PANEL_SAVE_CONTINUE_HEIGHT, PANEL_SAVE_CONTINUE_FRAMES, PANEL_SAVE_CONTINUE_MASKED), "save retry follows save continue");
+static_assert(panel_wreck_retry == panel_save_retry + spriteBytes(PANEL_SAVE_RETRY_WIDTH, PANEL_SAVE_RETRY_HEIGHT, PANEL_SAVE_RETRY_FRAMES, PANEL_SAVE_RETRY_MASKED), "wreck panels follow the save panels");
+static_assert(panel_wreck_title == panel_wreck_retry + spriteBytes(PANEL_WRECK_RETRY_WIDTH, PANEL_WRECK_RETRY_HEIGHT, PANEL_WRECK_RETRY_FRAMES, PANEL_WRECK_RETRY_MASKED), "wreck title follows wreck retry");
+static_assert(title_keep == panel_wreck_title + spriteBytes(PANEL_WRECK_TITLE_WIDTH, PANEL_WRECK_TITLE_HEIGHT, PANEL_WRECK_TITLE_FRAMES, PANEL_WRECK_TITLE_MASKED), "title keep follows the prompts");
+static_assert(title_menu == title_keep + spriteBytes(TITLE_KEEP_WIDTH, TITLE_KEEP_HEIGHT, TITLE_KEEP_FRAMES, TITLE_KEEP_MASKED), "title menu follows keep chart");
+static_assert(title_replace == title_menu + spriteBytes(TITLE_MENU_WIDTH, TITLE_MENU_HEIGHT, TITLE_MENU_FRAMES, TITLE_MENU_MASKED), "replace confirmation follows the menu sheet");
+static_assert(work_active == title_replace + spriteBytes(TITLE_REPLACE_WIDTH, TITLE_REPLACE_HEIGHT, TITLE_REPLACE_FRAMES, TITLE_REPLACE_MASKED), "work active strip follows the title sheet");
+static_assert(work_details == work_active + spriteBytes(WORK_ACTIVE_WIDTH, WORK_ACTIVE_HEIGHT, WORK_ACTIVE_FRAMES, WORK_ACTIVE_MASKED), "work details follow the active strip");
+static_assert(work_rows == work_details + spriteBytes(WORK_DETAILS_WIDTH, WORK_DETAILS_HEIGHT, WORK_DETAILS_FRAMES, WORK_DETAILS_MASKED), "work rows follow the detail sheet");
+static_assert(lift_cable == work_rows + spriteBytes(WORK_ROWS_WIDTH, WORK_ROWS_HEIGHT, WORK_ROWS_FRAMES, WORK_ROWS_MASKED), "restoration sprites follow the work sheets");
+static_assert(mooring == lift_cable + spriteBytes(LIFT_CABLE_WIDTH, LIFT_CABLE_HEIGHT, LIFT_CABLE_FRAMES, LIFT_CABLE_MASKED), "mooring follows the lift cable");
+static_assert(pump_flow == mooring + spriteBytes(MOORING_WIDTH, MOORING_HEIGHT, MOORING_FRAMES, MOORING_MASKED), "pump flow follows the mooring");
+static_assert(survey_ring == pump_flow + spriteBytes(PUMP_FLOW_WIDTH, PUMP_FLOW_HEIGHT, PUMP_FLOW_FRAMES, PUMP_FLOW_MASKED), "survey ring follows the pump flow");
+static_assert(txt_music_on == survey_ring + spriteBytes(SURVEY_RING_WIDTH, SURVEY_RING_HEIGHT, SURVEY_RING_FRAMES, SURVEY_RING_MASKED), "music labels follow the restoration art");
+static_assert(txt_music_off == txt_music_on + sizeof("MUSIC ON"), "music off follows music on");
+static_assert(musicRegions == txt_music_off + sizeof("MUSIC OFF"), "region plane follows the music labels");
+static_assert(pause_menu == musicRegions + music_regions::kPlaneBytes, "pause menu follows the region plane");
+static_assert(txt_saved_berth == pause_menu + spriteBytes(PAUSE_MENU_WIDTH, PAUSE_MENU_HEIGHT, PAUSE_MENU_FRAMES, PAUSE_MENU_MASKED), "HUD saved notice follows the pause menu");
+static_assert(txt_unsaved_find == txt_saved_berth + sizeof("SAVED AT BERTH"), "HUD unsaved notice follows saved notice");
+static_assert(txt_story == txt_unsaved_find + sizeof("UNSAVED FIND"), "WORK story label follows the HUD notices");
+static_assert(txt_cargo == txt_story + sizeof("STORY"), "WORK freight label follows the story label");
+static_assert(txt_work_accept_hint == txt_cargo + sizeof("CARGO"), "WORK accept hint follows the freight label");
+static_assert(txt_short_load == txt_work_accept_hint + sizeof("A ACCEPT  B BACK"), "short-load note follows the accept hint");
+static_assert(FX_DATA_BYTES == txt_short_load + sizeof("SHORT LOAD"), "FX image ends after the WORK labels");
+static_assert(FX_SAVE_BYTES == 4096, "save partition is one 4 KiB erase block");
+static_assert(FX_SAVE_PAGE == 0xFFF0, "save partition is the last 16 cart pages");
+static_assert((FX_DATA_BYTES + 255) / 256 + FX_SAVE_BYTES / 256 + FX_DATA_PAGE == 65536, "data and save partitions tile the cart image");
 // Cargo block layout: fixed counts and back-to-back hull blocks.
 static_assert(CARGO_MINNOW_OFFSET == 0, "MINNOW is the first hull block");
 static_assert(CARGO_HAULER_OFFSET ==
@@ -170,6 +219,13 @@ void setup() {
     const uint8_t bubblejetMagic = FX::readPendingUInt8();
     FX::readEnd();
     ok = ok && glassMagic == 0xC1 && waltzMagic == 0xC1 && bubblejetMagic == 0xC1;
+
+    // Loader label is permanent device coverage. The action itself is not
+    // invoked here: exitToBootloader() would leave the serial harness.
+    FX::seekData(txt_loader);
+    const uint8_t loaderFirst = FX::readPendingUInt8();
+    FX::readEnd();
+    ok = ok && loaderFirst == 'L';
 
     Serial.println(ok ? F("P") : F("F"));
 }

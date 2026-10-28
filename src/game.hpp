@@ -39,8 +39,8 @@ constexpr int16_t kBallastMax = 100;
 constexpr int16_t kNeutralBase = 50;      // ballast at zero cargo
 constexpr int16_t kNeutralPerCargo = 5;   // neutral falls 5 per cargo unit
 
-constexpr int16_t kAirCapacity = 180;      // integer air units at full tank
-constexpr uint16_t kAirDrainTicks = 100;   // 0.6 units/s -> one unit per 100 ticks
+constexpr int16_t kAirCapacity = 300;      // integer air units at full tank
+constexpr uint16_t kAirDrainTicks = 150;   // 0.4 units/s -> one unit per 150 ticks
 #if SH_FEATURE_SHOP
 constexpr int16_t kAirCapacityPerLevel = 30;   // air-tank upgrade step
 #endif
@@ -111,33 +111,21 @@ struct ParticlePool {
 #endif
 
 #if SH_FEATURE_JOBS
-// Contract storage is fixed and integer-only. Offers are generated for the
-// station the boat is docked at; the active job keeps the deadline as a flight
-// tick duration so docking pauses it with the rest of the world.
-constexpr uint8_t kJobOffers = 2;
+// Contract storage is fixed and integer-only. The WORK board carries one
+// repeatable freight row; accepting it replaces that row until the next dock.
+// Every job is untimed: air and handling are the expedition pressure.
+constexpr uint8_t kJobOffers = 1;
 constexpr uint8_t kJobCrates = 4;
 constexpr uint8_t kJobNone = 0xFF;
 
-// Active-job age saturates here. Every generated deadline is strictly below
-// this sentinel (asserted in jobs.hpp), so a saturated age can only mean
-// "overdue": it can never wrap back into a payable window.
-constexpr uint16_t kJobElapsedLate = 0xFFFF;
-
 #if SH_FEATURE_CAMPAIGN
-// Explicit job kind, replacing the implicit "six-byte timed contract". The
-// saved payload freezes these values; see docs/progression-implementation.md.
+// Explicit job kind. The save schema records only NONE, ORDINARY or CAMPAIGN;
+// there is no timed job kind. See docs/progression-implementation.md.
 constexpr uint8_t kJobKindNone = 0;
 constexpr uint8_t kJobKindOrdinary = 1;
-constexpr uint8_t kJobKindExpress = 2;
-constexpr uint8_t kJobKindCampaign = 3;
+constexpr uint8_t kJobKindCampaign = 2;
 
 constexpr uint8_t kMissionNone = 0xFF;
-
-// Express pays a five-credit-rounded 125% of the generated route reward. The
-// integer shape is frozen by the implementation contract.
-constexpr uint8_t expressReward(uint8_t routeReward) {
-    return static_cast<uint8_t>(((static_cast<uint16_t>(routeReward) * 5u + 10u) / 20u) * 5u);
-}
 #endif
 
 struct JobOffer {
@@ -146,22 +134,19 @@ struct JobOffer {
     uint8_t crates;      // required cargo units
     uint8_t reward;      // credits, a multiple of 5; generated bound-checked
 #if SH_FEATURE_CAMPAIGN
-    uint8_t kind;        // ORDINARY or EXPRESS; row 0 / row 1
+    uint8_t kind;   // always ORDINARY
 #endif
-    uint16_t deadline;   // allowed flight ticks from acceptance; 0 = untimed
 };
 
 struct ActiveJob {
 #if SH_FEATURE_CAMPAIGN
-    uint8_t kind;        // kJobKindNone / ORDINARY / EXPRESS / CAMPAIGN
+    uint8_t kind;        // kJobKindNone / ORDINARY / CAMPAIGN
     uint8_t mission;     // campaign mission id or kMissionNone
     uint8_t from;        // origin berth or kJobNone
 #endif
     uint8_t to;
     uint8_t crates;
-    uint8_t reward;      // promoted when credits are paid
-    uint16_t deadline;   // allowed flight ticks from acceptance; 0 = untimed
-    uint16_t elapsed;    // flight ticks since acceptance, saturating
+    uint8_t reward;   // promoted when credits are paid
 };
 #endif
 
@@ -266,11 +251,11 @@ inline bool hasActiveJob(const State &state) {
 #endif
 }
 
-// Charge one flight tick. Campaign/ordinary work is untimed and never ages;
-// only express work consumes its route deadline. The voyage clock advances on
-// every flight tick and saturates. Docked/chart frames never call a world step,
-// and the station guard keeps a direct step() call honest too.
-inline void tickJobElapsed(State &state) {
+// Charge one flight tick to the campaign voyage clock. Job age is no longer
+// part of the simulation: every freight and story job is untimed. Docked/chart
+// frames never call a world step, and the station guard keeps a direct step()
+// call honest too.
+inline void tickVoyage(State &state) {
 #if SH_FEATURE_STATIONS
     if (state.docked >= 0)
         return;
@@ -278,13 +263,9 @@ inline void tickJobElapsed(State &state) {
 #if SH_FEATURE_CAMPAIGN
     if (state.voyageTicks != 0xFFFFFFFFu)
         ++state.voyageTicks;
-    if (!hasActiveJob(state) || state.activeJob.kind != kJobKindExpress || state.activeJob.elapsed == kJobElapsedLate)
-        return;
 #else
-    if (!hasActiveJob(state) || state.activeJob.elapsed == kJobElapsedLate)
-        return;
+    (void)state;
 #endif
-    ++state.activeJob.elapsed;
 }
 #endif
 
@@ -315,21 +296,38 @@ inline uint8_t clampCargo(int16_t cargo) {
     return static_cast<uint8_t>(cargo);
 }
 
+// State invariant: state.cargo is always 0..kCargoMax. setCargo() is the only
+// runtime writer; the save loader writes it from a validated active job whose
+// crates field is either 0 or kJobCrates. The *Normalized helpers encode that
+// invariant so the hot rules do not re-clamp a value that is already in range.
+// The public helpers keep the clamping contract for direct callers/tests.
+static_assert(kNeutralBase - kNeutralPerCargo * kCargoMax >= 0, "normalized trim cannot go negative");
+static_assert(kNeutralBase <= kBallastMax, "normalized trim cannot exceed ballast max");
+
+inline int16_t neutralForNormalized(uint8_t cargo) {
+    return static_cast<int16_t>(kNeutralBase - kNeutralPerCargo * cargo);
+}
+
 // Trim target: heavier cargo lowers neutral ballast, so the same ballast
 // setting makes a loaded boat sink.
 inline int16_t neutralFor(int16_t cargo) {
-    const int16_t value = static_cast<int16_t>(kNeutralBase - kNeutralPerCargo * clampCargo(cargo));
-    return clampI16(value, 0, kBallastMax);
+    return neutralForNormalized(clampCargo(cargo));
+}
+
+inline int16_t thrustAccelForNormalized(uint8_t cargo) {
+    return static_cast<int16_t>(kThrustAccel - kThrustAccelPerCargo * cargo);
 }
 
 inline int16_t thrustAccelFor(uint8_t cargo) {
-    const uint8_t n = clampCargo(cargo);
-    return static_cast<int16_t>(kThrustAccel - kThrustAccelPerCargo * n);
+    return thrustAccelForNormalized(clampCargo(cargo));
+}
+
+inline int16_t topSpeedQ8ForNormalized(uint8_t cargo) {
+    return static_cast<int16_t>(kMaxVxBaseQ8 - kMaxVxPerCargoQ8 * cargo);
 }
 
 inline int16_t topSpeedQ8For(uint8_t cargo) {
-    const uint8_t n = clampCargo(cargo);
-    return static_cast<int16_t>(kMaxVxBaseQ8 - kMaxVxPerCargoQ8 * n);
+    return topSpeedQ8ForNormalized(clampCargo(cargo));
 }
 
 // Cargo changes mass and trim but never silently moves ballast: the player
@@ -389,14 +387,15 @@ inline int16_t dragStep(int16_t velocityQ8) {
 //   stepQ12    = velocity * 4 / 15  in -8738..8737 (truncates toward zero)
 //   accumulated = fracQ12 + stepQ12 in -8738..12832 (fracQ12 is 0..4095)
 //   whole       = floor(accumulated / 4096) in -3..3
-// so int16 holds the step, the accumulator and the whole-pixel delta. Only the
-// multiply keeps 32 bits: the result can exceed int16 before the divide.
+// so int16 holds every intermediate. Quotient/remainder decomposition avoids
+// the wide product while preserving truncation for both velocity signs.
 inline void advanceAxis(int16_t &position, int16_t &fracQ12, int16_t velocityQ8) {
-    const int16_t stepQ12 = static_cast<int16_t>(static_cast<int32_t>(velocityQ8) * 4 / 15);
+    // Split before multiplying: both terms keep the sign of velocity, so
+    // truncation equals (int32_t(velocity) * 4) / 15 for every int16 value.
+    const int16_t stepQ12 = static_cast<int16_t>((velocityQ8 / 15) * 4 + ((velocityQ8 % 15) * 4) / 15);
     const int16_t accumulated = static_cast<int16_t>(fracQ12 + stepQ12);
-    int16_t whole = static_cast<int16_t>(accumulated / kSubpixelOne);
-    if (accumulated < 0 && accumulated % kSubpixelOne != 0)
-        --whole;
+    static_assert(kSubpixelOne == 4096 && (-1 >> 12) == -1, "Q12 uses arithmetic floor shift");
+    const int16_t whole = static_cast<int16_t>(accumulated >> 12);
     position = static_cast<int16_t>(position + whole);
     fracQ12 = static_cast<int16_t>(accumulated - whole * kSubpixelOne);
 }
@@ -415,7 +414,7 @@ inline void reset(State &state) {
 #endif
     state.x = kSpawnX;
     state.y = kSpawnY;
-    state.ballast = static_cast<uint8_t>(neutralFor(0));
+    state.ballast = static_cast<uint8_t>(neutralForNormalized(0));
     state.air = airCapacity(state);
 #if SH_FEATURE_MULTI_HULL
     state.hullClass = roster::kDefault;
@@ -492,7 +491,7 @@ inline void stepPhysics(State &state, const Input &input) {
     }
 
     // Vertical drive: positive ballast difference is heavier and sinks.
-    const int16_t neutral = neutralFor(state.cargo);
+    const int16_t neutral = neutralForNormalized(state.cargo);
     const int16_t drive = clampI16(static_cast<int16_t>(state.ballast - neutral), -kBallastDriveMax, kBallastDriveMax);
     const int16_t accelQ8 = static_cast<int16_t>(drive * kBallastAccelQ8 / kStepHz);
     state.vyQ8 = clampI16(static_cast<int16_t>(state.vyQ8 + accelQ8 - dragStep(state.vyQ8)), -kMaxVyQ8, kMaxVyQ8);
@@ -502,14 +501,14 @@ inline void stepPhysics(State &state, const Input &input) {
     const int16_t direction = static_cast<int16_t>(input.right) - static_cast<int16_t>(input.left);
     int16_t power = 0;
     if (direction > 0) {
-        power = thrustAccelFor(state.cargo);
+        power = thrustAccelForNormalized(state.cargo);
         state.facingLeft = false;
     } else if (direction < 0) {
-        power = static_cast<int16_t>(-(thrustAccelFor(state.cargo) / 2));
+        power = static_cast<int16_t>(-(thrustAccelForNormalized(state.cargo) / 2));
         state.facingLeft = true;
     }
     const int16_t powerQ8 = static_cast<int16_t>(power * kQ8One / kStepHz);
-    state.vxQ8 = clampI16(static_cast<int16_t>(state.vxQ8 + powerQ8 - dragStep(state.vxQ8)), -topSpeedQ8For(state.cargo), topSpeedQ8For(state.cargo));
+    state.vxQ8 = clampI16(static_cast<int16_t>(state.vxQ8 + powerQ8 - dragStep(state.vxQ8)), -topSpeedQ8ForNormalized(state.cargo), topSpeedQ8ForNormalized(state.cargo));
 }
 
 inline void step(State &state, const Input &input) {
@@ -522,10 +521,11 @@ inline void step(State &state, const Input &input) {
     if (state.sonarCooldown > 0)
         --state.sonarCooldown;
 #endif
+#if SH_FEATURE_CAMPAIGN
 #if SH_FEATURE_JOBS
-    // Job deadlines measure flight ticks; the docked station screen never
-    // reaches a world step, so the age pauses with the rest of the world.
-    tickJobElapsed(state);
+    // Campaign voyage clock; job timers are gone.
+    tickVoyage(state);
+#endif
 #endif
 }
 

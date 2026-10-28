@@ -37,9 +37,9 @@ class ProfileValuesTest(unittest.TestCase):
                 "MULTI_HULL": 1,
                 "SAVE_CHART": 0,
                 "EXPLORATION": 1,
-                "CAMPAIGN": 0,
-                "SAVE_VOYAGE": 0,
-                "MUSIC": 0,
+                "CAMPAIGN": 1,
+                "SAVE_VOYAGE": 1,
+                "MUSIC": 1,
             },
         )
 
@@ -222,9 +222,9 @@ class FlagOutputTest(unittest.TestCase):
                 "-DSH_FEATURE_MULTI_HULL=1",
                 "-DSH_FEATURE_SAVE_CHART=0",
                 "-DSH_FEATURE_EXPLORATION=1",
-                "-DSH_FEATURE_CAMPAIGN=0",
-                "-DSH_FEATURE_SAVE_VOYAGE=0",
-                "-DSH_FEATURE_MUSIC=0",
+                "-DSH_FEATURE_CAMPAIGN=1",
+                "-DSH_FEATURE_SAVE_VOYAGE=1",
+                "-DSH_FEATURE_MUSIC=1",
             ],
         )
 

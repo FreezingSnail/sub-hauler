@@ -36,6 +36,7 @@
 #include "src/game.hpp"
 #include "src/hud.hpp"
 #include "src/pilot.hpp"
+#include "src/roster.hpp"
 #include "src/render.hpp"
 #include "src/world_fx.hpp"
 #if SH_FEATURE_FOG_CHART
@@ -68,7 +69,12 @@
 #if SH_FEATURE_CAMPAIGN
 #include "src/campaign.hpp"
 #include "src/campaign_view.hpp"
+#include "src/work_view.hpp"
 #include "src/ending_view.hpp"
+#endif
+#if SH_FEATURE_SAVE_VOYAGE
+#include "src/voyage_flow.hpp"
+#include "src/voyage_view.hpp"
 #endif
 
 #ifndef SH_STACK_DIAG
@@ -80,13 +86,16 @@ extern "C" char __bss_end;
 
 Arduboy2Base arduboy;
 
-#if SH_FEATURE_STATIONS && SH_FEATURE_JOBS && SH_FEATURE_FOG_CHART && SH_FEATURE_SONAR && SH_FEATURE_MINES && SH_FEATURE_CURRENTS && SH_FEATURE_SHOP && SH_FEATURE_HULL_DAMAGE && SH_FEATURE_PARTICLES && SH_FEATURE_MULTI_HULL
+#if SH_FEATURE_STATIONS && SH_FEATURE_JOBS && SH_FEATURE_FOG_CHART && SH_FEATURE_SONAR && SH_FEATURE_MINES && SH_FEATURE_CURRENTS && SH_FEATURE_SHOP && SH_FEATURE_HULL_DAMAGE &&                      \
+    SH_FEATURE_PARTICLES && SH_FEATURE_MULTI_HULL
 // The full AVR state budget is pinned here at 80 B after the gl1.3/gl1.4
 // compaction: diagnostic counters and the job clock were removed and route
 // reward fields were narrowed.
 #if SH_FEATURE_EXPLORATION
-#if !SH_FEATURE_CAMPAIGN
-static_assert(sizeof(game::State) == 91, "full exploration run state is 91 bytes on AVR");
+#if SH_FEATURE_CAMPAIGN
+static_assert(sizeof(game::State) == 99, "full campaign+save run state is 99 bytes on AVR");
+#else
+static_assert(sizeof(game::State) == 79, "full non-campaign exploration run state is 79 bytes on AVR");
 #endif
 #else
 static_assert(sizeof(game::State) == 80, "non-exploration state remains 80 bytes");
@@ -137,6 +146,9 @@ __attribute__((noinline)) void runRepresentativePath() {
         roster_view::draw(static_cast<uint8_t>(roster::classAt(index)));
         FX::display(CLEAR_BUFFER);
     }
+    // Include the explicit loader row in the measured title path.
+    roster_view::draw(static_cast<uint8_t>(roster::kDefault), roster_view::kTitleLoader);
+    FX::display(CLEAR_BUFFER);
     state.hullClass = static_cast<uint8_t>(roster::kLeviathan);
 #endif
 
@@ -157,18 +169,26 @@ __attribute__((noinline)) void runRepresentativePath() {
 #if SH_FEATURE_EXPLORATION
     // Exercise salvage, cutter operation, object rendering and discovery HUD
     // in the measured stack window, using the same run state as flight.
-    const auto find=exploration_data::pickup(exploration_data::PICKUP_W);
-    state.x=find.x;state.y=find.y;state.vxQ8=0;state.vyQ8=0;
-    for(uint8_t tick=0;tick<exploration::kDwellTicks;++tick) exploration::update(state);
+    const auto find = exploration_data::pickup(exploration_data::PICKUP_W);
+    state.x = find.x;
+    state.y = find.y;
+    state.vxQ8 = 0;
+    state.vyQ8 = 0;
+    for (uint8_t tick = 0; tick < exploration::kDwellTicks; ++tick)
+        exploration::update(state);
     game::snapCamera(state);
-    view::frame(state,pilot_view::cameraForState(state),cache,tables);
-    hud::draw(state);FX::display(CLEAR_BUFFER);
-    const auto grate=exploration_data::gate(exploration_data::GATE_E_V);
-    state.x=grate.x-14;state.y=grate.y+grate.h/2;
-    for(uint8_t tick=0;tick<exploration::kDwellTicks;++tick) exploration::update(state);
+    view::frame(state, pilot_view::cameraForState(state), cache, tables);
+    hud::draw(state);
+    FX::display(CLEAR_BUFFER);
+    const auto grate = exploration_data::gate(exploration_data::GATE_E_V);
+    state.x = grate.x - 14;
+    state.y = grate.y + grate.h / 2;
+    for (uint8_t tick = 0; tick < exploration::kDwellTicks; ++tick)
+        exploration::update(state);
     game::snapCamera(state);
-    view::frame(state,pilot_view::cameraForState(state),cache,tables);
-    hud::draw(state);FX::display(CLEAR_BUFFER);
+    view::frame(state, pilot_view::cameraForState(state), cache, tables);
+    hud::draw(state);
+    FX::display(CLEAR_BUFFER);
 #endif
 
 #if SH_FEATURE_FOG_CHART
@@ -322,13 +342,27 @@ __attribute__((noinline)) void runRepresentativePath() {
     state.tools = static_cast<uint8_t>(exploration_data::SEAL);
     state.campaign = static_cast<uint8_t>(campaign::kMilestoneFirst | campaign::kMilestonePump | campaign::kMilestoneLift | campaign::kMilestoneBeacon);
     state.surveys = campaign::kSurveyMask;
-    campaign_view::drawWorkList(state, 0);
+    work_view::draw(state, 0);
     FX::display(CLEAR_BUFFER);
+    state.activeJob.kind = game::kJobKindCampaign;
+    state.activeJob.mission = campaign::kPump;
+    state.activeJob.from = campaign::kCormorant;
+    state.activeJob.to = campaign::kBenthos;
+    state.activeJob.crates = game::kJobCrates;
+    state.activeJob.reward = campaign::missionReward(campaign::kPump);
+    work_view::draw(state, 0);
+    FX::display(CLEAR_BUFFER);
+    state.activeJob.kind = game::kJobKindNone;
+    state.activeJob.mission = campaign::kMissionNone;
+    state.activeJob.from = game::kJobNone;
+    state.activeJob.to = game::kJobNone;
+    state.activeJob.crates = 0;
+    state.activeJob.reward = 0;
 
     state.docked = static_cast<int8_t>(campaign::kTidewall);
     state.campaign = static_cast<uint8_t>(campaign::kMilestoneFirst | campaign::kMilestonePump | campaign::kMilestoneLift | campaign::kMilestoneBeacon | campaign::kMilestoneHome);
     state.ending = 0;
-    campaign_view::drawWorkList(state, 0);
+    work_view::draw(state, 0);
     FX::display(CLEAR_BUFFER);
 
     for (uint8_t card = 0; card < ending_view::kCardCount; ++card) {
@@ -336,6 +370,54 @@ __attribute__((noinline)) void runRepresentativePath() {
         FX::display(CLEAR_BUFFER);
     }
     state.ending = 1;
+
+#if SH_FEATURE_SAVE_VOYAGE
+    // Title, save-failure and recovery prompts: each is now a baked panel, but
+    // the stack window still needs the real panel burst plus the surrounding
+    // status/hull selection code.
+    voyage_flow::BootStatus boot;
+    boot.state = voyage_flow::kBootValid;
+    boot.hasValid = true;
+    boot.hasCorrupt = false;
+    boot.hasIncompatible = false;
+    voyage_view::drawTitle(boot, voyage_view::kTitleContinue, state.hullClass, voyage_view::kTitleMenu);
+    FX::display(CLEAR_BUFFER);
+    voyage_view::drawTitle(boot, voyage_view::kTitleNewVoyage, state.hullClass, voyage_view::kTitleConfirmReplace);
+    FX::display(CLEAR_BUFFER);
+    voyage_view::drawSaveFailed(0);
+    FX::display(CLEAR_BUFFER);
+    voyage_view::drawSaveFailed(1);
+    FX::display(CLEAR_BUFFER);
+    voyage_view::drawPauseRescue(0);
+    FX::display(CLEAR_BUFFER);
+    voyage_view::drawPauseRescue(1);
+    FX::display(CLEAR_BUFFER);
+    voyage_view::drawWreck(0);
+    FX::display(CLEAR_BUFFER);
+    voyage_view::drawWreck(1);
+    FX::display(CLEAR_BUFFER);
+    voyage_view::drawRescueConfirm();
+    FX::display(CLEAR_BUFFER);
+    voyage_view::drawAbandonConfirm();
+    FX::display(CLEAR_BUFFER);
+
+    // Real cart checkpoint transaction in the measured window.
+    voyage_save::FxStorage saveStorage;
+    voyage_save::newVoyage(state
+#if SH_FEATURE_FOG_CHART
+                           ,
+                           probeChart
+#endif
+                           ,
+                           saveStorage);
+    voyage_save::load(state
+#if SH_FEATURE_FOG_CHART
+                      ,
+                      probeChart
+#endif
+                      ,
+                      saveStorage);
+#endif
 #endif
 
 #if SH_FEATURE_STATIONS && SH_FEATURE_JOBS
@@ -401,18 +483,30 @@ void setup() {
     Serial.begin(9600);
     arduboy.begin();
     delay(100);
+#if SH_FEATURE_SAVE_VOYAGE
+    FX::begin(FX_DATA_PAGE, FX_SAVE_PAGE);
+#else
     FX::begin(FX_DATA_PAGE);
+#endif
     FX::setCursorRange(0, 32767);
     text::begin();
 
     const uint16_t reserve = measureStackReserve();
+
+    // Device coverage for the title loader row. The action itself is not
+    // invoked: exitToBootloader() would leave the serial harness.
+#if SH_FEATURE_MULTI_HULL
+    const bool loaderRowsOk = roster_view::nextRow(roster_view::kTitleHull) == roster_view::kTitleLoader && roster_view::nextRow(roster_view::kTitleLoader) == roster_view::kTitleHull;
+#else
+    const bool loaderRowsOk = true;
+#endif
 
 #if SH_STACK_DIAG
     Serial.print(F("stack_reserve="));
     Serial.println(reserve);
 #endif
 
-    Serial.println(reserve >= kReserveTarget ? F("P") : F("F"));
+    Serial.println(reserve >= kReserveTarget && loaderRowsOk ? F("P") : F("F"));
 }
 
 void loop() {

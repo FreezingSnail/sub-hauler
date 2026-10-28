@@ -16,17 +16,17 @@
 #endif
 
 // Checkpoint application flow (sub-hauler-7px.4). The storage task owns the
-// slot format and the atomic transaction; this header owns the small amount of
+// slot format and the save transaction; this header owns the small amount of
 // policy between storage and the sketch:
 //
-//   * distinguish a blank EEPROM from an incompatible or corrupt voyage so the
-//     title can warn before NEW VOYAGE;
+//   * distinguish a blank cart save partition from an incompatible or corrupt
+//     voyage so the title can warn before NEW VOYAGE;
 //   * regenerate the deterministic offer board after a load without moving the
 //     saved cursor;
 //   * increment the rescue counter and commit the recovered berth checkpoint.
 //
-// Pure C++: Storage supplies read/update and the host tests inject a fake
-// EEPROM. No Arduino headers and no display access.
+// Pure C++: Storage supplies cart save reads and page/erase commands and the
+// host tests inject a NOR-flash fake. No Arduino headers and no display access.
 namespace voyage_flow {
 
 using game::State;
@@ -36,7 +36,6 @@ enum BootState : uint8_t {
     kBootValid,
     kBootCorrupt,
     kBootIncompatible,
-    kBootUnreadable,
 };
 
 struct BootStatus {
@@ -45,24 +44,23 @@ struct BootStatus {
     bool hasCorrupt;
     bool hasIncompatible;
 
-    // True when NEW VOYAGE would replace data and therefore needs the explicit
-    // replacement confirmation. A blank EEPROM starts immediately.
+    // True when NEW VOYAGE would replace a valid checkpoint and therefore needs
+    // the explicit replacement confirmation. Blank, corrupt and incompatible
+    // partitions start a clean New Voyage immediately.
     bool needsReplaceConfirm() const {
-        return hasValid || hasCorrupt || hasIncompatible;
+        return hasValid;
     }
 };
 
 template <typename Storage> inline BootStatus inspectBoot(Storage &storage) {
     const voyage_save::Inventory inventory = voyage_save::inspect(storage);
     BootStatus status;
-    status.hasValid = inventory.validCount != 0;
-    status.hasCorrupt = inventory.anyCorrupt || (inventory.presentCount != 0 && inventory.validCount == 0 && !inventory.anyIncompatible);
-    status.hasIncompatible = inventory.anyIncompatible;
+    status.hasValid = inventory.status == voyage_save::kSlotValid;
+    status.hasCorrupt = inventory.status == voyage_save::kSlotCorrupt;
+    status.hasIncompatible = inventory.status == voyage_save::kSlotIncompatible;
 
     if (status.hasValid)
         status.state = kBootValid;
-    else if (status.hasIncompatible && status.hasCorrupt)
-        status.state = kBootUnreadable;
     else if (status.hasIncompatible)
         status.state = kBootIncompatible;
     else if (status.hasCorrupt)
@@ -130,14 +128,14 @@ inline voyage_save::SaveResult startNewVoyage(State &state
                                               chart::State &chart
 #endif
                                               ,
-                                              voyage_save::LegacyChart legacy, Storage &storage) {
+                                              Storage &storage) {
     const voyage_save::SaveResult result = voyage_save::newVoyage(state
 #if SH_FEATURE_FOG_CHART
                                                                   ,
                                                                   chart
 #endif
                                                                   ,
-                                                                  legacy, storage);
+                                                                  storage);
     // The board is derived state, not serialized. Generate it even when the
     // initial write fails so CONTINUE UNSAVED still reaches a valid station
     // with the same deterministic offers.

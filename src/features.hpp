@@ -82,23 +82,24 @@
 #error "SH_FEATURE_EXPLORATION requires SH_FEATURE_JOBS"
 #endif
 
-// Pure campaign/untimed-freight rules. Off in shipped profiles until the
-// application integration tasks land; campaign-enabled host builds override
-// it explicitly. Requires the station, job and authored-map rules.
+// Pure campaign/untimed-freight rules. On by default for the full profile and
+// off in lean/core/min; the profile generator passes an explicit 0/1 for every
+// shipped build. Requires the station, job and authored-map rules.
 #ifndef SH_FEATURE_CAMPAIGN
-#define SH_FEATURE_CAMPAIGN 0
+#define SH_FEATURE_CAMPAIGN 1
 #endif
 
 // Atomic voyage save. It owns the same state as campaign and replaces the
 // standalone chart writer, so the two save features are mutually exclusive.
+// On by default for the full profile only.
 #ifndef SH_FEATURE_SAVE_VOYAGE
-#define SH_FEATURE_SAVE_VOYAGE 0
+#define SH_FEATURE_SAVE_VOYAGE 1
 #endif
 
-// Music has no saved state dependency. It remains default-off until the
-// combined resource gate is measured.
+// Streaming music requires the voyage pause menu, and therefore atomic save.
+// On by default for the full profile only; lean/core/min pass an explicit 0.
 #ifndef SH_FEATURE_MUSIC
-#define SH_FEATURE_MUSIC 0
+#define SH_FEATURE_MUSIC 1
 #endif
 
 // Campaign requires the full station/contract/authored-map stack. The save
@@ -118,6 +119,9 @@
 #if SH_FEATURE_SAVE_VOYAGE && SH_FEATURE_SAVE_CHART
 #error "SH_FEATURE_SAVE_VOYAGE requires !SH_FEATURE_SAVE_CHART"
 #endif
+#if SH_FEATURE_MUSIC && !SH_FEATURE_SAVE_VOYAGE
+#error "SH_FEATURE_MUSIC requires SH_FEATURE_SAVE_VOYAGE for the pause MUSIC control"
+#endif
 
 // Development override, separate from shipped feature profiles.
 #ifndef SH_DEV_MODE
@@ -125,4 +129,16 @@
 #endif
 #if SH_DEV_MODE != 0 && SH_DEV_MODE != 1
 #error "SH_DEV_MODE must be 0 or 1"
+#endif
+
+// Release runtime switch. The sketch places ARDUBOY_NO_USB immediately before
+// setup() when this is 1; the bootloader and its supported startup/button
+// entry remain available. Set RELEASE_NO_USB=0 for a runtime-USB development
+// image. The Makefile defaults DEV_MODE=1 to RELEASE_NO_USB=0 so serial
+// development stays usable.
+#ifndef SH_RELEASE_NO_USB
+#define SH_RELEASE_NO_USB 1
+#endif
+#if SH_RELEASE_NO_USB != 0 && SH_RELEASE_NO_USB != 1
+#error "SH_RELEASE_NO_USB must be 0 or 1"
 #endif

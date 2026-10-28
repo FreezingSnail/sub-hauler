@@ -57,22 +57,36 @@ make gen
 make gen-check
 ```
 
-The sibling `../ATMlib2FX` checkout is required. Override its location with
-`ATMLIB2FX_ROOT=/path/to/ATMlib2FX make gen` (also works for the viewer).
+The sibling `../ATMlib2FX` checkout and an Ardens checkout with the absim core
+are required. Override their locations with
+`ATMLIB2FX_ROOT=/path/to/ATMlib2FX ARDENS_ROOT=/path/to/Ardens make gen` (also
+works for the viewer). `make gen` also writes deterministic offline 8 kHz
+reference PCM/WAV files under `build/audio-reference/` and a compact
+source/tool/calibration manifest at `fxdata/music/reference-manifest.json`; see
+[`tools/audio_reference/README.md`](../tools/audio_reference/README.md). The
+references are not packed into the cart.
 The exporter uses `--ring 64 --streaming-loops`. `make gen` writes compact
 streams and a source/event/stream hash manifest into `fxdata/music/`, appends
 the streams to the ordered FX layout, and stages the jukebox. Detailed
 `report.json` / `review.json` files are in `build/music/<score-id>/`.
 
-All streams use `0xC1` streaming loop framing. A future game player
-must build ATMlib2FX with `ATM_FX_COMPACT_RING=64` and
-`ATM_FX_COMPACT_LOOP=1`, use the generated `sh_*` FX offsets and
-`music_data::sh_*_bytes` lengths from `src/generated/music.hpp`, and service
-the ring in the foreground between complete SPI transactions. The normal
-game has no playback calls yet. The [progression draft](../docs/progression.md#music-follows-place-and-recovery)
-proposes region/berth cues, pause and save behavior, mute, and a combined-image
-resource gate. Asset bytes are external cart storage;
-they do not measure the cost of a future player in AVR flash, SRAM or stack.
+The full game streams these cues through the sibling **ArduboyStreamFX**
+player, using the generated `sh_*` FX offsets and
+`music_data::sh_*_bytes` lengths from `src/generated/music.hpp` and servicing
+the ring in the foreground between complete SPI transactions. The
+[progression design](../docs/progression.md#music-follows-place-and-recovery)
+defines region/berth cues, pause and save behavior, and mute. Asset bytes are
+external cart storage; the measured AVR player cost and combined image are in
+[platform.md](../docs/platform.md).
+
+`make gen` also writes raw 4-bit IMA ADPCM loops under
+[`fxdata/music/adpcm/`](adpcm/) (1,424,640 B total), a manifest, generated
+device descriptors, and decoded listening WAVs under `build/audio-adpcm/`.
+Those are the sampled-audio admission assets; see
+[`docs/audio-admission.md`](../docs/audio-admission.md) for the codec, player,
+metrics and timing. They are appended after every earlier FX symbol and do not
+change the existing C1 streams.
+
 
 Validation/export and host decoder loop checks establish timing and stream
 shape. They do not establish physical piezo sound or listening quality.

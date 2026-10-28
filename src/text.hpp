@@ -4,6 +4,7 @@
 
 #include <ArduboyFX.h>
 
+#include "cart_service.hpp"
 #include "fxdata.h"
 
 // Device text boundary. Labels live in the external FX font/string sections and
@@ -33,6 +34,7 @@ inline void at(int16_t x, int16_t y) {
 }
 
 inline void print(uint24_t address) {
+    SH_CART_SERVICE();
     FX::drawString(address);
 }
 

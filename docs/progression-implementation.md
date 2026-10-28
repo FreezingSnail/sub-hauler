@@ -56,11 +56,19 @@ Current static owners in the full image (`avr-nm`): `sBuffer` 1,024 B,
 Arduboy2/FX/USB/Serial/screen-tag state. `sizeof(game::State) == 91` is already
 asserted in `tst/fxdatatest/test_memory.ino`.
 
-## 2. Internal EEPROM ownership audit
+## 2. Save storage ownership
 
-The ATmega32u4 has 1,024 B of internal EEPROM (`E2END == 0x3FF`). The installed
+Voyage checkpoints live in the external Arduboy FX cart save partition, not in
+the ATmega32u4's 1,024 B internal EEPROM. `fxdata/fxdata.txt` ends with
+`savesection 4096`; `tools/fxdata-build.py` emits 4 KiB of erased `0xFF` bytes,
+`FX_SAVE_PAGE` and `FX_SAVE_BYTES`, and `FX::begin(FX_DATA_PAGE, FX_SAVE_PAGE)`
+opens both partitions. The data prefix is unchanged, so every shipped FX symbol
+keeps its flash offset. The development cart image (`fxdata/fxdata.bin`) carries
+the save bytes for Ardens; a physical cart erases/programs the same pages.
+
+Internal EEPROM remains audited for non-voyage settings only. The installed
 Arduboy2 (`arduboy-homemade:avr 1.4.0`) defines
-`EEPROM_STORAGE_SPACE_START == 16` and documents this system map:
+`EEPROM_STORAGE_SPACE_START == 16`:
 
 | Address | Owner | Writer |
 | --- | --- | --- |
@@ -70,63 +78,67 @@ Arduboy2 (`arduboy-homemade:avr 1.4.0`) defines
 | 3–7 | reserved for future system use | none in this toolchain |
 | 8–9 | unit ID (u16) | `Arduboy2Base::writeUnitID()` |
 | 10–15 | unit name (6 bytes) | `Arduboy2Base::writeUnitName()` |
-| 16–1,023 | sketch space | game |
+| 16–655 | unused by voyage save | none |
+| 656 | MUSIC ON/OFF | `src/music.hpp` pause toggle |
 
 Library audit result:
 
 - Arduboy2 writes only the system prefix above; it never writes at or above 16.
-- ArduboyFX has no EEPROM code.
+- ArduboyFX contains no EEPROM code; all voyage bytes go through its SPI save
+  API (`seekSave`, `eraseSaveBlock`, runtime `programSavePage` + page-program
+  `seekCommand`/`writeByte`, `waitWhileBusy`).
 - ATMlib2FX has no EEPROM code.
-- The only other EEPROM user in the sketch is `src/chart_save.hpp`, which
-  currently writes addresses **0–259**. That overlaps the whole system prefix
-  and is not a safe allocation. The voyage save replaces it and must never
-  write 0–15.
-- Audio mute already has a system allocation at address 2. A MUSIC ON/OFF
-  option must map to `arduboy.audio` / `saveOnOff()`; it must not add a
-  settings block or a voyage field. Sound-effect allocation remains later work.
+- The only remaining EEPROM user in the sketch is the optional standalone
+  `src/chart_save.hpp` (mutually exclusive with voyage save). It is not part of
+  a voyage checkpoint.
+- Audio mute keeps the system allocation at address 2. The separate MUSIC
+  ON/OFF byte remains at **656**, now the first byte above the retired voyage
+  allocation. It is never part of a cart checkpoint, so Continue/rollback
+  cannot change it; writes happen only on the pause-menu toggle.
 
-## 3. Voyage slot layout
+## 3. Cart save layout
 
-Two 320-byte slots after the system prefix:
+The save partition is one 4 KiB erase block (16 pages). It owns one 512 B slot
+at offset 0:
 
-| Slot | Addresses | Notes |
-| --- | --- | --- |
-| A | 16–335 | overlaps legacy chart bytes 16–259 |
-| B | 336–655 | does not overlap the legacy chart block 0–259 |
-| free | 656–1,023 | 368 B unallocated |
+| Slot | Cart offset | Erase block | Page numbers |
+| --- | ---: | ---: | --- |
+| only | 0–511 | 0 | 0–1 |
 
-Each slot: **16-byte header + 303-byte payload area + 1 commit byte**.
+Each slot occupies 512 B: **16-byte header + 495-byte payload area + 1 commit
+byte**. The remaining 3,584 bytes of the block stay erased and are not used.
 
 ```text
 slot +   0  magic 'S' 'H' 'V' 'Y'   (0x53 0x48 0x56 0x59)
-slot +   4  schema version          = 1
+slot +   4  schema version          = 4
 slot +   5  world layout version    = world::LAYOUT_VERSION (3 now)
-slot +   6  campaign content version = 1
+slot +   6  campaign content version = 2
 slot +   7  feature/profile signature (bitfield, section 4)
-slot +   8  sequence                u32 little-endian, starts at 1
+slot +   8  reserved                = 0xFF 0xFF 0xFF 0xFF
 slot +  12  payload length          u16 little-endian
 slot +  14  CRC-16                  u16 little-endian
 slot +  16  payload (used bytes only)
-slot + 319  commit                  = 0x5A
+slot + 511  commit                  = 0x5A
 ```
 
-Payload capacity is 303 B. Schema 1 uses 296 B with a chart (40 scalar + 256
-chart) and 40 B without a chart. Bytes after the used payload are neither
-written nor read in schema 1; they are reserved for a future schema.
+The slot spans two 256 B flash pages: page 0 carries the header and payload
+bytes 0–239; page 1 carries payload bytes 240–494 and the commit byte (the last
+byte programmed). Erased flash is `0xFF`, so an uncommitted slot has commit
+`0xFF`, not `0x00`. `0x5A` means committed; any other value is invalid.
 
-The commit byte is deliberately outside the CRC. `0x5A` means committed;
-`0x00` means invalid/in-progress. Any other value is invalid. A torn write can
-therefore never validate.
+Payload capacity is 495 B. Schema 4 uses 292 B with a chart (36 scalar + 256
+chart) and 36 B without a chart. Bytes after the used payload are programmed as
+`0xFF`, matching erased flash, and are not read.
 
 CRC is **CRC-16/CCITT-FALSE**: polynomial `0x1021`, init `0xFFFF`, no
 reflection, no final XOR. It covers header bytes 0–13 (including magic,
-versions, signature, sequence and length) followed by exactly `payload_length`
-payload bytes. It excludes the CRC field and the commit byte. Check value for
-`"123456789"` is `0x29B1`; the storage tests must assert that vector.
+versions, signature, reserved bytes and length) followed by exactly
+`payload_length` payload bytes. It excludes the CRC field and the commit byte.
+Check value for `"123456789"` is `0x29B1`; the storage tests assert that vector.
 
 ## 4. Profile signature
 
-One byte, fixed for schema 1:
+One byte, fixed for schema 4:
 
 | Bit | Feature |
 | --- | --- |
@@ -146,9 +158,9 @@ before offering NEW VOYAGE. `SH_FEATURE_MUSIC` is not in the signature because
 music has no saved field.
 
 Chart presence is derived from bit 0, not stored separately. Expected payload
-length is `40 + (bit0 ? 256 : 0)`.
+length is `36 + (bit0 ? 256 : 0)`.
 
-## 5. Scalar payload schema (40 B)
+## 5. Scalar payload schema (36 B)
 
 Little-endian, fixed order, no padding, no raw C++ struct bytes.
 
@@ -173,20 +185,17 @@ Little-endian, fixed order, no padding, no raw C++ struct bytes.
 | 19 | 1 | job destination berth | 0–3, or 0xFF |
 | 20 | 1 | job load | 4 for cargo jobs, else 0 |
 | 21 | 1 | job reward | credits, multiple of 5 |
-| 22 | 2 | job deadline | flight ticks, 0 = untimed |
-| 24 | 2 | job age | flight ticks, saturating |
-| 26 | 2 | offer cursor | pre-board generator serial |
-| 28 | 2 | board seed | serial origin, schema 1 = 0 |
-| 30 | 1 | armed mines | 8 bits |
-| 31 | 4 | voyage ticks | u32, saturating |
-| 35 | 2 | delivered jobs | u16, saturating |
-| 37 | 2 | rescue count | u16, saturating |
-| 39 | 1 | ending presented | 0/1 |
+| 22 | 2 | offer cursor | pre-board generator serial |
+| 24 | 2 | board seed | serial origin, schema 4 = 0 |
+| 26 | 1 | armed mines | 8 bits |
+| 27 | 4 | voyage ticks | u32, saturating |
+| 31 | 2 | delivered jobs | u16, saturating |
+| 33 | 2 | rescue count | u16, saturating |
+| 35 | 1 | ending presented | 0/1 |
 
-Chart bytes follow at payload offset 40–295 when bit 0 of the signature is set.
-Scalar total is exactly 40 B; this replaces the design's provisional
-"seven reserved bytes" inside the scalar block with seven unused slot bytes
-after the chart instead. The design's 40-byte scalar budget is unchanged.
+Chart bytes follow at payload offset 36–291 when bit 0 of the signature is set.
+Scalar total is exactly 36 B. Schema 3 deletes the two job-timer fields; the
+payload still fits the frozen 495 B area.
 
 Semantic validation, in addition to CRC and header checks:
 
@@ -195,14 +204,18 @@ Semantic validation, in addition to CRC and header checks:
 - tools/claims/gates/milestones/surveys/visits/mines only within their masks.
 - milestones are monotonic: BEACON requires PUMP and LIFT; HOME requires
   BEACON; ending-presented requires HOME.
-- job kind NONE: mission/origin/destination are 0xFF, load/reward/deadline/age
-  are 0.
+- job kind NONE: mission/origin/destination are 0xFF, load/reward are 0.
 - campaign job: mission 0–6, origin/destination match the mission table,
-  load 4, reward equals the table reward, deadline 0, age 0.
+  load 4, reward equals the table reward.
 - ordinary job: mission 0xFF, origin/destination 0–3 and different, load 4,
-  reward 5–250, deadline 0, age 0.
-- express job: as ordinary but deadline equals the generated route deadline
-  and age is 0–0xFFFF.
+  reward equals the generated route reward.
+- no timed/express kind exists in schema 4. A pre-.27 schema 1 slot, a
+  schema 2 slot and a dual-slot schema 3 cart are incompatible and are not
+  migrated.
+- Surveys are facts, not jobs: `recordSurvey()` accepts PUMP or LIFT before
+  FIRST and the saved mask keeps either/both bits. Only accepting a survey
+  mission from the WORK board requires FIRST; never reject an early recorded
+  survey on load or save.
 - `voyageTicks`, delivered and rescue counts are unsigned saturating values.
 - A checkpoint at a service berth may carry an active job; service berths
   refill, repair and save loaded cargo.
@@ -210,65 +223,62 @@ Semantic validation, in addition to CRC and header checks:
 Any failed semantic check invalidates that slot as a whole. It is not partially
 applied.
 
-## 6. Commit, selection and interrupted writes
+### Schema 3 invalidation
+
+Schema 4 keeps the single-slot cart layout but removes the dual-copy sequence
+and fallback. Schema 1/2 EEPROM records, schema 3 cart records, old EEPROM bytes
+and the retired standalone chart block are **incompatible or absent, not
+migrated**. A player with an older record or a torn current record sees the
+normal incompatible/corrupt message and may start a clean NEW VOYAGE; no old
+job, reward, deadline, chart or elapsed age is preserved. Current schema 4 slots
+still receive the full magic, length, CRC and semantic checks, so corruption is
+never silently accepted or loaded.
+
+## 6. Commit and interrupted writes
 
 Save transaction (freeze simulation, pause music, ignore departure input):
 
-1. Choose the target slot: the invalid slot if exactly one is valid; otherwise
-   the slot with the lower sequence; if both are invalid, **slot B first**.
-   Slot A is never the first-ever target because it overlaps the legacy chart.
-2. Write commit `0x00` to the target slot.
-3. Stream the payload from live state with `EEPROM.update()`. No second
-   chart-sized RAM buffer is allocated.
-4. Compute the CRC while streaming, then write schema/layout/content/signature/
-   sequence/length, then the CRC, then the magic, then commit `0x5A`.
-5. Re-read and fully validate the target slot.
-6. Only after a successful read-back report `SAVED`, resume music and unfreeze.
-   On failure keep the other slot intact and offer `RETRY` or
-   `CONTINUE UNSAVED`; never report success optimistically.
+1. Validate the live checkpoint and reject invalid state before any erase.
+2. Erase the single 4 KiB cart block. This also removes the previous checkpoint.
+3. Program page 0 (header, scalar, first 204 chart bytes), then page 1
+   (remaining payload and filler), with commit `0x5A` as the last byte. No
+   second payload or chart-sized RAM buffer is allocated.
+4. Wait for each erase/page program to finish before starting the next one.
+5. Re-read the slot, validate CRC/schema/payload semantics, and require the
+   read-back CRC to equal the CRC just written.
+6. Only after that check report `SAVED`, resume music and unfreeze. On failure
+   offer `RETRY` or `CONTINUE UNSAVED`; never report success optimistically.
 
-Sequence is `newest valid sequence + 1`; the first save is 1. Wrap comparison
-is `(int32_t)(a - b) > 0`. Boot selects the newest slot that is committed,
-compatible, checksum-valid and semantically valid.
+**This is not power-fail atomic.** An interruption during the erase or page
+program may lose the previous checkpoint. The contract is weaker and explicit:
+a torn record never validates, `load()` returns corrupt/incompatible/no-save
+without mutating live state, and the title offers a clean NEW VOYAGE. There is
+no second copy, sequence, newest-slot selection or fallback.
 
-Blank vs incompatible: a slot is blank when its magic is not `SHVY` and its
-commit is not `0x5A`. If either slot carries the magic or commit but neither
-validates, show an incompatible/corrupt-save message before NEW VOYAGE and do
-not erase either slot until the player explicitly replaces it.
+Blank vs incompatible: the slot is blank when its magic is not `SHVY` and its
+commit is not `0x5A`. If it carries the magic or commit but does not validate,
+show the corrupt/incompatible message and allow a clean NEW VOYAGE; do not load
+it. Replacing a valid checkpoint still requires the title confirmation.
 
-Load validates the header, CRC and semantic fields in a first streaming pass,
-then decodes directly into initialized state. It never copies a raw struct and
-never allocates a second chart-sized buffer. Because the commit byte is the
-last write, an interrupted delivery save recovers either the complete
-pre-delivery checkpoint (cargo active, no payment) or the complete
-post-delivery checkpoint (cargo cleared, payment and milestone set); it cannot
-combine them. Replacing a voyage writes a newer checkpoint into the
-older/inactive slot and never erases both valid slots first.
+Load validates the header, CRC and semantic fields before decoding into
+initialized state. It never copies a raw struct and never allocates a second
+chart-sized buffer. Because the read-back must match the intended CRC, an
+unchanged old record cannot be mistaken for a successful write.
 
-Worst case write is 313 bytes (16 header + 296 payload + commit). At the AVR's
-~3.3 ms per byte that is about 1.03 s, on a transition only. `update()` skips
-unchanged bytes, but commit invalidation and commit set are always two writes.
+Worst case erase is one 4 KiB block (~40 ms) plus two 256 B page programs
+(~3.3 ms each), on a transition only. The 4 KiB partition is `FX_SAVE_BYTES`;
+no per-frame autosave, pickups, sonar, chart closing, music progress or
+developer traversal touches it.
 
-No writes occur for pickups, sonar, chart closing, per-frame autosaving or
-music progress. Developer mode never reads or writes voyage slots.
+## 7. No legacy chart migration
 
-## 7. Legacy chart migration
-
-The legacy chart block is addresses 0–259: `'S' 'H'`, version, CRC-8 over 256
-explored bytes, then 256 bytes. It is not a voyage.
-
-- Read it only before the first voyage slot exists.
-- It is importable only when magic, `world::LAYOUT_VERSION` and CRC-8 all
-  validate.
-- On NEW VOYAGE, offer to keep the chart knowledge. Accepting copies the 256
-  chart bytes into the new payload's chart field and defaults everything else:
-  no tools, claims, credits, milestones, surveys or equipment.
-- Declining starts with an empty chart.
-- The first voyage is written to slot B. Slot A may only be used after a valid
-  voyage exists. Never write addresses 0–15 and never reconstruct system
-  settings from chart bytes.
-- Standalone chart save and voyage save are mutually exclusive at compile time:
-  `SH_FEATURE_SAVE_VOYAGE` requires `!SH_FEATURE_SAVE_CHART`.
+Schema 4 removes the old standalone chart migration completely. EEPROM
+addresses 0–259 and pre-schema-4 cart slots are never inspected, offered,
+copied or repaired. A NEW VOYAGE resets the chart, applies
+`chart::revealInitial()` at the generated spawn berth, and persists that reveal
+in the first checkpoint. There is no KEEP OLD CHART prompt and no legacy import
+path. The single cart slot is erased and rewritten. Standalone chart save and voyage save remain mutually exclusive
+at compile time: `SH_FEATURE_SAVE_VOYAGE` requires `!SH_FEATURE_SAVE_CHART`.
 
 ## 8. Stable campaign IDs
 
@@ -325,46 +335,39 @@ Mission eligibility:
 - Completed missions never reappear. Abandoning clears cargo and the active
   job, saves, and lets the source reissue the same mission for free.
 
-## 9. Job kinds, ordinary and express semantics
+## 9. Job kinds and untimed freight semantics
 
-`ActiveJob` gains explicit kind/mission/origin fields. Freeze it at 10 bytes:
+`ActiveJob` uses explicit kind/mission/origin fields. Schema 2 freezes it at
+6 bytes:
 
 ```cpp
 struct ActiveJob {
-    uint8_t kind;      // NONE=0, ORDINARY=1, EXPRESS=2, CAMPAIGN=3
+    uint8_t kind;      // NONE=0, ORDINARY=1, CAMPAIGN=2
     uint8_t mission;   // campaign id or kJobNone
     uint8_t from;      // origin berth
     uint8_t to;        // destination berth
     uint8_t crates;    // 4
     uint8_t reward;    // credits
-    uint16_t deadline; // flight ticks; 0 = untimed
-    uint16_t elapsed;  // flight ticks, saturating
 };
 ```
 
 `hasActiveJob()` becomes `kind != kJobNone`. One cargo job is active at a time;
 surveys and tool discoveries do not occupy the slot.
 
-- **Ordinary**: no deadline (`deadline = 0`), pays the route reward on loaded
-  arrival at the destination. Age stays 0.
-- **Express**: pays `round5(125% of route reward)` and uses the existing route
-  deadline. Freeze the integer formula
-  `((reward * 5 + 10) / 20) * 5`; with the current maximum reward 165 the result
-  is 205, inside the uint8 reward width. Age advances only in flight; docking,
-  chart and pause do not advance it. It saturates at `kJobElapsedLate`; a
-  saturated age is permanently overdue. Expiry is evaluated at docking: clear
-  the job and cargo with an `EXPRESS LATE` notice, no fine, no payment.
-- **Campaign**: `deadline = 0`, age 0, pays the table reward once. Wrong-berth
-  stops retain the job and load; only the matching destination resolves it.
-  Short or missing cargo cannot set completion or pay.
+- **Ordinary freight**: untimed, pays the generated route reward on a loaded
+  arrival at the destination. Accepting or abandoning refreshes the one
+  repeatable freight row.
+- **Campaign**: untimed, pays the table reward once. Wrong-berth stops retain
+  the job and load; only the matching destination resolves it. Short or missing
+  cargo cannot set completion or pay.
+- No express kind, express premium, deadline, clock, late failure or expiry
+  exists. Air and handling are the expedition pressure.
 - Accepting any job auto-loads four units, neutralises trim and leaves the boat
   docked. UNDOCK or B starts travel.
-- Two freight rows: row 0 ordinary, row 1 express, with the existing duplicate-
-  destination retry. Campaign work lives on the WORK page, not the offer rows.
-- WORK replaces the redundant SERVICE row: the no-job board is
-  `[ordinary] [express] WORK [SHOP] UNDOCK`; a build without SHOP omits SHOP.
-  The active-job board keeps UNDOCK initially and ABANDON behind its own
-  confirmation.
+- The station board is `WORK [SHOP] UNDOCK`; WORK opens one board with eligible
+  story rows first and the freight row beneath. A accepts directly. The
+  active-job board keeps UNDOCK initially and ABANDON behind its own
+  confirmation, with WORK available for the carrying summary and clues.
 
 ## 10. Deterministic offers and cursor restoration
 
@@ -377,17 +380,15 @@ Freeze:
 - `state.offerCursor` is the serial value **before** the current station board
   was generated. `jobs::refreshOffers()` records it before its first
   `makeOffer()` and then advances the working serial as today.
-- `state.boardSeed` is the serial origin for the voyage. Schema 1 writes 0, so
+- `state.boardSeed` is the serial origin for the voyage. Schema 3 writes 0, so
   the current offer sequence is preserved exactly. It is stored for forward
   compatibility; changing it is a schema/campaign-content change.
 - Offers are not serialized. While a job is active the board shows the active
-  summary, so the two rows are irrelevant. Abandon regenerates from the current
-  cursor. On load at a berth with no active job, restore `offerSerial` from
-  `offerCursor` and regenerate; the same two rows reappear without advancing
-  the saved cursor.
-- Express age at an intermediate berth is saved and restored unchanged.
-  Retrying from the last berth intentionally rolls the express clock back with
-  the rest of the checkpoint.
+  summary. Abandon regenerates from the current cursor. On load at a berth with
+  no active job, restore `offerSerial` from `offerCursor` and regenerate; the
+  same freight row reappears without advancing the saved cursor.
+- There is no job age or deadline to save. A schema 1 or 2 save is incompatible
+  rather than partially applied; schema 4 keeps every current corruption check.
 
 ## 11. Campaign state additions
 
@@ -405,11 +406,10 @@ the payload above):
 | `boardSeed` | 2 | u16 |
 | `ending` | 1 | 0/1 |
 
-`ActiveJob` grows from 6 to 10 B (`kind`, `mission`, `from` added), and
-`offerSerial` is renamed `offerCursor` with no width change. Net projected
-static growth is **17 B** for campaign state, plus a small number of sketch
-transients (region byte, hysteresis tick, current cue). Budget the campaign at
-roughly **20–25 B**, not a measured number yet.
+`ActiveJob` stays 6 B after dropping the timer fields (`kind`, `mission`,
+`from` replace them), and `offerSerial` is renamed `offerCursor` with no width
+change. The day-zero campaign state projection is unchanged except that the
+save scalar is 4 B smaller.
 
 ## 12. Feature flags and profiles
 
@@ -428,7 +428,7 @@ Profile contract:
 | --- | --- | --- | --- |
 | full | 1 | 1 | 0 until the measured combined-fit gate passes |
 | lean | 1 | 1 | 0 |
-| core | 1 | 1 (no chart, 40 B payload) | 0 |
+| core | 1 | 1 (no chart, 36 B payload) | 0 |
 | min | 0 | 0 | 0 |
 
 Core has no chart, sonar, shop or alternate hull roster. Every required survey
@@ -500,8 +500,8 @@ Consequences:
   transaction occurs. The timer consumer must never read FX.
 - Chart and pause pause the player (`atm_fx_compact_pause()`) and resume in
   place; station/shop idle frames keep playing; wreck/rescue confirmation is
-  silent and resumes on cancel; saving pauses during the EEPROM write and
-  resumes after success. Same-cue entries do not restart; different cues
+  silent and resumes on cancel; saving pauses during the cart erase/page write
+  and resumes after success. Same-cue entries do not restart; different cues
   cut/restart.
 - Audio mute uses the Arduboy2 system setting at EEPROM address 2. MUSIC OFF
   stops playback and prevents starts; it is not a voyage field.
@@ -512,11 +512,12 @@ Consequences:
   travel → BUBBLEJET; Glass Trench travel and unrestored Deep Anchor board →
   ABYSSAL; restored service berths, restored Deep Anchor board and ending →
   TIDEPOOL.
-- Travel region comes from the authored `region` field per room, generated as
-  a 32-byte PROGMEM table. Resolve the nearest room centre within its radius;
-  ties use the lower room index; retain the previous region when no room
-  matches. Evaluate at most once per 30 frames. A region must persist for
-  120 flight ticks (2 s) before it replaces the cue.
+- Travel region comes from the authored `region` field per room, baked into a
+  deterministic 320x160 FX plane. Every tile is owned by the nearest authored
+  room centre, including connecting passages, so approach history cannot
+  change ownership; ties use the lower room index. Evaluate at most once per
+  30 frames. A region must persist for 120 flight ticks (2 s) before it
+  replaces the cue.
 - Verify the 100 Hz Bubblejet Run under real rendering, chart, transitions and
   idle menus; measure the worst refill window against the 64 B ring and the
   library's service deadline. Listen on the physical speaker before claiming
@@ -525,13 +526,14 @@ Consequences:
 ## 14. Downstream ownership and gates
 
 - `.2` pure campaign/untimed freight rules: use sections 8–10; extend
-  `ActiveJob`, add kind/mission/origin, ordinary/express rewards, mission and
-  survey state, WORK page rules; no save code.
-- `.3` atomic two-slot storage: use sections 3–7 and 10; host-native tests for
-  every interrupted-write boundary, torn header, corrupt newest slot, sequence
-  wrap, incompatible signature/version, invalid field combinations, legacy
-  chart import and NEW VOYAGE interruption; assert system bytes 0–15 are never
-  written; assert CRC vector `0x29B1`.
+  `ActiveJob`, add kind/mission/origin, ordinary rewards, mission and survey
+  state, WORK page rules; no save code.
+- `.3` single-slot cart storage: use sections 3–7 and 10; host-native tests for
+  every interrupted erase/page-write boundary, torn header/commit, corrupt
+  payload, incompatible signature/version, invalid field combinations, clean
+  New Voyage recovery and repeated overwrite cycles; assert a torn record never
+  loads or mutates live state, old chart bytes are ignored, no voyage byte is
+  written to internal EEPROM, and CRC vector `0x29B1` holds.
 - `.4` Continue/checkpoints/recovery: use sections 3, 6 and 9; commit on the
   listed transitions only; no midwater suspend.
 - `.5`/`.6` campaign slices: use sections 8 and 11; generated service berth
@@ -549,8 +551,7 @@ Consequences:
   and save code are projected only.
 - Service berth placement, approach clearance and reachability are not authored
   or validated yet.
-- Express reward/deadline tuning and the 90–150 minute voyage target are
-  playtest targets, not measured.
+- The 90–150 minute voyage target is a playtest target, not measured.
 - Physical speaker listening, manual playthroughs, soak tests and audio timing
   under combined load were not performed in this audit.
 
@@ -569,10 +570,10 @@ Implemented in this slice:
   existing slow half-second dwell, records before FIRST, never occupies the
   cargo slot and is idempotent. The Benthos and Cormorant WORK pages carry the
   pump clues; the cutter and seal rumours remain useful text-only hints.
-- WORK replaces the redundant SERVICE row on freight boards. Campaign rows
-  require a DETAILS page and LOAD, so a single A press cannot load cargo.
-  Active-job boards keep UNDOCK as the initial selection and place ABANDON and
-  WORK behind deliberate movement.
+- WORK replaces the redundant SERVICE row and the old freight rows. One board
+  lists eligible restoration jobs first and the repeatable freight row beneath;
+  A accepts directly and auto-loads. Active-job boards keep UNDOCK as the
+  initial selection and place ABANDON and WORK behind deliberate movement.
 - Pump Refuge (berth 4) and Lower Gantry (berth 5) have generated service
   metadata in `src/generated/level.hpp`: stable symbolic ids, dock pixels and
   restoration milestone bits. Both docks pass the wall-attach, hull/approach,
@@ -593,12 +594,11 @@ Generated route budget (`tools/gen_level.py`, conservative, not a play
 measurement): the loaded base boat's shortest first-slice loop is Tidewall →
 Benthos → Pump Refuge → Cormorant → Benthos. Packed passage lengths are 1,627
 px, 537 px, 1,117 px and 1,539 px; at the loaded 18 px/s top speed that is
-about 90 + 30 + 62 + 86 = 268 s of continuous straight-line travel. The
-generated freight deadlines include maneuvering slack and are much larger
-(293 s and 280 s for the two delivery legs). Adding docking, the half-second
-survey dwell, reading the WORK clues and real obstacle steering puts the
-first-time slice in the design's 5–10 minute target range, but that is an
-estimate from generated geometry, not a stopwatch result.
+about 90 + 30 + 62 + 86 = 268 s of continuous straight-line travel. No timer
+caps that route. Adding docking, the half-second survey dwell, reading the WORK
+clues and real obstacle steering puts the first-time slice in the design's
+5–10 minute target range, but that is an estimate from generated geometry, not
+a stopwatch result.
 
 Manual checks still outstanding for this slice:
 
@@ -611,10 +611,10 @@ Manual checks still outstanding for this slice:
 - the physical speaker is not relevant here because this slice does not add or
   change music.
 
-Production profile flags remain unchanged: CAMPAIGN and SAVE_VOYAGE stay off
-in every shipped profile until task .6 integrates the complete sequence. Host
-campaign overrides build the same source. The full AVR campaign override now
-compiles to 29,998 B flash / 1,660 B static and does not link (302 B over
-hardware, 998 B over the 29,000 B planning line); task .6 must trim the combined
-campaign sequence before enabling it. Music remains default-off pending its own
-measured combined-fit task.
+This slice's production flags were unchanged at the time: CAMPAIGN and
+SAVE_VOYAGE stayed off until the later `.6`/`.7`/`.24` work. The full AVR
+campaign override then compiled to 29,998 B flash / 1,660 B static and did not
+link; later trims and the cart save partition brought the complete `full`
+default to **27,010 B / 1,619 B** with campaign, voyage save and music on.
+Those later measurements and the current defaults are canonical in
+[platform.md](platform.md).

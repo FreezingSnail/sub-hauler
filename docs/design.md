@@ -19,8 +19,8 @@ caverns with 31 solid pillars, shelves, wall teeth and wreck ribs. Freight
 allowances follow authored route lengths; optional shortcuts save travel time.
 See [the level contract](../levels/README.md) for encoding, controls and limits.
 The older baked-world measurements below are historical. Campaign/ending,
-persistent voyage saves and gameplay music remain proposed work; the current
-[progression draft](progression.md) refines the wider exploration proposal.
+persistent cart voyage saves and gameplay music now ship in the `full` profile;
+the [progression design](progression.md) records the accepted direction.
 
 ## Direction
 

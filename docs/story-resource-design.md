@@ -144,8 +144,9 @@ is claimed by this document.
 
 ### 4. Preserve atomic checkpoints; simplify their presentation
 
-Keep the two EEPROM slots, reserved system prefix, CRC, sequence ordering,
-commit-last transaction, read-back success check and rollback behavior. Keep
+Keep the single cart save slot, CRC, commit-last transaction, read-back success
+check and clean-New-Voyage recovery for torn records. This is not a power-fail
+atomic two-copy protocol. Keep
 the current explicit saved-field encoding; do not save raw C++ objects. Save
 repair/payment before showing its celebration, and mark ending presentation
 separately so an interrupted ending can replay without paying again.
@@ -220,3 +221,68 @@ Implementation is authorized in dependency order: sampled-audio admission,
 USB-free release runtime, fitted presentation, then full cue integration and
 release verification. A failed admission stops dependent integration until
 the resource or fidelity deficit is resolved. No push is authorized.
+
+## Implementation checkpoint: USB-free entry and title loader (2026-10-27)
+
+`sub-hauler-7px.12` adopts the approved release entry point without changing
+the canonical ceilings. Shipping builds default to `RELEASE_NO_USB=1` and place
+`ARDUBOY_NO_USB` immediately before `setup()`; `RELEASE_NO_USB=0` and
+`DEV_MODE=1` retain the runtime USB stack for development. The title screen has
+an explicit **LOADER** row using `Arduboy2Core::exitToBootloader()`. The
+library's startup **DOWN** check remains the recovery path; a desktop uploader
+cannot force an automatic reset from a running USB-free game.
+
+Paired full-profile measurements: USB-free **17,620 B / 1,444 B**; runtime USB
+**20,282 B / 1,584 B**; the no-USB entry saves **2,662 B flash / 140 B static**.
+The title loader costs **208 B flash / 1 B static** against the .11.2 noUSB
+control, inside the **400 B/16 B** loader+cue/settings allocation. The current
+campaign+save USB-free image links at **27,786 B / 1,525 B**, still
+**1,286 B flash / 45 B static** over the **26,500 / 1,480** pre-audio target;
+with runtime USB it is **30,474 B / 1,663 B**, 778 B over hardware. A build-only
+noUSB actual-game stack probe reports **820 B** reserve against the 600 B
+target. The final combined story/presentation/audio fit remains task `.13`; no
+cap was raised and no physical loader/uploader or Mini hardware check was
+performed.
+
+## Implementation checkpoint: fitted story presentation (2026-10-27)
+
+`sub-hauler-7px.13` converts the repeated story drawing to generated FX
+presentation without changing mission, save, confirmation or recovery rules.
+`tools/gen_panels.py` bakes fixed text and selection bars into 17 panel sheets:
+WORK details, carrying summary and row frames; title menu/replace/keep; save
+failure, pause and wreck variants; rescue/abandon confirmations; and the ending
+network/thanks/stats cards. Four plus-mask restoration sprites replace the
+survey-ring, inactive-mooring, pump-flow and lift-cable recipes on device; the
+host keeps the procedural reference used by the permanent pixel tests. The
+shared `panel_view` renderer streams one opaque panel directly into the
+framebuffer and overlays only saved status, hull, time, cove and job values.
+`SH_CART_SERVICE()` precedes every long presentation burst and remains the
+single foreground-refill hook shared with the cold world collision path.
+
+The specific RAM switch tables are gone: station names, mission purposes and
+voyage status labels use branch code instead of the 12/18/21 B `CSWTCH`
+objects. Mutually exclusive WORK/pause/save/wreck row selection and the
+WORK-detail/ending-card transients share two bytes; the station/shop row stays
+separate because a failed shop save must resume the purchased item row.
+
+Whole-image measurements:
+
+| Full profile, USB-free | Flash | Static RAM |
+| --- | ---: | ---: |
+| .12 campaign + atomic save | 27,786 B | 1,525 B |
+| .13 fitted presentation | **26,472 B** | **1,469 B** |
+| Pre-audio allocation | 26,500 B | 1,480 B |
+
+Flash is **28 B** under the pre-audio allocation and static is **11 B** under
+it. Mini repeats 26,472/1,469 B. Host tests pass 169 default / 220 with
+campaign+save; tooling passes 128; `make gen-check` is deterministic; all seven
+Ardens suites pass in default and campaign+save builds. The campaign+save
+`test_memory` probe is **725 B**. A build-only noUSB actual-game probe with the
+real sampled player and Timer3 ISR, cold/cached render, restoration overlays and
+all new panels measures **779 B** stack reserve against the 600 B target.
+
+The admitted player allocation (**+1,594 B flash / +152 B static**) would put
+the combined image at **28,066 / 1,621 B**, under the **29,000 / 1,700**
+combined ceiling by 934/79 B; music is not integrated, so this is an allocation
+projection, not a measured combined build. No physical playthrough, listening
+or Mini hardware check is claimed.

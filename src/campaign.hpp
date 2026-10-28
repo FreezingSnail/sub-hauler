@@ -88,13 +88,13 @@ const MissionSpec kMissions[kMissionCount] PROGMEM = {
 #else
 constexpr MissionSpec kMissions[kMissionCount] = {
 #endif
-    {kTidewall, kBenthos, true, kMilestoneFirst, kNoBit},        // FIRST
+    {kTidewall, kBenthos, true, kMilestoneFirst, kNoBit},             // FIRST
     {game::kJobNone, game::kJobNone, false, kNoBit, kPumpSurveyId},   // PUMP_SURVEY
-    {kCormorant, kBenthos, true, kMilestonePump, kNoBit},        // PUMP
+    {kCormorant, kBenthos, true, kMilestonePump, kNoBit},             // PUMP
     {game::kJobNone, game::kJobNone, false, kNoBit, kLiftSurveyId},   // LIFT_SURVEY
-    {kBenthos, kCormorant, true, kMilestoneLift, kNoBit},        // LIFT
-    {kCormorant, kDeepAnchor, true, kMilestoneBeacon, kNoBit},   // BEACON
-    {kDeepAnchor, kTidewall, true, kMilestoneHome, kNoBit},      // HOME
+    {kBenthos, kCormorant, true, kMilestoneLift, kNoBit},             // LIFT
+    {kCormorant, kDeepAnchor, true, kMilestoneBeacon, kNoBit},        // BEACON
+    {kDeepAnchor, kTidewall, true, kMilestoneHome, kNoBit},           // HOME
 };
 
 inline bool missionInfo(uint8_t id, MissionSpec &out) {
@@ -144,56 +144,72 @@ inline uint8_t missionReward(uint8_t id) {
     if (!missionInfo(id, spec) || !spec.cargo)
         return 0;
     uint8_t reward = 0;
-    uint16_t deadline = 0;
-    if (!world::routeEconomy(spec.from, spec.to, reward, deadline))
+    uint16_t unusedDeadline = 0;
+    if (!world::routeEconomy(spec.from, spec.to, reward, unusedDeadline))
         return 0;
     return reward;
 }
 
+inline bool hasMilestone(uint8_t campaign, uint8_t bit) {
+    return (campaign & bit) != 0;
+}
+
 inline bool hasMilestone(const State &state, uint8_t bit) {
-    return (state.campaign & bit) != 0;
+    return hasMilestone(state.campaign, bit);
+}
+
+inline bool surveyRecorded(uint8_t surveys, uint8_t surveyId) {
+    if (surveyId > kLiftSurveyId)
+        return false;
+    return (surveys & static_cast<uint8_t>(1u << surveyId)) != 0;
 }
 
 inline bool surveyRecorded(const State &state, uint8_t surveyId) {
-    if (surveyId > kLiftSurveyId)
-        return false;
-    return (state.surveys & static_cast<uint8_t>(1u << surveyId)) != 0;
+    return surveyRecorded(state.surveys, surveyId);
 }
 
-inline bool missionCompleted(const State &state, uint8_t id) {
+inline bool missionCompleted(uint8_t campaign, uint8_t surveys, uint8_t id) {
     MissionSpec spec;
     if (!missionInfo(id, spec))
         return false;
     if (spec.milestone != kNoBit)
-        return hasMilestone(state, spec.milestone);
-    return surveyRecorded(state, spec.survey);
+        return hasMilestone(campaign, spec.milestone);
+    return surveyRecorded(surveys, spec.survey);
+}
+
+inline bool missionCompleted(const State &state, uint8_t id) {
+    return missionCompleted(state.campaign, state.surveys, id);
 }
 
 // Prerequisites without the "not already complete" test. Completion flags are
 // deliberately independent of cargo; surveys can be recorded in any order.
-inline bool missionPrerequisites(const State &state, uint8_t id) {
+inline bool missionPrerequisites(uint8_t campaign, uint8_t surveys, uint8_t tools, uint8_t id) {
     switch (id) {
     case kFirst:
         return true;
     case kPumpSurvey:
     case kLiftSurvey:
-        return hasMilestone(state, kMilestoneFirst);
+        return hasMilestone(campaign, kMilestoneFirst);
     case kPump:
-        return hasMilestone(state, kMilestoneFirst) && surveyRecorded(state, kPumpSurveyId);
+        return hasMilestone(campaign, kMilestoneFirst) && surveyRecorded(surveys, kPumpSurveyId);
     case kLift:
-        return hasMilestone(state, kMilestoneFirst) && surveyRecorded(state, kLiftSurveyId);
+        return hasMilestone(campaign, kMilestoneFirst) && surveyRecorded(surveys, kLiftSurveyId);
     case kBeacon:
-        return hasMilestone(state, kMilestonePump) && hasMilestone(state, kMilestoneLift) && sealOwned(state);
+        return hasMilestone(campaign, kMilestonePump) && hasMilestone(campaign, kMilestoneLift) && (tools & exploration_data::SEAL) != 0;
     case kHome:
-        return hasMilestone(state, kMilestoneBeacon);
+        return hasMilestone(campaign, kMilestoneBeacon);
     default:
         return false;
     }
 }
 
+inline bool missionPrerequisites(const State &state, uint8_t id) {
+    return missionPrerequisites(state.campaign, state.surveys, state.tools, id);
+}
+
 inline bool missionAvailable(const State &state, uint8_t id) {
-    MissionSpec spec;
-    return missionInfo(id, spec) && !missionCompleted(state, id) && missionPrerequisites(state, id);
+    // Prerequisites reject every unknown id, so a separate metadata read is redundant.
+    return missionPrerequisites(state, id) && !missionCompleted(state, id);
 }
 
 // WORK page rows. Cargo missions are compacted in stable mission-id order at
@@ -241,35 +257,22 @@ inline bool completeMission(State &state, uint8_t id) {
         state.surveys |= static_cast<uint8_t>(1u << surveyForMission(id));
         return true;
     }
-    switch (id) {
-    case kFirst:
-        state.campaign |= kMilestoneFirst;
-        break;
-    case kPump:
-        state.campaign |= kMilestonePump;
-        break;
-    case kLift:
-        state.campaign |= kMilestoneLift;
-        break;
-    case kBeacon:
-        state.campaign |= kMilestoneBeacon;
-        break;
-    case kHome:
-        state.campaign |= kMilestoneHome;
-        break;
-    default:
-        return false;
-    }
+    // Cargo metadata already contains the exact milestone selected by this mission.
+    state.campaign |= spec.milestone;
     return true;
 }
 
-inline bool berthAvailable(const State &state, uint8_t berth) {
+inline bool berthAvailable(uint8_t campaign, uint8_t berth) {
     if (berth < world::SETTLEMENT_COUNT)
         return true;
     world::Berth info;
     if (!world::berthInfo(berth, info) || info.milestone == 0)
         return false;
-    return hasMilestone(state, info.milestone);
+    return hasMilestone(campaign, info.milestone);
+}
+
+inline bool berthAvailable(const State &state, uint8_t berth) {
+    return berthAvailable(state.campaign, berth);
 }
 
 inline bool freightBerth(uint8_t berth) {
@@ -324,11 +327,9 @@ inline bool accept(State &state, uint8_t id) {
     state.activeJob.to = spec.to;
     state.activeJob.crates = game::kJobCrates;
     state.activeJob.reward = reward;
-    state.activeJob.deadline = 0;
-    state.activeJob.elapsed = 0;
     state.lastDelivery = kDeliveryNone;
     game::setCargo(state, game::kJobCrates);
-    state.ballast = static_cast<uint8_t>(game::neutralFor(state.cargo));
+    state.ballast = static_cast<uint8_t>(game::neutralForNormalized(state.cargo));
     return true;
 }
 
@@ -349,18 +350,9 @@ inline bool surveysValid(uint8_t mask) {
     return (mask & ~kSurveyMask) == 0;
 }
 
-inline bool routeMatches(uint8_t from, uint8_t to, uint8_t reward, uint16_t deadline) {
-    uint8_t expectedReward = 0;
-    uint16_t expectedDeadline = 0;
-    if (!world::routeEconomy(from, to, expectedReward, expectedDeadline))
-        return false;
-    return reward == expectedReward && deadline == expectedDeadline;
-}
-
-inline bool activeJobValid(const State &state) {
-    const game::ActiveJob &job = state.activeJob;
+inline bool activeJobValid(const game::ActiveJob &job, uint8_t campaign, uint8_t surveys, uint8_t tools) {
     if (job.kind == game::kJobKindNone) {
-        return job.mission == kMissionNone && job.from == game::kJobNone && job.to == game::kJobNone && job.crates == 0 && job.reward == 0 && job.deadline == 0 && job.elapsed == 0;
+        return job.mission == kMissionNone && job.from == game::kJobNone && job.to == game::kJobNone && job.crates == 0 && job.reward == 0;
     }
     if (job.crates != game::kJobCrates || job.to >= world::SETTLEMENT_COUNT)
         return false;
@@ -369,31 +361,36 @@ inline bool activeJobValid(const State &state) {
         MissionSpec spec;
         if (!missionInfo(job.mission, spec) || !spec.cargo)
             return false;
-        return job.from == spec.from && job.to == spec.to && job.reward == missionReward(job.mission) && job.deadline == 0 && job.elapsed == 0 && !missionCompleted(state, job.mission) &&
-               missionPrerequisites(state, job.mission);
+        return job.from == spec.from && job.to == spec.to && job.reward == missionReward(job.mission) && !missionCompleted(campaign, surveys, job.mission) &&
+               missionPrerequisites(campaign, surveys, tools, job.mission);
     }
 
-    if (job.kind != game::kJobKindOrdinary && job.kind != game::kJobKindExpress)
+    if (job.kind != game::kJobKindOrdinary)
         return false;
     if (job.mission != kMissionNone || job.from >= world::SETTLEMENT_COUNT || job.from == job.to)
         return false;
     uint8_t routeReward = 0;
-    uint16_t routeDeadline = 0;
-    if (!world::routeEconomy(job.from, job.to, routeReward, routeDeadline))
+    uint16_t ignoredDeadline = 0;
+    if (!world::routeEconomy(job.from, job.to, routeReward, ignoredDeadline))
         return false;
-    if (job.reward < 5 || job.reward > 250 || (job.reward % 5) != 0)
+    // Exact equality also rejects every malformed reward.
+    return job.reward == routeReward;
+}
+
+inline bool activeJobValid(const State &state) {
+    return activeJobValid(state.activeJob, state.campaign, state.surveys, state.tools);
+}
+
+inline bool checkpointValid(uint8_t campaign, uint8_t surveys, uint8_t visited, uint8_t ending, const game::ActiveJob &job, uint8_t tools) {
+    if ((visited & ~static_cast<uint8_t>((1u << world::SETTLEMENT_COUNT) - 1u)) != 0)
         return false;
-    if (job.kind == game::kJobKindOrdinary)
-        return job.reward == routeReward && job.deadline == 0 && job.elapsed == 0;
-    return job.reward == game::expressReward(routeReward) && job.deadline == routeDeadline;
+    if (ending > 1 || (ending != 0 && !hasMilestone(campaign, kMilestoneHome)))
+        return false;
+    return milestonesValid(campaign) && surveysValid(surveys) && activeJobValid(job, campaign, surveys, tools);
 }
 
 inline bool stateValid(const State &state) {
-    if ((state.visited & ~static_cast<uint8_t>((1u << world::SETTLEMENT_COUNT) - 1u)) != 0)
-        return false;
-    if (state.ending > 1 || (state.ending != 0 && !hasMilestone(state, kMilestoneHome)))
-        return false;
-    return milestonesValid(state.campaign) && surveysValid(state.surveys) && activeJobValid(state);
+    return checkpointValid(state.campaign, state.surveys, state.visited, state.ending, state.activeJob, state.tools);
 }
 
 }   // namespace campaign

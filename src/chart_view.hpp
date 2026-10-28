@@ -6,6 +6,7 @@
 
 #include <stdint.h>
 
+#include "cave_render.hpp"
 #include "chart.hpp"
 #include "game.hpp"
 #include "world.hpp"
@@ -64,19 +65,13 @@ inline void drawCell(uint8_t *buffer, uint8_t cellX, uint8_t cellY) {
 }
 
 inline void fillCell(uint8_t *buffer, int16_t x, int16_t y) {
-    for (int16_t dy = 0; dy < 2; ++dy) {
-        for (int16_t dx = 0; dx < 2; ++dx)
-            setPixel(buffer, static_cast<int16_t>(x + dx), static_cast<int16_t>(y + dy));
-    }
+    cave::fillRect(buffer, x, y, 2, 2, true);
 }
 
 // A black 3x3 backing makes marker strokes readable on lit water and keeps
 // them distinct from the filled 2x2 cells. Clipped at the chart edges.
 inline void clearMarkerBox(uint8_t *buffer, int16_t centerX, int16_t centerY) {
-    for (int16_t dy = -1; dy <= 1; ++dy) {
-        for (int16_t dx = -1; dx <= 1; ++dx)
-            clearPixel(buffer, static_cast<int16_t>(centerX + dx), static_cast<int16_t>(centerY + dy));
-    }
+    cave::fillRect(buffer, static_cast<int16_t>(centerX - 1), static_cast<int16_t>(centerY - 1), 3, 3, false);
 }
 
 inline void drawCross(uint8_t *buffer, int16_t cellX, int16_t cellY) {
@@ -176,8 +171,9 @@ inline bool needsRedraw(const game::State &state, uint8_t phase) {
 inline void drawSettlements(uint8_t *buffer, const chart::State &chartState) {
     for (uint8_t id = 0; id < world::settlementCount(); ++id) {
         world::Settlement settlement;
-        if (!world::settlementInfo(id, settlement))
-            continue;
+        // Loop id is bounded by SETTLEMENT_COUNT; the generated table has the
+        // same extent, so the metadata accessor cannot fail here.
+        (void)world::settlementInfo(id, settlement);
         int16_t cellX;
         int16_t cellY;
         if (!chart::cellFromPixels(settlement.pixel_x, settlement.pixel_y, cellX, cellY))

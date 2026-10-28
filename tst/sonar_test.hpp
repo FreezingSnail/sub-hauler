@@ -30,6 +30,24 @@ inline uint16_t exploredCells(const chart::State &state) {
 }   // namespace sonar_test
 
 inline void SonarSuite(TestRunner &runner) {
+    {
+        Test test("sonar arithmetic preserves every byte input");
+        game::State state;
+        game::reset(state);
+        bool exact = true;
+        for (uint16_t v = 0; v < 256; ++v) {
+            const uint8_t level = static_cast<uint8_t>(v);
+            const uint8_t cost = v >= 6 ? 1 : static_cast<uint8_t>(6 - v);
+            const uint8_t radius = v + 3 > 12 ? 12 : static_cast<uint8_t>(v + 3);
+            state.sonarCooldown = level;
+            const bool visible = v != 0 && v <= 120 && 120 - v < 24;
+            exact = exact && sonar::costForLevel(level) == cost && sonar::radiusForLevel(level) == radius;
+            exact = exact && sonar::ringVisible(state) == visible;
+        }
+        test.assertTrue(exact, "all levels and cooldowns preserve cost, radius and clipping window");
+        runner.add(test);
+    }
+
     static_assert(sonar::kBaseRevealRadius > chart::kMoveRevealRadius, "sonar reveals more than travel");
     static_assert(sonar::kCooldownTicks > sonar::kRingTicks, "ring window ends before the cooldown");
 

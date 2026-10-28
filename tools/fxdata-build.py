@@ -259,12 +259,20 @@ while lineNr < len(lines):
       elif part == 'string'  : t = 7
       elif part == 'include' : include = True
       elif part == 'datasection'  : pass
-      elif part == 'savesection'  : saveStart = len(bytes)
+      elif part == 'savesection'  :
+        # `savesection 4096` reserves an erased (0xFF) save area without a
+        # source file. The bare marker keeps the historical included-bytes
+        # form for any future caller that appends declarations after it.
+        saveStart = len(bytes)
+        if i + 1 < len(parts) and parts[i + 1].strip().isdigit():
+          saveBytes = int(parts[i + 1].strip())
+          bytes += b'\xFF' * saveBytes
+          parts[i + 1] = ''
       #handle namespace
       elif part == 'namespace':
         namespace = True
       elif namespace == True:
-        namespace = False      
+        namespace = False
         writeHeader("namespace {}\n{{".format(part))
         indent += '  '
       elif part == 'namespace_end':
@@ -277,7 +285,7 @@ while lineNr < len(lines):
         else:  part = part[1:part.rfind('"')]
         #handle include
         if include == True:
-          lines[lineNr+1:lineNr+1] = includeFile(part)      
+          lines[lineNr+1:lineNr+1] = includeFile(part)
           include = False
         elif t == 1: bytes += part.encode('utf-8').decode('unicode_escape').encode('utf-8')
         elif t == 5: bytes += imageData(part)
@@ -364,7 +372,7 @@ with open(headerfilename,"w") as file:
   file.write('// Initialize FX hardware using  FX::begin(FX_DATA_PAGE); in the setup() function.\n\n')
   file.write('constexpr uint16_t FX_DATA_PAGE  = 0x{:04x};\n'.format(65536 - dataPages - savePages))
   file.write('constexpr uint24_t FX_DATA_BYTES = {};\n\n'.format(dataSize))
-  if saveSize > 0: 
+  if saveSize > 0:
     file.write('constexpr uint16_t FX_SAVE_PAGE  = 0x{:04x};\n'.format(65536 - savePages))
     file.write('constexpr uint24_t FX_SAVE_BYTES = {};\n\n'.format(saveSize))
   for line in header:

@@ -36,12 +36,13 @@ inline uint16_t chartByteIndex(int16_t cx, int16_t cy) {
     return static_cast<uint16_t>(cy) * CHART_ROW_BYTES + (static_cast<uint16_t>(cx) >> 3);
 }
 
-// Floor pixel coordinate to its containing tile. Negative pixels round down,
-// matching the world border rather than truncating toward zero.
+// Floor pixel coordinate to its containing tile. Arithmetic right shift by 3
+// is floor division for every int16 value on AVR-GCC and the host compilers;
+// the static_assert below is the compile-time proof of that implementation
+// contract. Negative pixels round down, matching the world border.
+static_assert((-1 >> 3) == -1 && (-8 >> 3) == -1 && (-9 >> 3) == -2, "signed right shift must floor");
 inline int16_t tileFromPixel(int16_t pixel) {
-    if (pixel >= 0)
-        return static_cast<int16_t>(pixel >> 3);
-    return static_cast<int16_t>(-((static_cast<int16_t>(-pixel) + 7) >> 3));
+    return static_cast<int16_t>(pixel >> 3);
 }
 
 inline int16_t chartFromTile(int16_t tile) {

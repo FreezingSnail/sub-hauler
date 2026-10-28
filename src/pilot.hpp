@@ -281,9 +281,9 @@ template <typename Reader> inline void stepWorld(State &state, const Input &inpu
     if (state.sonarCooldown > 0)
         --state.sonarCooldown;
 #endif
-#if SH_FEATURE_JOBS
-    // Flight tick for contract deadlines (docked frames never step the world).
-    tickJobElapsed(state);
+#if SH_FEATURE_CAMPAIGN
+    // Flight tick for the campaign voyage clock (docked frames never step).
+    tickVoyage(state);
 #endif
 }
 

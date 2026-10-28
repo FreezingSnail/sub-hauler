@@ -25,7 +25,8 @@
 namespace hazard_view {
 
 #if SH_FEATURE_MINES
-inline void mineGlyph(uint8_t *buffer, int16_t x, int16_t y) {
+// Outlined: the nine clipped writes cost more inlined than one call.
+__attribute__((noinline)) inline void mineGlyph(uint8_t *buffer, int16_t x, int16_t y) {
     cave::setPixel(buffer, x, y);
     cave::setPixel(buffer, static_cast<int16_t>(x - 1), y);
     cave::setPixel(buffer, static_cast<int16_t>(x + 1), y);
@@ -43,8 +44,10 @@ inline void drawMines(uint8_t *buffer, const game::State &state, const cave::Cam
     world::Mine mine;
     const uint8_t count = world::mineCount();
     for (uint8_t id = 0; id < count; ++id) {
-        if (!hazards::alive(state, id) || !world::mineInfo(id, mine))
+        if (!hazards::alive(state, id))
             continue;
+        // id is bounded by MINE_COUNT, the exact generated table extent.
+        (void)world::mineInfo(id, mine);
         const int16_t x = static_cast<int16_t>(mine.x - originX);
         const int16_t y = static_cast<int16_t>(mine.y - originY);
         if (x < -2 || y < -2 || x > static_cast<int16_t>(cave::VIEW_WIDTH + 2) || y > static_cast<int16_t>(cave::VIEW_HEIGHT + 2))
@@ -71,8 +74,9 @@ inline void drawImpact(uint8_t *buffer, const game::State &state, const cave::Ca
 
 #if SH_FEATURE_CURRENTS
 // Three short dashes with a one-pixel arrow head. Marks drift with the flight
-// tick counter so a zone reads as flow rather than a static decal.
-inline void flowMark(uint8_t *buffer, int16_t x, int16_t y, bool horizontal, int8_t direction) {
+// tick counter so a zone reads as flow rather than a static decal. Outlined for
+// the same reason as mineGlyph.
+__attribute__((noinline)) inline void flowMark(uint8_t *buffer, int16_t x, int16_t y, bool horizontal, int8_t direction) {
     for (int8_t i = 0; i < 3; ++i) {
         if (horizontal)
             cave::setPixel(buffer, static_cast<int16_t>(x + i * direction), y);
@@ -98,8 +102,8 @@ inline void drawCurrents(uint8_t *buffer, const game::State &state, const cave::
     world::Current zone;
     const uint8_t count = world::currentCount();
     for (uint8_t id = 0; id < count; ++id) {
-        if (!world::currentInfo(id, zone))
-            continue;
+        // id is bounded by CURRENT_COUNT, the exact generated table extent.
+        (void)world::currentInfo(id, zone);
         const int16_t sx = static_cast<int16_t>(zone.x - originX);
         const int16_t sy = static_cast<int16_t>(zone.y - originY);
         if (sx >= cave::VIEW_WIDTH || sy >= cave::VIEW_HEIGHT || static_cast<int16_t>(sx + zone.w) <= 0 || static_cast<int16_t>(sy + zone.h) <= 0)

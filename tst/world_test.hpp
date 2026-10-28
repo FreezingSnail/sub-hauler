@@ -96,6 +96,17 @@ inline void WorldSuite(TestRunner &runner) {
     }
 
     {
+        Test test("tileFromPixel floors every int16 pixel");
+        bool matches = true;
+        for (int32_t pixel = -32768; pixel <= 32767; ++pixel) {
+            const int32_t expected = pixel >= 0 ? pixel / 8 : -(((-pixel) + 7) / 8);
+            matches = matches && world::tileFromPixel(static_cast<int16_t>(pixel)) == expected;
+        }
+        test.assertTrue(matches, "260k/8 floors the same at every pixel value");
+        runner.add(test);
+    }
+
+    {
         Test test("pixel rectangle collision uses tile overlap");
         world_test::FakeWorld fake;
         fake.setTile(4, 5, true);   // pixels x 32..39, y 40..47
