@@ -89,12 +89,11 @@ inline void DevModeSuite(TestRunner &runner) {
 #if SH_FEATURE_JOBS
         s.activeJob.to = 1;
 #if SH_FEATURE_CAMPAIGN
-        s.activeJob.kind = game::kJobKindExpress;
+        s.activeJob.kind = game::kJobKindOrdinary;
         s.activeJob.mission = game::kMissionNone;
         s.activeJob.from = 0;
+        s.activeJob.reward = 5;
 #endif
-        s.activeJob.elapsed = 41;
-        s.activeJob.deadline = 42;
 #endif
         for (uint16_t i = 0; i < 600; ++i)
             dev_mode::step(s, game::Input{}, false);
@@ -105,9 +104,6 @@ inline void DevModeSuite(TestRunner &runner) {
 #endif
 #if SH_FEATURE_STATIONS
         t.assertEqual(s.docked, -1, "staying inside a berth cannot auto dock");
-#endif
-#if SH_FEATURE_JOBS
-        t.assertEqual(s.activeJob.elapsed, 41, "inspection does not age contracts");
 #endif
         t.assertEqual(s.vxQ8, 0, "no current or inertia velocity");
         t.assertEqual(s.vyQ8, 0, "no ballast velocity");

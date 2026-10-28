@@ -11,7 +11,7 @@ model live in [`docs/design.md`](docs/design.md). The device-port sequence and
 compile-time feature-flag plan live in
 [`docs/roadmap.md`](docs/roadmap.md).
 
-## Status — 2026-10-26 (chart performance and wall settlements)
+## Status — 2026-10-28 (voyage progression, cart checkpoints and music)
 
 The device loads the authored map from [`levels/exploration.json`](levels/exploration.json):
 32 rooms, 42 passages, nine equipment gates and eight hidden cove rewards.
@@ -59,29 +59,31 @@ generation entry and the six music cues remain available in the jukebox.
 
 | Profile | Flash | Static RAM |
 | --- | ---: | ---: |
-| `full` | 20,176 B | 1,583 B |
-| `lean` | 17,368 B | 1,571 B |
-| `core` | 14,756 B | 1,313 B |
-| `min` | 8,750 B | 1,252 B |
+| `full` (campaign + voyage save + music) | 27,010 B | 1,619 B |
+| `lean` | 14,406 B | 1,418 B |
+| `core` | 11,812 B | 1,159 B |
+| `min` | 5,912 B | 1,115 B |
 
-AVR run state is 91 B; static headroom is 117 B and the expanded device probe
-measures 756 B stack reserve against the 600 B target. The chart optimization
-adds 44 B flash and no static RAM against a fresh build of its source snapshot.
-All six device suites pass, alongside 150/117/89/44 host tests, 105 tooling
-tests, deterministic generation and the full Mini build. An optional chart-save
-host build passes 154 tests.
-No manual interactive playthrough or physical-device soak is claimed.
+The full default fits the 29,696 B hardware limit with 2,686 B free and the
+29,000 B planning line by 1,990 B; static RAM leaves 81 B under the 1,700 B
+ceiling and 941 B free. AVR `game::State` is 99 B in the campaign+save build
+(79 B with campaign off). Measured stack reserves are 728 B for campaign+save,
+666 B for the exact production save chain with active music, and 646 B for the
+combined music probe, all above the 600 B target. All eleven default device
+suites pass, alongside 242/145/115/72 host tests, 135 tooling tests,
+deterministic generation and the full Mini build.
+No manual interactive playthrough, physical save write or speaker check is
+claimed.
 
 Exploration is enabled in full/lean/core; min remains free-flight/cave with
-barriers disabled. Equipment, reward claims and opened grates last for the
-current run. Campaign restoration missions, an ending and persistent voyage
-checkpoints remain proposed. The current
-[progression design](docs/progression.md) specifies seven main objectives,
-restored refuge berths, checkpoint recovery, homecoming and regional music;
-the [exploration proposal](docs/campaign-exploration.md) records the wider direction.
+barriers disabled. The `full` profile enables the complete voyage progression:
+seven restoration objectives, restored refuge berths, one cart checkpoint slot,
+homecoming and six regional music cues. Lean/core keep campaign/save/music off;
+min keeps its flight-only behavior. The
+[progression design](docs/progression.md) records the accepted direction and
+the [exploration proposal](docs/campaign-exploration.md) the wider context.
 Freight allowances follow the winding route lengths and allow intermediate
-berth stops for resupply. Rewards retain the existing economy. Gameplay still
-has no music player.
+berth stops for resupply. Rewards retain the existing economy.
 
 The drawing pass streams native terrain directly from FX into the existing
 screen buffer in eight 128-byte bursts, then draws objects and HUD overlays.
@@ -94,6 +96,54 @@ instead of redrawing at 60 Hz, so it redraws every 16 frames while open. Chart
 reads use eight bursts instead of 256 separate transactions. A fully explored
 chart renders in 4.96 ms versus 10.33 ms before, with repeatable frame
 checksums and the original blink cadence.
+
+## Release runtime and uploader entry
+
+Shipping images compile with `SH_RELEASE_NO_USB=1` (the Makefile default) and
+the Arduboy2 `ARDUBOY_NO_USB` entry point immediately before `setup()`. This
+removes the runtime USB stack while keeping the bootloader, the supported
+startup button path and the in-sketch `Arduboy2Core::exitToBootloader()` API.
+A runtime-USB development image is still available:
+
+```sh
+make build RELEASE_NO_USB=0   # USB runtime for serial development/measurement
+make build                    # USB-free shipping image
+make dev                      # DEV_MODE=1 defaults to the USB runtime
+```
+
+The title screen has an explicit **LOADER** row. Select it with **UP/DOWN** and
+press **A** to enter the bootloader. The library also checks **DOWN** at
+power-on/reset, so a blank or non-booting image can still be uploaded by
+holding **DOWN** while resetting. The `full`/`lean` title and the Mini full
+image have the row; `core` and `min` boot directly to the pilot and rely on the
+power-on **DOWN** path.
+
+A desktop uploader cannot force an automatic reset from a running USB-free
+game. If the uploader waits for the board, reset it (or power-cycle it while
+holding **DOWN**), then start the upload. The bootloader and program-size limit
+are unchanged. Device suites keep USB because their own sketches are compiled
+separately; only the release sketch uses the no-USB entry point.
+
+Measured on 2026-10-28 with the full profile:
+
+| Image | Flash | Static RAM |
+| --- | ---: | ---: |
+| USB-free release, full default | 27,010 B | 1,619 B |
+| Mini, full default | 27,010 B | 1,619 B |
+| USB-free release, lean/core/min | 14,406 / 11,812 / 5,912 B | 1,418 / 1,159 / 1,115 B |
+
+The single WORK board (`.27`) removes the station offer rows and all job
+timers: story restoration is listed first and the one repeatable freight row
+sits beneath. The full default now enables campaign, voyage save and music and
+measures **27,010 B / 1,619 B**, inside the 29,696 B hardware and 1,700 B static
+limits. A build-only actual-game probe with the real player ISR, six cues,
+cold/cached world paths, restoration overlays and WORK/ending/title/prompt
+panels measured **903 B** stack reserve against 600 B; the current combined
+probe reports **646 B** and the exact production save chain **666 B**.
+`test_music` reports zero underruns and zero errors. Schema 4 uses one 4 KiB
+cart save block; schema 1/2/3 records and the old chart bytes are not migrated,
+and there is no keep-chart prompt. No physical loader, uploader, save-write or
+speaker check is claimed.
 
 ## Developer map traversal
 
@@ -115,10 +165,11 @@ mode, including if the chart-save feature is explicitly enabled.
 
 `DEV_MODE` defaults to 0 and accepts only 0/1. Developer artifacts are isolated
 under `build/dev/<profile>/` and `dist/dev/<profile>/`. `make test DEV_MODE=1`
-runs the normal rules suite plus five free-flight cases (154 passing in full).
-The dev firmware measures 15,592 B flash / 1,582 B static RAM. All six device
-suites pass in both modes. `make dev` uses the full profile by default; other
-profiles retain their configured chart availability.
+runs the normal rules suite plus the free-flight cases. `make dev` uses the
+full profile and therefore the full campaign/save/music flag set while keeping
+the USB runtime; that developer image is not a release image and may exceed
+the shipping flash budget. Release gates use `DEV_MODE=0` and the USB-free
+entry point.
 
 ## Historical checkpoint — 2026-10-24 (cargo-free resource pass)
 
@@ -185,9 +236,9 @@ uses `Arduboy2Base` plus the external font adapter in `src/text.hpp`.
 make gen          # images/fonts -> Sprites/PilotSprites/fxdata.bin + headers
 make gen-check    # regeneration must be byte-identical
 make build        # dist/<profile>/<project>.ino.hex + .elf
-make test         # host rules tests (150 full / 117 lean / 89 core / 44 min)
-make test-tools   # Python tooling tests (105)
-make fxtest       # device smoke/render tests through Ardens (6 suites, each P)
+make test         # host rules tests (242 full / 145 lean / 115 core / 72 min)
+make test-tools   # Python tooling tests (135)
+make fxtest       # device smoke/render/save/music suites through Ardens (11 each P)
 make size         # flash/RAM headroom
 make size-matrix  # build and report full, lean, core, min
 make mini         # Arduboy Mini firmware for the selected profile
@@ -205,7 +256,8 @@ The editable music scores and viewer catalog live in [`music/`](music/README.md)
 `ATMLIB2FX_ROOT` for another location). The six cues range from Abyssal Glass
 (40 BPM) through Tidepool Waltz (75 BPM, 3/4) to Bubblejet Run (100 BPM),
 with the original Harbor Bubbles, Kelp Drift and Sonar Lullaby loops included.
-The jukebox plays the packed assets; normal gameplay has no music player yet.
+The jukebox plays the packed assets; the full game also streams the same six
+cues through the sibling ArduboyStreamFX player.
 
 ## Feature profiles
 
@@ -222,8 +274,10 @@ make size-matrix            # build and report full, lean, core, min
 
 Builds and images are separated by profile (`build/<profile>/`,
 `dist/<profile>/`) so objects compiled under different flag sets cannot mix.
-An unknown profile or an invalid dependency fails before compilation. Feature
-flags never change generated FX data.
+An unknown profile or an invalid dependency fails before compilation. The
+`full` profile enables `CAMPAIGN=1 SAVE_VOYAGE=1 MUSIC=1` with `SAVE_CHART=0`;
+lean, core and min keep all four off. Feature flags never change generated FX
+data except that music builds link the sibling library.
 
 ## What to edit
 
@@ -278,13 +332,21 @@ SPI handoff after them.
 
 ## Save data
 
-`FX::begin(FX_DATA_PAGE)` is the single-argument form. The optional chart save
-(`SH_FEATURE_SAVE_CHART`, default `0`) lives in the ATmega32u4 internal EEPROM
-as a 260 B versioned, CRC-8-checked block; it loads once in setup and writes
-only when the paused chart closes. It needs no `FX_SAVE_PAGE` and adds no static
-RAM. Only if a future save outgrows internal EEPROM or needs cart-sized state
-should the image be regenerated with `FX_SAVE_PAGE`. Keep writes out of the
-per-frame path.
+`FX::begin(FX_DATA_PAGE)` is the single-argument data form. Campaign builds use
+`FX::begin(FX_DATA_PAGE, FX_SAVE_PAGE)`: `fxdata/fxdata.txt` ends with
+`savesection 4096`, so the generated image carries one 4 KiB cart erase block
+after the unchanged data prefix. A voyage checkpoint erases the block, programs
+two 256 B pages and sets the commit byte last. A power interruption during that
+erase/write may lose the checkpoint; a torn record is rejected and the title
+offers a clean New Voyage.
+Saves happen on berth/delivery transitions with music paused; no voyage byte is
+stored in internal EEPROM and schema 1/2/3 records are not migrated.
+
+The optional standalone chart save (`SH_FEATURE_SAVE_CHART`, default `0`, and
+mutually exclusive with voyage save) still uses a 260 B versioned,
+CRC-8-checked internal-EEPROM block; it loads once in setup and writes only when
+the paused chart closes. Keep all save writes out of the per-frame path and run
+`make gen-check` after changing `savesection`.
 
 ## Layout
 

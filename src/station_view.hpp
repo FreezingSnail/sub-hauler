@@ -17,9 +17,10 @@
 //
 // Header: settlement name and the credits placeholder.
 // Status: current air and hull, including run-only shop upgrades.
-// Rows:   offers then SERVICE/SHOP/UNDOCK, or summary/ABANDON/SHOP/UNDOCK when
-//         a contract is active. One inverted selection bar. The SHOP row opens
-//         the shop screen; B there returns.
+// Rows:   WORK/SHOP/UNDOCK, or summary/ABANDON/WORK/SHOP/UNDOCK when a contract
+//         is active. One inverted selection bar. WORK opens the single board
+//         that lists restoration jobs first and the repeatable freight row
+//         beneath. B always undocks.
 // Hint:   A confirms the row and B always undocks. Contract acceptance
 //         auto-loads the four cargo units, so the active board needs no load
 //         row or screen.
@@ -34,7 +35,7 @@ constexpr uint8_t kHullX = 72;
 constexpr uint8_t kStatusY = 15;
 constexpr uint8_t kRowX = 4;
 #if SH_FEATURE_SHOP
-// Five rows (two offers + SERVICE + SHOP + UNDOCK) must fit above the hint:
+// Five rows (summary/ABANDON/WORK/SHOP/UNDOCK) must fit above the hint:
 // header/status end at y=21, rows are 22+7*row, and the hint starts at 57.
 constexpr uint8_t kRowY0 = 22;
 constexpr uint8_t kRowStep = 7;
@@ -50,7 +51,7 @@ constexpr uint8_t kRowInvertH = 8;
 constexpr uint8_t kHintX = 3;
 constexpr uint8_t kHintY = 56;
 #endif
-constexpr uint8_t kOfferChars = 20;   // "DEEP ANCHOR 240 5:32"
+constexpr uint8_t kOfferChars = 20;   // "DEEP ANCHOR 240"
 
 // Row i's text baseline is rowY(i); the invert bar extends kRowInsetY above
 // it. Keep the last row clear of the hint and the hint inside the display.
@@ -76,25 +77,25 @@ static_assert(kRowX + kOfferChars * 6 <= 128, "offer text fits inside 128 column
 
 // Generated AVR settlement records carry position only (name is null), so the
 // station board owns the display names. Order matches the generated flash ABI.
+// An if-chain, not a switch: the six labels would otherwise become an 18-byte
+// RAM-resident CSWTCH table copied by the startup code. Proportional string
+// addresses make a PROGMEM table no smaller than these branches.
 inline uint24_t nameFor(uint8_t id) {
-    switch (id) {
-    case 0:
+    if (id == 0)
         return txt_tidewall;
-    case 1:
+    if (id == 1)
         return txt_benthos;
-    case 2:
+    if (id == 2)
         return txt_cormorant;
-    case 3:
+    if (id == 3)
         return txt_deep_anchor;
 #if SH_FEATURE_CAMPAIGN
-    case 4:
+    if (id == 4)
         return txt_pump_refuge;
-    case 5:
+    if (id == 5)
         return txt_lower_gantry;
 #endif
-    default:
-        return txt_station;
-    }
+    return txt_station;
 }
 
 inline uint24_t rowLabel(uint8_t row, const game::State &state) {
@@ -102,7 +103,7 @@ inline uint24_t rowLabel(uint8_t row, const game::State &state) {
 #if SH_FEATURE_SHOP
     // The shop label is folded into an if-chain instead of the switch: adding a
     // sixth RowKind would widen the compiler's jump table by two bytes of RAM.
-#if SH_FEATURE_CAMPAIGN
+#if SH_FEATURE_JOBS
     if (kind == station::kRowWork)
         return txt_work;
 #else
@@ -120,7 +121,7 @@ inline uint24_t rowLabel(uint8_t row, const game::State &state) {
     return 0;
 #else
     switch (kind) {
-#if SH_FEATURE_CAMPAIGN
+#if SH_FEATURE_JOBS
     case station::kRowWork:
         return txt_work;
 #else
@@ -140,36 +141,18 @@ inline uint24_t rowLabel(uint8_t row, const game::State &state) {
 }
 
 #if SH_FEATURE_JOBS
-inline void printClock(uint16_t ticks) {
-    const uint16_t seconds = static_cast<uint16_t>(ticks / game::kStepHz);
-    text::number(static_cast<uint16_t>(seconds / 60));
-    text::character(':');
-    const uint8_t rest = static_cast<uint8_t>(seconds % 60);
-    if (rest < 10)
-        text::character('0');
-    text::number(rest);
-}
-
-inline void printDestination(uint8_t toId, uint16_t reward, uint16_t ticks) {
+inline void printDestination(uint8_t toId, uint16_t reward) {
     text::print(nameFor(toId));
     text::character(' ');
     text::number(reward);
-    text::character(' ');
-    printClock(ticks);
 }
 
 inline void printRow(uint8_t row, const game::State &state) {
     switch (station::rowKind(row, state)) {
-    case station::kRowOffer:
-        if (row < state.offerCount)
-            printDestination(state.offers[row].to, state.offers[row].reward, state.offers[row].deadline);
-        else
-            text::print(txt_offer);
-        break;
     case station::kRowJob:
-        printDestination(state.activeJob.to, state.activeJob.reward, jobs::remainingTicks(state));
+        printDestination(state.activeJob.to, state.activeJob.reward);
         break;
-#if SH_FEATURE_CAMPAIGN
+#if SH_FEATURE_JOBS
     case station::kRowWork:
         text::print(txt_work);
         break;
@@ -251,7 +234,7 @@ inline void draw(const game::State &state, uint8_t selected) {
     // A failed delivery replaces the control hint until the next accept or
     // abandon. Treat it as a transient board note, not a permanent flag.
     if (jobs::deliveryFailed(state)) {
-        text::print(txt_late_short);
+        text::print(txt_short_load);
         return;
     }
 #if SH_FEATURE_EXPLORATION

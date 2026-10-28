@@ -9,6 +9,7 @@
 #include "../src/game.hpp"
 #include "../src/jobs.hpp"
 #include "../src/station.hpp"
+#include "../src/work_view.hpp"
 #include "../src/world.hpp"
 #include "jobs_test.hpp"
 #include "test.hpp"
@@ -16,7 +17,7 @@
 
 // Campaign rules: stable IDs, both repair orders, surveys discovered early,
 // early equipment, wrong-berth stops, short cargo, one-time rewards, service
-// berth eligibility, express timing and deterministic cursor restoration.
+// berth eligibility and deterministic cursor restoration. All work is untimed.
 namespace campaign_test {
 
 using Fixture = world_test::FakeWorld;
@@ -38,7 +39,7 @@ inline bool sameOffers(const game::State &a, const game::State &b) {
         return false;
     for (uint8_t i = 0; i < a.offerCount; ++i) {
         if (a.offers[i].from != b.offers[i].from || a.offers[i].to != b.offers[i].to || a.offers[i].crates != b.offers[i].crates || a.offers[i].reward != b.offers[i].reward ||
-            a.offers[i].kind != b.offers[i].kind || a.offers[i].deadline != b.offers[i].deadline)
+            a.offers[i].kind != b.offers[i].kind)
             return false;
     }
     return true;
@@ -70,6 +71,46 @@ inline bool completeLift(game::State &state) {
 
 inline void CampaignSuite(TestRunner &runner) {
     using namespace campaign_test;
+
+    {
+        Test test("mission metadata and exact reward validation cover all byte values");
+        bool exact = true;
+        const uint8_t bits[] = {campaign::kMilestoneFirst, campaign::kNoBit, campaign::kMilestonePump,
+                               campaign::kNoBit, campaign::kMilestoneLift, campaign::kMilestoneBeacon,
+                               campaign::kMilestoneHome};
+        for (uint16_t id = 0; id < 256; ++id) {
+            campaign::MissionSpec spec;
+            if (campaign::missionInfo(static_cast<uint8_t>(id), spec))
+                exact = exact && spec.milestone == bits[id] && spec.cargo == (bits[id] != campaign::kNoBit);
+            else {
+                game::State state;
+                game::reset(state);
+                exact = exact && !campaign::missionAvailable(state, static_cast<uint8_t>(id));
+                exact = exact && !campaign::completeMission(state, static_cast<uint8_t>(id));
+            }
+        }
+        for (uint8_t from = 0; from < world::SETTLEMENT_COUNT; ++from) {
+            for (uint8_t to = 0; to < world::SETTLEMENT_COUNT; ++to) {
+                if (from == to) continue;
+                uint8_t routeReward = 0;
+                uint16_t unusedDeadline = 0;
+                exact = exact && world::routeEconomy(from, to, routeReward, unusedDeadline);
+                game::State state;
+                game::reset(state);
+                state.activeJob.kind = game::kJobKindOrdinary;
+                state.activeJob.from = from;
+                state.activeJob.to = to;
+                state.activeJob.crates = game::kJobCrates;
+                exact = exact && routeReward >= 5 && routeReward <= 250 && routeReward % 5 == 0;
+                for (uint16_t reward = 0; reward < 256; ++reward) {
+                    state.activeJob.reward = static_cast<uint8_t>(reward);
+                    exact = exact && campaign::activeJobValid(state) == (reward == routeReward);
+                }
+            }
+        }
+        test.assertTrue(exact, "fixed milestone table and every corrupt reward retain their contract");
+        runner.add(test);
+    }
 
     {
         Test test("campaign ids and generated rewards match the frozen table");
@@ -154,8 +195,6 @@ inline void CampaignSuite(TestRunner &runner) {
         test.assertEqual(state.activeJob.to, campaign::kBenthos, "FIRST destination");
         test.assertEqual(state.activeJob.crates, game::kJobCrates, "four-unit load");
         test.assertEqual(state.activeJob.reward, 145, "reward fixed at acceptance");
-        test.assertEqual(state.activeJob.deadline, 0, "campaign work is untimed");
-        test.assertEqual(state.activeJob.elapsed, 0, "campaign age stays zero");
         test.assertEqual(state.cargo, 4, "acceptance auto-loads four units");
         test.assertEqual(state.docked, static_cast<int8_t>(campaign::kTidewall), "acceptance stays docked");
         test.assertTrue(!campaign::accept(state, campaign::kFirst), "only one load slot");
@@ -287,73 +326,40 @@ inline void CampaignSuite(TestRunner &runner) {
     }
 
     {
-        Test test("ordinary work is untimed; express pays 125% and expires on docking");
+        Test test("freight is untimed and WORK lists restoration before freight");
         game::State state;
         game::reset(state);
         test.assertTrue(at(state, campaign::kTidewall), "dock at Tidewall");
-        test.assertEqual(state.offerCount, 2, "two freight rows");
-        test.assertEqual(state.offers[0].kind, game::kJobKindOrdinary, "row 0 is ordinary");
-        test.assertEqual(state.offers[0].deadline, 0, "ordinary offer has no deadline");
-        test.assertEqual(state.offers[1].kind, game::kJobKindExpress, "row 1 is express");
-        test.assertTrue(state.offers[1].deadline > 0, "express advertises its deadline");
-        const jobs::RouteEconomy expressRoute = jobs::routeEconomy(state.offers[1].from, state.offers[1].to);
-        test.assertEqual(state.offers[1].reward, game::expressReward(expressRoute.reward), "express reward formula");
-        test.assertEqual(state.offers[1].reward, ((expressRoute.reward * 5 + 10) / 20) * 5, "express formula is frozen");
+        test.assertEqual(state.offerCount, 1, "one repeatable freight row");
+        test.assertEqual(state.offers[0].kind, game::kJobKindOrdinary, "the freight row is ordinary");
+        const jobs::RouteEconomy freightRoute = jobs::routeEconomy(state.offers[0].from, state.offers[0].to);
+        test.assertEqual(state.offers[0].reward, freightRoute.reward, "freight pays the route reward");
 
-        test.assertTrue(jobs::accept(state, 0), "accept ordinary work");
+        test.assertEqual(work_view::rowCount(state), 2, "FIRST story row plus freight");
+        const work_view::Row storyRow = work_view::rowAt(state, 0);
+        const work_view::Row cargoRow = work_view::rowAt(state, 1);
+        test.assertEqual(storyRow.kind, work_view::kRowStory, "restoration is listed first");
+        test.assertEqual(storyRow.mission, campaign::kFirst, "FIRST is the story row");
+        test.assertEqual(cargoRow.kind, work_view::kRowFreight, "freight sits beneath story work");
+
+        test.assertTrue(work_view::accept(state, cargoRow), "accept the freight row");
         test.assertEqual(state.activeJob.kind, game::kJobKindOrdinary, "ordinary kind stored");
-        test.assertEqual(state.activeJob.deadline, 0, "ordinary active job is untimed");
-        const uint8_t ordinaryDestination = state.activeJob.to;
-        const uint16_t ordinaryReward = state.activeJob.reward;
-        test.assertTrue(station::undock(state), "ordinary work undocks");
+        const uint8_t destination = state.activeJob.to;
+        const uint16_t reward = state.activeJob.reward;
+        test.assertTrue(station::undock(state), "freight undocks");
         for (uint16_t i = 0; i < 600; ++i)
             game::step(state, idle());
-        test.assertEqual(state.activeJob.elapsed, 0, "ordinary age never advances");
-        test.assertEqual(jobs::remainingTicks(state), 0, "ordinary has no remaining-time clock");
         test.assertEqual(state.voyageTicks, 600, "voyage clock advances in flight");
-        test.assertTrue(travelTo(state, ordinaryDestination), "ordinary arrives after a long flight");
-        test.assertEqual(state.credits, ordinaryReward, "ordinary pays despite elapsed flight time");
-        test.assertEqual(state.delivered, 1, "ordinary delivery counted");
+        test.assertTrue(travelTo(state, destination), "freight arrives after a long flight");
+        test.assertEqual(state.credits, reward, "freight pays despite elapsed flight time");
+        test.assertEqual(state.delivered, 1, "freight delivery counted");
 
-        // Dock at the destination has refreshed a full board. Express is row 1.
-        test.assertTrue(jobs::accept(state, 1), "accept express work");
-        test.assertEqual(state.activeJob.kind, game::kJobKindExpress, "express kind stored");
-        const uint8_t expressDestination = state.activeJob.to;
-        const uint16_t expressDeadline = state.activeJob.deadline;
-        const uint16_t creditsBefore = state.credits;
-        uint8_t wrong = game::kJobNone;
-        test.assertTrue(otherSettlement(static_cast<uint8_t>(state.docked), expressDestination, wrong), "a wrong berth exists");
-        state.activeJob.elapsed = static_cast<uint16_t>(expressDeadline + 1);
-        test.assertTrue(travelTo(state, wrong), "overdue express docks at the wrong berth");
-        test.assertEqual(state.credits, creditsBefore, "expired express pays nothing");
-        test.assertEqual(state.cargo, 0, "expired express clears the load");
-        test.assertTrue(!game::hasActiveJob(state), "expired express clears the job");
-        test.assertEqual(state.lastDelivery, jobs::kDeliveryFailed, "expired express records the failure");
-
-        // Exact-deadline arrival at the destination still pays.
-        test.assertTrue(at(state, campaign::kTidewall), "return to Tidewall for a fresh board");
-        test.assertTrue(jobs::accept(state, 1), "accept a fresh express");
-        const uint8_t exactDestination = state.activeJob.to;
-        const uint16_t exactReward = state.activeJob.reward;
-        state.activeJob.elapsed = state.activeJob.deadline;
-        const uint16_t exactBefore = state.credits;
-        test.assertTrue(travelTo(state, exactDestination), "exact-deadline express docks");
-        test.assertEqual(state.credits, exactBefore + exactReward, "exact deadline is inclusive");
-
-        // Saturation is a permanent overdue state, not a wrap.
-        test.assertTrue(at(state, campaign::kTidewall), "dock for saturation test");
-        test.assertTrue(jobs::accept(state, 1), "accept saturating express");
-        test.assertTrue(station::undock(state), "undock saturation express");
-        state.activeJob.elapsed = static_cast<uint16_t>(game::kJobElapsedLate - 1);
-        game::step(state, idle());
-        test.assertEqual(state.activeJob.elapsed, game::kJobElapsedLate, "express age reaches the late marker");
-        game::step(state, idle());
-        test.assertEqual(state.activeJob.elapsed, game::kJobElapsedLate, "express age saturates");
-        uint8_t saturationWrong = game::kJobNone;
-        test.assertTrue(otherSettlement(static_cast<uint8_t>(0), state.activeJob.to, saturationWrong), "saturation wrong berth exists");
-        test.assertTrue(travelTo(state, saturationWrong), "saturated express docks elsewhere");
-        test.assertEqual(state.credits, exactBefore + exactReward, "saturated express never pays");
-        test.assertTrue(!game::hasActiveJob(state), "saturated express is cleared");
+        test.assertTrue(at(state, campaign::kTidewall), "dock at Tidewall for a fresh board");
+        test.assertEqual(work_view::rowAt(state, 0).mission, campaign::kFirst, "FIRST remains available");
+        test.assertTrue(work_view::accept(state, work_view::rowAt(state, 0)), "accept FIRST through WORK");
+        test.assertEqual(state.activeJob.kind, game::kJobKindCampaign, "campaign kind stored");
+        test.assertTrue(travelTo(state, campaign::kBenthos), "FIRST delivered");
+        test.assertEqual(state.credits, reward + campaign::missionReward(campaign::kFirst), "both rewards accumulate");
         runner.add(test);
     }
 
@@ -419,7 +425,7 @@ inline void CampaignSuite(TestRunner &runner) {
         test.assertTrue(at(saturated, campaign::kTidewall), "dock for credit saturation");
         test.assertTrue(jobs::accept(saturated, 0), "accept ordinary for credit saturation");
         const uint8_t saturatedDestination = saturated.activeJob.to;
-        saturated.credits = static_cast<uint16_t>(game::expressReward(0) + 65530u);
+        saturated.credits = 0xFFF0u;
         test.assertTrue(travelTo(saturated, saturatedDestination), "deliver at the credit ceiling");
         test.assertEqual(saturated.credits, 0xFFFFu, "credits saturate instead of wrapping");
         test.assertEqual(saturated.delivered, 1, "saturated payment still counts the delivery");
@@ -427,11 +433,6 @@ inline void CampaignSuite(TestRunner &runner) {
         test.assertTrue(at(state, campaign::kTidewall), "dock for job invariants");
         test.assertTrue(jobs::accept(state, 0), "accept ordinary");
         test.assertTrue(campaign::activeJobValid(state), "ordinary active job is valid");
-        state.activeJob.deadline = 1;
-        test.assertTrue(!campaign::activeJobValid(state), "ordinary cannot carry a deadline");
-        state.activeJob.deadline = 0;
-        state.activeJob.kind = game::kJobKindExpress;
-        test.assertTrue(!campaign::activeJobValid(state), "express needs its route deadline and reward");
         state.activeJob.kind = 9;
         test.assertTrue(!campaign::activeJobValid(state), "unknown job kind is invalid");
         runner.add(test);
@@ -499,6 +500,27 @@ inline void CampaignSuite(TestRunner &runner) {
         test.assertEqual(campaign::workMissionAt(state, campaign::kBenthos, 0), campaign::kMissionNone, "completed LIFT never respawns");
         test.assertEqual(campaign::workMissionAt(state, campaign::kCormorant, 0), campaign::kMissionNone, "completed BEACON never respawns");
         test.assertEqual(campaign::workMissionAt(state, campaign::kDeepAnchor, 0), campaign::kMissionNone, "completed HOME never respawns");
+        runner.add(test);
+    }
+
+    {
+        Test test("loaded FIRST route spends air and keeps the frozen route job");
+        game::State state;
+        game::reset(state);
+        test.assertTrue(acceptAt(state, campaign::kTidewall, campaign::kFirst), "accept loaded FIRST");
+        test.assertTrue(station::undock(state), "depart loaded");
+        const int16_t startX = state.x;
+        const int16_t airBefore = state.air;
+        for (uint16_t tick = 0; tick < game::kAirDrainTicks; ++tick)
+            game::step(state, game::Input{false, false, false, true});
+        test.assertEqual(state.cargo, game::kJobCrates, "loaded four units survive flight");
+        test.assertTrue(state.air < airBefore, "loaded flight spends air");
+        test.assertTrue(state.x > startX, "loaded route makes forward progress");
+        test.assertTrue(campaign::activeJobValid(state), "loaded route remains a valid checkpoint job");
+        uint8_t reward = 0;
+        uint16_t unusedDeadline = 0;
+        test.assertTrue(world::routeEconomy(campaign::kTidewall, campaign::kBenthos, reward, unusedDeadline), "FIRST route economy");
+        test.assertEqual(state.activeJob.reward, reward, "loaded route keeps the generated reward");
         runner.add(test);
     }
 
@@ -577,11 +599,9 @@ inline void CampaignSuite(TestRunner &runner) {
         state.activeJob.to = campaign::kBenthos;
         state.activeJob.crates = game::kJobCrates;
         uint8_t reward = 0;
-        uint16_t deadline = 0;
-        test.assertTrue(world::routeEconomy(campaign::kTidewall, campaign::kBenthos, reward, deadline), "route exists");
+        uint16_t unusedDeadline = 0;
+        test.assertTrue(world::routeEconomy(campaign::kTidewall, campaign::kBenthos, reward, unusedDeadline), "route exists");
         state.activeJob.reward = reward;
-        state.activeJob.deadline = 0;
-        state.activeJob.elapsed = 0;
         game::setCargo(state, game::kJobCrates);
         test.assertTrue(campaign::activeJobValid(state), "loaded service-berth job is valid");
         runner.add(test);

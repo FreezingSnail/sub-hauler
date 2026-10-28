@@ -8,11 +8,13 @@
 
 #include "campaign.hpp"
 #include "game.hpp"
+#include "panel_view.hpp"
 
 // Homecoming presentation: three input-advanced cards derived only from saved
-// campaign counters and masks. The network card is a compact native diagram;
-// no extra full-screen art or FX asset is required. Card advancement is pure so
-// the host tests can pin the sequence independently of the external font.
+// campaign counters and masks. The two fixed cards (lit network, thanks) are
+// baked 128x64 FX panels; the stats card overlays saved time/coves/jobs values
+// on native text. Card advancement is pure so the host tests can pin the
+// sequence independently of the external font.
 namespace ending_view {
 
 constexpr uint8_t kCardNetwork = 0;
@@ -82,84 +84,40 @@ inline void hint(uint24_t label) {
     text::print(label);
 }
 
-inline void drawNetwork() {
-    text::normal();
-    text::at(4, kTitleY);
-    text::print(txt_network_lit);
-    arduboy.drawFastHLine(0, kDividerY, 128, WHITE);
-
-    // Four lit stations on one line: the network the campaign restored.
-    for (uint8_t i = 0; i + 1 < 4; ++i) {
-        const int16_t x0 = static_cast<int16_t>(kNodeX0 + i * kNodeStep + kNodeSize);
-        const int16_t x1 = static_cast<int16_t>(kNodeX0 + (i + 1) * kNodeStep);
-        arduboy.drawFastHLine(x0, kNodeY + kNodeSize / 2, static_cast<int16_t>(x1 - x0), WHITE);
-    }
-    for (uint8_t i = 0; i < 4; ++i)
-        arduboy.fillRect(static_cast<int16_t>(kNodeX0 + i * kNodeStep), kNodeY, kNodeSize, kNodeSize, WHITE);
-
-    text::at(4, kNetworkOnlineY);
-    text::print(txt_net_online);
-    hint(txt_a_next);
-}
-
-inline void drawThanks() {
-    text::normal();
-    text::at(4, kThanksY);
-    text::print(txt_thank_you);
-    text::at(4, kThanksFromY);
-    text::print(txt_thanks_from);
-    text::at(4, kThanksFrom2Y);
-    text::print(txt_thanks_from2);
-    text::at(4, kThanksKeepY);
-    text::print(txt_keep_exploring);
-    hint(txt_a_next);
-}
-
-inline void drawNumberLine(uint8_t y, uint24_t label, uint16_t value) {
-    text::at(4, y);
-    text::print(label);
-    text::character(' ');
-    text::number(value);
-}
-
 inline void drawStats(const game::State &state) {
+    // The static card (title, divider, labels, /8 and hint) is baked; the saved
+    // time, cove count and delivered jobs overlay their fixed slots.
+    panel_view::draw(panel_ending_stats);
     text::normal();
-    text::at(4, kTitleY);
-    text::print(txt_voyage_stats);
-    arduboy.drawFastHLine(0, kDividerY, 128, WHITE);
 
     uint32_t seconds = voyageSeconds(state);
     if (seconds > 59999u)
         seconds = 59999u;
     const uint16_t minutes = static_cast<uint16_t>(seconds / 60u);
     const uint8_t rest = static_cast<uint8_t>(seconds % 60u);
-    text::at(4, kStatsTimeY);
-    text::print(txt_time);
-    text::character(' ');
+    text::at(34, kStatsTimeY);
     text::number(minutes);
     text::character(':');
     if (rest < 10)
         text::character('0');
     text::number(rest);
 
-    text::at(4, kStatsCovesY);
-    text::print(txt_coves);
-    text::character(' ');
+    text::at(40, kStatsCovesY);
     text::number(coveCount(state));
-    text::character('/');
-    text::number(kCoveCount);
-
-    drawNumberLine(kStatsJobsY, txt_jobs, state.delivered);
-    hint(txt_a_finish);
+    text::at(34, kStatsJobsY);
+    text::number(state.delivered);
 }
 
 inline void draw(uint8_t card, const game::State &state) {
-    if (card == kCardNetwork)
-        drawNetwork();
-    else if (card == kCardThanks)
-        drawThanks();
-    else
-        drawStats(state);
+    if (card == kCardNetwork) {
+        panel_view::draw(panel_ending_network);
+        return;
+    }
+    if (card == kCardThanks) {
+        panel_view::draw(panel_ending_thanks);
+        return;
+    }
+    drawStats(state);
 }
 
 #endif   // __AVR__

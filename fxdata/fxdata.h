@@ -6,8 +6,11 @@ using uint24_t = __uint24;
 
 // Initialize FX hardware using  FX::begin(FX_DATA_PAGE); in the setup() function.
 
-constexpr uint16_t FX_DATA_PAGE  = 0xf919;
-constexpr uint24_t FX_DATA_BYTES = 452259;
+constexpr uint16_t FX_DATA_PAGE  = 0xe149;
+constexpr uint24_t FX_DATA_BYTES = 2008674;
+
+constexpr uint16_t FX_SAVE_PAGE  = 0xfff0;
+constexpr uint24_t FX_SAVE_BYTES = 4096;
 
 constexpr uint24_t hero = 0x000000;
 constexpr uint24_t worldTiles = 0x0000C2;
@@ -161,3 +164,42 @@ constexpr uint24_t txt_coves = 0x06E688;
 constexpr uint24_t txt_jobs = 0x06E68E;
 constexpr uint24_t txt_a_next = 0x06E693;
 constexpr uint24_t txt_a_finish = 0x06E69A;
+constexpr uint24_t audio_harbor_bubbles = 0x06E6A3;
+constexpr uint24_t audio_kelp_drift = 0x0AA6A3;
+constexpr uint24_t audio_sonar_lullaby = 0x0EDEA3;
+constexpr uint24_t audio_abyssal_glass = 0x138EA3;
+constexpr uint24_t audio_tidepool_waltz = 0x17F3A3;
+constexpr uint24_t audio_bubblejet_run = 0x1A4BA3;
+constexpr uint24_t txt_loader = 0x1CA3A3;
+constexpr uint24_t txt_roster_load_hint = 0x1CA3AA;
+constexpr uint24_t panel_abandon_confirm = 0x1CA3BF;
+constexpr uint24_t panel_ending_network = 0x1CA7C1;
+constexpr uint24_t panel_ending_stats = 0x1CABC3;
+constexpr uint24_t panel_ending_thanks = 0x1CAFC5;
+constexpr uint24_t panel_pause_rescue = 0x1CB3C7;
+constexpr uint24_t panel_pause_resume = 0x1CB7C9;
+constexpr uint24_t panel_rescue_confirm = 0x1CBBCB;
+constexpr uint24_t panel_save_continue = 0x1CBFCD;
+constexpr uint24_t panel_save_retry = 0x1CC3CF;
+constexpr uint24_t panel_wreck_retry = 0x1CC7D1;
+constexpr uint24_t panel_wreck_title = 0x1CCBD3;
+constexpr uint24_t title_keep = 0x1CCFD5;
+constexpr uint24_t title_menu = 0x1CD3D7;
+constexpr uint24_t title_replace = 0x1D87D9;
+constexpr uint24_t work_active = 0x1D9BDB;
+constexpr uint24_t work_details = 0x1DAADD;
+constexpr uint24_t work_rows = 0x1DBEDF;
+constexpr uint24_t lift_cable = 0x1DC4E1;
+constexpr uint24_t mooring = 0x1DC50F;
+constexpr uint24_t pump_flow = 0x1DC535;
+constexpr uint24_t survey_ring = 0x1DC5CB;
+constexpr uint24_t txt_music_on = 0x1DC609;
+constexpr uint24_t txt_music_off = 0x1DC612;
+constexpr uint24_t musicRegions = 0x1DC61C;
+constexpr uint24_t pause_menu = 0x1E8E1C;
+constexpr uint24_t txt_saved_berth = 0x1EA61E;
+constexpr uint24_t txt_unsaved_find = 0x1EA62D;
+constexpr uint24_t txt_story = 0x1EA63A;
+constexpr uint24_t txt_cargo = 0x1EA640;
+constexpr uint24_t txt_work_accept_hint = 0x1EA646;
+constexpr uint24_t txt_short_load = 0x1EA657;

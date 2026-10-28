@@ -35,9 +35,9 @@ enum Item : uint8_t {
 constexpr uint8_t kMaxLevel = 3;
 constexpr uint8_t kFirstItem = 0;
 
-constexpr uint16_t kAirPrice = 60;
-constexpr uint16_t kHullPrice = 70;
-constexpr uint16_t kSonarPrice = 50;
+constexpr uint8_t kAirPrice = 60;
+constexpr uint8_t kHullPrice = 70;
+constexpr uint8_t kSonarPrice = 50;
 
 // kSoldOut is the max-level result: every level has been purchased, so the
 // row can only be read. Insufficient credits is a separate failure.
@@ -49,7 +49,7 @@ enum Result : uint8_t {
     kInvalidItem
 };
 
-inline uint16_t priceFor(Item item) {
+inline uint8_t priceFor(Item item) {
     if (item == kAir)
         return kAirPrice;
     if (item == kHull)

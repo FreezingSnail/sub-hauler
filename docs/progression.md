@@ -2,9 +2,9 @@
 
 Accepted implementation direction, 2026-10-26: **relaxed settlement restoration**.
 The player approved this design and requested planning/dispatch through Gangway.
-Execution is tracked under beads epic `sub-hauler-7px`; implementation details
-remain subject to its resource/storage audit and verification gates.
-This design is not implemented behavior or a measured resource fit.
+Execution was tracked under beads epic `sub-hauler-7px`; the `full` profile now
+implements the campaign, ending, single-slot cart checkpoint and six-cue music
+direction below. Dated measurements in [platform.md](platform.md) are canonical.
 It refines the campaign, ending, saving and music sections of
 [the exploration proposal](campaign-exploration.md). The existing map and
 equipment remain the foundation; hardware and resource limits stay in
@@ -17,10 +17,9 @@ Bring useful supplies, investigate what broke, open forgotten routes, and
 watch the inhabited cutaways come back to life. The final trip carries news
 home through a world whose routes you now understand.
 
-Campaign work and ordinary freight have no deadlines. Optional express work
-advertises its deadline before acceptance and pays more. Air, handling and
-hazards still make a journey an expedition. Wrecking or requesting rescue
-retries the last berth checkpoint without a fee.
+Campaign work and repeatable freight have no deadlines and no clock. Air,
+handling and hazards still make a journey an expedition. Wrecking or
+requesting rescue retries the last berth checkpoint without a fee.
 
 The main path needs the cutter and pressure seal. The thruster, survey lens,
 capacity pod, credit caches and purchased upgrades remain optional. Discovery
@@ -129,8 +128,8 @@ neither collision nor chart water geometry.
 
 ## Offers, navigation and player choices
 
-One cargo job can be active at a time, whether campaign, ordinary or express.
-Surveys and tool discoveries do not occupy that slot. Acceptance loads the
+One cargo job can be active at a time, whether campaign or freight. Surveys
+and tool discoveries do not occupy that slot. Acceptance loads the
 four units and leaves the player docked; A on UNDOCK or B starts travel.
 Stopping at any other berth retains the job and load. Arrival at the correct
 settlement resolves a loaded campaign delivery automatically and exactly once.
@@ -143,18 +142,19 @@ can supply the same mission again for free. Completion flags prevent repeat
 payment. BEACON and HOME are distinct acceptances; never auto-load the return
 dispatch or prevent a player from exploring empty.
 
-The station board keeps five visible action rows by replacing the redundant
-SERVICE row with WORK; automatic service already happens on docking. Keep the
-two freight offers, WORK, SHOP and UNDOCK. WORK opens a compact campaign page
-with the two repair branches and the current main purpose. On a campaign row,
-A opens brief details and a LOAD action only when eligible and at its source;
-B returns to the board. B undocks only on the top-level station board.
+The station board replaces both the redundant SERVICE row and the old freight
+offer rows with a single WORK access. Keep WORK, SHOP and UNDOCK; automatic
+service already happens on docking. WORK opens the one board used for all
+restoration and optional freight. Eligible story restoration rows are listed
+first in stable mission order, and the one repeatable freight row sits beneath
+them. A accepts the selected row directly, auto-loading the four cargo units;
+B returns to the station board. B undocks only on the top-level station board.
 Builds without SHOP omit that row. Service-only berths use a smaller board.
 
 The active-job board selects UNDOCK initially. ABANDON requires its own
 confirmation and is never the initial selection after docking or Continue.
-WORK remains accessible for clues while carrying a job, but cannot replace
-that load. The chart highlights the active delivery destination. With no
+WORK remains accessible while carrying a job, but shows only the carrying
+summary and cannot replace that load. The chart highlights the active delivery destination. With no
 cargo, a player may select one known campaign target in WORK; this optional
 focus is derived again after loading and need not be saved.
 
@@ -176,15 +176,13 @@ Tidewall. If both repairs are done but the seal is missing, point to the
 workshop beyond the cutter grate. All relevant clues work with audio muted.
 Core builds supply the same purpose and hints as text without a chart.
 
-Ordinary freight becomes untimed in the campaign design; the current timed
-delivery behavior must be changed explicitly. Offer one ordinary and one
-clearly labeled EXPRESS job on the two freight rows. Ordinary payment uses
-the generated route reward. Express initially pays a five-credit-rounded
-125% of that reward with the existing route allowance; validate its reward
-width and loaded timing before keeping that tuning. Campaign work receives
-the ordinary route reward without an express bonus. Express time advances
-only during flight, pauses at berths/chart/pause, and expires permanently at
-its saturating overdue value. Failed express work clears without a fine.
+All freight is untimed. The WORK board offers one repeatable freight contract
+selected deterministically by the saved offer cursor and paid at the generated
+route reward; accepting or abandoning it refreshes the next row. Campaign work
+receives the same ordinary route reward and is never combined with a freight
+payment. A loaded arrival always pays, however long the trip took. There is no
+express premium, deadline, clock, late failure or hidden timer. This is a
+deliberate simplification: air and handling provide the expedition pressure.
 
 ## Checkpoints and rescue
 
@@ -205,17 +203,18 @@ simulation, pause music and ignore departure input. Resume the cue afterward.
 The snapshot contains berth ID, hull class, credits, purchased levels, tools,
 pickup claims (including the hull pod), open and seen gates, recorded surveys,
 restoration milestones, visited-settlement bits, mine state, active job kind
-and mission ID, its origin/destination/load/reward/deadline/elapsed age, offer
-generation state, chart discovery, voyage time, delivered-job count and rescue
-count. Store no pointers or raw C++ structure bytes. Transient physics, camera,
+and mission ID, its origin/destination/load/reward, offer generation state,
+chart discovery, voyage time, delivered-job count and rescue count. No job
+timer fields are stored. Store no pointers or raw C++ structure bytes. Transient physics, camera,
 particles, dwell timers and notifications reset on load. The pod's capacity
 is derived from its saved claim bit, as in the current rules.
 
 Persist the deterministic board seed/cursor so reloading reproduces the same
-offers without advancing their generation. Keep express age at intermediate
-stops; loading must not reset it. Retrying an expedition from its last berth
-also retries its saved express clock, by design: that is checkpoint rollback.
-There is no claim that a player cannot retry a deadline by reloading.
+freight offer without advancing its generation. There is no job age to preserve.
+Schema 2 removes the timer fields; schema 1 voyage saves are explicitly
+incompatible and are not migrated. Current schema 2 slots still receive full
+magic, length, CRC and semantic validation, and a corrupt slot is never
+partially applied.
 
 The pause screen offers RESCUE with a confirmation: `RETURN TO LAST BERTH?`
 and `UNSAVED FINDS LOST`. Wrecking offers RETRY BERTH or TITLE. Both rescue and
@@ -236,45 +235,48 @@ save indicator while unsaved gains exist.
 
 ### Storage and interrupted writes
 
-Reserve the system EEPROM prefix identified by `EEPROM_STORAGE_SPACE_START`.
-The installed Arduboy2 defines this as 16. Proposed slot A is addresses
-16–335 and slot B 336–655: two 320-byte slots with 368 bytes remaining above
-them in the documented EEPROM. This is a layout proposal pending a full audit
-of game/library writers, not permission to overwrite other allocations.
+Keep voyage bytes out of the system EEPROM prefix identified by
+`EEPROM_STORAGE_SPACE_START` (16 in the installed Arduboy2). The implemented
+fresh-voyage layout is one 4 KiB cart save block holding a single 512-byte
+schema 4 record. A save erases the block, programs two 256-byte pages and writes
+the commit byte last. A power interruption may lose the checkpoint; a torn
+record is rejected and the title offers a clean New Voyage. No voyage byte uses
+internal EEPROM.
 
-Each slot has a 16-byte header, a 303-byte payload area and a final commit
+Each slot has a 16-byte header, a 495-byte payload area and a final commit
 byte. Header fields are magic (4), schema version (1), world layout version
-(1), campaign content version (1), feature/profile signature (1), sequence
-(4), payload length (2) and CRC-16 (2). Cover header fields other than the CRC
+(1), campaign content version (1), feature/profile signature (1), four
+reserved/erased bytes, payload length (2) and CRC-16 (2). Cover header fields
+other than the CRC
 itself plus the used payload bytes with the checksum. Validate field ranges,
 progress consistency and berth eligibility as well as the checksum. A refuge
 checkpoint is valid only if its corresponding repair is complete.
 
 The current full-profile chart needs 256 payload bytes, leaving 47 for scalar
-state. An initial scalar allocation totals 40 bytes: berth/class/credits (4),
+state. The schema 2 scalar allocation totals 36 bytes: berth/class/credits (4),
 shop levels (3), tools/claims (2), gate masks (4), milestones/surveys/visits (3),
-job kind/ID/origin/destination/load/reward/deadline/age (10), offer cursor and
+job kind/ID/origin/destination/load/reward (6), offer cursor and
 board seed (4), mines (1), voyage ticks (4), delivery and rescue counts (4),
-ending-presentation flag (1). This leaves seven reserved bytes. Confirm widths
-and saturation rules before freezing schema 1. A profile without a chart omits
-that field and has a distinct signature. Cross-profile loading is rejected
-until an explicit migration is implemented.
+ending-presentation flag (1). No job timer is stored. Confirm widths and
+saturation rules before changing the schema again. A profile without a chart
+omits that field and has a distinct signature. Cross-profile and cross-schema
+loading is rejected until an explicit migration is implemented.
 
 Write the older/inactive slot: invalidate its commit byte first, stream the
 new payload directly from live state, write header/checksum, then set the
 commit byte last. Re-read and validate before reporting success. Keep the
 preceding slot intact. On boot choose the newest committed, compatible,
-checksum-valid and semantically valid sequence, with wrap-aware comparison.
-Never allocate another chart-sized RAM buffer; validate first, then decode
-directly into initialized state. Failed saves keep the previous checkpoint
-and show `SAVE FAILED`; allow RETRY or explicitly CONTINUE UNSAVED.
+checksum-valid, schema/layout-compatible and semantically valid record. There
+is no sequence or newest-slot comparison. Never allocate another chart-sized
+RAM buffer; validate first, then decode directly into initialized state. A
+failed save may lose the previous checkpoint because the single block was
+erased; never load a torn record. Show `SAVE FAILED`; allow RETRY or explicitly
+CONTINUE UNSAVED.
 
 The existing optional chart writer uses addresses 0–259 and must be disabled
-whenever voyage saving is built. Legacy chart data is not a full voyage.
-If its layout/checksum is valid and the player starts a new voyage, offer to
-keep that chart knowledge; give no implied equipment or campaign completion.
-Read it before creating the first voyage in slot B, which does not overlap it.
-Only after a valid voyage exists may slot A be used. Never write legacy
+whenever voyage saving is built. Old chart bytes are never read or imported in
+schema 2. A new voyage always starts with an empty chart; there is no keep-chart
+prompt. The single slot is erased and rewritten. Never write system
 addresses 0–15 or try to reconstruct system settings from old chart bytes.
 
 An interrupted delivery save recovers either the complete pre-delivery
@@ -304,7 +306,7 @@ interrupted, showing the cards again is acceptable. Tidewall WORK offers
 VIEW ENDING afterward.
 
 CONTINUE VOYAGE returns to Tidewall's board with every tool, repair and reward
-intact. Freight, express work and remaining discoveries continue; completed
+intact. Freight and remaining discoveries continue; completed
 campaign cargo never respawns. There is no forced reset, rising hazard scale
 or new-game-plus system in this first campaign.
 
@@ -390,7 +392,7 @@ Acceptance must demonstrate:
   wrong-berth stops, short cargo rejection and repeated docking. Mission
   rewards, cache rewards and ending payment are each exactly once per saved
   voyage history.
-- Completion without the thruster, lens, pod, caches, shop upgrades or express
+- Completion without the thruster, lens, pod, caches or shop upgrades
   income. Loaded route/air checks include the base core profile and achievable
   retreat or service stops; abstract room connectivity alone is insufficient.
 - Two useful restored service berths with safe docking, no phantom freight
@@ -398,12 +400,14 @@ Acceptance must demonstrate:
 - Native-sized work pages, title/Continue, rescue, save failure and ending
   cards. No clipping, accidental abandon/departure, required sound clue or new
   flight button chord. Playtest the first-slice pace and detour incentives.
-- Native C++ storage tests for every interrupted write boundary, torn headers,
-  corrupt newest slot, sequence wrap, incompatible versions/profiles, invalid
-  field combinations, legacy chart import and NEW VOYAGE interruption. System
-  EEPROM bytes stay untouched. Test exact pre/post-transaction consistency.
-- Reload/rescue coverage for active ordinary, express and campaign loads at
-  intermediate and restored berths; no timer reset at saved intermediate
+- Native C++ storage tests for every interrupted erase/page-write boundary,
+  torn headers/commit, corrupt payloads, incompatible versions/profiles,
+  invalid field combinations, ignored old chart bytes, repeated overwrite
+  cycles and clean NEW VOYAGE recovery. System EEPROM bytes stay untouched. A
+  torn record must never load or mutate live state; do not claim power-fail
+  atomic rollback.
+- Reload/rescue coverage for active freight and campaign loads at intermediate
+  and restored berths; no timer state exists to reset
   stops, duplicate cash or stranded zero-air state. Confirm rollback notice
   matches what actually survives.
 - Audio cue selection and boundary hysteresis, silence/resume rules, persistent

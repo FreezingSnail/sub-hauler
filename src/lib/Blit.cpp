@@ -3,6 +3,8 @@
 #include <Arduboy2.h>
 #include <ArduboyFX.h>
 
+#include "../cart_service.hpp"
+
 namespace Blit {
 
 // Blit a headerless, page-major plus-mask blob from the FX cart into the

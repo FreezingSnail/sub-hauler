@@ -26,8 +26,9 @@ constexpr int16_t kFrameHeight = cave::VIEW_HEIGHT;
 static_assert(kFrameWidth == 128 && kFrameHeight == 64, "sonar ring uses the display frame");
 
 // Midpoint circle plotted as eight symmetric points. Duplicate octant joins
-// are harmless: setPixel only sets an already-set bit.
-inline void plotOctants(uint8_t *buffer, int16_t centerX, int16_t centerY, int16_t x, int16_t y) {
+// are harmless: setPixel only sets an already-set bit. Outlined so LTO does not
+// re-expand eight clipped writes at this single call site.
+__attribute__((noinline)) inline void plotOctants(uint8_t *buffer, int16_t centerX, int16_t centerY, int16_t x, int16_t y) {
     cave::setPixel(buffer, static_cast<int16_t>(centerX + x), static_cast<int16_t>(centerY + y));
     cave::setPixel(buffer, static_cast<int16_t>(centerX - x), static_cast<int16_t>(centerY + y));
     cave::setPixel(buffer, static_cast<int16_t>(centerX + x), static_cast<int16_t>(centerY - y));

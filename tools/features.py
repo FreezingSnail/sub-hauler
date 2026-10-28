@@ -49,6 +49,7 @@ DEPENDENCIES = {
     "EXPLORATION": ("JOBS",),
     "CAMPAIGN": ("JOBS", "STATIONS", "EXPLORATION"),
     "SAVE_VOYAGE": ("CAMPAIGN", "!SAVE_CHART"),
+    "MUSIC": ("SAVE_VOYAGE",),
 }
 
 PROFILES = {
@@ -65,9 +66,9 @@ PROFILES = {
         "MULTI_HULL": 1,
         "SAVE_CHART": 0,
         "EXPLORATION": 1,
-        "CAMPAIGN": 0,
-        "SAVE_VOYAGE": 0,
-        "MUSIC": 0,
+        "CAMPAIGN": 1,
+        "SAVE_VOYAGE": 1,
+        "MUSIC": 1,
     },
     "lean": {
         "STATIONS": 1,

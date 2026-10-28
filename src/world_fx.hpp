@@ -2,6 +2,7 @@
 
 #include <ArduboyFX.h>
 
+#include "cart_service.hpp"
 #include "fxdata.h"
 #include "world.hpp"
 
@@ -13,6 +14,7 @@ namespace world {
 class FxTables {
   public:
     uint8_t tileByte(uint16_t index) {
+        SH_CART_SERVICE();
         FX::seekData(static_cast<uint24_t>(explorationTiles + index));
         const uint8_t value = FX::readPendingUInt8();
         FX::readEnd();
@@ -27,6 +29,10 @@ class FxTables {
     }
 
     void chartBytes(uint16_t index, uint8_t *buffer, uint8_t length) {
+        // The chart composes eight short bursts while music continues. Refill
+        // the stream before each cart transaction so map rendering cannot
+        // stretch the audio service gap.
+        SH_CART_SERVICE();
         FX::readDataBytes(static_cast<uint24_t>(explorationChart + index), buffer, length);
     }
 

@@ -256,9 +256,12 @@ muted. Keep flight A as sonar, B as the chart, and station controls intact.
 Use low-speed dwell rings for pickups and cutter operations, with separate
 eligibility rules and leave/reenter latches to prevent repeated rewards.
 
-A base tank has 180 units, passive drain is 0.6 units/s, blowing costs more air,
-and the fully loaded horizontal speed cap is 18 px/s. Validate routes for
-actual loaded movement, rises, maneuvering, and an achievable retreat or refuge.
+A base tank has 300 units, passive drain is 0.4 units/s (12.5 minutes), blowing
+costs more air, and the fully loaded horizontal speed cap is 18 px/s. The
+Tidewall-to-Benthos first delivery was measured on the generated collision
+plane with a cautious whole-pixel autopilot: about 9,585 ticks (160 s) and
+72/300 air remaining (24%) after docking. Validate every new route for actual
+loaded movement, rises, maneuvering, and an achievable retreat or refuge.
 Express deadlines must use navigable travel time rather than straight-line
 station distance. New loops should save meaningful travel or offer a genuinely
 different hazard/air tradeoff; decorative bends alone do not add depth.
@@ -316,12 +319,13 @@ more discovery knowledge after rescue if playtests justify the extra save rules.
 
 Use one versioned voyage record rather than unrelated chart/economy saves.
 One-time finds, consumed caches and opened shortcuts need stable IDs and flags
-in that record. Reloading must never grant salvage twice. Prefer two bounded
-EEPROM slots with sequence/checksum/commit handling, preserving the preceding
-valid checkpoint on interrupted writes. A preliminary allocation of two
-320-byte slots fits within the documented 1,024-byte EEPROM, but record size,
-reserved addresses and existing chart-save migration require an implementation
-audit. No extra 256-byte RAM map buffer should be introduced for serialization.
+in that record. Reloading must never grant salvage twice. Use two bounded cart
+save slots with sequence/checksum/commit handling, each in its own erase block,
+preserving the preceding valid checkpoint on interrupted writes. The
+implemented partition is one 4 KiB slot in the external FX cart save area; no
+voyage byte uses the documented 1,024-byte internal EEPROM. A power interruption
+may lose the checkpoint; torn records are rejected and the title offers a clean
+New Voyage. No extra 256-byte RAM map buffer is introduced for serialization.
 
 ## Historical exploration slice and acceptance
 

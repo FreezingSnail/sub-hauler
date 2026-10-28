@@ -48,12 +48,12 @@ inline void GameSuite(TestRunner &runner) {
         test.assertEqual(state.vyQ8, 0, "reset vertical velocity");
         test.assertEqual(state.ticks, 0, "reset ticks");
 
-        runTicks(state, idleInput(), 120);
+        runTicks(state, idleInput(), game::kAirDrainTicks);
         test.assertEqual(state.ballast, 50, "neutral ballast holds depth");
         test.assertEqual(state.y, game::kSpawnY, "depth does not drift");
         test.assertEqual(state.vyQ8, 0, "vertical velocity stays zero");
-        test.assertEqual(state.air, 179, "air drains one unit per 100 ticks");
-        test.assertEqual(state.ticks, 120, "fixed step counts ticks");
+        test.assertEqual(state.air, game::kAirCapacity - 1, "air drains one unit per drain period");
+        test.assertEqual(state.ticks, game::kAirDrainTicks, "fixed step counts ticks");
         runner.add(test);
     }
 
@@ -80,7 +80,7 @@ inline void GameSuite(TestRunner &runner) {
         const int16_t startY = state.y;
         runTicks(state, blowInput(), 60);
         test.assertEqual(state.ballast, 32, "18 ballast units blown in one second");
-        test.assertEqual(state.air, 177, "blow spends three air units");
+        test.assertEqual(state.air, game::kAirCapacity - 3, "blow spends three air units");
         test.assertTrue(state.vyQ8 < 0, "blowing accelerates upward");
         test.assertTrue(state.y < startY, "blowing rises");
         test.assertEqual(state.cargo, 0, "trim unchanged");
@@ -211,14 +211,12 @@ inline void GameSuite(TestRunner &runner) {
             outFrac = static_cast<int16_t>(accumulated - whole * game::kSubpixelOne);
         };
 
-        const int16_t velocities[] = {0,     1,     -1,    15,    -15,   16,    -16,
-                                      game::kMaxVyQ8, -game::kMaxVyQ8, game::topSpeedQ8For(0),
-                                      static_cast<int16_t>(-game::topSpeedQ8For(0)), 32767, -32768};
         const int16_t fracs[] = {0, 1, 2047, 2048, 4095};
 
         bool positionsMatch = true;
         bool fracsInRange = true;
-        for (int16_t velocity : velocities) {
+        for (int32_t value = -32768; value <= 32767; ++value) {
+            const int16_t velocity = static_cast<int16_t>(value);
             for (int16_t frac : fracs) {
                 int16_t expectedPosition = 0;
                 int16_t expectedFrac = 0;

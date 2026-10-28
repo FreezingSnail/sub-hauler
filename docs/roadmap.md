@@ -1,6 +1,6 @@
 # Roadmap — Arduboy device port
 
-Status: **cargo-free resource pass complete, 2026-10-24** (`sub-hauler-gl1.2`–`gl1.8`).
+Status: **voyage progression release candidate, 2026-10-28** (`sub-hauler-7px`).
 `spike-trim/` remains a historical behavioural
 reference; the device firmware implements the full dock → accept → auto-load →
 undock → travel → deliver loop across three hulls. The cargo-packing minigame
@@ -32,32 +32,27 @@ rewriting the game.
 
 ## Current baseline
 
-Measured 2026-10-24 after the cargo-free resource pass (full profile, default
-`SAVE_CHART=0`):
+Measured 2026-10-28 after the voyage progression slice (full profile, default
+`CAMPAIGN=1 SAVE_VOYAGE=1 MUSIC=1 SAVE_CHART=0`):
 
 | Resource | Current | Planning ceiling | Hardware limit |
 | --- | ---: | ---: | ---: |
-| Flash | 17,548 B | 29,000 B | 29,696 B |
-| Static SRAM | 1,572 B | 1,700 B | 2,560 B |
-| Stack | 812 B probe reserve | ≥600 B reserve | remainder |
+| Flash | 27,010 B | 29,000 B | 29,696 B |
+| Static SRAM | 1,619 B | 1,700 B | 2,560 B |
+| Stack | 646 B combined probe / 666 B save chain | ≥600 B reserve | remainder |
 
-The 1,700 B static ceiling is a planning target, not a hardware fact. It was
-raised from 1,680 B on 2026-10-23 at the M7 damage/particles checkpoint. The
-cargo-free carve removed the static cargo screen state and this pass removed
-another 20 B, so static RAM falls from 1,690 B to **1,572 B** and the full image
-has 128 B of headroom under 1,700 B. The 600 B stack target is unchanged and
-the probe measures **812 B**, a 212 B margin.
+The 1,700 B static ceiling is a planning target, not a hardware fact. The full
+image has **81 B** of static headroom and **941 B** of static free SRAM. The
+600 B stack target is unchanged; campaign+save measures **728 B**, the exact
+production save chain **666 B**, and the combined music probe **646 B**.
 
-The flash planning ceiling remains **29,000 B** (12,148 B under the 29,696 B
-hardware limit; the current image is **11,452 B** under the planning line).
-Removing the packing runtime released **8,734 B flash and 98 B static** against
-the post-M9 menu-fix image (28,930 B / 1,690 B); the UI/art/metadata pass
-released another **2,648 B flash and 20 B static**. The undock ring latch,
-edge-gated A+B pause, and idle-frame skips for the title/station/shop/pause
-boards remain. Any future persistent feature still needs a recorded cost.
+The flash planning ceiling remains **29,000 B** (2,686 B under the 29,696 B
+hardware limit; the current image is **1,990 B** under the planning line).
+Dated cargo-free and campaign-slice checkpoints below remain historical.
+Any future persistent feature still needs a recorded cost.
 
-The matrix is full **17,548 B / 1,572 B**, lean **14,792 B / 1,560 B**, core
-**12,626 B / 1,302 B**, min **9,142 B / 1,252 B**. Against the cargo-free
+The shipped matrix is full **27,010 B / 1,619 B**, lean **14,406 B / 1,418 B**,
+core **11,812 B / 1,159 B**, min **5,912 B / 1,115 B**. Against the cargo-free
 baseline (20,196 / 17,362 / 14,756 / 10,456 B flash and 1,592 / 1,580 / 1,321 /
 1,259 B static), this pass saves **2,648 / 2,570 / 2,130 / 1,314 B flash** and
 **20 / 20 / 19 / 7 B static**. The measured `SAVE_CHART=1` variant was last
@@ -651,13 +646,16 @@ screen keeps ownership of its A+B commit.
 - **Balance audit:** reward is `20 + 4*10 + distance/2`, rounded to five;
   deadline is `80 + 0.55*distance + 4*8` seconds. Generated contracts pay
   **110..180 credits** with **169..246 s** deadlines. Loaded top speed is
-  **18 px/s** (30 - 3*4 cargo), the longest straight-line run is **1,955 px**,
-  and a full **180-unit** tank lasts **300 s** at the base 0.6 unit/s drain
-  before deliberate blowing. Every deadline therefore exceeds straight-line
-  loaded travel and fits inside one tank, and every reward covers the cheapest
-  upgrade (SONAR 50, AIR TANK 60, HULL PLATE 70). The host balance test asserts
-  those boundaries for every generated offer. No integer tuning changed: the
-  values are survivable and the audit is recorded rather than churned.
+  **18 px/s** (30 - 3*4 cargo), the longest straight-line run is **1,955 px**.
+  The first-delivery rebalance (2026-10-28) raised the base tank to **300
+  units** and slowed passive drain to **0.4 units/s** (one unit per 150 ticks,
+  **750 s** without blowing). A cautious host route from the real Tidewall dock
+  to Benthos took **9,585 ticks (160 s)** and arrived with **72/300 air**, while
+  the old 180-unit/0.6 unit/s tank reached the same dock at zero air. Every
+  deadline therefore exceeds straight-line loaded travel and fits inside one
+  tank, and every reward covers the cheapest upgrade (SONAR 50, AIR TANK 60,
+  HULL PLATE 70). The host balance test asserts those boundaries for every
+  generated offer.
 - **Size direction:** `game::reset()` now value-initialises the aggregate and
   restores only the non-zero defaults (`spawn`, trim, air, mines, docked,
   hull, active-job tag). That reduces the whole-image reset code more than the

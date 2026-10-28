@@ -1,14 +1,17 @@
 #pragma once
 
-// Native storage tests for the atomic two-slot voyage save.
+// Native storage tests for the single-slot voyage checkpoint.
 //
-// The fixture mirrors the device adapter's read/write/update contract. Its
-// fault injector fails the Nth physical change and then makes every later
-// update a no-op, which is exactly the power-loss shape the commit protocol
-// has to survive. Tests run under SAVE_VOYAGE=0 as a compile-out check and
-// under explicit full/lean/core campaign+voyage overrides for the real cases.
+// The fixture models one 4 KiB external-NOR erase block: erased state 0xFF, page
+// programs can only clear bits, and an interrupted erase/program is a no-op
+// after the failure point. One slot lives at offset 0. A power interruption may
+// lose the current checkpoint, but no torn record may ever validate or load.
+
+#include <fstream>
 
 #include "../src/features.hpp"
+#include "../src/pilot.hpp"
+#include "../src/pilot_view.hpp"
 #include "../src/voyage_save.hpp"
 #include "test.hpp"
 
@@ -29,69 +32,89 @@ using jobs_test::dockAt;
 using jobs_test::idle;
 using jobs_test::travelTo;
 
-constexpr uint16_t kEepromBytes = 1024;
+constexpr uint16_t kSaveBytes = voyage_save::kSaveBytes;
 constexpr uint16_t kNoFault = 0xFFFF;
 
-// Blank EEPROM is 0xFF. update() changes a byte only when it differs; the fault
-// injector counts successful physical changes, so every interruption boundary
-// is a real EEPROM write rather than an update() no-op.
+// The fixture models the external NOR save block: erased state 0xFF, page
+// programs can only clear bits, and a 4 KiB block erase restores 0xFF. The
+// fault injector stops after N programmed bytes or during an erase, then makes
+// every later operation a no-op.
 struct FakeStorage {
-    uint8_t bytes[kEepromBytes];
-    bool written[kEepromBytes];
+    uint8_t bytes[kSaveBytes];
     uint16_t reads;
-    uint16_t writes;
-    uint16_t updateCalls;
-    uint16_t changed;
+    uint16_t pageBytes;
+    uint16_t pageOps;
+    uint16_t eraseOps;
+    uint16_t erasedBlocks;
     uint16_t failedAt;
     bool failed;
-    uint16_t systemWrites;
+    bool failErase;
+    uint16_t eraseBytes;
+    uint16_t page;
+    uint16_t pageIndex;
 
-    explicit FakeStorage(uint8_t fill = 0xFF) : reads(0), writes(0), updateCalls(0), changed(0), failedAt(kNoFault), failed(false), systemWrites(0) {
-        for (uint16_t i = 0; i < kEepromBytes; ++i) {
+    explicit FakeStorage(uint8_t fill = 0xFF)
+        : reads(0), pageBytes(0), pageOps(0), eraseOps(0), erasedBlocks(0), failedAt(kNoFault), failed(false), failErase(false), eraseBytes(0), page(0), pageIndex(0) {
+        for (uint16_t i = 0; i < kSaveBytes; ++i)
             bytes[i] = fill;
-            written[i] = false;
-        }
     }
 
-    uint8_t read(uint16_t address) {
+    uint8_t read(uint16_t offset) {
         ++reads;
-        return address < kEepromBytes ? bytes[address] : 0xFF;
+        return offset < kSaveBytes ? bytes[offset] : 0xFF;
     }
 
-    void write(uint16_t address, uint8_t value) {
-        ++writes;
-        if (address < voyage_save::kSystemBytes)
-            ++systemWrites;
-        if (address >= kEepromBytes)
-            return;
-        bytes[address] = value;
-        written[address] = true;
-    }
-
-    void update(uint16_t address, uint8_t value) {
-        ++updateCalls;
-        if (address < voyage_save::kSystemBytes)
-            ++systemWrites;
-        if (address >= kEepromBytes)
-            return;
-        if (bytes[address] == value)
-            return;
-        if (failed || changed >= failedAt) {
+    void eraseBlock(uint8_t block) {
+        ++eraseOps;
+        if (block != 0)
             failed = true;
+        if (failErase && eraseOps == 1) {
+            failed = true;
+            for (uint16_t i = 0; i < eraseBytes && i < kSaveBytes; ++i)
+                bytes[i] = 0xFF;
             return;
         }
-        bytes[address] = value;
-        written[address] = true;
-        ++changed;
+        if (failed)
+            return;
+        for (uint16_t i = 0; i < kSaveBytes; ++i)
+            bytes[i] = 0xFF;
+        ++erasedBlocks;
+    }
+
+    void pageBegin(uint16_t pageNumber) {
+        page = pageNumber;
+        pageIndex = 0;
+    }
+
+    void pageByte(uint8_t value) {
+        if (failed || pageBytes >= failedAt) {
+            failed = true;
+            ++pageIndex;
+            return;
+        }
+        const uint16_t offset = static_cast<uint16_t>(page * voyage_save::kPageBytes + pageIndex);
+        if (offset < kSaveBytes)
+            bytes[offset] &= value;
+        ++pageBytes;
+        ++pageIndex;
+    }
+
+    void pageEnd() {
+        if (!failed)
+            ++pageOps;
     }
 
     void resetCounters() {
         reads = 0;
-        writes = 0;
-        updateCalls = 0;
-        changed = 0;
+        pageBytes = 0;
+        pageOps = 0;
+        eraseOps = 0;
+        erasedBlocks = 0;
         failed = false;
-        systemWrites = 0;
+        failErase = false;
+        eraseBytes = 0;
+        page = 0;
+        pageIndex = 0;
     }
 };
 
@@ -133,14 +156,14 @@ struct Fixture {
                                  storage);
     }
 
-    voyage_save::SaveResult newVoyage(FakeStorage &storage, voyage_save::LegacyChart legacy) {
+    voyage_save::SaveResult newVoyage(FakeStorage &storage) {
         return voyage_save::newVoyage(state
 #if SH_FEATURE_FOG_CHART
                                       ,
                                       chart
 #endif
                                       ,
-                                      legacy, storage);
+                                      storage);
     }
 };
 
@@ -158,12 +181,25 @@ inline bool sameChart(const chart::State &a, const chart::State &b) {
     return true;
 }
 
+// Dirty pre-existing bytes in the save block must not be read as chart data or
+// imported into a new voyage.
+inline void fillOldChartBlock(FakeStorage &storage) {
+    for (uint16_t i = 0; i < 260; ++i)
+        storage.bytes[i] = static_cast<uint8_t>(i * 11u + 3u);
+}
+
 inline bool chartEmpty(const chart::State &chart) {
     for (uint16_t i = 0; i < world::CHART_BYTES; ++i) {
         if (chart.explored[i] != 0)
             return false;
     }
     return true;
+}
+
+inline bool spawnExplored(const State &state, const chart::State &chart) {
+    int16_t cellX = 0;
+    int16_t cellY = 0;
+    return chart::cellFromPixels(state.x, state.y, cellX, cellY) && chart::isExplored(chart, cellX, cellY);
 }
 #endif
 
@@ -185,7 +221,7 @@ inline bool checkpointMatches(const State &a, const State &b) {
         return false;
 #endif
     return a.activeJob.kind == b.activeJob.kind && a.activeJob.mission == b.activeJob.mission && a.activeJob.from == b.activeJob.from && a.activeJob.to == b.activeJob.to &&
-           a.activeJob.crates == b.activeJob.crates && a.activeJob.reward == b.activeJob.reward && a.activeJob.deadline == b.activeJob.deadline && a.activeJob.elapsed == b.activeJob.elapsed;
+           a.activeJob.crates == b.activeJob.crates && a.activeJob.reward == b.activeJob.reward;
 }
 
 inline uint16_t readU16(const FakeStorage &storage, uint16_t address) {
@@ -205,22 +241,14 @@ inline void writeU16(FakeStorage &storage, uint16_t address, uint16_t value) {
     storage.bytes[address + 1] = static_cast<uint8_t>(value >> 8);
 }
 
-inline void writeU32(FakeStorage &storage, uint16_t address, uint32_t value) {
-    storage.bytes[address] = static_cast<uint8_t>(value);
-    storage.bytes[address + 1] = static_cast<uint8_t>(value >> 8);
-    storage.bytes[address + 2] = static_cast<uint8_t>(value >> 16);
-    storage.bytes[address + 3] = static_cast<uint8_t>(value >> 24);
-}
-
-inline void refreshCrc(FakeStorage &storage, uint8_t slot) {
-    const uint16_t base = voyage_save::slotAddress(slot);
-    const uint16_t length = readU16(storage, static_cast<uint16_t>(base + voyage_save::kLengthOffset));
+inline void refreshCrc(FakeStorage &storage) {
+    const uint16_t length = readU16(storage, voyage_save::kSlotOffset + voyage_save::kLengthOffset);
     uint16_t crc = 0xFFFF;
     for (uint16_t i = 0; i < voyage_save::kCrcOffset; ++i)
-        crc = voyage_save::crc16Update(crc, storage.bytes[base + i]);
+        crc = voyage_save::crc16Update(crc, storage.bytes[voyage_save::kSlotOffset + i]);
     for (uint16_t i = 0; i < length; ++i)
-        crc = voyage_save::crc16Update(crc, storage.bytes[base + voyage_save::kPayloadOffset + i]);
-    writeU16(storage, static_cast<uint16_t>(base + voyage_save::kCrcOffset), crc);
+        crc = voyage_save::crc16Update(crc, storage.bytes[voyage_save::kSlotOffset + voyage_save::kPayloadOffset + i]);
+    writeU16(storage, voyage_save::kSlotOffset + voyage_save::kCrcOffset, crc);
 }
 
 inline uint16_t writeBoundaries(const Fixture &fixture, const FakeStorage &baseline) {
@@ -228,25 +256,12 @@ inline uint16_t writeBoundaries(const Fixture &fixture, const FakeStorage &basel
     scratch.resetCounters();
     scratch.failedAt = kNoFault;
     fixture.save(scratch);
-    return scratch.changed;
+    return scratch.pageBytes;
 }
 
 inline bool allBytesAre(const FakeStorage &storage, uint16_t first, uint16_t last, uint8_t value) {
     for (uint16_t i = first; i <= last; ++i) {
         if (storage.bytes[i] != value)
-            return false;
-    }
-    return true;
-}
-
-inline void seedSystemBytes(FakeStorage &storage) {
-    for (uint16_t i = 0; i < voyage_save::kSystemBytes; ++i)
-        storage.bytes[i] = static_cast<uint8_t>(0xA0 + i);
-}
-
-inline bool systemBytesUnchanged(const FakeStorage &storage, const uint8_t *snapshot) {
-    for (uint16_t i = 0; i < voyage_save::kSystemBytes; ++i) {
-        if (storage.bytes[i] != snapshot[i])
             return false;
     }
     return true;
@@ -290,65 +305,47 @@ inline void VoyageSaveSuite(TestRunner &runner) {
     using namespace voyage_save_test;
 
     {
-        Test test("CRC-16/CCITT-FALSE vector and frozen slot layout");
+        Test test("CRC-16/CCITT-FALSE vector and frozen single-slot layout");
         const uint8_t vector[9] = {'1', '2', '3', '4', '5', '6', '7', '8', '9'};
         test.assertEqual(voyage_save::crc16Bytes(vector, 9), 0x29B1, "CRC check vector");
-        test.assertEqual(voyage_save::kSystemBytes, 16, "system prefix");
-        test.assertEqual(voyage_save::kSlotAAddress, 16, "slot A start");
-        test.assertEqual(voyage_save::kSlotBAddress, 336, "slot B start");
-        test.assertEqual(voyage_save::kSlotBytes, 320, "slot width");
-        test.assertEqual(voyage_save::kPayloadCapacity, 303, "payload capacity");
-        test.assertEqual(voyage_save::kCommitOffset, 319, "commit byte offset");
-        test.assertEqual(voyage_save::kSlotEnd, 656, "slot end");
-        test.assertEqual(voyage_save::kScalarBytes, 40, "scalar payload width");
-        test.assertEqual(voyage_save::kPayloadBytes, static_cast<uint16_t>(40 + (SH_FEATURE_FOG_CHART ? world::CHART_BYTES : 0)), "payload width follows chart bit");
+        test.assertEqual(voyage_save::kSaveBytes, 4096, "one erase block");
+        test.assertEqual(voyage_save::kBlockBytes, 4096, "block width");
+        test.assertEqual(voyage_save::kSlotOffset, 0, "slot offset");
+        test.assertEqual(voyage_save::kSlotBytes, 512, "slot width");
+        test.assertEqual(voyage_save::kPayloadCapacity, 495, "payload capacity");
+        test.assertEqual(voyage_save::kCommitOffset, 511, "commit byte offset");
+        test.assertEqual(voyage_save::kPageBytes, 256, "flash page");
+        test.assertEqual(voyage_save::kScalarBytes, 36, "scalar payload width");
+        test.assertEqual(voyage_save::kPayloadBytes, static_cast<uint16_t>(36 + (SH_FEATURE_FOG_CHART ? world::CHART_BYTES : 0)), "payload width follows chart bit");
+        for (uint8_t berth = 0; berth < campaign::kBerthCount; ++berth) {
+            world::Berth info;
+            test.assertTrue(world::berthInfo(berth, info), "every valid campaign berth has generated metadata");
+        }
         runner.add(test);
     }
 
     {
-        Test test("legacy chart block remains readable without chart_save");
-        uint8_t legacy[260];
-        for (uint16_t i = 0; i < sizeof(legacy); ++i)
-            legacy[i] = static_cast<uint8_t>(i * 11u + 3u);
-        legacy[0] = voyage_save::kLegacyMagic0;
-        legacy[1] = voyage_save::kLegacyMagic1;
-        legacy[2] = voyage_save::kLegacyVersion;
-        uint8_t crc = 0;
-        for (uint16_t i = 0; i < world::CHART_BYTES; ++i)
-            crc = voyage_save::crc8Update(crc, legacy[voyage_save::kLegacyDataOffset + i]);
-        legacy[voyage_save::kLegacyCrcOffset] = crc;
-        test.assertEqual(voyage_save::kLegacyTotalBytes, 260, "legacy block size");
-        test.assertEqual(crc, legacy[voyage_save::kLegacyCrcOffset], "legacy CRC is self-consistent");
-        runner.add(test);
-    }
-
-    {
-        Test test("first save uses slot B and never writes system bytes");
+        Test test("first save erases one block and only programs two pages");
         FakeStorage storage(0xFF);
-        seedSystemBytes(storage);
-        uint8_t system[voyage_save::kSystemBytes];
-        for (uint16_t i = 0; i < voyage_save::kSystemBytes; ++i)
-            system[i] = storage.bytes[i];
 
         Fixture fixture;
         setValidPayload(fixture);
         test.assertEqual(fixture.save(storage), voyage_save::kSaved, "first save succeeds");
-        test.assertEqual(storage.systemWrites, 0, "no system-prefix update");
-        test.assertTrue(systemBytesUnchanged(storage, system), "bytes 0-15 are unchanged");
-        test.assertTrue(allBytesAre(storage, voyage_save::kSlotAAddress, voyage_save::kSlotBAddress - 1, 0xFF), "slot A stays blank on the first save");
+        test.assertEqual(storage.eraseOps, 1, "one block erase");
+        test.assertEqual(storage.erasedBlocks, 1, "one block erased");
+        test.assertEqual(storage.pageOps, 2, "two page programs");
+        test.assertEqual(storage.pageBytes, 2 * voyage_save::kPageBytes, "two full pages");
+        test.assertTrue(allBytesAre(storage, voyage_save::kSlotBytes, kSaveBytes - 1, 0xFF), "slot tail stays erased");
 
         const voyage_save::Inventory inventory = voyage_save::inspect(storage);
-        test.assertEqual(inventory.slot[0].status, voyage_save::kSlotBlank, "slot A is blank");
-        test.assertEqual(inventory.slot[1].status, voyage_save::kSlotValid, "slot B is valid");
-        test.assertEqual(inventory.slot[1].sequence, 1, "first sequence is one");
-        test.assertTrue(!storage.written[0], "no write below the system prefix");
+        test.assertEqual(inventory.status, voyage_save::kSlotValid, "slot is valid");
 
         Fixture restored;
         restored.reset();
         storage.resetCounters();
         test.assertEqual(restored.load(storage), voyage_save::kLoaded, "first save loads");
-        test.assertEqual(storage.updateCalls, 0, "load never writes");
-        test.assertEqual(storage.writes, 0, "load never calls write");
+        test.assertEqual(storage.pageBytes, 0, "load never programs a page");
+        test.assertEqual(storage.eraseOps, 0, "load never erases");
         test.assertTrue(checkpointMatches(restored.state, fixture.state), "all saved fields round-trip");
         test.assertEqual(restored.state.cargo, 0, "no active job means no cargo");
 #if SH_FEATURE_FOG_CHART
@@ -358,12 +355,59 @@ inline void VoyageSaveSuite(TestRunner &runner) {
     }
 
     {
+        Test test("new voyage and Continue place berth position and camera on generated terrain");
+        world_test::FakeWorld reader;
+        std::ifstream terrain("fxdata/tables/exploration.bin", std::ios::binary);
+        test.assertTrue(static_cast<bool>(terrain.read(reinterpret_cast<char *>(reader.tiles), world::WORLD_BYTES)), "actual collision plane loads");
+
+        world::Berth berth;
+        test.assertTrue(world::berthInfo(campaign::kTidewall, berth), "generated Tidewall berth");
+        FakeStorage storage(0xFF);
+        Fixture fresh;
+        fresh.state.x = 0;
+        fresh.state.y = 0;
+        fresh.state.cameraX = 0;
+        fresh.state.cameraY = 0;
+        test.assertEqual(fresh.newVoyage(storage), voyage_save::kSaved, "new voyage saves");
+        test.assertEqual(fresh.state.docked, campaign::kTidewall, "new voyage docks at Tidewall");
+        test.assertEqual(fresh.state.x, berth.pixel_x, "new voyage berth x");
+        test.assertEqual(fresh.state.y, berth.pixel_y, "new voyage berth y");
+        test.assertEqual(fresh.state.cameraX, game::cameraTargetX(fresh.state), "new voyage camera x is snapped");
+        test.assertEqual(fresh.state.cameraY, game::cameraTargetY(fresh.state), "new voyage camera y is snapped");
+#if SH_FEATURE_FOG_CHART
+        test.assertTrue(spawnExplored(fresh.state, fresh.chart), "first checkpoint includes the spawn reveal");
+#endif
+        test.assertTrue(!world::tileSolid(reader, berth.tile_x, berth.tile_y), "new voyage berth is open water in the packed plane");
+        const cave::Camera newCamera = pilot_view::cameraForState(fresh.state);
+        test.assertTrue(pilot_view::visible(pilot_view::screenX(fresh.state, newCamera), pilot_view::screenY(fresh.state, newCamera)), "new voyage hull is visible in the world view");
+
+        Fixture restored;
+        restored.reset();
+        restored.state.x = 64;
+        restored.state.y = 32;
+        restored.state.cameraX = 0;
+        restored.state.cameraY = 0;
+        test.assertEqual(restored.load(storage), voyage_save::kLoaded, "Continue loads the new voyage");
+        test.assertEqual(restored.state.x, berth.pixel_x, "Continue berth x");
+        test.assertEqual(restored.state.y, berth.pixel_y, "Continue berth y");
+        test.assertEqual(restored.state.cameraX, game::cameraTargetX(restored.state), "Continue camera x is snapped");
+        test.assertEqual(restored.state.cameraY, game::cameraTargetY(restored.state), "Continue camera y is snapped");
+#if SH_FEATURE_FOG_CHART
+        test.assertTrue(spawnExplored(restored.state, restored.chart), "Continue restores the saved spawn reveal");
+        test.assertTrue(sameChart(fresh.chart, restored.chart), "first checkpoint chart round-trips exactly");
+#endif
+        const cave::Camera restoredCamera = pilot_view::cameraForState(restored.state);
+        test.assertTrue(pilot_view::visible(pilot_view::screenX(restored.state, restoredCamera), pilot_view::screenY(restored.state, restoredCamera)), "Continue hull is visible in the world view");
+        runner.add(test);
+    }
+
+    {
         Test test("payload is encoded field by field at the frozen offsets");
         FakeStorage storage(0xFF);
         Fixture fixture;
         setValidPayload(fixture);
         test.assertEqual(fixture.save(storage), voyage_save::kSaved, "layout save");
-        const uint16_t base = voyage_save::kSlotBAddress;
+        const uint16_t base = voyage_save::kSlotOffset;
         const uint16_t payload = static_cast<uint16_t>(base + voyage_save::kPayloadOffset);
 
         test.assertEqual(storage.bytes[base + voyage_save::kMagicOffset], voyage_save::kMagic0, "magic 0");
@@ -374,8 +418,8 @@ inline void VoyageSaveSuite(TestRunner &runner) {
         test.assertEqual(storage.bytes[base + voyage_save::kLayoutOffset], world::LAYOUT_VERSION, "world layout");
         test.assertEqual(storage.bytes[base + voyage_save::kContentOffset], voyage_save::kCampaignContentVersion, "content version");
         test.assertEqual(storage.bytes[base + voyage_save::kSignatureOffset], voyage_save::kProfileSignature, "signature");
-        test.assertEqual(readU32(storage, static_cast<uint16_t>(base + voyage_save::kSequenceOffset)), 1, "sequence");
         test.assertEqual(readU16(storage, static_cast<uint16_t>(base + voyage_save::kLengthOffset)), voyage_save::kPayloadBytes, "payload length");
+        test.assertTrue(allBytesAre(storage, static_cast<uint16_t>(base + 8), static_cast<uint16_t>(base + 11), 0xFF), "retired sequence bytes stay erased");
 
         test.assertEqual(storage.bytes[payload + 0], campaign::kTidewall, "berth offset 0");
 #if SH_FEATURE_MULTI_HULL
@@ -406,19 +450,17 @@ inline void VoyageSaveSuite(TestRunner &runner) {
         test.assertEqual(storage.bytes[payload + 19], game::kJobNone, "destination offset 19");
         test.assertEqual(storage.bytes[payload + 20], 0, "job load offset 20");
         test.assertEqual(storage.bytes[payload + 21], 0, "job reward offset 21");
-        test.assertEqual(readU16(storage, static_cast<uint16_t>(payload + 22)), 0, "job deadline offset 22");
-        test.assertEqual(readU16(storage, static_cast<uint16_t>(payload + 24)), 0, "job age offset 24");
-        test.assertEqual(readU16(storage, static_cast<uint16_t>(payload + 26)), 0xBEEF, "offer cursor offset 26");
-        test.assertEqual(readU16(storage, static_cast<uint16_t>(payload + 28)), 0, "board seed offset 28");
+        test.assertEqual(readU16(storage, static_cast<uint16_t>(payload + 22)), 0xBEEF, "offer cursor offset 22");
+        test.assertEqual(readU16(storage, static_cast<uint16_t>(payload + 24)), 0, "board seed offset 24");
 #if SH_FEATURE_MINES
-        test.assertEqual(storage.bytes[payload + 30], 0x55, "mines offset 30");
+        test.assertEqual(storage.bytes[payload + 26], 0x55, "mines offset 26");
 #else
-        test.assertEqual(storage.bytes[payload + 30], 0, "no-mines offset 30");
+        test.assertEqual(storage.bytes[payload + 26], 0, "no-mines offset 26");
 #endif
-        test.assertEqual(readU32(storage, static_cast<uint16_t>(payload + 31)), 0x12345678u, "voyage ticks offset 31");
-        test.assertEqual(readU16(storage, static_cast<uint16_t>(payload + 35)), 0x0102, "delivered offset 35");
-        test.assertEqual(readU16(storage, static_cast<uint16_t>(payload + 37)), 0x0304, "rescues offset 37");
-        test.assertEqual(storage.bytes[payload + 39], 0, "ending offset 39");
+        test.assertEqual(readU32(storage, static_cast<uint16_t>(payload + 27)), 0x12345678u, "voyage ticks offset 27");
+        test.assertEqual(readU16(storage, static_cast<uint16_t>(payload + 31)), 0x0102, "delivered offset 31");
+        test.assertEqual(readU16(storage, static_cast<uint16_t>(payload + 33)), 0x0304, "rescues offset 33");
+        test.assertEqual(storage.bytes[payload + 35], 0, "ending offset 35");
 #if SH_FEATURE_FOG_CHART
         for (uint16_t i = 0; i < world::CHART_BYTES; ++i)
             test.assertEqual(storage.bytes[payload + voyage_save::kScalarBytes + i], fixture.chart.explored[i], "chart follows scalar bytes");
@@ -427,7 +469,7 @@ inline void VoyageSaveSuite(TestRunner &runner) {
     }
 
     {
-        Test test("second save uses slot A and load selects the unchanged newest slot");
+        Test test("repeated saves overwrite the single slot and load the latest payload");
         FakeStorage storage(0xFF);
         Fixture first;
         setValidPayload(first);
@@ -435,49 +477,34 @@ inline void VoyageSaveSuite(TestRunner &runner) {
         first.state.credits = 0x4321;
         first.state.offerCursor = 0xCAFE;
         test.assertEqual(first.save(storage), voyage_save::kSaved, "second save");
-
-        voyage_save::Inventory inventory = voyage_save::inspect(storage);
-        test.assertEqual(inventory.slot[0].status, voyage_save::kSlotValid, "slot A valid");
-        test.assertEqual(inventory.slot[1].status, voyage_save::kSlotValid, "slot B valid");
-        test.assertEqual(inventory.slot[0].sequence, 2, "slot A sequence two");
-        test.assertEqual(inventory.slot[1].sequence, 1, "slot B sequence one");
-        test.assertEqual(inventory.newestSlot, 0, "slot A is newest");
+        test.assertEqual(storage.eraseOps, 2, "each save erases the block");
+        test.assertEqual(voyage_save::inspect(storage).status, voyage_save::kSlotValid, "single slot valid");
 
         Fixture restored;
         restored.reset();
-        test.assertEqual(restored.load(storage), voyage_save::kLoaded, "newest loads");
-        test.assertEqual(restored.state.credits, 0x4321, "newest credits");
-        test.assertEqual(restored.state.offerCursor, 0xCAFE, "newest cursor");
+        test.assertEqual(restored.load(storage), voyage_save::kLoaded, "latest loads");
+        test.assertEqual(restored.state.credits, 0x4321, "latest credits");
+        test.assertEqual(restored.state.offerCursor, 0xCAFE, "latest cursor");
         test.assertEqual(restored.state.offerSerial, restored.state.offerCursor, "working serial restores from cursor");
         runner.add(test);
     }
 
     {
-        Test test("sequence wrap selects the logical newest and wraps to zero");
+        Test test("early survey discoveries save and load before FIRST");
         FakeStorage storage(0xFF);
         Fixture fixture;
-        setValidPayload(fixture);
-        fixture.save(storage);
-        fixture.state.credits = 99;
-        fixture.save(storage);
+        fixture.reset();
+        test.assertTrue(campaign::recordSurvey(fixture.state, campaign::kPumpSurveyId), "pump survey records before FIRST");
+        test.assertTrue(campaign::recordSurvey(fixture.state, campaign::kLiftSurveyId), "lift survey records before FIRST");
+        test.assertEqual(fixture.state.campaign, 0, "no milestone yet");
+        test.assertEqual(fixture.save(storage), voyage_save::kSaved, "early-survey checkpoint saves");
+        test.assertEqual(voyage_save::inspect(storage).status, voyage_save::kSlotValid, "early-survey checkpoint is valid");
 
-        writeU32(storage, voyage_save::kSlotBAddress + voyage_save::kSequenceOffset, 0xFFFFFFFEu);
-        refreshCrc(storage, 1);
-        writeU32(storage, voyage_save::kSlotAAddress + voyage_save::kSequenceOffset, 0xFFFFFFFFu);
-        refreshCrc(storage, 0);
-
-        voyage_save::Inventory inventory = voyage_save::inspect(storage);
-        test.assertEqual(inventory.newestSlot, 0, "0xFFFFFFFF is newer than 0xFFFFFFFE");
         Fixture restored;
         restored.reset();
-        test.assertEqual(restored.load(storage), voyage_save::kLoaded, "wrap-aware load");
-        test.assertEqual(restored.state.credits, 99, "wrap-aware payload");
-
-        fixture.state.credits = 123;
-        test.assertEqual(fixture.save(storage), voyage_save::kSaved, "save after sequence wrap");
-        test.assertEqual(voyage_save::inspect(storage).slot[1].sequence, 0, "next sequence wraps to zero");
-        test.assertEqual(fixture.load(storage), voyage_save::kLoaded, "wrapped slot loads");
-        test.assertEqual(fixture.state.credits, 123, "wrapped slot payload");
+        test.assertEqual(restored.load(storage), voyage_save::kLoaded, "early-survey checkpoint loads");
+        test.assertEqual(restored.state.surveys, campaign::kSurveyMask, "both early survey bits persist");
+        test.assertEqual(restored.state.campaign, 0, "FIRST is still incomplete");
         runner.add(test);
     }
 
@@ -489,8 +516,7 @@ inline void VoyageSaveSuite(TestRunner &runner) {
         probe.state.credits = 7;
         test.assertEqual(probe.load(blank), voyage_save::kNoSave, "blank storage is missing");
         test.assertEqual(probe.state.credits, 7, "missing save leaves state untouched");
-        test.assertEqual(voyage_save::inspect(blank).slot[0].status, voyage_save::kSlotBlank, "slot A blank");
-        test.assertEqual(voyage_save::inspect(blank).slot[1].status, voyage_save::kSlotBlank, "slot B blank");
+        test.assertEqual(voyage_save::inspect(blank).status, voyage_save::kSlotBlank, "blank slot");
 
         FakeStorage base(0xFF);
         Fixture saved;
@@ -499,123 +525,112 @@ inline void VoyageSaveSuite(TestRunner &runner) {
 
         {
             FakeStorage storage = base;
-            storage.bytes[voyage_save::kSlotBAddress] ^= 0xFF;
-            test.assertEqual(voyage_save::inspect(storage).slot[1].status, voyage_save::kSlotCorrupt, "torn magic with committed byte is corrupt");
+            storage.bytes[voyage_save::kSlotOffset] ^= 0xFF;
+            test.assertEqual(voyage_save::inspect(storage).status, voyage_save::kSlotCorrupt, "torn magic with committed byte is corrupt");
             test.assertEqual(probe.load(storage), voyage_save::kCorruptSave, "torn magic load result");
         }
         {
             FakeStorage storage = base;
-            storage.bytes[voyage_save::kSlotBAddress + voyage_save::kCommitOffset] = 0;
-            test.assertEqual(voyage_save::inspect(storage).slot[1].status, voyage_save::kSlotCorrupt, "valid magic with in-progress commit is corrupt");
+            storage.bytes[voyage_save::kSlotOffset + voyage_save::kCommitOffset] = 0;
+            test.assertEqual(voyage_save::inspect(storage).status, voyage_save::kSlotCorrupt, "valid magic with in-progress commit is corrupt");
             test.assertEqual(probe.load(storage), voyage_save::kCorruptSave, "torn commit load result");
         }
         {
             FakeStorage storage = base;
-            storage.bytes[voyage_save::kSlotBAddress + voyage_save::kPayloadOffset + 3] ^= 0x01;
-            test.assertEqual(voyage_save::inspect(storage).slot[1].status, voyage_save::kSlotCorrupt, "payload CRC mismatch is corrupt");
+            storage.bytes[voyage_save::kSlotOffset + voyage_save::kPayloadOffset + 3] ^= 0x01;
+            test.assertEqual(voyage_save::inspect(storage).status, voyage_save::kSlotCorrupt, "payload CRC mismatch is corrupt");
         }
         {
             FakeStorage storage = base;
-            writeU16(storage, voyage_save::kSlotBAddress + voyage_save::kLengthOffset, 41);
-            test.assertEqual(voyage_save::inspect(storage).slot[1].status, voyage_save::kSlotCorrupt, "wrong payload length is corrupt");
+            writeU16(storage, voyage_save::kSlotOffset + voyage_save::kLengthOffset, voyage_save::kPayloadBytes + 1);
+            test.assertEqual(voyage_save::inspect(storage).status, voyage_save::kSlotCorrupt, "wrong payload length is corrupt");
         }
         {
             FakeStorage storage = base;
-            storage.bytes[voyage_save::kSlotBAddress + voyage_save::kSignatureOffset] ^= 0x80;
-            test.assertEqual(voyage_save::inspect(storage).slot[1].status, voyage_save::kSlotIncompatible, "signature mismatch is incompatible");
+            storage.bytes[voyage_save::kSlotOffset + voyage_save::kSignatureOffset] ^= 0x80;
+            test.assertEqual(voyage_save::inspect(storage).status, voyage_save::kSlotIncompatible, "signature mismatch is incompatible");
             test.assertEqual(probe.load(storage), voyage_save::kIncompatibleSave, "incompatible load result");
         }
         {
             FakeStorage storage = base;
-            storage.bytes[voyage_save::kSlotBAddress + voyage_save::kSchemaOffset] = 2;
-            test.assertEqual(voyage_save::inspect(storage).slot[1].status, voyage_save::kSlotIncompatible, "schema mismatch is incompatible");
+            storage.bytes[voyage_save::kSlotOffset + voyage_save::kSchemaOffset] = 3;
+            test.assertEqual(voyage_save::inspect(storage).status, voyage_save::kSlotIncompatible, "old schema 3 is incompatible");
         }
         {
             FakeStorage storage = base;
-            storage.bytes[voyage_save::kSlotBAddress + voyage_save::kLayoutOffset] ^= 0x01;
-            test.assertEqual(voyage_save::inspect(storage).slot[1].status, voyage_save::kSlotIncompatible, "layout mismatch is incompatible");
+            storage.bytes[voyage_save::kSlotOffset + voyage_save::kSchemaOffset] = 1;
+            test.assertEqual(voyage_save::inspect(storage).status, voyage_save::kSlotIncompatible, "old schema 1 voyage is incompatible");
+            test.assertEqual(probe.load(storage), voyage_save::kIncompatibleSave, "old save is not silently loaded");
         }
         {
             FakeStorage storage = base;
-            storage.bytes[voyage_save::kSlotBAddress + voyage_save::kContentOffset] = 2;
-            test.assertEqual(voyage_save::inspect(storage).slot[1].status, voyage_save::kSlotIncompatible, "content mismatch is incompatible");
+            storage.bytes[voyage_save::kSlotOffset + voyage_save::kLayoutOffset] ^= 0x01;
+            test.assertEqual(voyage_save::inspect(storage).status, voyage_save::kSlotIncompatible, "layout mismatch is incompatible");
         }
         {
             FakeStorage storage = base;
-            storage.bytes[voyage_save::kSlotBAddress + voyage_save::kPayloadOffset] = 9;
-            refreshCrc(storage, 1);
-            test.assertEqual(voyage_save::inspect(storage).slot[1].status, voyage_save::kSlotCorrupt, "out-of-range berth is semantically corrupt");
+            storage.bytes[voyage_save::kSlotOffset + voyage_save::kContentOffset] = 3;
+            test.assertEqual(voyage_save::inspect(storage).status, voyage_save::kSlotIncompatible, "content mismatch is incompatible");
+        }
+        {
+            FakeStorage storage = base;
+            storage.bytes[voyage_save::kSlotOffset + voyage_save::kPayloadOffset] = 9;
+            refreshCrc(storage);
+            test.assertEqual(voyage_save::inspect(storage).status, voyage_save::kSlotCorrupt, "out-of-range berth is semantically corrupt");
         }
         runner.add(test);
     }
 
     {
-        Test test("corrupt newest slot falls back to the older checkpoint and is replaced next");
-        FakeStorage storage(0xFF);
-        Fixture older;
-        setValidPayload(older);
-        older.state.credits = 111;
-        test.assertEqual(older.save(storage), voyage_save::kSaved, "older save");
-        Fixture newer;
-        setValidPayload(newer);
-        newer.state.credits = 222;
-        test.assertEqual(newer.save(storage), voyage_save::kSaved, "newer save");
-
-        storage.bytes[voyage_save::kSlotAAddress + voyage_save::kPayloadOffset] = 9;
-        refreshCrc(storage, 0);
-        Fixture restored;
-        restored.reset();
-        test.assertEqual(restored.load(storage), voyage_save::kLoaded, "older slot loads after newest corruption");
-        test.assertEqual(restored.state.credits, 111, "older payload survives");
-
-        newer.state.credits = 333;
-        test.assertEqual(newer.save(storage), voyage_save::kSaved, "one valid slot means the corrupt slot is replaced");
-        test.assertEqual(voyage_save::inspect(storage).slot[0].sequence, 2, "replacement uses newest valid + 1");
-        test.assertEqual(newer.load(storage), voyage_save::kLoaded, "replacement loads");
-        test.assertEqual(newer.state.credits, 333, "replacement payload");
-        runner.add(test);
-    }
-
-    {
-        Test test("every interrupted write boundary keeps one complete checkpoint");
+        Test test("interrupted erase or page write loses the checkpoint and never loads invalid data");
         FakeStorage baseline(0xFF);
         Fixture oldState;
         setValidPayload(oldState);
         oldState.state.credits = 444;
         test.assertEqual(oldState.save(baseline), voyage_save::kSaved, "baseline save");
-        seedSystemBytes(baseline);
-        uint8_t system[voyage_save::kSystemBytes];
-        for (uint16_t i = 0; i < voyage_save::kSystemBytes; ++i)
-            system[i] = baseline.bytes[i];
 
         Fixture nextState;
         setValidPayload(nextState);
         nextState.state.credits = 555;
         const uint16_t boundaries = writeBoundaries(nextState, baseline);
-        const uint16_t expectedWrites = static_cast<uint16_t>(1 + voyage_save::kPayloadBytes + 10 + 2 + 4 + 1);
-        test.assertTrue(boundaries > voyage_save::kScalarBytes, "checkpoint writes the payload");
-        test.assertTrue(boundaries <= expectedWrites, "checkpoint never exceeds the frozen transaction");
+        test.assertEqual(boundaries, 2 * voyage_save::kPageBytes, "checkpoint writes two full flash pages");
 
         bool allFailedCleanly = true;
-        bool allLoadOld = true;
-        bool noSystemWrites = true;
+        bool neverLoadedInvalid = true;
         for (uint16_t fail = 0; fail < boundaries; ++fail) {
             FakeStorage storage = baseline;
             storage.resetCounters();
             storage.failedAt = fail;
             if (nextState.save(storage) != voyage_save::kWriteFailed)
                 allFailedCleanly = false;
-            if (storage.systemWrites != 0 || !systemBytesUnchanged(storage, system))
-                noSystemWrites = false;
 
             Fixture restored;
             restored.reset();
-            if (restored.load(storage) != voyage_save::kLoaded || !checkpointMatches(restored.state, oldState.state))
-                allLoadOld = false;
+            const State before = restored.state;
+            if (restored.load(storage) == voyage_save::kLoaded || !checkpointMatches(restored.state, before))
+                neverLoadedInvalid = false;
         }
-        test.assertTrue(allFailedCleanly, "every interrupted save reports failure, never optimistic success");
-        test.assertTrue(allLoadOld, "the preceding valid slot is complete after every interruption boundary");
-        test.assertTrue(noSystemWrites, "interrupted writes still never touch bytes 0-15");
+        test.assertTrue(allFailedCleanly, "every interrupted page save reports failure, never optimistic success");
+        test.assertTrue(neverLoadedInvalid, "an interrupted save never loads partial state");
+
+        bool eraseFailuresSafe = true;
+        for (uint16_t erased = 0; erased <= voyage_save::kBlockBytes; erased += 513) {
+            FakeStorage storage = baseline;
+            storage.resetCounters();
+            storage.failErase = true;
+            storage.eraseBytes = erased;
+            if (nextState.save(storage) != voyage_save::kWriteFailed)
+                eraseFailuresSafe = false;
+            Fixture restored;
+            restored.reset();
+            const State before = restored.state;
+            const voyage_save::LoadResult loaded = restored.load(storage);
+            const bool oldCheckpoint = loaded == voyage_save::kLoaded && checkpointMatches(restored.state, oldState.state);
+            const bool nothingLoaded = loaded != voyage_save::kLoaded && checkpointMatches(restored.state, before);
+            if (!oldCheckpoint && !nothingLoaded)
+                eraseFailuresSafe = false;
+        }
+        test.assertTrue(eraseFailuresSafe, "an interrupted erase loads either the intact old record or nothing");
 
         FakeStorage complete = baseline;
         complete.resetCounters();
@@ -628,7 +643,7 @@ inline void VoyageSaveSuite(TestRunner &runner) {
     }
 
     {
-        Test test("interrupted delivery recovers exactly pre or post, with no duplicate reward");
+        Test test("interrupted delivery is rejected rather than mixing pre and post state");
         FakeStorage baseline(0xFF);
         Fixture pre;
         test.assertTrue(makeFirstJob(pre), "FIRST accepted at Tidewall");
@@ -644,9 +659,7 @@ inline void VoyageSaveSuite(TestRunner &runner) {
         test.assertTrue(!game::hasActiveJob(post.state), "delivery clears the active job");
 
         const uint16_t boundaries = writeBoundaries(post, baseline);
-        const uint16_t expectedWrites = static_cast<uint16_t>(1 + voyage_save::kPayloadBytes + 10 + 2 + 4 + 1);
-        test.assertTrue(boundaries > voyage_save::kScalarBytes, "post-delivery writes the payload");
-        test.assertTrue(boundaries <= expectedWrites, "post-delivery never exceeds the frozen transaction");
+        test.assertEqual(boundaries, 2 * voyage_save::kPageBytes, "post-delivery writes two flash pages");
 
         bool exact = true;
         for (uint16_t fail = 0; fail < boundaries; ++fail) {
@@ -654,19 +667,13 @@ inline void VoyageSaveSuite(TestRunner &runner) {
             storage.resetCounters();
             storage.failedAt = fail;
             test.assertEqual(post.save(storage), voyage_save::kWriteFailed, "interrupted delivery reports failure");
-
             Fixture restored;
             restored.reset();
-            if (restored.load(storage) != voyage_save::kLoaded)
-                exact = false;
-            const bool isPre =
-                restored.state.credits == 0 && restored.state.cargo == game::kJobCrates && game::hasActiveJob(restored.state) && !campaign::missionCompleted(restored.state, campaign::kFirst);
-            const bool isPost = restored.state.credits == campaign::missionReward(campaign::kFirst) && restored.state.cargo == 0 && !game::hasActiveJob(restored.state) &&
-                                campaign::missionCompleted(restored.state, campaign::kFirst);
-            if (!isPre && !isPost)
+            const State before = restored.state;
+            if (restored.load(storage) == voyage_save::kLoaded || !checkpointMatches(restored.state, before))
                 exact = false;
         }
-        test.assertTrue(exact, "no interrupted delivery can combine cargo, payment and completion");
+        test.assertTrue(exact, "no interrupted delivery can load a mixed checkpoint");
 
         FakeStorage complete = baseline;
         complete.resetCounters();
@@ -686,79 +693,46 @@ inline void VoyageSaveSuite(TestRunner &runner) {
         runner.add(test);
     }
 
-    {
-        Test test("legacy chart imports only on the explicit first new voyage");
 #if SH_FEATURE_FOG_CHART
+    {
+        Test test("legacy chart bytes are ignored by a new voyage");
         FakeStorage storage(0xFF);
-        chart::State legacyChart;
-        fillPattern(legacyChart.explored, world::CHART_BYTES, 19);
-        for (uint16_t i = 0; i < world::CHART_BYTES; ++i)
-            storage.bytes[voyage_save::kLegacyDataOffset + i] = legacyChart.explored[i];
-        storage.bytes[0] = voyage_save::kLegacyMagic0;
-        storage.bytes[1] = voyage_save::kLegacyMagic1;
-        storage.bytes[2] = voyage_save::kLegacyVersion;
-        uint8_t crc = 0;
-        for (uint16_t i = 0; i < world::CHART_BYTES; ++i)
-            crc = voyage_save::crc8Update(crc, storage.bytes[voyage_save::kLegacyDataOffset + i]);
-        storage.bytes[voyage_save::kLegacyCrcOffset] = crc;
-        uint8_t system[voyage_save::kSystemBytes];
-        for (uint16_t i = 0; i < voyage_save::kSystemBytes; ++i)
-            system[i] = storage.bytes[i];
+        fillOldChartBlock(storage);
 
         Fixture fresh;
-        test.assertEqual(fresh.newVoyage(storage, voyage_save::kKeepLegacyChart), voyage_save::kSaved, "first new voyage with legacy chart saves");
-        test.assertEqual(storage.systemWrites, 0, "migration never writes system bytes");
-        test.assertTrue(systemBytesUnchanged(storage, system), "system prefix unchanged by migration");
-        test.assertEqual(voyage_save::inspect(storage).slot[0].status, voyage_save::kSlotBlank, "legacy bytes do not make slot A a committed voyage");
-        test.assertEqual(voyage_save::inspect(storage).slot[1].status, voyage_save::kSlotValid, "first voyage still starts in slot B");
-        test.assertTrue(sameChart(fresh.chart, legacyChart), "legacy mask copied exactly");
-        test.assertTrue(!storage.written[0], "no write in the legacy block");
-        test.assertEqual(fresh.state.campaign, 0, "migration grants no campaign progress");
-        test.assertEqual(fresh.state.credits, 0, "migration grants no credits");
-        test.assertEqual(fresh.state.tools, 0, "migration grants no tools");
-        test.assertEqual(fresh.state.pickups, 0, "migration grants no claims");
+        test.assertEqual(fresh.newVoyage(storage), voyage_save::kSaved, "new voyage saves");
+        test.assertEqual(voyage_save::inspect(storage).status, voyage_save::kSlotValid, "new voyage is valid");
+        test.assertTrue(spawnExplored(fresh.state, fresh.chart), "new voyage persists the spawn reveal");
+        test.assertEqual(fresh.state.campaign, 0, "new voyage grants no campaign progress");
+        test.assertEqual(fresh.state.credits, 0, "new voyage grants no credits");
+        test.assertEqual(fresh.state.tools, 0, "new voyage grants no tools");
         test.assertEqual(fresh.state.docked, campaign::kTidewall, "new voyage starts at Tidewall");
-
-        FakeStorage bad(0xFF);
-        for (uint16_t i = 0; i < world::CHART_BYTES; ++i)
-            bad.bytes[voyage_save::kLegacyDataOffset + i] = static_cast<uint8_t>(i + 5u);
-        bad.bytes[0] = voyage_save::kLegacyMagic0;
-        bad.bytes[1] = voyage_save::kLegacyMagic1;
-        bad.bytes[2] = voyage_save::kLegacyVersion;
-        bad.bytes[voyage_save::kLegacyCrcOffset] = 0;   // deliberately wrong
-        Fixture invalidFresh;
-        test.assertEqual(invalidFresh.newVoyage(bad, voyage_save::kKeepLegacyChart), voyage_save::kSaved, "invalid legacy still creates a voyage");
-        test.assertTrue(chartEmpty(invalidFresh.chart), "invalid legacy starts with an empty chart");
 
         FakeStorage existing(0xFF);
         Fixture oldVoyage;
         setValidPayload(oldVoyage);
-        test.assertEqual(oldVoyage.save(existing), voyage_save::kSaved, "existing voyage");
-        for (uint16_t i = 0; i < world::CHART_BYTES; ++i)
-            existing.bytes[voyage_save::kLegacyDataOffset + i] = static_cast<uint8_t>(i * 3u + 1u);
-        existing.bytes[0] = voyage_save::kLegacyMagic0;
-        existing.bytes[1] = voyage_save::kLegacyMagic1;
-        existing.bytes[2] = voyage_save::kLegacyVersion;
-        uint8_t existingCrc = 0;
-        for (uint16_t i = 0; i < world::CHART_BYTES; ++i)
-            existingCrc = voyage_save::crc8Update(existingCrc, existing.bytes[voyage_save::kLegacyDataOffset + i]);
-        existing.bytes[voyage_save::kLegacyCrcOffset] = existingCrc;
-
+        test.assertEqual(oldVoyage.save(existing), voyage_save::kSaved, "existing voyage saves");
+        fillOldChartBlock(existing);
         Fixture replacement;
-        test.assertEqual(replacement.newVoyage(existing, voyage_save::kKeepLegacyChart), voyage_save::kSaved, "replacement new voyage saves");
-        test.assertTrue(chartEmpty(replacement.chart), "legacy chart is not imported once a voyage exists");
-#else
-        FakeStorage storage(0xFF);
-        Fixture fresh;
-        test.assertEqual(fresh.newVoyage(storage, voyage_save::kKeepLegacyChart), voyage_save::kSaved, "no-chart new voyage saves");
-        test.assertEqual(voyage_save::kPayloadBytes, 40, "no-chart payload is 40 bytes");
-        test.assertTrue(allBytesAre(storage, voyage_save::kSlotAAddress, voyage_save::kSlotBAddress - 1, 0xFF), "no-chart first voyage starts in slot B");
-#endif
+        test.assertEqual(replacement.newVoyage(existing), voyage_save::kSaved, "replacement new voyage saves");
+        test.assertTrue(spawnExplored(replacement.state, replacement.chart), "replacement persists the spawn reveal");
         runner.add(test);
     }
+#else
+    {
+        Test test("new voyage without a chart writes the 36-byte scalar");
+        FakeStorage storage(0xFF);
+        Fixture fresh;
+        test.assertEqual(fresh.newVoyage(storage), voyage_save::kSaved, "new voyage saves");
+        test.assertEqual(voyage_save::kPayloadBytes, 36, "no-chart payload is 36 bytes");
+        test.assertEqual(voyage_save::inspect(storage).status, voyage_save::kSlotValid, "new voyage is valid");
+        test.assertTrue(allBytesAre(storage, voyage_save::kSlotBytes, kSaveBytes - 1, 0xFF), "block tail stays erased");
+        runner.add(test);
+    }
+#endif
 
     {
-        Test test("new voyage replacement preserves the prior valid slot on interruption");
+        Test test("new voyage replacement is rejected when interrupted");
         FakeStorage baseline(0xFF);
         Fixture oldVoyage;
         setValidPayload(oldVoyage);
@@ -771,24 +745,36 @@ inline void VoyageSaveSuite(TestRunner &runner) {
         FakeStorage boundaryStorage = baseline;
         boundaryStorage.resetCounters();
         boundaryStorage.failedAt = kNoFault;
-        boundaryProbe.newVoyage(boundaryStorage, voyage_save::kDropLegacyChart);
-        const uint16_t boundaries = boundaryStorage.changed;
-        bool oldSurvives = true;
+        boundaryProbe.newVoyage(boundaryStorage);
+        const uint16_t boundaries = boundaryStorage.pageBytes;
+        bool neverLoadsPartial = true;
         for (uint16_t fail = 0; fail < boundaries; ++fail) {
             FakeStorage storage = baseline;
             storage.resetCounters();
             storage.failedAt = fail;
-            test.assertEqual(fresh.newVoyage(storage, voyage_save::kDropLegacyChart), voyage_save::kWriteFailed, "interrupted new voyage reports failure");
+            test.assertEqual(fresh.newVoyage(storage), voyage_save::kWriteFailed, "interrupted new voyage reports failure");
             Fixture restored;
             restored.reset();
-            if (restored.load(storage) != voyage_save::kLoaded || !checkpointMatches(restored.state, oldVoyage.state))
-                oldSurvives = false;
+            const State before = restored.state;
+            if (restored.load(storage) == voyage_save::kLoaded || !checkpointMatches(restored.state, before))
+                neverLoadsPartial = false;
         }
-        test.assertTrue(oldSurvives, "existing checkpoint survives every replacement boundary");
+        test.assertTrue(neverLoadsPartial, "an interrupted replacement never loads partial state");
+
+        FakeStorage eraseProbe = baseline;
+        eraseProbe.resetCounters();
+        eraseProbe.failErase = true;
+        eraseProbe.eraseBytes = voyage_save::kBlockBytes / 2;
+        test.assertEqual(fresh.newVoyage(eraseProbe), voyage_save::kWriteFailed, "interrupted replacement erase reports failure");
+        Fixture eraseRestored;
+        eraseRestored.reset();
+        const State eraseBefore = eraseRestored.state;
+        test.assertTrue(eraseRestored.load(eraseProbe) != voyage_save::kLoaded, "interrupted replacement erase does not load");
+        test.assertTrue(checkpointMatches(eraseRestored.state, eraseBefore), "interrupted replacement leaves live state untouched");
 
         FakeStorage complete = baseline;
         complete.resetCounters();
-        test.assertEqual(fresh.newVoyage(complete, voyage_save::kDropLegacyChart), voyage_save::kSaved, "replacement completes");
+        test.assertEqual(fresh.newVoyage(complete), voyage_save::kSaved, "replacement completes");
         Fixture restored;
         restored.reset();
         test.assertEqual(restored.load(complete), voyage_save::kLoaded, "replacement loads");
@@ -804,7 +790,7 @@ inline void VoyageSaveSuite(TestRunner &runner) {
         FakeStorage storage(0xFF);
         storage.resetCounters();
         test.assertEqual(fixture.save(storage), voyage_save::kInvalidState, "Pump Refuge without PUMP is invalid");
-        test.assertEqual(storage.updateCalls, 0, "invalid service checkpoint writes nothing");
+        test.assertEqual(storage.pageBytes, 0, "invalid service checkpoint writes nothing");
 
         fixture.state.campaign = campaign::kMilestonePump;
         test.assertEqual(fixture.save(storage), voyage_save::kSaved, "Pump Refuge after PUMP saves");
@@ -834,7 +820,8 @@ inline void VoyageSaveSuite(TestRunner &runner) {
             probe.resetCounters();
             Test local(message);
             local.assertEqual(fixture.save(probe), voyage_save::kInvalidState, message);
-            local.assertEqual(probe.updateCalls, 0, "invalid save writes nothing");
+            local.assertEqual(probe.pageBytes, 0, "invalid save writes nothing");
+            local.assertEqual(probe.eraseOps, 0, "invalid save erases nothing");
             runner.add(local);
         };
 
@@ -864,7 +851,7 @@ inline void VoyageSaveSuite(TestRunner &runner) {
 
         bad = base;
         bad.state.boardSeed = 1;
-        expectInvalid(bad, "schema 1 board seed must be zero");
+        expectInvalid(bad, "schema 4 board seed must be zero");
 
         bad = base;
         bad.state.docked = -1;
@@ -881,9 +868,15 @@ inline void VoyageSaveSuite(TestRunner &runner) {
         bad.state.activeJob.to = campaign::kBenthos;
         bad.state.activeJob.crates = game::kJobCrates;
         bad.state.activeJob.reward = 1;
-        bad.state.activeJob.deadline = 0;
-        bad.state.activeJob.elapsed = 0;
         expectInvalid(bad, "ordinary job with the wrong route reward");
+
+        bad = base;
+        bad.state.activeJob.crates = 200;
+        expectInvalid(bad, "active job crates above kCargoMax");
+
+        bad = base;
+        bad.state.activeJob.kind = 3;   // retired express kind
+        expectInvalid(bad, "retired timed job kind is invalid");
 
 #if SH_FEATURE_SHOP
         bad = base;
@@ -920,10 +913,10 @@ inline void VoyageSaveSuite(TestRunner &runner) {
         test.assertEqual(voyage_save::kProfileSignature, expected, "profile signature bits");
         test.assertEqual(SH_FEATURE_SAVE_CHART, 0, "voyage save excludes chart save");
 #if SH_FEATURE_FOG_CHART
-        test.assertEqual(voyage_save::kPayloadBytes, 296, "chart profile payload is 296 B");
+        test.assertEqual(voyage_save::kPayloadBytes, 292, "chart profile payload is 292 B");
         test.assertEqual(voyage_save::kChartBytes, world::CHART_BYTES, "chart bytes are part of the payload");
 #else
-        test.assertEqual(voyage_save::kPayloadBytes, 40, "no-chart payload is 40 B");
+        test.assertEqual(voyage_save::kPayloadBytes, 36, "no-chart payload is 36 B");
         test.assertEqual(voyage_save::kChartBytes, 0, "no chart bytes");
 #endif
 #if !SH_FEATURE_SHOP
@@ -932,9 +925,9 @@ inline void VoyageSaveSuite(TestRunner &runner) {
             Fixture fixture;
             setValidPayload(fixture);
             test.assertEqual(fixture.save(storage), voyage_save::kSaved, "no-shop save");
-            storage.bytes[voyage_save::kSlotBAddress + voyage_save::kPayloadOffset + 4] = 1;
-            refreshCrc(storage, 1);
-            test.assertEqual(voyage_save::inspect(storage).slot[1].status, voyage_save::kSlotCorrupt, "no-shop level must be zero");
+            storage.bytes[voyage_save::kSlotOffset + voyage_save::kPayloadOffset + 4] = 1;
+            refreshCrc(storage);
+            test.assertEqual(voyage_save::inspect(storage).status, voyage_save::kSlotCorrupt, "no-shop level must be zero");
         }
 #endif
 #if !SH_FEATURE_MULTI_HULL
@@ -943,9 +936,9 @@ inline void VoyageSaveSuite(TestRunner &runner) {
             Fixture fixture;
             setValidPayload(fixture);
             test.assertEqual(fixture.save(storage), voyage_save::kSaved, "single-hull save");
-            storage.bytes[voyage_save::kSlotBAddress + voyage_save::kPayloadOffset + 1] = static_cast<uint8_t>(roster::kLeviathan);
-            refreshCrc(storage, 1);
-            test.assertEqual(voyage_save::inspect(storage).slot[1].status, voyage_save::kSlotCorrupt, "single-hull class must be HAULER");
+            storage.bytes[voyage_save::kSlotOffset + voyage_save::kPayloadOffset + 1] = static_cast<uint8_t>(roster::kLeviathan);
+            refreshCrc(storage);
+            test.assertEqual(voyage_save::inspect(storage).status, voyage_save::kSlotCorrupt, "single-hull class must be HAULER");
         }
 #endif
 
@@ -953,8 +946,8 @@ inline void VoyageSaveSuite(TestRunner &runner) {
         Fixture fixture;
         setValidPayload(fixture);
         test.assertEqual(fixture.save(storage), voyage_save::kSaved, "signature baseline save");
-        storage.bytes[voyage_save::kSlotBAddress + voyage_save::kSignatureOffset] ^= 0x01;
-        test.assertEqual(voyage_save::inspect(storage).slot[1].status, voyage_save::kSlotIncompatible, "changed profile signature is incompatible");
+        storage.bytes[voyage_save::kSlotOffset + voyage_save::kSignatureOffset] ^= 0x01;
+        test.assertEqual(voyage_save::inspect(storage).status, voyage_save::kSlotIncompatible, "changed profile signature is incompatible");
         runner.add(test);
     }
 
@@ -980,8 +973,8 @@ inline void VoyageSaveSuite(TestRunner &runner) {
         Fixture source;
         setValidPayload(source);
         test.assertEqual(source.save(storage), voyage_save::kSaved, "valid baseline");
-        storage.bytes[voyage_save::kSlotBAddress + voyage_save::kPayloadOffset + 1] ^= 0x01;
-        refreshCrc(storage, 1);
+        storage.bytes[voyage_save::kSlotOffset + voyage_save::kPayloadOffset + 1] ^= 0x01;
+        refreshCrc(storage);
         probe.reset();
         probe.state.credits = 4242;
         probe.state.campaign = campaign::kMilestoneFirst;
@@ -999,25 +992,16 @@ inline void VoyageSaveSuite(TestRunner &runner) {
     }
 
     {
-        Test test("system prefix remains untouched across every save and load path");
+        Test test("save touches only the generated 4 KiB block");
         FakeStorage storage(0xFF);
-        seedSystemBytes(storage);
-        uint8_t system[voyage_save::kSystemBytes];
-        for (uint16_t i = 0; i < voyage_save::kSystemBytes; ++i)
-            system[i] = storage.bytes[i];
 
         Fixture fixture;
         setValidPayload(fixture);
-        test.assertEqual(fixture.save(storage), voyage_save::kSaved, "first save");
-        fixture.state.credits = 1;
-        test.assertEqual(fixture.save(storage), voyage_save::kSaved, "second save");
-        Fixture restored;
-        restored.reset();
-        test.assertEqual(restored.load(storage), voyage_save::kLoaded, "load");
-        test.assertEqual(storage.systemWrites, 0, "no system writes");
-        test.assertTrue(systemBytesUnchanged(storage, system), "system bytes unchanged");
-        for (uint16_t i = 0; i < voyage_save::kSystemBytes; ++i)
-            test.assertTrue(!storage.written[i], "never written below the system prefix");
+        test.assertEqual(fixture.save(storage), voyage_save::kSaved, "save");
+        test.assertEqual(storage.eraseOps, 1, "one erase");
+        test.assertEqual(storage.pageOps, 2, "two pages");
+        test.assertEqual(storage.pageBytes, 2 * voyage_save::kPageBytes, "two page programs");
+        test.assertTrue(allBytesAre(storage, voyage_save::kSlotBytes, kSaveBytes - 1, 0xFF), "unused block tail is erased");
         runner.add(test);
     }
 }

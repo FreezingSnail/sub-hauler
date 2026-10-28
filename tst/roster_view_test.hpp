@@ -23,7 +23,19 @@ inline void TitleSuite(TestRunner &runner) {
             test.assertTrue(roster_view::statX(hull) + roster_view::statChars(hull) * roster_view::kCharW <= 128, "stat fits the display");
         }
         test.assertTrue(roster_view::centerX(roster_view::kHintChars) + roster_view::kHintChars * roster_view::kCharW <= 128, "hint fits");
+        test.assertTrue(roster_view::centerX(roster_view::kLoaderChars) + roster_view::kLoaderChars * roster_view::kCharW <= 128, "loader label fits");
+        test.assertTrue(roster_view::kLoaderY + 7 <= roster_view::kHintY, "loader row clears the hint");
         test.assertTrue(roster_view::kHintY + 7 <= roster_view::kScreenH, "hint clears the bottom edge");
+        runner.add(test);
+    }
+
+    {
+        Test test("title: loader row is a two-way selection");
+        test.assertEqual(roster_view::nextRow(roster_view::kTitleHull), roster_view::kTitleLoader, "hull -> loader");
+        test.assertEqual(roster_view::nextRow(roster_view::kTitleLoader), roster_view::kTitleHull, "loader -> hull");
+        test.assertEqual(roster_view::previousRow(roster_view::kTitleHull), roster_view::kTitleLoader, "previous hull -> loader");
+        test.assertEqual(roster_view::previousRow(roster_view::kTitleLoader), roster_view::kTitleHull, "previous loader -> hull");
+        test.assertEqual(roster_view::kTitleRowCount, 2, "two title rows");
         runner.add(test);
     }
 

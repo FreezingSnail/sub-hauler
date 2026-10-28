@@ -45,15 +45,17 @@ enum Result : uint8_t {
 // Level 0 is the starting sonar. Every level removes one air unit, to a floor
 // of one, and adds one reveal cell, to the cap.
 inline uint8_t costForLevel(uint8_t upgradeLevel) {
-    const uint16_t discount = static_cast<uint16_t>(upgradeLevel) * kUpgradeStep;
-    if (discount >= kBaseAirCost)
+    static_assert(kUpgradeStep == 1, "sonar discount is one unit per level");
+    if (upgradeLevel >= kBaseAirCost)
         return kMinAirCost;
-    return static_cast<uint8_t>(kBaseAirCost - discount);
+    return static_cast<uint8_t>(kBaseAirCost - upgradeLevel);
 }
 
 inline uint8_t radiusForLevel(uint8_t upgradeLevel) {
-    const uint16_t radius = static_cast<uint16_t>(kBaseRevealRadius) + static_cast<uint16_t>(upgradeLevel) * kUpgradeStep;
-    return radius > kMaxRevealRadius ? kMaxRevealRadius : static_cast<uint8_t>(radius);
+    static_assert(kUpgradeStep == 1, "sonar radius is one cell per level");
+    if (upgradeLevel >= kMaxRevealRadius - kBaseRevealRadius)
+        return kMaxRevealRadius;
+    return static_cast<uint8_t>(kBaseRevealRadius + upgradeLevel);
 }
 
 // A ping is atomic: a rejected ping spends no air, starts no cooldown, and
@@ -85,8 +87,7 @@ inline Result fire(game::State &state, chart::State &chartState, uint8_t upgrade
 // The ring is visible only inside the first kRingTicks of a cooldown. A zero
 // or out-of-range cooldown (for example a stale save) draws nothing.
 inline bool ringVisible(const game::State &state) {
-    if (state.sonarCooldown == 0 || state.sonarCooldown > kCooldownTicks)
-        return false;
+    // Unsigned wrap rejects both zero and out-of-range cooldowns too.
     return static_cast<uint8_t>(kCooldownTicks - state.sonarCooldown) < kRingTicks;
 }
 

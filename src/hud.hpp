@@ -94,7 +94,7 @@ inline void draw(const game::State &state) {
         const uint8_t fillY = static_cast<uint8_t>(kGaugeY + kGaugeH - 1 - ballastFill);
         cave::fillRect(Arduboy2Base::sBuffer, static_cast<int16_t>(kGaugeX + 1), fillY, static_cast<uint8_t>(kGaugeW - 2), ballastFill, true);
     }
-    const int16_t neutral = game::neutralFor(state.cargo);
+    const int16_t neutral = game::neutralForNormalized(state.cargo);
     const uint8_t notchY = static_cast<uint8_t>(kGaugeY + kGaugeH - 1 - static_cast<uint8_t>(neutral * gaugeInnerH / game::kBallastMax));
     cave::fillRect(Arduboy2Base::sBuffer, static_cast<int16_t>(kGaugeX + kGaugeW), notchY, 3, 1, true);
 

@@ -285,29 +285,24 @@ inline void StationSuite(TestRunner &runner) {
 
         test.assertEqual(station::kStationRowCount,
 #if SH_FEATURE_JOBS && SH_FEATURE_SHOP
-                         game::kJobOffers + 3,
+                         3,
 #elif SH_FEATURE_JOBS
-                         game::kJobOffers + 2,
+                         2,
 #elif SH_FEATURE_SHOP
                          3,
 #else
                          2,
 #endif
-                         "offer/shop/action rows are present");
+                         "WORK/SERVICE, SHOP and UNDOCK rows are present");
         game::State board;
         game::reset(board);
 #if SH_FEATURE_JOBS
-        test.assertEqual(station::rowKind(station::kFirstRow, board), station::kRowOffer, "first row is an OFFER");
-#if SH_FEATURE_CAMPAIGN
-        test.assertEqual(station::rowKind(station::kWorkRow, board), station::kRowWork, "WORK follows the offers");
-#else
-        test.assertEqual(station::rowKind(station::kServiceRow, board), station::kRowService, "SERVICE follows the offers");
-#endif
+        test.assertEqual(station::rowKind(station::kFirstRow, board), station::kRowWork, "first row is WORK");
 #else
         test.assertEqual(station::rowKind(station::kFirstRow, board), station::kRowService, "first row is SERVICE");
 #endif
 #if SH_FEATURE_SHOP
-        test.assertEqual(station::rowKind(station::kShopRow, board), station::kRowShop, "SHOP follows SERVICE");
+        test.assertEqual(station::rowKind(station::kShopRow, board), station::kRowShop, "SHOP follows WORK/SERVICE");
         test.assertEqual(station::shopRow(board), station::kShopRow, "no-job board returns to the SHOP row");
 #endif
         test.assertEqual(station::rowKind(station::kUndockRow, board), station::kRowUndock, "last row is UNDOCK");
@@ -323,8 +318,8 @@ inline void StationSuite(TestRunner &runner) {
         state.hull = 0;
 #endif
 
-#if SH_FEATURE_CAMPAIGN
-        test.assertEqual(station::activate(station::kWorkRow, state), station::kActionWork, "A on WORK opens the campaign page");
+#if SH_FEATURE_JOBS
+        test.assertEqual(station::activate(station::kWorkRow, state), station::kActionWork, "A on WORK opens the work board");
         test.assertEqual(state.docked, static_cast<int8_t>(settlement.id), "opening WORK keeps the boat docked");
 #else
         test.assertEqual(station::activate(station::kServiceRow, state), station::kActionServiced, "A on SERVICE services");
@@ -362,7 +357,7 @@ inline void StationSuite(TestRunner &runner) {
         test.assertEqual(station_view::kRowInvertH, 7, "shop board uses a 7 px invert");
         test.assertEqual(station_view::kRowStep, 7, "shop board rows are 7 px apart");
         test.assertEqual(station_view::kHintY, 57, "shop board hint starts at 57");
-        test.assertEqual(station::kStationRowCount, 5, "no-job shop board has five rows");
+        test.assertEqual(station::kStationRowCount, 3, "no-job shop board has WORK, SHOP and UNDOCK");
 #endif
         runner.add(test);
     }

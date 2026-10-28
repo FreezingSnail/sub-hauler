@@ -26,6 +26,20 @@ hardware and resource facts live in `docs/platform.md`.
   set.
 - Tests read generated symbolic constants, never literal record indices.
 
+## Release runtime and uploader entry
+
+- Shipping builds default to `RELEASE_NO_USB=1`, which emits
+  `-DSH_RELEASE_NO_USB=1`; the sketch places `ARDUBOY_NO_USB` immediately
+  before `setup()`. Use `RELEASE_NO_USB=0` for a runtime-USB image.
+  `DEV_MODE=1` defaults to USB so serial development remains usable.
+- The device suites are separate `.ino` sketches and retain USB regardless of
+  the release flag; `make fxtest` is unchanged.
+- The title `LOADER` row calls `Arduboy2Core::exitToBootloader()`. The library's
+  startup `DOWN` check is the recovery path when the running image cannot be
+  reset by an uploader. Document both paths for any release note.
+- The no-USB runtime saves about 2.6 KB flash and 140 B static on the full
+  profile. Measure USB and noUSB images separately; do not mix their objects.
+
 ## Budget-first for flash/SRAM work
 
 - LTO makes per-symbol size math meaningless. Measure the whole image with
@@ -63,13 +77,26 @@ hardware and resource facts live in `docs/platform.md`.
 
 ## Save data
 
-- `FX::begin(FX_DATA_PAGE)` is the single-argument form.
-- The optional chart save uses the internal EEPROM: a 260 B versioned,
-  checksummed block loaded once in setup and written only on the chart-close
-  transition. It adds no static RAM and no cart-page allocation.
-- For a future save that outgrows internal EEPROM, regenerate with
-  `FX_SAVE_PAGE` and keep the versioned, checksummed block. Writes belong on
-  transitions, never in the per-frame path.
+- `FX::begin(FX_DATA_PAGE)` is the single-argument data form. Voyage builds call
+  `FX::begin(FX_DATA_PAGE, FX_SAVE_PAGE)`; the generated image ends with an
+  a 4 KiB `savesection`.
+- Voyage checkpoints live in one 4 KiB cart erase block with a single slot. A
+  save erases the block, programs two 256 B pages and writes the commit byte
+  last. A power interruption may lose the checkpoint; a torn record is rejected
+  and the title offers a clean New Voyage. Music is paused around the
+  synchronous erase/page transaction; no read or write belongs in the per-frame
+  path.
+- The optional standalone chart save still uses the internal EEPROM: a 260 B
+  versioned, checksummed block loaded once in setup and written only on the
+  chart-close transition. It is mutually exclusive with voyage save.
+- `make fxtest-save-chain` runs the exact production
+  `updateStation()`→`requestSave()`→`saveVoyageNow()` path with the real sketch
+  and streaming music; it is emulator-only and performs real cart writes.
+- `make fxtest-save-runtime-page` proves page writes use runtime
+  `FX::programSavePage`, not the compile-time constant. It points the save page
+  at the 4 KiB data tail, so it is emulator-only and must never run on hardware.
+- Re-run `make gen` after changing `savesection`; `make gen-check` compares the
+  packed image, save partition and header.
 
 ## Developer traversal
 

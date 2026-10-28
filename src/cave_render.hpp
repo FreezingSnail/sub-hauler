@@ -105,8 +105,10 @@ inline void drawGantry(uint8_t *buffer, int16_t x, int16_t y) {
 inline void drawSettlements(uint8_t *buffer, const Camera &camera) {
     for (uint8_t id = 0; id < world::settlementCount(); ++id) {
         world::Settlement settlement;
-        if (!world::settlementInfo(id, settlement))
-            continue;
+        // id is bounded by the generated count; SETTLEMENT_META has that exact
+        // extent, so the accessor cannot fail. The host cave test still draws
+        // every generated settlement and checks the pixels.
+        (void)world::settlementInfo(id, settlement);
         const int16_t x = dockScreenX(camera, settlement.pixel_x);
         const int16_t y = dockScreenY(camera, settlement.pixel_y);
         if (!gantryVisible(x, y))
