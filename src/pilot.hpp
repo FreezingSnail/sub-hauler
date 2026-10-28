@@ -35,12 +35,39 @@ constexpr int16_t kViewH = 64;
 constexpr int16_t kCameraScreenX = 44;
 constexpr int16_t kCameraScreenY = 32;
 
+// Directional look-ahead: shift the target half a pixel per px/s of Q8.8
+// velocity. Base top speed (30 px/s) gives 15 px right and max vertical
+// (20 px/s) gives 10 px down; reverse velocity mirrors that exactly. The
+// look-ahead is stateless, so a stop immediately recentres the target while
+// the camera itself still eases back, and a reversal flips the target without
+// a camera snap.
+constexpr uint8_t kCameraLookAheadShift = 9;
+constexpr uint16_t kCameraLookAheadMask = (1u << kCameraLookAheadShift) - 1u;
+static_assert((-1 >> kCameraLookAheadShift) == -1, "signed right shift must floor");
+
 constexpr int16_t kCameraMaxX = static_cast<int16_t>(world::PIXELS_X) - kViewW;
 constexpr int16_t kCameraMaxY = static_cast<int16_t>(world::PIXELS_Y) - kViewH;
 
 static_assert(kCameraMaxX >= 0 && kCameraMaxY >= 0, "world must be at least one view");
 static_assert(kCameraScreenX >= 0 && kCameraScreenX < static_cast<int16_t>(world::PIXELS_X), "camera target x can clamp");
 static_assert(kCameraScreenY >= 0 && kCameraScreenY < static_cast<int16_t>(world::PIXELS_Y), "camera target y can clamp");
+
+// Full look-ahead must keep the whole 26x8 hull inside the 128x64 view.
+static_assert(kCameraScreenX - (kMaxVxBaseQ8 >> kCameraLookAheadShift) >= 0, "left look-ahead keeps the hull on screen");
+static_assert(kCameraScreenX + (kMaxVxBaseQ8 >> kCameraLookAheadShift) + kHullW <= kViewW, "right look-ahead keeps the hull on screen");
+static_assert(kCameraScreenY - (kMaxVyQ8 >> kCameraLookAheadShift) >= 0, "top look-ahead keeps the hull on screen");
+static_assert(kCameraScreenY + (kMaxVyQ8 >> kCameraLookAheadShift) + kHullH <= kViewH, "bottom look-ahead keeps the hull on screen");
+
+// Arithmetic shift floors, which would give -1..-511 a one-pixel lead while
+// +1..+511 have none. Correct the negative remainder so both signs truncate
+// toward zero: +/-1..+/-511 -> 0, +/-512 -> +/-1, keeping framing symmetric
+// while the boat slows or reverses.
+inline int16_t cameraLookAheadQ8(int16_t velocityQ8) {
+    const int16_t lead = static_cast<int16_t>(velocityQ8 >> kCameraLookAheadShift);
+    if (velocityQ8 < 0 && (velocityQ8 & kCameraLookAheadMask) != 0)
+        return static_cast<int16_t>(lead + 1);
+    return lead;
+}
 
 // Integer shift lerp: one quarter of the error per tick, but never less than
 // one pixel while the camera is off target. Both bounds are enforced here.
@@ -55,16 +82,31 @@ inline int16_t lerpCamera(int16_t current, int16_t target) {
     return static_cast<int16_t>(current + stepPx);
 }
 
+// The target adds the velocity look-ahead before clamping, so the camera can
+// lead a moving boat but never leaves the baked world. Zero velocity reduces
+// both targets to the historical centred framing; spawn, Continue, recovery
+// and docking all zero velocity before snapCamera(), so those views are
+// unchanged. Docked frames do not call updateCamera, keeping the berth still.
 inline int16_t cameraTargetX(const State &state) {
-    return clampI16(static_cast<int16_t>(state.x - kCameraScreenX), 0, kCameraMaxX);
+    const int16_t lead = cameraLookAheadQ8(state.vxQ8);
+    return clampI16(static_cast<int16_t>(state.x - kCameraScreenX + lead), 0, kCameraMaxX);
 }
 
 inline int16_t cameraTargetY(const State &state) {
-    return clampI16(static_cast<int16_t>(state.y - kCameraScreenY), 0, kCameraMaxY);
+    const int16_t lead = cameraLookAheadQ8(state.vyQ8);
+    return clampI16(static_cast<int16_t>(state.y - kCameraScreenY + lead), 0, kCameraMaxY);
 }
 
 // Update owns the camera. Rendering reads cameraX/cameraY without changing
 // them, so display timing can never feed back into movement.
+//
+// The target moves with velocity: forward travel leads the hull, a reversal
+// swaps the lead to the other side, and stopping decays back to the centred
+// target. The quarter-step lerp eases every one of those target changes; the
+// camera is never snapped during flight. Clamping happens on the target
+// before easing, so look-ahead at a world edge simply parks the camera on the
+// boundary. Berth snaps are the deliberate exception: spawn, Continue, rescue
+// and dock zero velocity and call snapCamera() for an exact authored view.
 //
 // No post-lerp clamp is needed: cameraTargetX/Y are clamped, and lerpCamera
 // moves by a step no larger than the remaining delta (delta/4 truncated toward
