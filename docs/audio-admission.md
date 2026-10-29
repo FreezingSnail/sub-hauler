@@ -5,6 +5,12 @@ passes, all six loops decode, the permanent cold-cache world path meets the
 16 ms service-gap target through a bounded foreground service point, and the
 noUSB actual-game stack probe reports 815 B reserve. No cap was raised.
 
+Historical note (2026-10-28): the sampled player was not selected as the
+shipping backend. Production `full` now uses the ATMlib2FX compact synth with
+`ATM_FX_COMPACT_RING=32`; the ADPCM assets, player measurements and admission
+gates below remain as comparison evidence. See
+[platform.md](platform.md) for the current backend and whole-image result.
+
 ## Assets
 
 `tools/gen_audio_adpcm.py` encodes the six deterministic 8 kHz s16le
@@ -153,6 +159,7 @@ frames. The probe ELF is `build/audio-admission/stack/dist/stack.ino.elf`.
 
 ```sh
 ATMLIB2FX_ROOT=/Users/connorfranc/code/arduboy/ATMlib2FX make gen
+make gen-audio
 make gen-check
 make test
 make test-tools

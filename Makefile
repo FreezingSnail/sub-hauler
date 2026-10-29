@@ -1,4 +1,4 @@
-.PHONY: help full gen gen-check features-check feature-report build mini size size-line size-matrix run dev debug test test-tools fxtest fxtest-flight fxtest-build fxtest-run clean format music-viewer music-viewer-build render-world
+.PHONY: help full gen gen-check gen-audio build mini size size-line run debug test test-tools fxtest fxtest-flight fxtest-build fxtest-run clean format music-viewer music-viewer-build render-world
 
 # ----------------------------------------------------------------------------
 # Project
@@ -7,55 +7,17 @@ SKETCH        ?= $(basename $(notdir $(firstword $(wildcard *.ino))))
 CXX           ?= g++
 ARDUINO_CLI   ?= arduino-cli
 ATMLIB2FX_ROOT ?= $(firstword $(wildcard ../ATMlib2FX $(HOME)/code/arduboy/ATMlib2FX))
-ARDUBOYSTREAMFX_ROOT ?= $(firstword $(wildcard ../ArduboyStreamFX $(HOME)/code/arduboy/ArduboyStreamFX))
 export ATMLIB2FX_ROOT
-export ARDUBOYSTREAMFX_ROOT
 FQBN          ?= arduboy-homemade:avr:arduboy-fx
 MINI_FQBN     ?= arduboy-homemade:avr:arduboy-mini
 
-# Feature profiles are owned by tools/features.py. Profile-specific build and
-# output directories prevent objects compiled with one flag set from being
-# reused by another.
-PROFILE       ?= full
-DEV_MODE      ?= 0
-ifneq ($(DEV_MODE),0)
-ifneq ($(DEV_MODE),1)
-$(error DEV_MODE must be 0 or 1)
-endif
-endif
-DEV_FLAGS     := -DSH_DEV_MODE=$(DEV_MODE)
-# Shipping builds use the Arduboy2 USB-free entry point. Development builds
-# default to the USB runtime so serial diagnostics keep working; a USB release
-# image can also be measured explicitly with RELEASE_NO_USB=0.
-RELEASE_NO_USB ?= $(if $(filter 1,$(DEV_MODE)),0,1)
-ifneq ($(RELEASE_NO_USB),0)
-ifneq ($(RELEASE_NO_USB),1)
-$(error RELEASE_NO_USB must be 0 or 1)
-endif
-endif
-USB_FLAGS     := -DSH_RELEASE_NO_USB=$(RELEASE_NO_USB)
-FEATURES_PY   ?= python3 tools/features.py
-PROFILES      := $(shell $(FEATURES_PY) --list 2>/dev/null)
-FEATURE_FLAGS := $(shell $(FEATURES_PY) --profile "$(PROFILE)" --flags 2>/dev/null)
-# Production music is the ATMlib2FX compact synth. MUSIC_BACKEND=stream keeps
-# the earlier ArduboyStreamFX ADPCM comparison as an explicit build-only target.
-MUSIC_BACKEND ?= synth
-ifeq ($(MUSIC_BACKEND),synth)
-MUSIC_CPP_FLAGS := -DSH_MUSIC_STREAMING=0 -DATM_FX_COMPACT_LOOP=1 -DATM_FX_COMPACT_RING=32
-MUSIC_C_FLAGS   := -DATM_FX_COMPACT_LOOP=1 -DATM_FX_COMPACT_RING=32
-MUSIC_LIB       := $(if $(findstring -DSH_FEATURE_MUSIC=1,$(FEATURE_FLAGS)),--library "$(ATMLIB2FX_ROOT)",)
-MUSIC_TEST_FLAGS := -DATM_FX_COMPACT_DIAG=1
-else ifeq ($(MUSIC_BACKEND),stream)
-MUSIC_CPP_FLAGS := -DSH_MUSIC_STREAMING=1
-MUSIC_C_FLAGS   := -DSH_MUSIC_STREAMING=1
-MUSIC_LIB       := $(if $(findstring -DSH_FEATURE_MUSIC=1,$(FEATURE_FLAGS)),--library "$(ARDUBOYSTREAMFX_ROOT)",)
-MUSIC_TEST_FLAGS := -DSTREAMFX_DIAG=1
-else
-$(error MUSIC_BACKEND must be synth or stream)
-endif
-MUSIC_BACKEND_TAG := $(if $(filter stream,$(MUSIC_BACKEND)),stream-,)
-BUILD_DIR     ?= $(if $(filter 1,$(DEV_MODE)),build/dev/$(PROFILE),build/$(MUSIC_BACKEND_TAG)$(PROFILE))
-DIST_DIR      ?= $(if $(filter 1,$(DEV_MODE)),dist/dev/$(PROFILE),dist/$(MUSIC_BACKEND_TAG)$(PROFILE))
+# One fixed game configuration. Dependencies below are tool/board inputs, not
+# gameplay variants.
+BUILD_DIR     ?= build/arduino
+DIST_DIR      ?= dist/fx
+MINI_BUILD_DIR ?= build/arduino-mini
+MINI_DIST_DIR ?= dist/mini
+FXTEST_BUILD_DIR ?= build/fxtest
 ARDENS_DEFAULT := $(firstword $(wildcard \
                  ../Ardens/build/Ardens.app/Contents/MacOS/Ardens \
                  $(HOME)/code/arduboy/Ardens/build/Ardens.app/Contents/MacOS/Ardens \
@@ -74,8 +36,7 @@ FXDATA_BIN    ?= fxdata/fxdata.bin
 FXTEST_MS     ?= 3000
 FXTEST_ONLY   ?=
 FXTEST_OPTIMIZE ?= --optimize-for-debug
-FXTEST_BUILD_DIR ?= $(BUILD_DIR)/fxtest
-FXTEST_MUSIC_FLAGS ?= $(MUSIC_TEST_FLAGS) -DSERIAL_BUFFER_SIZE=8
+FXTEST_MUSIC_FLAGS ?= -DATM_FX_COMPACT_DIAG=1 -DSERIAL_BUFFER_SIZE=8
 FXTEST_SIZE_FLAGS = --build-property compiler.cpp.extra_flags="$(CPP_EXTRA_FLAGS) $(FXTEST_MUSIC_FLAGS)" \
                      --build-property compiler.c.extra_flags="$(C_EXTRA_FLAGS) $(FXTEST_MUSIC_FLAGS)" \
                      --build-property compiler.c.elf.extra_flags="-mrelax"
@@ -84,18 +45,16 @@ FXTEST_SIZE_FLAGS = --build-property compiler.cpp.extra_flags="$(CPP_EXTRA_FLAGS
 # source projects. LTO means only whole-image measurements are meaningful;
 # use `make size` after every flash-sensitive change.
 RELAX_FLAGS   ?= -mrelax -mcall-prologues
-CPP_EXTRA_FLAGS := $(RELAX_FLAGS) $(FEATURE_FLAGS) $(DEV_FLAGS) $(USB_FLAGS) $(MUSIC_CPP_FLAGS)
-C_EXTRA_FLAGS   := -mrelax $(FEATURE_FLAGS) $(DEV_FLAGS) $(USB_FLAGS) $(MUSIC_C_FLAGS)
+MUSIC_CPP_FLAGS := -DATM_FX_COMPACT_LOOP=1 -DATM_FX_COMPACT_RING=32
+MUSIC_C_FLAGS   := -DATM_FX_COMPACT_LOOP=1 -DATM_FX_COMPACT_RING=32
+MUSIC_LIB       := --library "$(ATMLIB2FX_ROOT)"
+CPP_EXTRA_FLAGS := $(RELAX_FLAGS) $(MUSIC_CPP_FLAGS)
+C_EXTRA_FLAGS   := -mrelax $(MUSIC_C_FLAGS)
 SIZE_FLAGS    ?= --build-property compiler.cpp.extra_flags="$(CPP_EXTRA_FLAGS)" \
                  --build-property compiler.c.extra_flags="$(C_EXTRA_FLAGS)" \
                  --build-property compiler.c.elf.extra_flags="-mrelax"
 
 AVR_SIZE      ?= $(firstword $(wildcard $(HOME)/Library/Arduino15/packages/arduino/tools/avr-gcc/*/bin/avr-size) $(shell command -v avr-size 2>/dev/null))
-AVR_NM        ?= $(firstword $(wildcard $(HOME)/Library/Arduino15/packages/arduino/tools/avr-gcc/*/bin/avr-nm) $(shell command -v avr-nm 2>/dev/null))
-AUDIO_COMPARE_DIR ?= build/audio-compare
-AUDIO_COMPARE_EVIDENCE ?= $(AUDIO_COMPARE_DIR)/evidence
-AUDIO_COMPARE_ABSIM_OBJS := $(filter-out build/audio-reference/native/obj/capture.o,$(wildcard build/audio-reference/native/obj/*.o))
-AUDIO_COMPARE_FLAGS := -mrelax -mcall-prologues -DSH_RELEASE_NO_USB=0
 
 # ----------------------------------------------------------------------------
 # Generation
@@ -106,24 +65,32 @@ WORLD_TABLES  := fxdata/tables/world.bin fxdata/tables/world-chart.bin
 LEVEL_OUTPUTS := fxdata/tables/exploration.bin fxdata/tables/exploration-chart.bin fxdata/tables/exploration-objects.bin fxdata/tables/exploration-terrain.bin src/generated/level.hpp src/generated/exploration.hpp docs/assets/exploration-terrain.svg docs/assets/exploration-scenery.json
 CARGO_TABLES  := fxdata/tables/cargo.bin
 MUSIC_SOURCES := music/catalog.json $(wildcard music/*/song.json)
-ADPCM_OUTPUTS := $(addprefix fxdata/music/adpcm/,harbor_bubbles.bin kelp_drift.bin sonar_lullaby.bin abyssal_glass.bin tidepool_waltz.bin bubblejet_run.bin) fxdata/music/adpcm-manifest.json src/generated/audio.hpp src/generated/streamfx.hpp
+ADPCM_BINS    := $(addprefix fxdata/music/adpcm/,harbor_bubbles.bin kelp_drift.bin sonar_lullaby.bin abyssal_glass.bin tidepool_waltz.bin bubblejet_run.bin)
 REGION_OUTPUTS := src/generated/music_regions.hpp fxdata/tables/music-regions.bin
-MUSIC_OUTPUTS := $(addprefix fxdata/music/sh_,harbor_bubbles.bin kelp_drift.bin sonar_lullaby.bin abyssal_glass.bin tidepool_waltz.bin bubblejet_run.bin) fxdata/music/manifest.json fxdata/music/reference-manifest.json $(ADPCM_OUTPUTS)
+MUSIC_OUTPUTS := $(addprefix fxdata/music/sh_,harbor_bubbles.bin kelp_drift.bin sonar_lullaby.bin abyssal_glass.bin tidepool_waltz.bin bubblejet_run.bin) fxdata/music/manifest.json
 FX_INPUTS     := $(IMAGES) fxdata/fxdata.txt tools/gen.sh tools/gen_sprites.py \
                  tools/gen_hud.py images/hud/*.png \
                  tools/gen_menu.py src/station_view.hpp src/shop_view.hpp src/shop.hpp images/menu/*.png \
                  tools/gen_splash.py images/splash/source/snailware_64x64.png images/splash/*.png \
                  tools/gen_panels.py images/panels/*.png images/campaign/*.png images/pause/*.png \
+                 images/story/*.png docs/assets/story-flourishes-preview.png \
+                 docs/assets/story-flourishes-preview-4x.png \
                  src/campaign.hpp src/generated/level.hpp \
                  tools/gen_music_regions.py levels/exploration.json $(REGION_OUTPUTS) \
                  tools/gen_font.py tools/gen_pilot.py tools/gen_world.py \
                  tools/gen_cargo.py tools/gen_level.py tools/gen_scenery.py tools/gen_contours.py tools/gen_settlements.py levels/exploration.json $(WORLD_TABLES) $(CARGO_TABLES) \
-                 tools/fxdata-build.py tools/gen_music.py tools/gen_music_viewer.py tools/gen_audio_adpcm.py $(MUSIC_SOURCES) $(ADPCM_OUTPUTS)
+                 tools/fxdata-build.py tools/gen_music.py tools/gen_music_viewer.py $(MUSIC_SOURCES) $(ADPCM_BINS)
 
 full: gen build
 
 gen:
 	./tools/gen.sh
+
+# Archival streaming-audio evidence only. The game ships the ATMlib2FX synth,
+# so this is not part of `gen`, `build`, `run` or `gen-check`.
+gen-audio:
+	python3 tools/gen_audio_ref.py
+	python3 tools/gen_audio_adpcm.py
 
 # Determinism gate: regenerate from committed inputs and require every
 # generated artifact to be byte-identical. Run `make gen` once before using it
@@ -137,6 +104,10 @@ gen-check:
 	@cp images/campaign/*.png $(BUILD_DIR)/gen-check/campaign/
 	@mkdir -p $(BUILD_DIR)/gen-check/pause
 	@cp images/pause/*.png $(BUILD_DIR)/gen-check/pause/
+	@mkdir -p $(BUILD_DIR)/gen-check/story
+	@cp images/story/*.png $(BUILD_DIR)/gen-check/story/
+	@cp docs/assets/story-flourishes-preview.png $(BUILD_DIR)/gen-check/story-preview.png
+	@cp docs/assets/story-flourishes-preview-4x.png $(BUILD_DIR)/gen-check/story-preview-4x.png
 	@mkdir -p $(BUILD_DIR)/gen-check/music
 	@cp $(MUSIC_OUTPUTS) src/generated/music.hpp $(BUILD_DIR)/gen-check/music/
 	@cp fxdata/fxdata.h $(BUILD_DIR)/gen-check/fxdata.h
@@ -157,6 +128,8 @@ gen-check:
 	@cp src/generated/pilot_sprites.hpp $(BUILD_DIR)/gen-check/pilot_sprites.hpp
 	@cp fxdata/PanelSprites.txt $(BUILD_DIR)/gen-check/PanelSprites.txt
 	@cp src/generated/panel_sprites.hpp $(BUILD_DIR)/gen-check/panel_sprites.hpp
+	@cp fxdata/StorySprites.txt $(BUILD_DIR)/gen-check/StorySprites.txt
+	@cp src/generated/story_sprites.hpp $(BUILD_DIR)/gen-check/story_sprites.hpp
 	@cp fxdata/CampaignSprites.txt $(BUILD_DIR)/gen-check/CampaignSprites.txt
 	@cp src/generated/campaign_sprites.hpp $(BUILD_DIR)/gen-check/campaign_sprites.hpp
 	@cp fxdata/PauseSprites.txt $(BUILD_DIR)/gen-check/PauseSprites.txt
@@ -174,7 +147,6 @@ gen-check:
 	@cp src/generated/splash_sprites.hpp $(BUILD_DIR)/gen-check/splash_sprites.hpp
 	@cp src/generated/music_regions.hpp $(BUILD_DIR)/gen-check/music_regions.hpp
 	@cp fxdata/tables/music-regions.bin $(BUILD_DIR)/gen-check/music-regions.bin
-	@cp src/generated/streamfx.hpp $(BUILD_DIR)/gen-check/streamfx.hpp
 	@$(MAKE) --no-print-directory gen
 	@cmp -s fxdata/fxdata.h src/fxdata.h || { echo "gen-check: src/fxdata.h is stale; run make gen" >&2; exit 1; }
 	@cmp -s fxdata/fxdata.h $(BUILD_DIR)/gen-check/fxdata.h || { echo "gen-check: fxdata header changed" >&2; exit 1; }
@@ -195,6 +167,8 @@ gen-check:
 	@cmp -s src/generated/pilot_sprites.hpp $(BUILD_DIR)/gen-check/pilot_sprites.hpp || { echo "gen-check: pilot sprite header changed" >&2; exit 1; }
 	@cmp -s fxdata/PanelSprites.txt $(BUILD_DIR)/gen-check/PanelSprites.txt || { echo "gen-check: panel sprite include changed" >&2; exit 1; }
 	@cmp -s src/generated/panel_sprites.hpp $(BUILD_DIR)/gen-check/panel_sprites.hpp || { echo "gen-check: panel sprite header changed" >&2; exit 1; }
+	@cmp -s fxdata/StorySprites.txt $(BUILD_DIR)/gen-check/StorySprites.txt || { echo "gen-check: story sprite include changed" >&2; exit 1; }
+	@cmp -s src/generated/story_sprites.hpp $(BUILD_DIR)/gen-check/story_sprites.hpp || { echo "gen-check: story sprite header changed" >&2; exit 1; }
 	@cmp -s fxdata/CampaignSprites.txt $(BUILD_DIR)/gen-check/CampaignSprites.txt || { echo "gen-check: campaign sprite include changed" >&2; exit 1; }
 	@cmp -s src/generated/campaign_sprites.hpp $(BUILD_DIR)/gen-check/campaign_sprites.hpp || { echo "gen-check: campaign sprite header changed" >&2; exit 1; }
 	@cmp -s fxdata/PauseSprites.txt $(BUILD_DIR)/gen-check/PauseSprites.txt || { echo "gen-check: pause sprite include changed" >&2; exit 1; }
@@ -214,7 +188,6 @@ gen-check:
 	done
 	@cmp -s src/generated/music_regions.hpp $(BUILD_DIR)/gen-check/music_regions.hpp || { echo "gen-check: music region header changed" >&2; exit 1; }
 	@cmp -s fxdata/tables/music-regions.bin $(BUILD_DIR)/gen-check/music-regions.bin || { echo "gen-check: music region plane changed" >&2; exit 1; }
-	@cmp -s src/generated/streamfx.hpp $(BUILD_DIR)/gen-check/streamfx.hpp || { echo "gen-check: streamfx header changed" >&2; exit 1; }
 	@for file in $(MUSIC_OUTPUTS) src/generated/music.hpp; do \
 		cmp -s "$$file" "$(BUILD_DIR)/gen-check/music/$${file##*/}" || { echo "gen-check: $$file changed" >&2; exit 1; }; \
 	done
@@ -230,6 +203,11 @@ gen-check:
 	@for file in images/pause/*.png; do \
 		cmp -s "$$file" "$(BUILD_DIR)/gen-check/pause/$${file##*/}" || { echo "gen-check: $$file changed" >&2; exit 1; }; \
 	done
+	@for file in images/story/*.png; do \
+		cmp -s "$$file" "$(BUILD_DIR)/gen-check/story/$${file##*/}" || { echo "gen-check: $$file changed" >&2; exit 1; }; \
+	done
+	@cmp -s docs/assets/story-flourishes-preview.png $(BUILD_DIR)/gen-check/story-preview.png || { echo "gen-check: story preview changed" >&2; exit 1; }
+	@cmp -s docs/assets/story-flourishes-preview-4x.png $(BUILD_DIR)/gen-check/story-preview-4x.png || { echo "gen-check: story 4x preview changed" >&2; exit 1; }
 	@echo "gen-check: generated artifacts are deterministic"
 
 # Generation is a prerequisite of the firmware build, so a missing or stale
@@ -238,38 +216,22 @@ src/fxdata.h: $(FX_INPUTS)
 	./tools/gen.sh
 
 # ----------------------------------------------------------------------------
-# Feature profiles
-# ----------------------------------------------------------------------------
-features-check:
-	@$(FEATURES_PY) --profile "$(PROFILE)" --check
-
-feature-report: features-check
-	@$(FEATURES_PY) --profile "$(PROFILE)" --report
-
-# ----------------------------------------------------------------------------
 # Firmware
 # ----------------------------------------------------------------------------
 music-check:
-	@if printf '%s' "$(FEATURE_FLAGS)" | grep -q -- "-DSH_FEATURE_MUSIC=1"; then \
-		if [ "$(MUSIC_BACKEND)" = "stream" ]; then \
-			test -f "$(ARDUBOYSTREAMFX_ROOT)/library.properties" || { \
-				echo "music-check: set ARDUBOYSTREAMFX_ROOT to the ArduboyStreamFX checkout" >&2; exit 1; }; \
-		else \
-			test -f "$(ATMLIB2FX_ROOT)/library.properties" || { \
-				echo "music-check: set ATMLIB2FX_ROOT to the ATMlib2FX checkout" >&2; exit 1; }; \
-		fi; \
-	fi
+	@test -f "$(ATMLIB2FX_ROOT)/library.properties" || { \
+		echo "music-check: set ATMLIB2FX_ROOT to the ATMlib2FX checkout" >&2; exit 1; }
 
-build: features-check music-check src/fxdata.h
+build: music-check src/fxdata.h
 	mkdir -p $(DIST_DIR)
 	$(ARDUINO_CLI) compile --fqbn "$(FQBN)" --optimize-for-debug \
-		$(MUSIC_LIB) --build-path $(BUILD_DIR)/arduino --output-dir $(DIST_DIR) \
+		$(MUSIC_LIB) --build-path $(BUILD_DIR) --output-dir $(DIST_DIR) \
 		$(SIZE_FLAGS) "$(SKETCH).ino"
 
-mini: features-check music-check src/fxdata.h
-	mkdir -p $(DIST_DIR)
+mini: music-check src/fxdata.h
+	mkdir -p $(MINI_DIST_DIR)
 	$(ARDUINO_CLI) compile --fqbn "$(MINI_FQBN)" --optimize-for-debug \
-		$(MUSIC_LIB) --build-path $(BUILD_DIR)/arduino-mini --output-dir $(DIST_DIR) \
+		$(MUSIC_LIB) --build-path $(MINI_BUILD_DIR) --output-dir $(MINI_DIST_DIR) \
 		$(SIZE_FLAGS) "$(SKETCH).ino"
 
 ELF := $(DIST_DIR)/$(SKETCH).ino.elf
@@ -281,23 +243,10 @@ size: build
 size-line: build
 	@$(AVR_SIZE) -A "$(ELF)" | awk '$$1==".text"{t=$$2} $$1==".data"{d=$$2} $$1==".bss"{b=$$2} END { flash=t+d; ram=d+b; printf "size: flash=%d/29696 (%d free)  ram=%d/2560\n", flash, 29696-flash, ram }'
 
-# Release gate: every profile builds in its own directory, so no object file
-# can be shared across feature sets.
-size-matrix:
-	@test -n "$(PROFILES)" || { echo "size-matrix: no profiles reported by $(FEATURES_PY)" >&2; exit 1; }
-	@set -e; \
-	for profile in $(PROFILES); do \
-		printf '%s\n' "=== $$profile ==="; \
-		$(MAKE) --no-print-directory size PROFILE=$$profile; \
-	done
-
 run: build
 	@test -x "$(ARDENS)" || { echo "run: Ardens not found at $(ARDENS); set ARDENS=/path/to/Ardens" >&2; exit 1; }
 	@test -f "$(FXDATA_BIN)" || { echo "run: FX image missing at $(FXDATA_BIN); run make gen" >&2; exit 1; }
 	"$(ARDENS)" display=ssd1306 fxport=d1 file="$(ELF)" file="$(FXDATA_BIN)"
-
-dev:
-	$(MAKE) run DEV_MODE=1
 
 debug: build
 	@test -x "$(ARDENS)" || { echo "debug: Ardens not found at $(ARDENS); set ARDENS=/path/to/Ardens" >&2; exit 1; }
@@ -318,137 +267,21 @@ music-viewer: music-viewer-build
 	@test -x "$(ARDENS)" || { echo "music-viewer: set ARDENS=/path/to/Ardens" >&2; exit 1; }
 	"$(ARDENS)" display=ssd1306 fxport=d1 file="$(CURDIR)/build/music-viewer/out/jukebox_fx.ino.hex" file="$(CURDIR)/fxdata/fxdata.bin"
 
-# ----------------------------------------------------------------------------
-# Emulator comparison: two real backends, one shared UI and one complete cart
-# ----------------------------------------------------------------------------
-AUDIO_COMPARE_LIVE_OUT   := $(AUDIO_COMPARE_DIR)/live/out
-AUDIO_COMPARE_SAMPLED_OUT := $(AUDIO_COMPARE_DIR)/sampled/out
-
-audio-compare-build: audio-compare-build-live audio-compare-build-sampled
-
-audio-compare-build-live: gen
-	@test -f "$(ATMLIB2FX_ROOT)/library.properties" || { \
-		echo "audio-compare-build-live: set ATMLIB2FX_ROOT to the ATMlib2FX checkout" >&2; exit 1; }
-	mkdir -p "$(AUDIO_COMPARE_LIVE_OUT)"
-	$(ARDUINO_CLI) compile --fqbn "$(FQBN)" --optimize-for-debug \
-		--library "$(ATMLIB2FX_ROOT)" \
-		--build-path "$(AUDIO_COMPARE_DIR)/live/arduino" \
-		--output-dir "$(AUDIO_COMPARE_LIVE_OUT)" \
-		--build-property "compiler.cpp.extra_flags=$(AUDIO_COMPARE_FLAGS) -I$(CURDIR)/tools/audio_compare -DATM_FX_COMPACT_LOOP=1 -DATM_FX_COMPACT_RING=32 -DATM_FX_COMPACT_LOOP_STREAMING=1 -DATM_FX_COMPACT_DIAG=1" \
-		--build-property "compiler.c.extra_flags=-mrelax -DATM_FX_COMPACT_LOOP=1 -DATM_FX_COMPACT_RING=32 -DATM_FX_COMPACT_LOOP_STREAMING=1 -DATM_FX_COMPACT_DIAG=1" \
-		tools/audio_compare/live
-
-audio-compare-build-sampled: gen
-	mkdir -p "$(AUDIO_COMPARE_SAMPLED_OUT)"
-	$(ARDUINO_CLI) compile --fqbn "$(FQBN)" --optimize-for-debug \
-		--build-path "$(AUDIO_COMPARE_DIR)/sampled/arduino" \
-		--output-dir "$(AUDIO_COMPARE_SAMPLED_OUT)" \
-		--build-property "compiler.cpp.extra_flags=$(AUDIO_COMPARE_FLAGS) -I$(CURDIR)/tools/audio_compare -DSH_AUDIO_DIAG=1" \
-		--build-property "compiler.c.extra_flags=-mrelax" \
-		tools/audio_compare/sampled
-
-audio-compare-live: audio-compare-build-live
-	@test -x "$(ARDENS)" || { echo "audio-compare-live: set ARDENS=/path/to/Ardens" >&2; exit 1; }
-	"$(ARDENS)" volume=100 display=ssd1306 fxport=d1 file="$(CURDIR)/$(AUDIO_COMPARE_LIVE_OUT)/live.ino.elf" file="$(CURDIR)/$(FXDATA_BIN)"
-
-audio-compare-sampled: audio-compare-build-sampled
-	@test -x "$(ARDENS)" || { echo "audio-compare-sampled: set ARDENS=/path/to/Ardens" >&2; exit 1; }
-	"$(ARDENS)" volume=100 display=ssd1306 fxport=d1 file="$(CURDIR)/$(AUDIO_COMPARE_SAMPLED_OUT)/sampled.ino.elf" file="$(CURDIR)/$(FXDATA_BIN)"
-
-# Build-only serial evidence variants. They never replace the delivered images;
-# the auto-demo hook exercises all six cues and A/B controls without a GUI.
-audio-compare-serial: gen
-	@test -f "$(ATMLIB2FX_ROOT)/library.properties" || { \
-		echo "audio-compare-serial: set ATMLIB2FX_ROOT to the ATMlib2FX checkout" >&2; exit 1; }
-	@test -x "$(ARDENS)" || { echo "audio-compare-serial: set ARDENS=/path/to/Ardens" >&2; exit 1; }
-	@mkdir -p "$(AUDIO_COMPARE_DIR)/serial-live/out" "$(AUDIO_COMPARE_DIR)/serial-sampled/out" "$(AUDIO_COMPARE_EVIDENCE)"
-	$(ARDUINO_CLI) compile --fqbn "$(FQBN)" --optimize-for-debug \
-		--library "$(ATMLIB2FX_ROOT)" \
-		--build-path "$(AUDIO_COMPARE_DIR)/serial-live/arduino" \
-		--output-dir "$(AUDIO_COMPARE_DIR)/serial-live/out" \
-		--build-property "compiler.cpp.extra_flags=$(AUDIO_COMPARE_FLAGS) -I$(CURDIR)/tools/audio_compare -DSH_AUDIO_COMPARE_AUTODEMO=1 -DSH_AUDIO_COMPARE_SERIAL=1 -DATM_FX_COMPACT_LOOP=1 -DATM_FX_COMPACT_RING=32 -DATM_FX_COMPACT_LOOP_STREAMING=1 -DATM_FX_COMPACT_DIAG=1" \
-		--build-property "compiler.c.extra_flags=-mrelax -DATM_FX_COMPACT_LOOP=1 -DATM_FX_COMPACT_RING=32 -DATM_FX_COMPACT_LOOP_STREAMING=1 -DATM_FX_COMPACT_DIAG=1" \
-		tools/audio_compare/live
-	$(ARDUINO_CLI) compile --fqbn "$(FQBN)" --optimize-for-debug \
-		--build-path "$(AUDIO_COMPARE_DIR)/serial-sampled/arduino" \
-		--output-dir "$(AUDIO_COMPARE_DIR)/serial-sampled/out" \
-		--build-property "compiler.cpp.extra_flags=$(AUDIO_COMPARE_FLAGS) -I$(CURDIR)/tools/audio_compare -DSH_AUDIO_COMPARE_AUTODEMO=1 -DSH_AUDIO_COMPARE_SERIAL=1 -DSH_AUDIO_DIAG=1" \
-		--build-property "compiler.c.extra_flags=-mrelax" \
-		tools/audio_compare/sampled
-	@set -e; \
-	for kind in live sampled; do \
-		echo "=== audio-compare serial $$kind ==="; \
-		log="$(AUDIO_COMPARE_EVIDENCE)/$$kind-ardens-serial.log"; \
-		if "$(ARDENS)" captureserial=28000 display=ssd1306 fxport=d1 \
-			file="$(CURDIR)/$(AUDIO_COMPARE_DIR)/serial-$$kind/out/$$kind.ino.hex" \
-			file="$(CURDIR)/$(FXDATA_BIN)" >"$$log" 2>&1; then \
-			cat "$$log"; \
-		else \
-			cat "$$log"; exit 1; \
-		fi; \
-	done
-
-# Native absim harness: injects buttons, captures raw PWM, checks the six cues
-# and the restart/pause/resume paths, and reads audioCompareDiag from SRAM.
-audio-compare-harness:
-	@test -d build/audio-reference/native/obj || { \
-		echo "audio-compare-harness: build absim objects first (see tools/audio_reference/README.md)" >&2; exit 1; }
-	@mkdir -p "$(AUDIO_COMPARE_DIR)/native"
-	c++ -std=c++17 -O2 -DNDEBUG -DARDENS_NO_DEBUGGER -DARDENS_NO_SNAPSHOTS \
-		-DARDENS_VERSION_MAJOR=0 -DARDENS_VERSION_MINOR=0 -DARDENS_VERSION_PATCH=0 \
-		-DMINIZ_STATIC_DEFINE -I "$(ARDENS_ROOT)/src" -I "$(ARDENS_ROOT)/deps" \
-		-I "$(ARDENS_ROOT)/deps/bitsery/include" -I "$(ARDENS_ROOT)/deps/miniz" \
-		-I build/audio-reference/native/include \
-		-c tools/audio_compare/harness.cpp -o "$(AUDIO_COMPARE_DIR)/native/harness.o"
-	c++ -O2 "$(AUDIO_COMPARE_DIR)/native/harness.o" $(AUDIO_COMPARE_ABSIM_OBJS) \
-		-o "$(AUDIO_COMPARE_DIR)/native/harness" -lm
-
-audio-compare-verify: audio-compare-build audio-compare-harness
-	@mkdir -p "$(AUDIO_COMPARE_EVIDENCE)"
-	@set -e; \
-	for kind in live sampled; do \
-		out="$(AUDIO_COMPARE_DIR)/$$kind/out"; \
-		elf="$$out/$$kind.ino.elf"; \
-		raw=$$($(AVR_NM) "$$elf" | awk '$$3=="audioCompareDiag"{print $$1}'); \
-		test -n "$$raw" || { echo "audio-compare-verify: audioCompareDiag missing in $$elf" >&2; exit 1; }; \
-		addr=$$((0x$$raw)); \
-		if [ $$addr -ge 8388608 ]; then addr=$$((addr - 8388608)); fi; \
-		diag=$$(printf '0x%x' $$addr); \
-		player_arg=; \
-		if [ "$$kind" = sampled ]; then \
-			praw=$$($(AVR_NM) -C "$$elf" | awk '$$3=="audio::g_player"{print $$1}'); \
-			test -n "$$praw" || { echo "audio-compare-verify: audio::g_player missing in $$elf" >&2; exit 1; }; \
-			paddr=$$((0x$$praw)); \
-			if [ $$paddr -ge 8388608 ]; then paddr=$$((paddr - 8388608)); fi; \
-			player_arg="--player-addr $$(printf '0x%x' $$paddr)"; \
-		fi; \
-		echo "=== audio-compare verify $$kind diag=$$diag $$player_arg ==="; \
-		log="$(AUDIO_COMPARE_EVIDENCE)/$$kind-harness.log"; \
-		if "$(AUDIO_COMPARE_DIR)/native/harness" --hex "$$out/$$kind.ino.hex" \
-			--fx "$(FXDATA_BIN)" --diag-addr "$$diag" --label "$$kind" \
-			$$player_arg --out-dir "$(AUDIO_COMPARE_EVIDENCE)" >"$$log" 2>&1; then \
-			cat "$$log"; \
-		else \
-			cat "$$log"; exit 1; \
-		fi; \
-	done
-
 # Preview export only: reads generated game data without changing FX artifacts.
 WORLD_RENDER_DIR ?= build/world-render
 render-world:
 	mkdir -p $(WORLD_RENDER_DIR)
-	$(CXX) -std=c++17 -O2 -Wall -Wextra $(shell $(FEATURES_PY) --profile full --flags) -Isrc tools/render_world.cpp -o $(WORLD_RENDER_DIR)/render-world
+	$(CXX) -std=c++17 -O2 -Wall -Wextra -Isrc tools/render_world.cpp -o $(WORLD_RENDER_DIR)/render-world
 	$(WORLD_RENDER_DIR)/render-world fxdata/tables/exploration-terrain.bin $(WORLD_RENDER_DIR)/world.pbm
 	python3 tools/render_world.py --input $(WORLD_RENDER_DIR)/world.pbm --output-dir $(WORLD_RENDER_DIR)
 
-TEST_OUT      := $(BUILD_DIR)/tests/host
+TEST_OUT      := build/tests/host
 TEST_SOURCES  := tst/main.cpp
 CXXFLAGS      ?= -std=c++17 -O0 -g3 -Wall -Wextra
-TEST_STREAMFX_INCLUDE := -I"$(ARDUBOYSTREAMFX_ROOT)/src"
 
-test: features-check
+test:
 	@mkdir -p $(dir $(TEST_OUT))
-	$(CXX) $(CXXFLAGS) $(FEATURE_FLAGS) $(DEV_FLAGS) -Isrc -Itools/audio_reference $(TEST_STREAMFX_INCLUDE) -DTEST $(TEST_SOURCES) -o $(TEST_OUT)
+	$(CXX) $(CXXFLAGS) -Isrc -Itools/audio_reference -DTEST $(TEST_SOURCES) -o $(TEST_OUT)
 	./$(TEST_OUT)
 
 test-tools:
@@ -459,58 +292,38 @@ test-tools:
 # ----------------------------------------------------------------------------
 FXTEST_INOS   := $(wildcard tst/fxdatatest/test_*.ino)
 FXTEST_NAMES  := $(basename $(notdir $(FXTEST_INOS)))
-# test_music is the integrated sibling-library gate. test_audio remains the
-# standalone local-player admission suite when music is off; linking both
-# players would duplicate the Timer3 vector.
-ifneq ($(findstring -DSH_FEATURE_MUSIC=1,$(FEATURE_FLAGS)),)
-FXTEST_NAMES  := $(filter-out test_audio test_memory,$(FXTEST_NAMES))
-else
-FXTEST_NAMES  := $(filter-out test_music test_memory_music test_flight,$(FXTEST_NAMES))
-endif
-# The production-chain probe includes the real sketch and needs both save and
-# music; other profiles use the explicit fxtest-save-chain target.
-ifneq ($(findstring -DSH_FEATURE_MUSIC=1,$(FEATURE_FLAGS)),)
-ifneq ($(findstring -DSH_FEATURE_SAVE_VOYAGE=1,$(FEATURE_FLAGS)),)
-else
-FXTEST_NAMES  := $(filter-out test_save_chain,$(FXTEST_NAMES))
-endif
-else
-FXTEST_NAMES  := $(filter-out test_save_chain,$(FXTEST_NAMES))
-endif
-FXTEST_DEFAULT := $(filter-out test_flight,$(FXTEST_NAMES))
+# The integrated synth/music suite replaces the retired standalone player
+# admission suite. The non-music stack probe is kept as an explicit target.
+FXTEST_NAMES  := $(filter-out test_memory,$(FXTEST_NAMES))
+FXTEST_DEFAULT := $(filter-out test_flight test_save_runtime_page,$(FXTEST_NAMES))
 FXTEST_RUN    := $(if $(strip $(FXTEST_ONLY)),$(filter $(FXTEST_ONLY),$(FXTEST_NAMES)),$(FXTEST_DEFAULT))
 
-fxtest: features-check music-check fxtest-build fxtest-run
+fxtest: music-check fxtest-build fxtest-run
 
 # Emulator-only: points FX::programSavePage at the 4 KiB data tail to prove
 # seekSave/erase/page writes share the runtime page. It erases that alternate
 # page; never run it against a physical cart.
 fxtest-save-runtime-page:
 	@printf '%s\n' "WARNING: emulator-only runtime save-page test; erases alternate cart page. Do not run on hardware."
-	@$(MAKE) --no-print-directory fxtest FXTEST_ONLY=test_save PROFILE=full \
-		FEATURE_FLAGS="$$(python3 tools/features.py --profile full --set CAMPAIGN=1 --set SAVE_VOYAGE=1 --flags)" \
-		BUILD_DIR=build/fxtest-save-runtime-page \
-		RELAX_FLAGS="-mrelax -mcall-prologues -DSH_SAVE_RUNTIME_PAGE_TEST=1" \
-		FXTEST_MS=12000
+	@$(MAKE) --no-print-directory fxtest FXTEST_ONLY=test_save_runtime_page \
+		FXTEST_BUILD_DIR=build/fxtest-save-runtime-page FXTEST_MS=12000
 
 # Exact production-chain device probe (updateStation -> requestSave ->
-# saveVoyageNow) with the real sketch and streaming music. Emulator-only real
-# cart writes. Keeps USB so Ardens can capture the serial marker.
+# saveVoyageNow) with the real sketch and synth music. Emulator-only real cart
+# writes.
 fxtest-save-chain:
-	@$(MAKE) --no-print-directory fxtest FXTEST_ONLY=test_save_chain PROFILE=full \
-		FEATURE_FLAGS="$$(python3 tools/features.py --profile full --set CAMPAIGN=1 --set SAVE_VOYAGE=1 --set MUSIC=1 --flags)" \
-		RELEASE_NO_USB=0 BUILD_DIR=build/fxtest-save-chain FXTEST_MS=15000
+	@$(MAKE) --no-print-directory fxtest FXTEST_ONLY=test_save_chain \
+		FXTEST_BUILD_DIR=build/fxtest-save-chain FXTEST_MS=15000
 
 # Complete-flight timing/coverage probe with active music. It drives the real
-# production sketch for ~11 s of scheduled frames, so it needs a longer serial
-# window than the short smoke suites.
+# production application for ~11 s of scheduled frames, so it needs a longer
+# serial window than the short smoke suites.
 fxtest-flight:
-	@$(MAKE) --no-print-directory fxtest FXTEST_ONLY=test_flight PROFILE=full \
-		FEATURE_FLAGS="$$(python3 tools/features.py --profile full --flags | sed 's/-DSH_FEATURE_SAVE_VOYAGE=1/-DSH_FEATURE_SAVE_VOYAGE=0/') -DSH_FLIGHT_PROBE=1" \
-		RELEASE_NO_USB=0 BUILD_DIR=build/fxtest-flight FXTEST_MS=25000 \
+	@$(MAKE) --no-print-directory fxtest FXTEST_ONLY=test_flight \
+		FXTEST_BUILD_DIR=build/fxtest-flight FXTEST_MS=25000 \
 		FXTEST_OPTIMIZE=
 
-fxtest-build: features-check $(addprefix fxtest-build-,$(FXTEST_RUN))
+fxtest-build: $(addprefix fxtest-build-,$(FXTEST_RUN))
 
 fxtest-build-%:
 	@stage="$(FXTEST_BUILD_DIR)/$*"; \
@@ -519,7 +332,6 @@ fxtest-build-%:
 	cp -R src "$$stage/src"; \
 	cp "tst/fxdatatest/$*.ino" "$$stage/"; \
 	cp tst/fxdatatest/*.hpp "$$stage/" 2>/dev/null || true; \
-	if [ "$*" = "test_save_chain" ] || [ "$*" = "test_flight" ]; then cp "$(SKETCH).ino" "$$stage/production_sketch.hpp"; fi; \
 	echo "build: $*"; \
 	$(ARDUINO_CLI) compile --fqbn "$(FQBN)" $(FXTEST_OPTIMIZE) \
 		$(MUSIC_LIB) --build-path "$$stage/arduino" --output-dir "$$stage/output" \
@@ -569,25 +381,19 @@ help:
 		'  make full       generate FX data, then build the FX firmware' \
 		'  make gen        regenerate fxdata/Sprites.txt, fxdata.bin and headers' \
 		'  make gen-check  prove generation is deterministic (run make gen first)' \
-		'  make build      compile PROFILE firmware into dist/PROFILE/' \
-		'  make mini       compile the Arduboy Mini firmware for PROFILE' \
-		'  make size       whole-image flash/RAM report for PROFILE' \
-		'  make size-matrix build and report full, lean, core, and min' \
-		'  make feature-report  list active/inactive flags for PROFILE' \
+		'  make gen-audio  rebuild archival reference PCM + ADPCM evidence only' \
+		'  make build      compile the fixed FX firmware into dist/fx/' \
+		'  make mini       compile the fixed Arduboy Mini firmware into dist/mini/' \
+		'  make size       whole-image flash/RAM report' \
 		'  make run        build, then launch Ardens with the ELF + FX image' \
-		'  make dev        launch developer noclip, full chart, A speed boost' \
 		'  make render-world export the native world and annotated PNG overview' \
 		'  make music-viewer audition the underwater tracks in the ATMlib2FX jukebox' \
-		'  make build MUSIC_BACKEND=stream  build the ArduboyStreamFX comparison image' \
 		'  make test       host C++ tests (g++, no device required)' \
 		'  make test-tools Python tooling unittest suite' \
 		'  make fxtest     compile and run device suites through Ardens' \
 		'  make fxtest-save-chain  exact production save-chain stack/audio probe' \
-		'  make fxtest-flight  complete-flight timing/coverage probe with active music' \		'  make fxtest-save-runtime-page  emulator-only runtime page probe (erases alternate page)' \
+		'  make fxtest-flight  complete-flight timing/coverage probe with active music' \
+		'  make fxtest-save-runtime-page  emulator-only runtime page probe (erases alternate page)' \
 		'  make clean      remove build/ and dist/' \
 		'' \
-		'Profiles: $(PROFILES) (default: $(PROFILE)). Selected with PROFILE=NAME.' \
-		'  make build PROFILE=lean' \
-		'  make feature-report PROFILE=core' \
-		'' \
-		'Overrides: DEV_MODE=0|1, RELEASE_NO_USB=0|1, PROFILE, SKETCH, FQBN, MINI_FQBN, ARDUINO_CLI, ARDENS, FXTEST_ONLY, FXTEST_MS, CXX.'
+		'Overrides: SKETCH, FQBN, MINI_FQBN, ARDUINO_CLI, ARDENS, FXTEST_ONLY, FXTEST_MS, CXX.'

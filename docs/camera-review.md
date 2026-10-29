@@ -1,25 +1,27 @@
 # Camera performance and motion review — 2026-10-28
 
 Reviewed directly with Sol after the pixel-scroll change, then implemented
-after approval. The camera bead remains open pending visual acceptance and a
-commit; Git metadata is read-only in this environment.
+after approval. The user visually accepted the smooth camera on 2026-10-29;
+the camera task (`sub-hauler-7px.22`) is closed. Git metadata remains read-only
+in this environment; acceptance does not imply a commit or physical-device
+validation.
 
-The figures in this camera checkpoint precede sonar removal and menu baking.
-The current production checkpoint measures **29,616 / 1,662 B** with the
-ATMlib2FX synth and a **12.368 ms** maximum complete-flight frame with the same
+The older dated figures in this camera checkpoint precede sonar removal and menu baking.
+The current fixed-build checkpoint measures **29,604 / 1,660 B** with the
+ATMlib2FX synth and an **11.864 ms** maximum complete-flight frame with the same
 camera behavior.
 
 ## Verified implementation
 
-The shipping FX and Mini images measure **29,616 B flash / 1,662 B static
-SRAM**, 80 B under the hardware flash limit and 38 B under the static planning ceiling.
-The combined music stack probe measures **614 B** reserve; the production
-save-chain probe measures **689 B**, against the 600 B floor.
+The shipping FX and Mini images measure **29,604 B flash / 1,660 B static
+SRAM**, 92 B under the hardware flash limit and 40 B under the static planning
+ceiling. The combined music stack probe measures **652 B** reserve; the
+production save-chain probe measures **690 B**, against the 600 B floor.
 
 `make fxtest-flight` measures **842 complete flight frames** with active synth
 music: all eight Y remainders, all six cues, 30 cold and 812 warm frames,
 sustained motion/stop/reversal, camera boundaries, survey notices and credit
-amounts. Maximum work is **12.368 ms**, mean **8.346 ms**, with **zero frames
+amounts. Maximum work is **11.864 ms** with **zero frames
 at or above 16 ms**. The 13 ms target passes; the maximum synth service gap is
 **1 tick**, with zero underruns and errors. Diagnostic counters and the probe's
 stack guard pass. These are build-only production-flight measurements
@@ -48,14 +50,18 @@ HUD control/notice rows are generated from the existing font and appended to
 the FX layout. One 128 B row read replaces repeated glyph transactions; values
 and priority remain dynamic. Actual AVR pixel comparisons cover the controls
 over varied backgrounds and all fifteen notice frames. Existing scene CRCs
-match. The slower outline and full-panel stamp experiments were discarded.
-FX payload/image are **2,010,726 / 2,014,976 B**; earlier asset offsets and the
-4 KiB save section remain intact.
+match. The slower outline and full-panel stamp experiments were discarded. At
+the camera checkpoint, FX payload/image were **2,010,726 / 2,014,976 B**;
+earlier asset offsets and the 4 KiB save section remain intact. Current totals
+are in [startup-splashes.md](startup-splashes.md).
 
-Verification: deterministic generation (including the new HUD artifacts),
-host **260/161/131/87** for full/lean/core/min, developer host **265**, tooling
-**137**, all **12** default device suites, extended flight probe, min-profile
-render suite, full size and Mini build. GUI playthrough remains unverified.
+Verification at the camera checkpoint: deterministic generation (including the
+new HUD artifacts), host **260/161/131/87** for full/lean/core/min, developer
+host **265**, tooling **137**, all **12** default device suites, extended flight
+probe, min-profile render suite, full size and Mini build. Current recorded
+counts are **251/149/131/87**, tooling **144** and **14** default device suites
+after sonar removal, menu baking and the splashes. GUI playthrough remains
+unverified.
 
 ## Evidence
 

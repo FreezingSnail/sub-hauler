@@ -1,13 +1,14 @@
 # Exploration and campaign proposal
 
-Campaign draft, 2026-10-24; playable map implementation added 2026-10-25.
-The authored map, equipment gates and eight cove rewards are now implemented;
-see [the active level format and behavior](../levels/README.md). Campaign
-restoration missions, the ending and persistent voyage checkpoints remain
-proposals. The current [voyage progression draft](progression.md), dated
-2026-10-26, develops seven objectives, restoration rewards, checkpoint rules,
-the ending and regional music with the player's relaxed-restoration direction.
-It supersedes the campaign/save outline below where details differ.
+Historical campaign proposal, 2026-10-24; playable map implementation added
+2026-10-25. The fixed build implements the authored map, equipment, seven cove
+rewards, seven restoration objectives, homecoming, schema 6 single-slot cart
+checkpoints and regional ATMlib2FX synth music. Mines and hull strength/pods
+were removed on 2026-10-29. See [the active level format and behavior](../levels/README.md) and the
+[current progression design](progression.md). Those implemented contracts
+supersede the campaign/save outline below. Timed jobs, sonar, mines, hull pods
+and speculative features in this proposal describe earlier ideas, not current
+gameplay.
 Exact encoded geometry is shown in the generated terrain preview.
 The active map now has winding passages, asymmetric caverns and 31 physical
 rock features. High-pressure water remains lowest, with equipment dependencies

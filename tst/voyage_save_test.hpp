@@ -9,13 +9,11 @@
 
 #include <fstream>
 
-#include "../src/features.hpp"
 #include "../src/pilot.hpp"
 #include "../src/pilot_view.hpp"
 #include "../src/voyage_save.hpp"
 #include "test.hpp"
 
-#if SH_FEATURE_SAVE_VOYAGE
 
 #include "../src/campaign.hpp"
 #include "../src/game.hpp"
@@ -120,9 +118,7 @@ struct FakeStorage {
 
 struct Fixture {
     State state;
-#if SH_FEATURE_FOG_CHART
     chart::State chart;
-#endif
 
     Fixture() {
         reset();
@@ -131,37 +127,29 @@ struct Fixture {
     void reset() {
         game::reset(state);
         state.docked = static_cast<int8_t>(campaign::kTidewall);
-#if SH_FEATURE_FOG_CHART
         chart::reset(chart);
-#endif
     }
 
     voyage_save::SaveResult save(FakeStorage &storage) const {
         return voyage_save::save(state
-#if SH_FEATURE_FOG_CHART
                                  ,
                                  chart
-#endif
                                  ,
                                  storage);
     }
 
     voyage_save::LoadResult load(FakeStorage &storage) {
         return voyage_save::load(state
-#if SH_FEATURE_FOG_CHART
                                  ,
                                  chart
-#endif
                                  ,
                                  storage);
     }
 
     voyage_save::SaveResult newVoyage(FakeStorage &storage) {
         return voyage_save::newVoyage(state
-#if SH_FEATURE_FOG_CHART
                                       ,
                                       chart
-#endif
                                       ,
                                       storage);
     }
@@ -172,7 +160,6 @@ inline void fillPattern(uint8_t *bytes, uint16_t count, uint8_t seed) {
         bytes[i] = static_cast<uint8_t>(seed + i * 37u);
 }
 
-#if SH_FEATURE_FOG_CHART
 inline bool sameChart(const chart::State &a, const chart::State &b) {
     for (uint16_t i = 0; i < world::CHART_BYTES; ++i) {
         if (a.explored[i] != b.explored[i])
@@ -201,25 +188,16 @@ inline bool spawnExplored(const State &state, const chart::State &chart) {
     int16_t cellY = 0;
     return chart::cellFromPixels(state.x, state.y, cellX, cellY) && chart::isExplored(chart, cellX, cellY);
 }
-#endif
 
 inline bool checkpointMatches(const State &a, const State &b) {
     if (a.docked != b.docked || a.credits != b.credits || a.campaign != b.campaign || a.surveys != b.surveys || a.visited != b.visited || a.tools != b.tools || a.pickups != b.pickups ||
         a.openGates != b.openGates || a.seenGates != b.seenGates || a.ending != b.ending || a.voyageTicks != b.voyageTicks || a.delivered != b.delivered || a.rescues != b.rescues ||
         a.offerCursor != b.offerCursor || a.boardSeed != b.boardSeed || a.cargo != b.cargo)
         return false;
-#if SH_FEATURE_MINES
-    if (a.minesAlive != b.minesAlive)
+    if (a.airLevel != b.airLevel)
         return false;
-#endif
-#if SH_FEATURE_SHOP
-    if (a.airLevel != b.airLevel || a.hullLevel != b.hullLevel)
-        return false;
-#endif
-#if SH_FEATURE_MULTI_HULL
     if (a.hullClass != b.hullClass)
         return false;
-#endif
     return a.activeJob.kind == b.activeJob.kind && a.activeJob.mission == b.activeJob.mission && a.activeJob.from == b.activeJob.from && a.activeJob.to == b.activeJob.to &&
            a.activeJob.crates == b.activeJob.crates && a.activeJob.reward == b.activeJob.reward;
 }
@@ -281,16 +259,8 @@ inline void setValidPayload(Fixture &fixture) {
     fixture.state.voyageTicks = 0x12345678u;
     fixture.state.delivered = 0x0102;
     fixture.state.rescues = 0x0304;
-#if SH_FEATURE_MINES
-    fixture.state.minesAlive = 0x55;
-#endif
-#if SH_FEATURE_SHOP
     fixture.state.airLevel = 1;
-    fixture.state.hullLevel = 2;
-#endif
-#if SH_FEATURE_MULTI_HULL
     fixture.state.hullClass = static_cast<uint8_t>(roster::kLeviathan);
-#endif
 }
 
 inline bool makeFirstJob(Fixture &fixture) {
@@ -314,8 +284,8 @@ inline void VoyageSaveSuite(TestRunner &runner) {
         test.assertEqual(voyage_save::kPayloadCapacity, 495, "payload capacity");
         test.assertEqual(voyage_save::kCommitOffset, 511, "commit byte offset");
         test.assertEqual(voyage_save::kPageBytes, 256, "flash page");
-        test.assertEqual(voyage_save::kScalarBytes, 35, "scalar payload width");
-        test.assertEqual(voyage_save::kPayloadBytes, static_cast<uint16_t>(35 + (SH_FEATURE_FOG_CHART ? world::CHART_BYTES : 0)), "payload width follows chart bit");
+        test.assertEqual(voyage_save::kScalarBytes, 33, "scalar payload width");
+        test.assertEqual(voyage_save::kPayloadBytes, static_cast<uint16_t>(33 + world::CHART_BYTES), "payload width follows chart bit");
         for (uint8_t berth = 0; berth < campaign::kBerthCount; ++berth) {
             world::Berth info;
             test.assertTrue(world::berthInfo(berth, info), "every valid campaign berth has generated metadata");
@@ -347,9 +317,7 @@ inline void VoyageSaveSuite(TestRunner &runner) {
         test.assertEqual(storage.eraseOps, 0, "load never erases");
         test.assertTrue(checkpointMatches(restored.state, fixture.state), "all saved fields round-trip");
         test.assertEqual(restored.state.cargo, 0, "no active job means no cargo");
-#if SH_FEATURE_FOG_CHART
         test.assertTrue(chartEmpty(restored.chart), "empty chart round-trips");
-#endif
         runner.add(test);
     }
 
@@ -373,9 +341,7 @@ inline void VoyageSaveSuite(TestRunner &runner) {
         test.assertEqual(fresh.state.y, berth.pixel_y, "new voyage berth y");
         test.assertEqual(fresh.state.cameraXQ4, game::cameraTargetXQ4(fresh.state), "new voyage camera x is snapped");
         test.assertEqual(fresh.state.cameraYQ4, game::cameraTargetYQ4(fresh.state), "new voyage camera y is snapped");
-#if SH_FEATURE_FOG_CHART
         test.assertTrue(spawnExplored(fresh.state, fresh.chart), "first checkpoint includes the spawn reveal");
-#endif
         test.assertTrue(!world::tileSolid(reader, berth.tile_x, berth.tile_y), "new voyage berth is open water in the packed plane");
         const cave::Camera newCamera = pilot_view::cameraForState(fresh.state);
         test.assertTrue(pilot_view::visible(pilot_view::screenX(fresh.state, newCamera), pilot_view::screenY(fresh.state, newCamera)), "new voyage hull is visible in the world view");
@@ -391,10 +357,8 @@ inline void VoyageSaveSuite(TestRunner &runner) {
         test.assertEqual(restored.state.y, berth.pixel_y, "Continue berth y");
         test.assertEqual(restored.state.cameraXQ4, game::cameraTargetXQ4(restored.state), "Continue camera x is snapped");
         test.assertEqual(restored.state.cameraYQ4, game::cameraTargetYQ4(restored.state), "Continue camera y is snapped");
-#if SH_FEATURE_FOG_CHART
         test.assertTrue(spawnExplored(restored.state, restored.chart), "Continue restores the saved spawn reveal");
         test.assertTrue(sameChart(fresh.chart, restored.chart), "first checkpoint chart round-trips exactly");
-#endif
         const cave::Camera restoredCamera = pilot_view::cameraForState(restored.state);
         test.assertTrue(pilot_view::visible(pilot_view::screenX(restored.state, restoredCamera), pilot_view::screenY(restored.state, restoredCamera)), "Continue hull is visible in the world view");
         runner.add(test);
@@ -421,47 +385,30 @@ inline void VoyageSaveSuite(TestRunner &runner) {
         test.assertTrue(allBytesAre(storage, static_cast<uint16_t>(base + 8), static_cast<uint16_t>(base + 11), 0xFF), "retired sequence bytes stay erased");
 
         test.assertEqual(storage.bytes[payload + 0], campaign::kTidewall, "berth offset 0");
-#if SH_FEATURE_MULTI_HULL
         test.assertEqual(storage.bytes[payload + 1], roster::kLeviathan, "hull class offset 1");
-#else
-        test.assertEqual(storage.bytes[payload + 1], roster::kHauler, "single-hull class offset 1");
-#endif
         test.assertEqual(readU16(storage, static_cast<uint16_t>(payload + 2)), 0x1234, "credits offset 2");
-#if SH_FEATURE_SHOP
         test.assertEqual(storage.bytes[payload + 4], 1, "air level offset 4");
-        test.assertEqual(storage.bytes[payload + 5], 2, "hull level offset 5");
-#else
-        test.assertEqual(storage.bytes[payload + 4], 0, "no-shop air level offset 4");
-        test.assertEqual(storage.bytes[payload + 5], 0, "no-shop hull level offset 5");
-#endif
-        test.assertEqual(storage.bytes[payload + 6], voyage_save::toolsMask(), "tools offset 6");
-        test.assertEqual(storage.bytes[payload + 7], static_cast<uint8_t>(voyage_save::pickupsMask() & 0xA5u), "pickups offset 7");
-        test.assertEqual(readU16(storage, static_cast<uint16_t>(payload + 8)), static_cast<uint16_t>(voyage_save::gatesMask() & 0x155u), "open gates offset 8");
-        test.assertEqual(readU16(storage, static_cast<uint16_t>(payload + 10)), static_cast<uint16_t>(voyage_save::gatesMask() & 0x0AAu), "seen gates offset 10");
-        test.assertEqual(storage.bytes[payload + 12], campaign::kMilestoneFirst, "milestones offset 12");
-        test.assertEqual(storage.bytes[payload + 13], campaign::kSurveyMask, "surveys offset 13");
-        test.assertEqual(storage.bytes[payload + 14], 0x0A, "visited offset 14");
-        test.assertEqual(storage.bytes[payload + 15], game::kJobKindNone, "job kind offset 15");
-        test.assertEqual(storage.bytes[payload + 16], game::kMissionNone, "mission offset 16");
-        test.assertEqual(storage.bytes[payload + 17], game::kJobNone, "origin offset 17");
-        test.assertEqual(storage.bytes[payload + 18], game::kJobNone, "destination offset 18");
-        test.assertEqual(storage.bytes[payload + 19], 0, "job load offset 19");
-        test.assertEqual(storage.bytes[payload + 20], 0, "job reward offset 20");
-        test.assertEqual(readU16(storage, static_cast<uint16_t>(payload + 21)), 0xBEEF, "offer cursor offset 21");
-        test.assertEqual(readU16(storage, static_cast<uint16_t>(payload + 23)), 0, "board seed offset 23");
-#if SH_FEATURE_MINES
-        test.assertEqual(storage.bytes[payload + 25], 0x55, "mines offset 25");
-#else
-        test.assertEqual(storage.bytes[payload + 25], 0, "no-mines offset 25");
-#endif
-        test.assertEqual(readU32(storage, static_cast<uint16_t>(payload + 26)), 0x12345678u, "voyage ticks offset 26");
-        test.assertEqual(readU16(storage, static_cast<uint16_t>(payload + 30)), 0x0102, "delivered offset 30");
-        test.assertEqual(readU16(storage, static_cast<uint16_t>(payload + 32)), 0x0304, "rescues offset 32");
-        test.assertEqual(storage.bytes[payload + 34], 0, "ending offset 34");
-#if SH_FEATURE_FOG_CHART
+        test.assertEqual(storage.bytes[payload + 5], voyage_save::toolsMask(), "tools offset 5");
+        test.assertEqual(storage.bytes[payload + 6], static_cast<uint8_t>(voyage_save::pickupsMask() & 0xA5u), "pickups offset 6");
+        test.assertEqual(readU16(storage, static_cast<uint16_t>(payload + 7)), static_cast<uint16_t>(voyage_save::gatesMask() & 0x155u), "open gates offset 7");
+        test.assertEqual(readU16(storage, static_cast<uint16_t>(payload + 9)), static_cast<uint16_t>(voyage_save::gatesMask() & 0x0AAu), "seen gates offset 9");
+        test.assertEqual(storage.bytes[payload + 11], campaign::kMilestoneFirst, "milestones offset 11");
+        test.assertEqual(storage.bytes[payload + 12], campaign::kSurveyMask, "surveys offset 12");
+        test.assertEqual(storage.bytes[payload + 13], 0x0A, "visited offset 13");
+        test.assertEqual(storage.bytes[payload + 14], game::kJobKindNone, "job kind offset 14");
+        test.assertEqual(storage.bytes[payload + 15], game::kMissionNone, "mission offset 15");
+        test.assertEqual(storage.bytes[payload + 16], game::kJobNone, "origin offset 16");
+        test.assertEqual(storage.bytes[payload + 17], game::kJobNone, "destination offset 17");
+        test.assertEqual(storage.bytes[payload + 18], 0, "job load offset 18");
+        test.assertEqual(storage.bytes[payload + 19], 0, "job reward offset 19");
+        test.assertEqual(readU16(storage, static_cast<uint16_t>(payload + 20)), 0xBEEF, "offer cursor offset 20");
+        test.assertEqual(readU16(storage, static_cast<uint16_t>(payload + 22)), 0, "board seed offset 22");
+        test.assertEqual(readU32(storage, static_cast<uint16_t>(payload + 24)), 0x12345678u, "voyage ticks offset 24");
+        test.assertEqual(readU16(storage, static_cast<uint16_t>(payload + 28)), 0x0102, "delivered offset 28");
+        test.assertEqual(readU16(storage, static_cast<uint16_t>(payload + 30)), 0x0304, "rescues offset 30");
+        test.assertEqual(storage.bytes[payload + 32], 0, "ending offset 32");
         for (uint16_t i = 0; i < world::CHART_BYTES; ++i)
             test.assertEqual(storage.bytes[payload + voyage_save::kScalarBytes + i], fixture.chart.explored[i], "chart follows scalar bytes");
-#endif
         runner.add(test);
     }
 
@@ -690,7 +637,6 @@ inline void VoyageSaveSuite(TestRunner &runner) {
         runner.add(test);
     }
 
-#if SH_FEATURE_FOG_CHART
     {
         Test test("legacy chart bytes are ignored by a new voyage");
         FakeStorage storage(0xFF);
@@ -715,18 +661,6 @@ inline void VoyageSaveSuite(TestRunner &runner) {
         test.assertTrue(spawnExplored(replacement.state, replacement.chart), "replacement persists the spawn reveal");
         runner.add(test);
     }
-#else
-    {
-        Test test("new voyage without a chart writes the 35-byte scalar");
-        FakeStorage storage(0xFF);
-        Fixture fresh;
-        test.assertEqual(fresh.newVoyage(storage), voyage_save::kSaved, "new voyage saves");
-        test.assertEqual(voyage_save::kPayloadBytes, 35, "no-chart payload is 35 bytes");
-        test.assertEqual(voyage_save::inspect(storage).status, voyage_save::kSlotValid, "new voyage is valid");
-        test.assertTrue(allBytesAre(storage, voyage_save::kSlotBytes, kSaveBytes - 1, 0xFF), "block tail stays erased");
-        runner.add(test);
-    }
-#endif
 
     {
         Test test("new voyage replacement is rejected when interrupted");
@@ -875,66 +809,22 @@ inline void VoyageSaveSuite(TestRunner &runner) {
         bad.state.activeJob.kind = 3;   // retired express kind
         expectInvalid(bad, "retired timed job kind is invalid");
 
-#if SH_FEATURE_SHOP
         bad = base;
         bad.state.airLevel = 4;
         expectInvalid(bad, "level above the shop cap");
-#endif
         runner.add(test);
     }
 
     {
         Test test("profile signature and absent chart/shop/roster behavior");
         uint8_t expected = 0;
-#if SH_FEATURE_FOG_CHART
         expected |= voyage_save::kSignatureFogChart;
-#endif
-#if SH_FEATURE_MINES
-        expected |= voyage_save::kSignatureMines;
-#endif
-#if SH_FEATURE_SHOP
         expected |= voyage_save::kSignatureShop;
-#endif
-#if SH_FEATURE_HULL_DAMAGE
-        expected |= voyage_save::kSignatureHullDamage;
-#endif
-#if SH_FEATURE_MULTI_HULL
         expected |= voyage_save::kSignatureMultiHull;
-#endif
-#if SH_FEATURE_EXPLORATION
         expected |= voyage_save::kSignatureExploration;
-#endif
         test.assertEqual(voyage_save::kProfileSignature, expected, "profile signature bits");
-        test.assertEqual(SH_FEATURE_SAVE_CHART, 0, "voyage save excludes chart save");
-#if SH_FEATURE_FOG_CHART
-        test.assertEqual(voyage_save::kPayloadBytes, 291, "chart profile payload is 291 B");
+        test.assertEqual(voyage_save::kPayloadBytes, 289, "chart profile payload is 289 B");
         test.assertEqual(voyage_save::kChartBytes, world::CHART_BYTES, "chart bytes are part of the payload");
-#else
-        test.assertEqual(voyage_save::kPayloadBytes, 35, "no-chart payload is 35 B");
-        test.assertEqual(voyage_save::kChartBytes, 0, "no chart bytes");
-#endif
-#if !SH_FEATURE_SHOP
-        {
-            FakeStorage storage(0xFF);
-            Fixture fixture;
-            setValidPayload(fixture);
-            test.assertEqual(fixture.save(storage), voyage_save::kSaved, "no-shop save");
-            storage.bytes[voyage_save::kSlotOffset + voyage_save::kPayloadOffset + 4] = 1;
-            refreshCrc(storage);
-            test.assertEqual(voyage_save::inspect(storage).status, voyage_save::kSlotCorrupt, "no-shop level must be zero");
-        }
-#endif
-#if !SH_FEATURE_MULTI_HULL
-        {
-            FakeStorage storage(0xFF);
-            Fixture fixture;
-            setValidPayload(fixture);
-            test.assertEqual(fixture.save(storage), voyage_save::kSaved, "single-hull save");
-            storage.bytes[voyage_save::kSlotOffset + voyage_save::kPayloadOffset + 1] = static_cast<uint8_t>(roster::kLeviathan);
-            refreshCrc(storage);
-            test.assertEqual(voyage_save::inspect(storage).status, voyage_save::kSlotCorrupt, "single-hull class must be HAULER");
-        }
-#endif
 
         FakeStorage storage(0xFF);
         Fixture fixture;
@@ -952,16 +842,12 @@ inline void VoyageSaveSuite(TestRunner &runner) {
         probe.reset();
         probe.state.credits = 4242;
         probe.state.campaign = campaign::kMilestoneFirst;
-#if SH_FEATURE_FOG_CHART
         fillPattern(probe.chart.explored, world::CHART_BYTES, 71);
         chart::State chartBefore = probe.chart;
-#endif
         const State stateBefore = probe.state;
         test.assertEqual(probe.load(blank), voyage_save::kNoSave, "blank load");
         test.assertTrue(checkpointMatches(probe.state, stateBefore), "blank load leaves state");
-#if SH_FEATURE_FOG_CHART
         test.assertTrue(sameChart(probe.chart, chartBefore), "blank load leaves chart");
-#endif
 
         FakeStorage storage(0xFF);
         Fixture source;
@@ -972,16 +858,12 @@ inline void VoyageSaveSuite(TestRunner &runner) {
         probe.reset();
         probe.state.credits = 4242;
         probe.state.campaign = campaign::kMilestoneFirst;
-#if SH_FEATURE_FOG_CHART
         fillPattern(probe.chart.explored, world::CHART_BYTES, 71);
         chartBefore = probe.chart;
-#endif
         const State corruptBefore = probe.state;
         test.assertEqual(probe.load(storage), voyage_save::kCorruptSave, "corrupt load");
         test.assertTrue(checkpointMatches(probe.state, corruptBefore), "corrupt load leaves state");
-#if SH_FEATURE_FOG_CHART
         test.assertTrue(sameChart(probe.chart, chartBefore), "corrupt load leaves chart");
-#endif
         runner.add(test);
     }
 
@@ -1000,12 +882,3 @@ inline void VoyageSaveSuite(TestRunner &runner) {
     }
 }
 
-#else
-
-inline void VoyageSaveSuite(TestRunner &runner) {
-    Test test("voyage save compiles out when SAVE_VOYAGE=0");
-    test.assertEqual(SH_FEATURE_SAVE_VOYAGE, 0, "feature is off in this build");
-    runner.add(test);
-}
-
-#endif   // SH_FEATURE_SAVE_VOYAGE

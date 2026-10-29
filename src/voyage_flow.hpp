@@ -1,8 +1,6 @@
 #pragma once
 
-#include "features.hpp"
 
-#if SH_FEATURE_SAVE_VOYAGE
 
 #include <stdint.h>
 
@@ -11,9 +9,7 @@
 #include "jobs.hpp"
 #include "world.hpp"
 #include "voyage_save.hpp"
-#if SH_FEATURE_FOG_CHART
 #include "chart.hpp"
-#endif
 
 // Checkpoint application flow (sub-hauler-7px.4). The storage task owns the
 // slot format and the save transaction; this header owns the small amount of
@@ -44,12 +40,7 @@ struct BootStatus {
     bool hasCorrupt;
     bool hasIncompatible;
 
-    // True when NEW VOYAGE would replace a valid checkpoint and therefore needs
-    // the explicit replacement confirmation. Blank, corrupt and incompatible
-    // partitions start a clean New Voyage immediately.
-    bool needsReplaceConfirm() const {
-        return hasValid;
-    }
+    bool needsReplaceConfirm() const { return hasValid; }
 };
 
 template <typename Storage> inline BootStatus inspectBoot(Storage &storage) {
@@ -58,7 +49,6 @@ template <typename Storage> inline BootStatus inspectBoot(Storage &storage) {
     status.hasValid = inventory.status == voyage_save::kSlotValid;
     status.hasCorrupt = inventory.status == voyage_save::kSlotCorrupt;
     status.hasIncompatible = inventory.status == voyage_save::kSlotIncompatible;
-
     if (status.hasValid)
         status.state = kBootValid;
     else if (status.hasIncompatible)
@@ -86,17 +76,13 @@ inline void prepareBoard(State &state) {
 
 template <typename Storage>
 inline voyage_save::LoadResult loadCheckpoint(State &state
-#if SH_FEATURE_FOG_CHART
                                               ,
                                               chart::State &chart
-#endif
                                               ,
                                               Storage &storage) {
     const voyage_save::LoadResult result = voyage_save::load(state
-#if SH_FEATURE_FOG_CHART
                                                              ,
                                                              chart
-#endif
                                                              ,
                                                              storage);
     if (result == voyage_save::kLoaded)
@@ -106,34 +92,26 @@ inline voyage_save::LoadResult loadCheckpoint(State &state
 
 template <typename Storage>
 inline voyage_save::SaveResult saveCheckpoint(const State &state
-#if SH_FEATURE_FOG_CHART
                                               ,
                                               const chart::State &chart
-#endif
                                               ,
                                               Storage &storage) {
     return voyage_save::save(state
-#if SH_FEATURE_FOG_CHART
                              ,
                              chart
-#endif
                              ,
                              storage);
 }
 
 template <typename Storage>
 inline voyage_save::SaveResult startNewVoyage(State &state
-#if SH_FEATURE_FOG_CHART
                                               ,
                                               chart::State &chart
-#endif
                                               ,
                                               Storage &storage) {
     const voyage_save::SaveResult result = voyage_save::newVoyage(state
-#if SH_FEATURE_FOG_CHART
                                                                   ,
                                                                   chart
-#endif
                                                                   ,
                                                                   storage);
     // The board is derived state, not serialized. Generate it even when the
@@ -148,25 +126,21 @@ struct Recovery {
     voyage_save::SaveResult save;
 };
 
-// Free rescue/wreck recovery: restore the complete newest checkpoint, count the
+// Free rescue recovery: restore the complete newest checkpoint, count the
 // request once, and commit the new counter before the caller resumes. Credits
 // and cargo come from the checkpoint itself, so a rescue never pays twice and
 // never strands a zero-air boat. If the save fails the recovered state remains
 // live and the caller offers RETRY / CONTINUE UNSAVED.
 template <typename Storage>
 inline Recovery recoverCheckpoint(State &state
-#if SH_FEATURE_FOG_CHART
                                   ,
                                   chart::State &chart
-#endif
                                   ,
                                   Storage &storage) {
     Recovery result;
     result.load = loadCheckpoint(state
-#if SH_FEATURE_FOG_CHART
                                  ,
                                  chart
-#endif
                                  ,
                                  storage);
     result.save = voyage_save::kInvalidState;
@@ -174,10 +148,8 @@ inline Recovery recoverCheckpoint(State &state
         if (state.rescues != 0xFFFFu)
             ++state.rescues;
         result.save = saveCheckpoint(state
-#if SH_FEATURE_FOG_CHART
                                      ,
                                      chart
-#endif
                                      ,
                                      storage);
     }
@@ -186,4 +158,3 @@ inline Recovery recoverCheckpoint(State &state
 
 }   // namespace voyage_flow
 
-#endif   // SH_FEATURE_SAVE_VOYAGE

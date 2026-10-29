@@ -1,8 +1,6 @@
 #pragma once
 
-#include "../src/features.hpp"
 
-#if SH_FEATURE_CAMPAIGN
 
 #include "../src/campaign_view.hpp"
 #include "../src/game.hpp"
@@ -62,6 +60,34 @@ inline void CampaignViewSuite(TestRunner &runner) {
         test.assertTrue(lit(a) > 0, "unrecorded survey ring is visible");
         test.assertTrue(!same(a, b), "recorded survey marker changes shape");
         test.assertTrue(lit(a) >= lit(b), "recorded marker is the quieter form");
+        runner.add(test);
+    }
+
+    {
+        Test test("active survey ring blinks after FIRST and stays steady before it");
+        world::Survey survey;
+        test.assertTrue(world::surveyInfo(0, survey), "generated pump survey");
+        game::State state;
+        game::reset(state);
+        const cave::Camera camera = cave::cameraCenteredAtPixel(survey.pixel_x, survey.pixel_y);
+
+        state.ticks = 0;
+        clear(a);
+        campaign_view::drawRestoration(a, state, camera);
+        state.ticks = 0x10;
+        clear(b);
+        campaign_view::drawRestoration(b, state, camera);
+        test.assertTrue(same(a, b), "early survey ring does not blink");
+
+        state.campaign = campaign::kMilestoneFirst;
+        state.ticks = 0;
+        clear(a);
+        campaign_view::drawRestoration(a, state, camera);
+        state.ticks = 0x10;
+        clear(b);
+        campaign_view::drawRestoration(b, state, camera);
+        test.assertTrue(lit(a) > 0, "unrecorded survey ring is visible on the on phase");
+        test.assertTrue(lit(b) < lit(a), "survey ring disappears on the off phase");
         runner.add(test);
     }
 
@@ -145,4 +171,3 @@ inline void CampaignViewSuite(TestRunner &runner) {
     }
 }
 
-#endif   // SH_FEATURE_CAMPAIGN

@@ -1,0 +1,848 @@
+// Sub-hauler — shared fixed application.
+//
+// Included by the tiny release sketch and by fixed USB device fixtures.
+// The release sketch owns ARDUBOY_NO_USB, setup() and loop().
+//
+// M3 station slice: world-aware submarine, HAULER silhouette, compact HUD, and
+// the D-pad flight contract. Slow boats inside a settlement ring dock; the
+// station board refills and undocks. M6 adds a paused B-key chart
+// with persistent fog exploration. The sketch owns
+// pilot state, the FX table reader, the visible-window cache, and the screen
+// state machine; rules and drawing stay in src/ headers.
+
+#include <Arduboy2.h>
+#include <ArduboyFX.h>
+
+#include "common.hpp"
+#include "game.hpp"
+#include "hud.hpp"
+#include "pause.hpp"
+#include "pilot.hpp"
+#include "render.hpp"
+#include "world_fx.hpp"
+
+
+#include "station.hpp"
+#include "station_view.hpp"
+#include "work_view.hpp"
+#include "campaign.hpp"
+#include "campaign_view.hpp"
+#include "story_view.hpp"
+#include "ending_view.hpp"
+#include "music.hpp"
+#include "shop.hpp"
+#include "shop_view.hpp"
+#include "chart.hpp"
+#include "chart_view.hpp"
+
+#include "voyage_flow.hpp"
+#include "voyage_view.hpp"
+#include "startup_view.hpp"
+
+decltype(arduboy) arduboy;
+
+static game::State s_state;
+static world::FxTables s_tables;
+static world::TileCache s_cache;
+
+// The screen tag exists whenever more than one screen can be reached. With
+// stations, chart and multi-hull all off the pilot frame is the only path,
+// matching the pre-feature image exactly.
+enum class Screen : uint8_t {
+    Title,
+    Pilot,
+    Pause,
+    Station,
+    Work,
+    Story,
+    Ending,
+    Shop,
+    Chart,
+    SaveFailed,
+};
+
+static Screen s_screen = Screen::Title;
+
+// The station row byte is screen-owned: station/shop use it for row selection.
+// Every station and shop frame restores a valid row before drawing, so there is
+// no extra selection state.
+static uint8_t s_stationRow = station::kFirstRow;
+
+// Mutually exclusive screen transients share one row byte: only one of WORK,
+// pause and save-failure can be active at a time. The station/shop row stays
+// separate because a failed shop save resumes the same item row.
+union UiRow {
+    uint8_t work;
+    uint8_t pause;
+    uint8_t save;
+};
+static UiRow s_uiRow;
+union UiAux {
+    uint8_t endingCard;
+};
+static UiAux s_uiAux = {0};
+
+// New restoration beat awaiting its card. bss zero is kCardNone; the bit is
+// set only by the dock transition and cleared by the card's advance edge.
+static uint8_t s_pendingStory;
+
+// Save integration state. Writes are synchronous transitions; while the save
+// failure frame is showing the world is frozen and departure input is ignored.
+enum SaveResume : uint8_t {
+    kSaveResumeStation,
+    kSaveResumeShop,
+    kSaveResumePilot,
+};
+
+static voyage_flow::BootStatus s_bootStatus;
+static voyage_view::TitleMode s_titleMode = voyage_view::kTitleMenu;
+static uint8_t s_titleRow = voyage_view::kTitleNewVoyage;
+static bool s_voyageDirty = false;
+static SaveResume s_saveResume = kSaveResumeStation;
+static bool s_pauseConfirm = false;
+static bool s_abandonConfirm = false;
+static uint8_t s_savedNoticeTicks = 0;
+
+
+// Static screens own a mutating buffer: they are composed once on entry and
+// again only when an input edge can change what is on screen. s_present is
+// cleared on idle frames, so the loop omits the OLED transaction too; the
+// SSD1306 keeps the last image and the buffer is already clear from the
+// previous display.
+static bool s_present = true;
+
+// One button-edge snapshot per frame. Every screen consumes fresh edges only.
+static uint8_t s_just = 0;
+
+static inline bool just(uint8_t mask) {
+    return (s_just & mask) != 0;
+}
+
+// Exact justPressed(mask) semantics for multi-button chord/guard masks: all
+// masked buttons were up last frame and at least one is down now.
+static inline bool justChord(uint8_t mask) {
+    return (Arduboy2Base::previousButtonState & mask) == 0 && (Arduboy2Base::currentButtonState & mask) != 0;
+}
+
+
+static chart::State s_chart;
+
+static void drawVoyageNotice(uint24_t label) {
+    // The HUD hint plate is already black; reuse its row for the brief notice.
+    text::at(3, 56);
+    text::print(label);
+}
+
+static void drawPilot() {
+    const cave::Camera camera = pilot_view::cameraForState(s_state);
+    view::frame(s_state, camera, s_cache, s_tables);
+    hud::draw(s_state);
+    uint24_t notice = 0;
+    if (s_savedNoticeTicks != 0)
+        notice = txt_saved_berth;
+    else if (s_voyageDirty && s_state.discoveryTicks != 0)
+        notice = txt_unsaved_find;
+    if (notice)
+        drawVoyageNotice(notice);
+}
+
+// One station-board entry: shared screen tag, row and draw sequence.
+static void showStationBoard(uint8_t row) {
+    s_stationRow = row;
+    s_screen = Screen::Station;
+    station_view::draw(s_state, s_stationRow);
+}
+
+static void showPilot() {
+    music::resume();
+    s_screen = Screen::Pilot;
+    s_stationRow = station::kFirstRow;
+    drawPilot();
+}
+
+static void showStation() {
+    s_savedNoticeTicks = 0;
+    uint8_t cue = music_logic::kHarbor;
+    if (s_state.docked >= 3) {
+        if (s_state.docked == 3) {
+            cue = campaign::hasMilestone(s_state, campaign::kMilestoneBeacon) ? music_logic::kTidepool : music_logic::kAbyssal;
+        } else {
+            cue = music_logic::kTidepool;
+        }
+    }
+    music::overrideCue(cue);
+    music::resume();
+    showStationBoard(station::initialRow(s_state));
+}
+
+// One boot/restart path. The setup call owns the full reset.
+static void resetRun() {
+    game::resetWorld(s_state);
+    chart::reset(s_chart);
+    chart::revealInitial(s_chart, s_state);
+    s_pendingStory = story_view::kCardNone;
+}
+
+
+// One checkpoint transaction. Storage touches only the cart save partition;
+// the caller owns the UI decision after the result. The write is synchronous,
+// and music is paused first, so no world step, chart read, audio refill or
+// departure input can run during an erase/page program.
+static voyage_save::SaveResult saveVoyageNow() {
+    voyage_save::FxStorage storage;
+    const music_logic::PauseToken musicToken = music::pauseForTransaction();
+    const voyage_save::SaveResult result = voyage_flow::saveCheckpoint(s_state
+                                                                       ,
+                                                                       s_chart
+                                                                       ,
+                                                                       storage);
+    music::resumeAfterTransaction(musicToken);
+    return result;
+}
+
+static void beginSaveFailure(SaveResume resume) {
+    music::pause();
+    s_saveResume = resume;
+    s_uiRow.save = 0;
+    s_voyageDirty = true;
+    s_screen = Screen::SaveFailed;
+    voyage_view::drawSaveFailed(0);
+}
+
+// Report SAVED only after read-back validation. A failed write keeps the live
+// state and the previous checkpoint intact, then freezes on RETRY/CONTINUE
+// UNSAVED. No caller may show a success notice before this returns true.
+static bool requestSave(SaveResume resume) {
+    if (saveVoyageNow() == voyage_save::kSaved) {
+        s_voyageDirty = false;
+        return true;
+    }
+    beginSaveFailure(resume);
+    return false;
+}
+
+// HOME is paid and committed by the normal dock checkpoint before any card is
+// shown. The ending-presented flag is separate: cards can be replayed from
+// Tidewall WORK, and a reload with HOME complete but ending still zero resumes
+// the cards without paying again.
+static void drawEnding() {
+    ending_view::draw(s_uiAux.endingCard, s_state);
+}
+
+// A restoration card is shown after the successful dock checkpoint and before
+// the station board. A or B advances; no save is needed because the milestone
+// is already committed and the card is not persistent story state.
+static void beginStory() {
+    s_screen = Screen::Story;
+    story_view::draw(s_pendingStory);
+}
+
+static void updateStory() {
+    if (!justChord(A_BUTTON | B_BUTTON)) {
+        s_present = false;
+        return;
+    }
+    s_pendingStory = story_view::kCardNone;
+    showStation();
+}
+
+static bool endingPending() {
+    return s_state.ending == 0 && campaign::missionCompleted(s_state, campaign::kHome);
+}
+
+static void beginEnding() {
+    music::overrideCue(music_logic::kTidepool);
+    music::resume();
+    s_uiAux.endingCard = 0;
+    s_screen = Screen::Ending;
+    drawEnding();
+}
+
+static void finishEnding() {
+    if (s_state.ending == 0) {
+        campaign::markEndingPresented(s_state);
+        if (!requestSave(kSaveResumeStation))
+            return;
+    }
+    showStation();
+}
+
+static void updateEnding() {
+    if (!justChord(A_BUTTON | B_BUTTON)) {
+        s_present = false;
+        return;
+    }
+    const uint8_t next = ending_view::nextCard(s_uiAux.endingCard);
+    if (next >= ending_view::kCardCount) {
+        finishEnding();
+        return;
+    }
+    s_uiAux.endingCard = next;
+    drawEnding();
+}
+
+static void finishSaveResume() {
+    switch (s_saveResume) {
+    case kSaveResumePilot:
+        if (s_state.docked >= 0)
+            station::undock(s_state);
+        showPilot();
+        return;
+    case kSaveResumeShop:
+        music::resume();
+        s_screen = Screen::Shop;
+        if (s_stationRow >= shop::kItemCount)
+            s_stationRow = shop::kFirstItem;
+        shop_view::draw(s_state, s_stationRow);
+        return;
+    default:
+        if (endingPending()) {
+            beginEnding();
+            return;
+        }
+        if (s_pendingStory != story_view::kCardNone) {
+            beginStory();
+            return;
+        }
+        showStation();
+        return;
+    }
+}
+
+static void drawTitleScreen() {
+    music::overrideCue(music_logic::kHarbor);
+    music::resume();
+    s_screen = Screen::Title;
+    const uint8_t hullClass = s_state.hullClass;
+    voyage_view::drawTitle(s_bootStatus, s_titleRow, hullClass, s_titleMode);
+}
+
+static void refreshBootStatus() {
+    voyage_save::FxStorage storage;
+    s_bootStatus = voyage_flow::inspectBoot(storage);
+    s_titleRow = s_bootStatus.hasValid ? voyage_view::kTitleContinue : voyage_view::kTitleNewVoyage;
+    s_titleMode = voyage_view::kTitleMenu;
+}
+
+static void startNewVoyage() {
+    voyage_save::FxStorage storage;
+    const music_logic::PauseToken musicToken = music::pauseForTransaction();
+    const voyage_save::SaveResult result = voyage_flow::startNewVoyage(s_state
+                                                                       ,
+                                                                       s_chart
+                                                                       ,
+                                                                       storage);
+    music::resumeAfterTransaction(musicToken);
+    if (result == voyage_save::kSaved) {
+        // newVoyage() persisted the spawn reveal in the first checkpoint.
+        s_voyageDirty = false;
+        showStation();
+    } else {
+        beginSaveFailure(kSaveResumeStation);
+    }
+}
+
+static void continueVoyage() {
+    voyage_save::FxStorage storage;
+    const music_logic::PauseToken musicToken = music::pauseForTransaction();
+    const voyage_save::LoadResult result = voyage_flow::loadCheckpoint(s_state
+                                                                       ,
+                                                                       s_chart
+                                                                       ,
+                                                                       storage);
+    music::resumeAfterTransaction(musicToken);
+    if (result != voyage_save::kLoaded) {
+        refreshBootStatus();
+        drawTitleScreen();
+        return;
+    }
+    s_voyageDirty = false;
+    // A reload between the committed HOME delivery and its cards resumes the
+    // ending. Payment and the HOME milestone are already in the checkpoint.
+    if (endingPending()) {
+        beginEnding();
+        return;
+    }
+    showStation();
+}
+
+// Free rescue recovery. The complete checkpoint is restored first, then the
+// rescue count is committed before the station board resumes. A failed commit
+// keeps the restored state live and asks honestly.
+static void performRecovery() {
+    voyage_save::FxStorage storage;
+    const music_logic::PauseToken musicToken = music::pauseForTransaction();
+    const voyage_flow::Recovery result = voyage_flow::recoverCheckpoint(s_state
+                                                                        ,
+                                                                        s_chart
+                                                                        ,
+                                                                        storage);
+    music::resumeAfterTransaction(musicToken);
+    if (result.load != voyage_save::kLoaded) {
+        refreshBootStatus();
+        drawTitleScreen();
+        return;
+    }
+    if (result.save == voyage_save::kSaved) {
+        s_voyageDirty = false;
+        if (endingPending()) {
+            beginEnding();
+            return;
+        }
+        showStation();
+    } else {
+        // The ending stays pending in the restored state. RETRY re-enters
+        // finishSaveResume(), which shows the ending only after the commit
+        // succeeds.
+        beginSaveFailure(kSaveResumeStation);
+    }
+}
+
+// Paused/save-failure frames deliberately draw no world and read no cart: the
+// buffer is blank after the previous FX::display(CLEAR_BUFFER), so one short
+// text line is enough at 128x64.
+static void drawPause() {
+    music::pause();
+    if (s_pauseConfirm)
+        voyage_view::drawRescueConfirm();
+    else
+        voyage_view::drawPauseRescue(s_uiRow.pause
+                                     ,
+                                     music::enabled()
+        );
+}
+
+// Title with CONTINUE/NEW VOYAGE. No world step and no cart reads. CONTINUE is
+// only selectable for a valid checkpoint; replacing a valid checkpoint asks for
+// confirmation. Blank, corrupt and incompatible partitions start a clean New
+// Voyage immediately. A new voyage always starts with an empty chart; no legacy
+// chart prompt or import exists. Bootloader entry is the library's DOWN check at
+// power-on only; the title has no loader row.
+static void updateTitle() {
+    if (s_titleMode == voyage_view::kTitleConfirmReplace) {
+        if (just(A_BUTTON)) {
+            s_titleMode = voyage_view::kTitleMenu;
+            startNewVoyage();
+            return;
+        }
+        if (just(B_BUTTON)) {
+            s_titleMode = voyage_view::kTitleMenu;
+            drawTitleScreen();
+            return;
+        }
+        s_present = false;
+        return;
+    }
+
+    roster::HullClass hull = roster::sanitize(static_cast<roster::HullClass>(s_state.hullClass));
+    if (just(LEFT_BUTTON))
+        hull = roster::previous(hull);
+    if (just(RIGHT_BUTTON))
+        hull = roster::next(hull);
+    if (just(B_BUTTON))
+        hull = roster::kDefault;
+    s_state.hullClass = static_cast<uint8_t>(hull);
+
+    if (just(UP_BUTTON))
+        s_titleRow = voyage_view::previousRow(s_titleRow, s_bootStatus);
+    if (just(DOWN_BUTTON))
+        s_titleRow = voyage_view::nextRow(s_titleRow, s_bootStatus);
+
+    if (just(A_BUTTON)) {
+        if (s_titleRow == voyage_view::kTitleContinue && s_bootStatus.hasValid) {
+            continueVoyage();
+            return;
+        }
+        if (s_bootStatus.needsReplaceConfirm())
+            s_titleMode = voyage_view::kTitleConfirmReplace;
+        else {
+            startNewVoyage();
+            return;
+        }
+    }
+
+    drawTitleScreen();
+}
+
+// The chart is a paused world, not a paused soundtrack: cart water reads happen
+// here, before the single display transaction, and no world step runs. Music
+// keeps its current flight cue and the loop's service hooks refill the stream;
+// chart water bursts service the ring between reads.
+static void drawChart() {
+    // The frame counter is the blink phase: no extra state, and a map redraws
+    // on blink changes from the frame number rather than the frozen
+    // simulation clock.
+    chart_view::draw(Arduboy2Base::sBuffer, s_chart, s_state, s_tables, static_cast<uint8_t>(Arduboy2Base::frameCount));
+}
+
+// Pause frame: no world step, no air/ballast drain, no job clock, and no cart
+// reads. With voyage saving the pause menu offers RESUME or a confirmed free
+// rescue; otherwise A or B resumes on the frozen pilot frame without stepping.
+static void updatePause() {
+    if (s_pauseConfirm) {
+        if (just(A_BUTTON)) {
+            s_pauseConfirm = false;
+            performRecovery();
+            return;
+        }
+        if (just(B_BUTTON)) {
+            s_pauseConfirm = false;
+            drawPause();
+            return;
+        }
+        s_present = false;
+        return;
+    }
+
+    if (just(UP_BUTTON) || just(DOWN_BUTTON)) {
+        s_uiRow.pause = static_cast<uint8_t>(s_uiRow.pause + 1);
+        if (s_uiRow.pause >= 3)
+            s_uiRow.pause = 0;
+        drawPause();
+        return;
+    }
+
+    if (just(A_BUTTON)) {
+        if (s_uiRow.pause == 0) {
+            music::resume();
+            s_screen = Screen::Pilot;
+            drawPilot();
+            return;
+        }
+        if (s_uiRow.pause == 2) {
+            music::toggleEnabled();
+            drawPause();
+            return;
+        }
+        s_pauseConfirm = true;
+        voyage_view::drawRescueConfirm();
+        return;
+    }
+    if (just(B_BUTTON)) {
+        showPilot();
+        return;
+    }
+    s_present = false;
+}
+
+// SAVE FAILED freezes the world. RETRY re-runs the same checkpoint transaction;
+// CONTINUE UNSAVED resumes the already-applied live state and keeps it dirty,
+// so the HUD/title never claim it is safely stored.
+static void updateSaveFailed() {
+    if (just(UP_BUTTON) || just(DOWN_BUTTON)) {
+        s_uiRow.save = s_uiRow.save == 0 ? 1 : 0;
+        voyage_view::drawSaveFailed(s_uiRow.save);
+        return;
+    }
+    if (just(A_BUTTON)) {
+        if (s_uiRow.save == 0) {
+            if (saveVoyageNow() == voyage_save::kSaved) {
+                s_voyageDirty = false;
+                finishSaveResume();
+            } else {
+                voyage_view::drawSaveFailed(s_uiRow.save);
+            }
+        } else {
+            s_voyageDirty = true;
+            finishSaveResume();
+        }
+        return;
+    }
+    s_present = false;
+}
+
+// Flight frame: step once, then either redraw the cave or switch to the
+// station board on the frame that docked.
+static void updateFlight() {
+    if (s_savedNoticeTicks != 0)
+        --s_savedNoticeTicks;
+    // A+B is the free-flight pause gesture. Require fresh edges: a held chord
+    // must not re-enter Pause after a resume or station transition.
+    if (pause::resolve(false, just(A_BUTTON), just(B_BUTTON)) == pause::kEnter) {
+        s_screen = Screen::Pause;
+        s_uiRow.pause = 0;
+        s_pauseConfirm = false;
+        drawPause();
+        return;
+    }
+    // B only opens the chart in free flight. Consume the edge before sampling
+    // flight input so travel, air, and ballast do not tick on that frame.
+    if (just(B_BUTTON)) {
+        s_screen = Screen::Chart;
+        drawChart();
+        return;
+    }
+
+    music::updateFlight(s_state);
+    music::resume();
+
+    // D-pad only: left/right thrust, up blows ballast (rise), down floods
+    // (sink). A/B stay free for station actions once docked.
+    const uint8_t held = Arduboy2Base::currentButtonState;
+    const game::Input input{static_cast<bool>(held & UP_BUTTON), static_cast<bool>(held & DOWN_BUTTON), static_cast<bool>(held & LEFT_BUTTON), static_cast<bool>(held & RIGHT_BUTTON)};
+
+    const uint8_t beforeCampaign = s_state.campaign;
+    const bool docked = station::stepFlight(s_state, input, s_tables, &s_cache);
+    // Coarse reveal rides flight ticks, including the step that docked.
+    chart::revealOnStep(s_chart, s_state);
+    if (docked) {
+        s_stationRow = station::initialRow(s_state);
+        // Remember the one-shot beat before the dock checkpoint. If the save
+        // fails, the pending card resumes only after RETRY succeeds or the
+        // player explicitly continues unsaved.
+        s_pendingStory = story_view::cardForNewMilestone(beforeCampaign, s_state.campaign);
+        // Delivery/repair/service are resolved inside the dock step. Commit
+        // that complete post-delivery checkpoint before any board celebration
+        // or further input. A failed write stays frozen on the save prompt.
+        if (!requestSave(kSaveResumeStation))
+            return;
+        if (endingPending()) {
+            beginEnding();
+            return;
+        }
+        if (s_pendingStory != story_view::kCardNone) {
+            beginStory();
+            return;
+        }
+        showStation();
+        return;
+    }
+
+    drawPilot();
+}
+
+// Chart frame: no world step, so travel time/air/ballast/jobClock are frozen
+// and D-pad/A are contained. B closes. The destination X blinks from the
+// Arduboy frame counter because game::State.ticks cannot advance here.
+static void updateChart() {
+    if (just(B_BUTTON)) {
+        // A survey WORK row opens the chart while docked; return to the
+        // station board rather than dropping the pilot into the world.
+        if (s_state.docked >= 0) {
+            showStationBoard(station::initialRow(s_state));
+            return;
+        }
+        showPilot();
+        return;
+    }
+
+    if (chart_view::needsRedraw(s_state, static_cast<uint8_t>(Arduboy2Base::frameCount)))
+        drawChart();
+    else
+        s_present = false;
+}
+
+// Departure is a save boundary only when the live state is dirty (for example
+// after CONTINUE UNSAVED on an earlier failed write). Save while still docked:
+// a checkpoint is never midwater. A failed write freezes on the prompt instead
+// of leaving the berth.
+static void leaveStation() {
+    if (s_voyageDirty && !requestSave(kSaveResumePilot))
+        return;
+    if (station::undock(s_state)) {
+        s_savedNoticeTicks = 90;
+        showPilot();
+    }
+}
+
+static void drawWork() {
+    work_view::draw(s_state, s_uiRow.work);
+}
+
+// Single WORK board: eligible restoration rows come first, then the one
+// repeatable freight row. A accepts the selected row directly; the selected
+// job auto-loads its four cargo units and returns to the station board, where
+// UNDOCK/B starts travel. B returns without accepting.
+static void updateWork() {
+    if (!justChord(UP_BUTTON | DOWN_BUTTON | A_BUTTON | B_BUTTON)) {
+        s_present = false;
+        return;
+    }
+
+    if (just(B_BUTTON)) {
+        showStationBoard(station::initialRow(s_state));
+        return;
+    }
+
+    if (game::hasActiveJob(s_state)) {
+        drawWork();
+        return;
+    }
+
+    const uint8_t count = work_view::rowCount(s_state);
+    if (count != 0 && (just(UP_BUTTON) || just(DOWN_BUTTON))) {
+        if (just(UP_BUTTON))
+            s_uiRow.work = static_cast<uint8_t>(s_uiRow.work == 0 ? count - 1 : s_uiRow.work - 1);
+        else
+            s_uiRow.work = static_cast<uint8_t>(s_uiRow.work + 1 >= count ? 0 : s_uiRow.work + 1);
+        drawWork();
+        return;
+    }
+
+    if (just(A_BUTTON) && count != 0) {
+        if (s_uiRow.work >= count)
+            s_uiRow.work = 0;
+        const work_view::Row row = work_view::rowAt(s_state, s_uiRow.work);
+        if (row.kind == work_view::kRowEnding) {
+            beginEnding();
+            return;
+        }
+        // Survey rows are non-cargo leads: show the chart with its blinking
+        // survey targets instead of loading a hold.
+        if (row.kind == work_view::kRowStory && (row.mission == campaign::kPumpSurvey || row.mission == campaign::kLiftSurvey)) {
+            s_screen = Screen::Chart;
+            drawChart();
+            return;
+        }
+        if (work_view::accept(s_state, row)) {
+            s_stationRow = station::initialRow(s_state);
+            s_screen = Screen::Station;
+            if (!requestSave(kSaveResumeStation))
+                return;
+            station_view::draw(s_state, s_stationRow);
+            return;
+        }
+    }
+    drawWork();
+}
+
+// Station frame: no world step, so travel time, air, and ballast are frozen.
+// D-pad moves the selection, A confirms, B always undocks.
+static void updateStation() {
+    if (s_abandonConfirm) {
+        if (just(A_BUTTON)) {
+            s_abandonConfirm = false;
+            station::activate(station::kAbandonRow, s_state);
+            s_stationRow = station::initialRow(s_state);
+            if (!requestSave(kSaveResumeStation))
+                return;
+            station_view::draw(s_state, s_stationRow);
+            return;
+        }
+        if (just(B_BUTTON)) {
+            s_abandonConfirm = false;
+            station_view::draw(s_state, s_stationRow);
+            return;
+        }
+        s_present = false;
+        return;
+    }
+
+    if (!justChord(UP_BUTTON | DOWN_BUTTON | A_BUTTON | B_BUTTON)) {
+        s_present = false;
+        return;
+    }
+
+    if (just(UP_BUTTON))
+        s_stationRow = station::selectPrevious(s_stationRow, s_state);
+    if (just(DOWN_BUTTON))
+        s_stationRow = station::selectNext(s_stationRow, s_state);
+
+    if (just(A_BUTTON)) {
+        if (station::rowKind(s_stationRow, s_state) == station::kRowUndock) {
+            leaveStation();
+            return;
+        }
+        // ABANDON is never the initial row and needs its own confirmation.
+        if (station::rowKind(s_stationRow, s_state) == station::kRowAbandon) {
+            s_abandonConfirm = true;
+            voyage_view::drawAbandonConfirm();
+            return;
+        }
+        const station::Action action = station::activate(s_stationRow, s_state);
+        if (action == station::kActionUndocked) {
+            s_screen = Screen::Pilot;
+            s_stationRow = station::kFirstRow;
+        }
+        else if (action == station::kActionWork) {
+            s_uiRow.work = 0;
+            s_screen = Screen::Work;
+            drawWork();
+            return;
+        }
+        else if (action == station::kActionShop) {
+            // The shop borrows s_stationRow as its 0..2 item selection.
+            s_screen = Screen::Shop;
+            s_stationRow = shop::kFirstItem;
+            shop_view::draw(s_state, s_stationRow);
+            return;
+        }
+        else if (action == station::kActionAbandoned) {
+            // The board shape changed: summary -> offers.
+            s_stationRow = station::initialRow(s_state);
+            if (!requestSave(kSaveResumeStation))
+                return;
+        } else if (action == station::kActionAccepted) {
+            // Acceptance auto-loads the contract hold; the boat stays docked
+            // until the player confirms UNDOCK or presses B.
+            s_stationRow = station::initialRow(s_state);
+            if (!requestSave(kSaveResumeStation))
+                return;
+        }
+    }
+
+    if (just(B_BUTTON)) {
+        leaveStation();
+        return;
+    }
+
+    if (s_screen == Screen::Station) {
+        station_view::draw(s_state, s_stationRow);
+        return;
+    }
+
+    // A or B undocked this frame: redraw the frozen pilot view without
+    // stepping, so the first visible frame after undock is the station berth.
+    drawPilot();
+}
+
+// Shop frame: no world step and no cart reads. D-pad selects an item, A buys
+// through the pure transaction, and B backs to the station board. The selected
+// row is the reused station row byte; the shop has no other static state.
+static void updateShop() {
+    if (!justChord(UP_BUTTON | DOWN_BUTTON | A_BUTTON | B_BUTTON)) {
+        s_present = false;
+        return;
+    }
+
+    if (just(UP_BUTTON))
+        s_stationRow = shop::selectPrevious(s_stationRow);
+    if (just(DOWN_BUTTON))
+        s_stationRow = shop::selectNext(s_stationRow);
+
+    if (just(A_BUTTON)) {
+        if (shop::buy(s_state, static_cast<shop::Item>(s_stationRow)) == shop::kBought) {
+            // Only a successful purchase is a save boundary. A failed write
+            // stays frozen on RETRY / CONTINUE UNSAVED.
+            if (!requestSave(kSaveResumeShop))
+                return;
+        }
+    }
+
+    if (just(B_BUTTON)) {
+        showStationBoard(station::shopRow(s_state));
+        return;
+    }
+
+    shop_view::draw(s_state, s_stationRow);
+}
+
+static void applicationBoot() {
+    arduboy.boot();
+    arduboy.audio.begin();
+    arduboy.setFrameRate(60);
+    voyage_save::FxStorage::begin();
+    FX::setCursorRange(0, 32767);
+    startup_view::show();
+    text::begin();
+    music::begin();
+
+    resetRun();
+
+
+    // Never read voyage storage in developer mode. Normal boot inspects once so
+    // the title can distinguish blank, corrupt and incompatible records before
+    // offering CONTINUE or NEW VOYAGE; the checkpoint itself loads only after
+    // an explicit CONTINUE.
+    refreshBootStatus();
+}

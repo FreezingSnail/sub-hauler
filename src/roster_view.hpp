@@ -2,7 +2,6 @@
 
 #include <stdint.h>
 
-#include "features.hpp"
 #include "roster.hpp"
 
 // Hull-selection title screen, 128x64. The layout is pure and host-checkable;
@@ -15,7 +14,6 @@
 //
 // Only compiled when MULTI_HULL=1. Single-hull builds boot straight to Pilot
 // and compile out the MINNOW/LEVIATHAN label and art calls.
-#if SH_FEATURE_MULTI_HULL
 
 #if defined(__AVR__)
 #include "common.hpp"
@@ -32,25 +30,9 @@ constexpr uint8_t kNameY = 6;
 constexpr uint8_t kArtLeft = 51;
 constexpr uint8_t kArtTop = 18;
 constexpr uint8_t kStatY = 34;
-constexpr uint8_t kLoaderY = 44;
-constexpr uint8_t kLoaderChars = 6;    // "LOADER"
-constexpr uint8_t kHintChars = 20;     // "UP/DN A OK  L/R HULL"
+constexpr uint8_t kHintChars = 16;     // "D-PAD HULL  A GO"
 constexpr uint8_t kHintY = 54;
 constexpr uint8_t kRowInvertH = 8;
-
-enum TitleRow : uint8_t {
-    kTitleHull,
-    kTitleLoader,
-    kTitleRowCount,
-};
-
-constexpr uint8_t nextRow(uint8_t row) {
-    return row == kTitleHull ? kTitleLoader : kTitleHull;
-}
-
-constexpr uint8_t previousRow(uint8_t row) {
-    return nextRow(row);
-}
 
 constexpr uint8_t centerX(uint8_t chars) {
     return static_cast<uint8_t>((kScreenW - chars * kCharW) / 2);
@@ -75,8 +57,7 @@ constexpr uint8_t statX(roster::HullClass hull) {
 
 static_assert(kNameY + 7 <= kArtTop, "name clears the art");
 static_assert(kArtTop + 8 <= kStatY, "art clears the stat line");
-static_assert(kStatY + 7 <= kLoaderY - 1, "stat line clears the loader row");
-static_assert(kLoaderY + 7 <= kHintY, "loader row clears the hint");
+static_assert(kStatY + 7 <= kHintY, "stat line clears the hint");
 static_assert(kHintY + 7 <= kScreenH, "hint stays on screen");
 
 static_assert(kArtLeft >= 1 && kArtLeft + 26 <= kScreenW - 1, "art footprint is inside the screen");
@@ -91,7 +72,7 @@ inline uint24_t nameFor(roster::HullClass hull) {
     return txt_hauler;
 }
 
-inline void draw(uint8_t hullClass, uint8_t selected = kTitleHull) {
+inline void draw(uint8_t hullClass) {
     const roster::HullClass hull = roster::sanitize(static_cast<roster::HullClass>(hullClass));
 
     text::normal();
@@ -100,32 +81,17 @@ inline void draw(uint8_t hullClass, uint8_t selected = kTitleHull) {
 
     pilot_view::drawAt(Arduboy2Base::sBuffer, kArtLeft, kArtTop, false, false, hull);
 
-    if (selected == kTitleHull) {
-        arduboy.fillRect(0, kStatY - 1, kScreenW, kRowInvertH, WHITE);
-        text::inverted();
-    } else {
-        text::normal();
-    }
+    arduboy.fillRect(0, kStatY - 1, kScreenW, kRowInvertH, WHITE);
+    text::inverted();
     text::at(statX(hull), kStatY);
     text::print(txt_len);
     text::number(roster::length(hull));
 
-    if (selected == kTitleLoader) {
-        arduboy.fillRect(0, kLoaderY - 1, kScreenW, kRowInvertH, WHITE);
-        text::inverted();
-    } else {
-        text::normal();
-    }
-    text::at(centerX(kLoaderChars), kLoaderY);
-    text::print(txt_loader);
-
     text::normal();
     text::at(centerX(kHintChars), kHintY);
-    text::print(txt_roster_load_hint);
+    text::print(txt_title_hint);
 }
 
 #endif   // __AVR__
 
 }   // namespace roster_view
-
-#endif   // SH_FEATURE_MULTI_HULL

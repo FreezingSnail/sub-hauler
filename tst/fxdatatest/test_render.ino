@@ -1,5 +1,5 @@
-// Repeatable AVR render timings. Run with make fxtest FXTEST_ONLY=test_render,
-// optionally DEV_MODE=1 to include the developer banner from the profiler.
+// Repeatable AVR render timings. Run with make fxtest FXTEST_ONLY=test_render.
+// The fixed build has no developer banner or mode override.
 // Times include interrupts, actual FX reads and OLED presentation; serial
 // printing and checksum work are outside the measured sections.
 #include <Arduboy2.h>
@@ -55,10 +55,8 @@ static bool kernelCheck() {
 static bool hudNoControlsCheck() {
     game::State state;
     game::resetWorld(state);
-#if SH_FEATURE_EXPLORATION
     state.discoveryTicks = 0;
     state.contactId = exploration::kNone;
-#endif
     uint8_t expectedPage6[128];
     uint8_t expectedPage7[128];
     bool ok = true;
@@ -90,7 +88,7 @@ static bool hudNoControlsCheck() {
 static bool hudNoticeCheck() {
     static const uint24_t kNoticeText[] = {
         txt_survey_recorded, txt_found_cutter, txt_found_seal, txt_found_thruster,
-        txt_found_credits, txt_found_hull, txt_found_lens, txt_survey_hint,
+        txt_found_credits, txt_found_lens, txt_survey_hint,
         txt_salvage_hint, txt_cut_hint, txt_need_seal, txt_need_thruster,
         txt_need_cutter, txt_repair_pump, txt_repair_lift,
     };
@@ -176,9 +174,7 @@ void setup() {
     FX::setCursorRange(0, 32767);
     text::begin();
     bool ok = kernelCheck();
-#if !SH_DEV_MODE
     ok = hudNoControlsCheck() && ok;
-#endif
     ok = hudNoticeCheck() && ok;
     for (uint8_t cold = 0; cold < 2; ++cold) {
         ok = sample(0, world::SPAWN_SUB_X, world::SPAWN_SUB_Y, cold) && ok;
@@ -186,14 +182,12 @@ void setup() {
         // Fractional origin: exercises the vertical page shift and the last
         // page's bounded upper-row chunks in the device render path.
         ok = sample(6, static_cast<int16_t>(world::SPAWN_SUB_X + 3), static_cast<int16_t>(world::SPAWN_SUB_Y + 5), cold) && ok;
-#if SH_FEATURE_EXPLORATION
         ok = sample(2, exploration_data::ROOM_F_X, exploration_data::ROOM_F_Y, cold) && ok;
         const auto gate = exploration_data::gate(exploration_data::GATE_E_V);
         ok = sample(3, gate.x + gate.w / 2, gate.y + gate.h / 2, cold) && ok;
         const auto find = exploration_data::pickup(exploration_data::PICKUP_W);
         ok = sample(4, find.x, find.y, cold) && ok;
         ok = sample(5, exploration_data::DOCK_D_X, exploration_data::DOCK_D_Y, cold) && ok;
-#endif
     }
     Serial.println(ok ? F("P") : F("F"));
 }

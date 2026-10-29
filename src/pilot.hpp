@@ -2,23 +2,10 @@
 
 #include "game.hpp"
 #include "world.hpp"
-#if SH_FEATURE_EXPLORATION
 #include "exploration.hpp"
-#endif
 
-#if SH_FEATURE_HULL_DAMAGE
-#include "damage.hpp"
-#endif
-
-#if SH_FEATURE_CURRENTS
 #include "currents.hpp"
-#endif
-#if SH_FEATURE_MINES
-#include "hazards.hpp"
-#endif
-#if SH_FEATURE_PARTICLES
 #include "particles.hpp"
-#endif
 
 // World-aware pilot rules: the pure submarine from game.hpp, moved through the
 // baked cave with axis-separated collision and an integer follow camera.
@@ -201,7 +188,6 @@ inline void resetWorld(State &state) {
 }
 
 template <typename Reader> inline bool hullHits(Reader &reader, const world::TileCache *cache, int16_t x, int16_t y, State *state = nullptr) {
-#if SH_FEATURE_EXPLORATION
     if (state) {
         const uint8_t id = exploration::blockingGate(*state, x, y);
         if (id != exploration::kNone) {
@@ -210,10 +196,6 @@ template <typename Reader> inline bool hullHits(Reader &reader, const world::Til
             return true;
         }
     }
-#endif
-#if !SH_FEATURE_EXPLORATION
-    (void)state;
-#endif
     const int16_t left = static_cast<int16_t>(x - kHullHalfW);
     const int16_t top = static_cast<int16_t>(y - kHullHalfH);
     if (cache)
@@ -226,19 +208,17 @@ template <typename Reader> inline bool hullHits(Reader &reader, const world::Til
 // velocity cannot tunnel through a wall, even though expected top speed only
 // moves half a pixel per tick. A blocked axis zeroes its velocity and Q12
 // remainder so pressure does not accumulate against the wall, and records the
-// impact for later damage logic. Returns true only when this call recorded a
-// blocked impact, so damage and debris stay event-scoped even though the
-// impact fields deliberately latch the last contact for presentation.
+// impact for presentation. Returns true only when this call recorded a blocked
+// impact, so debris stays event-scoped even though the impact fields
+// deliberately latch the last contact for presentation.
 template <typename Reader> inline bool moveAxis(State &state, Reader &reader, const world::TileCache *cache, bool horizontal) {
     int16_t &position = horizontal ? state.x : state.y;
     int16_t &frac = horizontal ? state.xFrac : state.yFrac;
     int16_t &velocity = horizontal ? state.vxQ8 : state.vyQ8;
 
-#if SH_FEATURE_EXPLORATION
-    // Distinguish equipment barriers from damaging rock impacts on this axis.
+    // Distinguish equipment barriers from rock impacts on this axis.
     if (state.impactAxis == 4)
         state.impactAxis = 0;
-#endif
     const int16_t from = position;
     int16_t to = position;
     int16_t toFrac = frac;
@@ -256,9 +236,7 @@ template <typename Reader> inline bool moveAxis(State &state, Reader &reader, co
             const int16_t py = horizontal ? state.y : probe;
             if (hullHits(reader, cache, px, py, &state)) {
                 state.impactSpeedQ8 = static_cast<int16_t>(velocity < 0 ? -velocity : velocity);
-#if SH_FEATURE_EXPLORATION
                 if (state.impactAxis != 4)
-#endif
                     state.impactAxis = horizontal ? 1 : 2;
                 frac = 0;
                 velocity = 0;
@@ -291,9 +269,7 @@ template <typename Reader> inline bool moveAxis(State &state, Reader &reader, co
     }
 
     state.impactSpeedQ8 = static_cast<int16_t>(velocity < 0 ? -velocity : velocity);
-#if SH_FEATURE_EXPLORATION
     if (state.impactAxis != 4)
-#endif
         state.impactAxis = horizontal ? 1 : 2;
 
     position = lastValid;
@@ -306,89 +282,30 @@ template <typename Reader> inline bool moveAxis(State &state, Reader &reader, co
 // step(); only the position advance changes, because it now resolves against
 // the cave. X moves first, then Y, matching the browser order.
 template <typename Reader> inline void stepWorld(State &state, const Input &input, Reader &reader, const world::TileCache *cache = nullptr) {
-#if SH_FEATURE_MINES
-    // A mine spark is a one-frame cue; clear it before the next step so it can
-    // never be mistaken for a wall impact. Wall-axis fields keep their
-    // historical latch and are consumed by the move that produced them.
-    hazards::clearImpact(state);
-#endif
-#if SH_FEATURE_HULL_DAMAGE || SH_FEATURE_CURRENTS || SH_FEATURE_PARTICLES || SH_FEATURE_MINES
-#if SH_FEATURE_STATIONS
     const bool freeFlight = state.docked < 0;
-#else
-    const bool freeFlight = true;
-#endif
-#endif
-#if SH_FEATURE_HULL_DAMAGE
-    // Cooldown and flash tick only in free flight; docked/chart/cargo frames
-    // never reach stepWorld in the firmware.
-    if (freeFlight)
-        damage::tick(state);
-#endif
-#if SH_FEATURE_EXPLORATION
     exploration::beginStep(state);
-#endif
     stepPhysics(state, input);
-#if SH_FEATURE_CURRENTS
     // Currents add acceleration before collision resolves, so the same
     // screen-step cannot push the hull through rock or out of the world.
     if (freeFlight)
         currents::apply(state);
-#endif
     // Resolve each axis immediately after its move. The impact fields still
-    // latch the last blocked axis for existing presentation/tests, but damage
-    // and debris are event-scoped, so an old wall field can never re-fire.
-#if SH_FEATURE_HULL_DAMAGE || SH_FEATURE_PARTICLES
+    // latch the last blocked axis for existing presentation/tests, but debris
+    // is event-scoped, so an old wall field can never re-fire.
     const bool hitX = moveAxis(state, reader, cache, true);
-#else
-    moveAxis(state, reader, cache, true);
-#endif
-#if SH_FEATURE_HULL_DAMAGE
-    if (freeFlight && hitX && state.impactAxis == 1 && game::hardWallImpact(state))
-        damage::resolveWallImpact(state);
-#endif
-#if SH_FEATURE_PARTICLES
     if (freeFlight && hitX && state.impactAxis == 1 && game::hardWallImpact(state))
         particles::spawn(state);
-#endif
-#if SH_FEATURE_HULL_DAMAGE || SH_FEATURE_PARTICLES
     const bool hitY = moveAxis(state, reader, cache, false);
-#else
-    moveAxis(state, reader, cache, false);
-#endif
-#if SH_FEATURE_HULL_DAMAGE
-    if (freeFlight && hitY && state.impactAxis == 2 && game::hardWallImpact(state))
-        damage::resolveWallImpact(state);
-#endif
-#if SH_FEATURE_PARTICLES
     if (freeFlight && hitY && state.impactAxis == 2 && game::hardWallImpact(state))
         particles::spawn(state);
-#endif
-#if SH_FEATURE_MINES
-    // Free-flight hazard pass after movement. Docked/chart/cargo screens never
-    // reach stepWorld, so they cannot consume a mine.
-    if (freeFlight) {
-        const uint8_t hit = hazards::collide(state);
-#if SH_FEATURE_PARTICLES
-        if (hit != hazards::kNoMine)
-            particles::spawn(state);
-#endif
-    }
-#endif
-#if SH_FEATURE_PARTICLES
     // Age the pool once per free-flight tick, after any spawn this tick.
     if (freeFlight)
         particles::tick(state);
-#endif
-#if SH_FEATURE_EXPLORATION
     exploration::update(state);
-#endif
     updateCamera(state);
     ++state.ticks;
-#if SH_FEATURE_CAMPAIGN
     // Flight tick for the campaign voyage clock (docked frames never step).
     tickVoyage(state);
-#endif
 }
 
 }   // namespace game

@@ -55,17 +55,21 @@ Individual `song.json` files are editable `atmlib-score` v1 sources.
 ```sh
 make gen
 make gen-check
+make gen-audio   # archival reference PCM/ADPCM evidence only
 ```
 
-The sibling `../ATMlib2FX` checkout and an Ardens checkout with the absim core
-are required. Override their locations with
-`ATMLIB2FX_ROOT=/path/to/ATMlib2FX ARDENS_ROOT=/path/to/Ardens make gen` (also
-works for the viewer). `make gen` also writes deterministic offline 8 kHz
-reference PCM/WAV files under `build/audio-reference/` and a compact
+The sibling `../ATMlib2FX` checkout is required for `make gen`. `make gen-audio`
+additionally needs an Ardens checkout with the absim core. Override their
+locations with
+`ATMLIB2FX_ROOT=/path/to/ATMlib2FX ARDENS_ROOT=/path/to/Ardens make gen-audio`
+(also works for the viewer). `make gen-audio` writes deterministic offline
+8 kHz reference PCM/WAV files under `build/audio-reference/` and a compact
 source/tool/calibration manifest at `fxdata/music/reference-manifest.json`; see
 [`tools/audio_reference/README.md`](../tools/audio_reference/README.md). The
-references are not packed into the cart.
-The exporter uses `--ring 64 --streaming-loops`. `make gen` writes compact
+references are not packed into the cart and are not part of `make run`.
+The exporter uses `--ring 64 --streaming-loops` for the generated asset
+metadata; the shipping game compiles the runtime ring at **32 B**. `make gen`
+writes compact
 streams and a source/event/stream hash manifest into `fxdata/music/`, appends
 the streams to the ordered FX layout, and stages the jukebox. Detailed
 `report.json` / `review.json` files are in `build/music/<score-id>/`.
@@ -74,16 +78,16 @@ The full game plays these cues through the production **ATMlib2FX compact
 synth** (`ATM_FX_COMPACT_RING=32`, streaming loops, all native effects), using
 the generated `sh_*` FX offsets and `music_data::sh_*_bytes` lengths from
 `src/generated/music.hpp` and servicing the foreground FX refill between
-complete SPI transactions. `MUSIC_BACKEND=stream` keeps the earlier
-ArduboyStreamFX comparison build. The
+complete SPI transactions. The
 [progression design](../docs/progression.md#music-follows-place-and-recovery)
 defines region/berth cues, pause and save behavior, and mute. Asset bytes are
 external cart storage; the measured AVR backend cost and combined image are in
 [platform.md](../docs/platform.md).
 
-`make gen` also writes raw 4-bit IMA ADPCM loops under
-[`fxdata/music/adpcm/`](adpcm/) (1,424,640 B total), a manifest, generated
-device descriptors, and decoded listening WAVs under `build/audio-adpcm/`.
+`make gen-audio` also writes raw 4-bit IMA ADPCM loops under
+[`fxdata/music/adpcm/`](../fxdata/music/adpcm/) (1,424,640 B total), a manifest,
+generated device descriptors, and decoded listening WAVs under
+`build/audio-adpcm/`.
 Those are the sampled-audio admission assets; see
 [`docs/audio-admission.md`](../docs/audio-admission.md) for the codec, player,
 metrics and timing. They are appended after every earlier FX symbol and do not

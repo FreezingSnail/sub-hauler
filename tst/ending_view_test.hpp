@@ -1,8 +1,6 @@
 #pragma once
 
-#include "../src/features.hpp"
 
-#if SH_FEATURE_CAMPAIGN
 
 #include "../src/ending_view.hpp"
 #include "../src/game.hpp"
@@ -44,12 +42,3 @@ inline void EndingViewSuite(TestRunner &runner) {
     }
 }
 
-#else
-
-inline void EndingViewSuite(TestRunner &runner) {
-    Test test("ending cards compile out with CAMPAIGN=0");
-    test.assertEqual(SH_FEATURE_CAMPAIGN, 0, "campaign off");
-    runner.add(test);
-}
-
-#endif

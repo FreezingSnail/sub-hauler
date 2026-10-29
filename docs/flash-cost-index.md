@@ -1,7 +1,8 @@
 # Program flash cost index — EEPROM-based combined playtest (2026-10-28)
 
-**Status: pre-FX-save snapshot.** This index measures the existing
-EEPROM-backed voyage-save playtest image. The user has now directed voyage
+**Status: historical pre-FX-save snapshot.** This index measures the retired
+EEPROM-backed voyage-save playtest image and its former profile selectors;
+those build options no longer exist. The user has now directed voyage
 saves to move to FX, so these numbers describe the EEPROM implementation and
 must be re-measured after the FX-save change. No FX-save build is measured
 here and no FX-save delta is estimated.

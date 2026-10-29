@@ -18,6 +18,7 @@
 #include "src/generated/hud_sprites.hpp"
 #include "src/generated/menu_sprites.hpp"
 #include "src/generated/splash_sprites.hpp"
+#include "src/generated/story_sprites.hpp"
 #include "src/generated/exploration.hpp"
 
 // First byte of fxdata/tables/world.bin: tile row 0 is inside the sealed
@@ -91,9 +92,7 @@ static_assert(panel_pause_resume == panel_pause_rescue + spriteBytes(PANEL_PAUSE
 static_assert(panel_rescue_confirm == panel_pause_resume + spriteBytes(PANEL_PAUSE_RESUME_WIDTH, PANEL_PAUSE_RESUME_HEIGHT, PANEL_PAUSE_RESUME_FRAMES, PANEL_PAUSE_RESUME_MASKED), "rescue confirmation follows the pause variants");
 static_assert(panel_save_continue == panel_rescue_confirm + spriteBytes(PANEL_RESCUE_CONFIRM_WIDTH, PANEL_RESCUE_CONFIRM_HEIGHT, PANEL_RESCUE_CONFIRM_FRAMES, PANEL_RESCUE_CONFIRM_MASKED), "save failure variants follow the confirmations");
 static_assert(panel_save_retry == panel_save_continue + spriteBytes(PANEL_SAVE_CONTINUE_WIDTH, PANEL_SAVE_CONTINUE_HEIGHT, PANEL_SAVE_CONTINUE_FRAMES, PANEL_SAVE_CONTINUE_MASKED), "save retry follows save continue");
-static_assert(panel_wreck_retry == panel_save_retry + spriteBytes(PANEL_SAVE_RETRY_WIDTH, PANEL_SAVE_RETRY_HEIGHT, PANEL_SAVE_RETRY_FRAMES, PANEL_SAVE_RETRY_MASKED), "wreck panels follow the save panels");
-static_assert(panel_wreck_title == panel_wreck_retry + spriteBytes(PANEL_WRECK_RETRY_WIDTH, PANEL_WRECK_RETRY_HEIGHT, PANEL_WRECK_RETRY_FRAMES, PANEL_WRECK_RETRY_MASKED), "wreck title follows wreck retry");
-static_assert(title_keep == panel_wreck_title + spriteBytes(PANEL_WRECK_TITLE_WIDTH, PANEL_WRECK_TITLE_HEIGHT, PANEL_WRECK_TITLE_FRAMES, PANEL_WRECK_TITLE_MASKED), "title keep follows the prompts");
+static_assert(title_keep == panel_save_retry + spriteBytes(PANEL_SAVE_RETRY_WIDTH, PANEL_SAVE_RETRY_HEIGHT, PANEL_SAVE_RETRY_FRAMES, PANEL_SAVE_RETRY_MASKED), "title keep follows the prompts");
 static_assert(title_menu == title_keep + spriteBytes(TITLE_KEEP_WIDTH, TITLE_KEEP_HEIGHT, TITLE_KEEP_FRAMES, TITLE_KEEP_MASKED), "title menu follows keep chart");
 static_assert(title_replace == title_menu + spriteBytes(TITLE_MENU_WIDTH, TITLE_MENU_HEIGHT, TITLE_MENU_FRAMES, TITLE_MENU_MASKED), "replace confirmation follows the menu sheet");
 static_assert(work_active == title_replace + spriteBytes(TITLE_REPLACE_WIDTH, TITLE_REPLACE_HEIGHT, TITLE_REPLACE_FRAMES, TITLE_REPLACE_MASKED), "work active strip follows the title sheet");
@@ -121,7 +120,11 @@ static_assert(station_hints == shop_menu + spriteBytes(SHOP_MENU_WIDTH, SHOP_MEN
 static_assert(station_menu == station_hints + spriteBytes(STATION_HINTS_WIDTH, STATION_HINTS_HEIGHT, STATION_HINTS_FRAMES, STATION_HINTS_MASKED), "station screens follow their hints");
 static_assert(startup == station_menu + spriteBytes(STATION_MENU_WIDTH, STATION_MENU_HEIGHT, STATION_MENU_FRAMES, STATION_MENU_MASKED), "startup appends after the menu screens");
 static_assert(STARTUP_FRAMES == 2 && !STARTUP_MASKED, "two opaque startup frames");
-static_assert(FX_DATA_BYTES == startup + spriteBytes(STARTUP_WIDTH, STARTUP_HEIGHT, STARTUP_FRAMES, STARTUP_MASKED), "FX image ends after startup screens");
+static_assert(story_beacon == startup + spriteBytes(STARTUP_WIDTH, STARTUP_HEIGHT, STARTUP_FRAMES, STARTUP_MASKED), "restoration cards append after startup");
+static_assert(story_first == story_beacon + spriteBytes(STORY_BEACON_WIDTH, STORY_BEACON_HEIGHT, STORY_BEACON_FRAMES, STORY_BEACON_MASKED), "first delivery follows the beacon card");
+static_assert(story_lift == story_first + spriteBytes(STORY_FIRST_WIDTH, STORY_FIRST_HEIGHT, STORY_FIRST_FRAMES, STORY_FIRST_MASKED), "lift follows the first delivery card");
+static_assert(story_pump == story_lift + spriteBytes(STORY_LIFT_WIDTH, STORY_LIFT_HEIGHT, STORY_LIFT_FRAMES, STORY_LIFT_MASKED), "pump follows the lift card");
+static_assert(FX_DATA_BYTES == txt_survey_chart_hint + sizeof("A CHART  B BACK"), "FX image ends after the chart hint");
 static_assert(FX_SAVE_BYTES == 4096, "save partition is one 4 KiB erase block");
 static_assert(FX_SAVE_PAGE == 0xFFF0, "save partition is the last 16 cart pages");
 static_assert((FX_DATA_BYTES + 255) / 256 + FX_SAVE_BYTES / 256 + FX_DATA_PAGE == 65536, "data and save partitions tile the cart image");
@@ -230,13 +233,6 @@ void setup() {
     const uint8_t bubblejetMagic = FX::readPendingUInt8();
     FX::readEnd();
     ok = ok && glassMagic == 0xC1 && waltzMagic == 0xC1 && bubblejetMagic == 0xC1;
-
-    // Loader label is permanent device coverage. The action itself is not
-    // invoked here: exitToBootloader() would leave the serial harness.
-    FX::seekData(txt_loader);
-    const uint8_t loaderFirst = FX::readPendingUInt8();
-    FX::readEnd();
-    ok = ok && loaderFirst == 'L';
 
     Serial.println(ok ? F("P") : F("F"));
 }

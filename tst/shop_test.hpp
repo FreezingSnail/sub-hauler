@@ -1,15 +1,8 @@
 #pragma once
 
-#include "../src/features.hpp"
-
-#if SH_FEATURE_SHOP
-
 #include "../src/game.hpp"
 #include "../src/shop.hpp"
 #include "../src/shop_view.hpp"
-#if SH_FEATURE_HULL_DAMAGE
-#include "../src/damage.hpp"
-#endif
 #include "test.hpp"
 
 // Pure shop transactions plus the host-checkable board layout. The device draw
@@ -28,17 +21,16 @@ inline void ShopSuite(TestRunner &runner) {
     using namespace shop_test;
 
     {
-        Test test("shop table: two items, max level 3, positive flat prices");
-        test.assertEqual(shop::kItemCount, 2, "two shop rows");
+        Test test("shop table: one item, max level 3, positive flat price");
+        test.assertEqual(shop::kItemCount, 1, "one shop row");
         test.assertEqual(shop::kMaxLevel, 3, "three upgrade levels");
         test.assertEqual(shop::priceFor(shop::kAir), 60, "air tank price");
-        test.assertEqual(shop::priceFor(shop::kHull), 70, "hull plate price");
         test.assertTrue(shop::priceFor(shop::kAir) > 0, "air is not free");
         runner.add(test);
     }
 
     {
-        Test test("purchase deducts credits and updates each level");
+        Test test("purchase deducts credits and updates the level");
         game::State state;
         dockedState(state, 500);
 
@@ -47,13 +39,6 @@ inline void ShopSuite(TestRunner &runner) {
         test.assertEqual(state.credits, 440, "air price is deducted");
         test.assertEqual(state.airLevel, 1, "air level advances");
         test.assertEqual(state.air, game::airCapacity(state), "air purchase fills the upgraded tank");
-
-        test.assertEqual(shop::buy(state, shop::kHull), shop::kBought, "hull purchase succeeds");
-        test.assertEqual(state.credits, 370, "hull price is deducted");
-        test.assertEqual(state.hullLevel, 1, "hull level advances");
-#if SH_FEATURE_HULL_DAMAGE
-        test.assertEqual(state.hull, game::hullCapacity(state), "hull purchase repairs to the upgraded max");
-#endif
         runner.add(test);
     }
 
@@ -74,15 +59,15 @@ inline void ShopSuite(TestRunner &runner) {
     {
         Test test("exact price boundary buys and leaves zero credits");
         game::State state;
-        dockedState(state, shop::priceFor(shop::kHull));
-        test.assertEqual(shop::buy(state, shop::kHull), shop::kBought, "credits exactly equal to price are enough");
+        dockedState(state, shop::priceFor(shop::kAir));
+        test.assertEqual(shop::buy(state, shop::kAir), shop::kBought, "credits exactly equal to price are enough");
         test.assertEqual(state.credits, 0, "balance reaches zero");
-        test.assertEqual(state.hullLevel, 1, "level still advances");
+        test.assertEqual(state.airLevel, 1, "level still advances");
 
         game::State shortState;
-        dockedState(shortState, shop::priceFor(shop::kHull) - 1);
-        test.assertEqual(shop::buy(shortState, shop::kHull), shop::kNoCredits, "one below the price is rejected");
-        test.assertEqual(shortState.credits, shop::priceFor(shop::kHull) - 1, "credits stay below the price");
+        dockedState(shortState, shop::priceFor(shop::kAir) - 1);
+        test.assertEqual(shop::buy(shortState, shop::kAir), shop::kNoCredits, "one below the price is rejected");
+        test.assertEqual(shortState.credits, shop::priceFor(shop::kAir) - 1, "credits stay below the price");
         runner.add(test);
     }
 
@@ -104,38 +89,25 @@ inline void ShopSuite(TestRunner &runner) {
     }
 
     {
-        Test test("air and hull capacities follow the purchased levels");
+        Test test("air capacity follows the purchased level");
         game::State state;
         game::reset(state);
         test.assertEqual(state.airLevel, 0, "reset clears air level");
-        test.assertEqual(state.hullLevel, 0, "reset clears hull level");
         test.assertEqual(game::airCapacity(state), game::kAirCapacity, "base air capacity at level 0");
-#if SH_FEATURE_HULL_DAMAGE
-        test.assertEqual(game::hullCapacity(state), game::kHullMax, "base hull capacity at level 0");
-#endif
 
         state.airLevel = 2;
         test.assertEqual(game::airCapacity(state), game::kAirCapacity + 2 * game::kAirCapacityPerLevel, "air tank adds 30 per level");
-#if SH_FEATURE_HULL_DAMAGE
-        state.hullLevel = 2;
-        test.assertEqual(game::hullCapacity(state), game::kHullMax + 2 * game::kHullCapacityPerLevel, "hull plate adds one per level");
-        state.hull = 1;
-        damage::repairFull(state);
-        test.assertEqual(state.hull, game::hullCapacity(state), "repair full uses the upgraded hull cap");
-#endif
         runner.add(test);
     }
 
     {
-        Test test("retired sonar leaves no shop row, price or level");
-        test.assertEqual(shop::kItemCount, 2, "table stops after hull plate");
+        Test test("retired rows leave no item, price or level");
+        test.assertEqual(shop::kItemCount, 1, "table stops after air tank");
         test.assertEqual(shop::priceFor(static_cast<shop::Item>(shop::kItemCount)), 0, "past the table has no price");
         game::State state;
         dockedState(state, 500);
         test.assertEqual(shop::levelFor(state, static_cast<shop::Item>(shop::kItemCount)), shop::kMaxLevel, "past the table has no level");
         test.assertEqual(shop::canBuy(state, static_cast<shop::Item>(shop::kItemCount)), shop::kInvalidItem, "past the table cannot be bought");
-        test.assertEqual(shop::selectNext(shop::kHull), shop::kFirstItem, "HULL PLATE wraps to AIR TANK");
-        test.assertEqual(shop::selectPrevious(shop::kFirstItem), shop::kHull, "AIR TANK wraps to HULL PLATE");
         runner.add(test);
     }
 
@@ -156,22 +128,19 @@ inline void ShopSuite(TestRunner &runner) {
     }
 
     {
-        Test test("shop selection wraps over two rows");
-        test.assertEqual(shop::selectNext(0), 1, "down from air");
-        test.assertEqual(shop::selectNext(1), 0, "down from hull wraps");
-        test.assertEqual(shop::selectPrevious(0), 1, "up from air wraps");
-        test.assertEqual(shop::selectPrevious(1), 0, "up from hull");
+        Test test("shop selection stays on the only row");
+        test.assertEqual(shop::selectNext(0), 0, "down keeps air");
+        test.assertEqual(shop::selectPrevious(0), 0, "up keeps air");
         runner.add(test);
     }
 
     {
-        Test test("shop board rows fit above the hint at 128x64");
-        test.assertEqual(shop_view::kRowY0, 22, "rows start at y=22");
-        test.assertEqual(shop_view::kRowStep, 7, "rows are 7 px apart");
+        Test test("shop board row fits above the hint at 128x64");
+        test.assertEqual(shop_view::kRowY0, 22, "row starts at y=22");
+        test.assertEqual(shop_view::kRowStep, 7, "row pitch");
         test.assertEqual(shop_view::kRowInvertH, 7, "invert bar is 7 px tall");
         test.assertEqual(shop_view::kHintY, 57, "hint starts at y=57");
         test.assertEqual(shop_view::rowY(0), 22, "air row");
-        test.assertEqual(shop_view::rowY(1), 29, "hull row");
         test.assertTrue(shop_view::rowY(0) - shop_view::kRowInsetY >= shop_view::kStatusY + 7, "first row clears status");
         test.assertTrue(shop_view::rowY(shop::kItemCount - 1) + shop_view::kRowInvertH <= shop_view::kHintY, "last row clears the hint");
         test.assertTrue(shop_view::kHintY + 7 <= 64, "hint fits inside 64 rows");
@@ -180,5 +149,3 @@ inline void ShopSuite(TestRunner &runner) {
         runner.add(test);
     }
 }
-
-#endif   // SH_FEATURE_SHOP

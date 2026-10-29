@@ -1,5 +1,13 @@
 # Voyage progression — implementation contracts
 
+Current status (2026-10-29): the campaign epic is closed. Production uses
+schema 6 in one 512 B cart slot and the ATMlib2FX compact synth with a 32 B
+ring. The fixed build has no feature profiles. The storage contracts below
+reflect schema 6; mines and hull strength are retired. Dated baseline and
+audio-probe sections retain their original measurements and flags, including
+earlier 64 B rings; use [platform.md](platform.md) for current sizes and
+acceptance limits.
+
 Audit and schema freeze for epic `sub-hauler-7px`, task `sub-hauler-7px.1`
 (2026-10-26). The accepted design is [progression.md](progression.md); hardware
 and resource limits are canonical in [platform.md](platform.md). This document
@@ -15,8 +23,8 @@ this audit.
 Commands and results from the shared tree:
 
 ```sh
-make size-matrix            # full, lean, core, min
-make mini PROFILE=full
+make size
+make mini
 make fxtest                 # six suites, each bare P
 make fxtest FXTEST_ONLY=test_memory \
   RELAX_FLAGS="-mrelax -mcall-prologues -DSH_STACK_DIAG=1"
@@ -88,9 +96,9 @@ Library audit result:
   API (`seekSave`, `eraseSaveBlock`, runtime `programSavePage` + page-program
   `seekCommand`/`writeByte`, `waitWhileBusy`).
 - ATMlib2FX has no EEPROM code.
-- The only remaining EEPROM user in the sketch is the optional standalone
-  `src/chart_save.hpp` (mutually exclusive with voyage save). It is not part of
-  a voyage checkpoint.
+- The sketch's EEPROM users are the MUSIC ON/OFF setting at 656 and the
+  optional standalone `src/chart_save.hpp` writer (mutually exclusive with
+  voyage save). Neither is part of a voyage checkpoint.
 - Audio mute keeps the system allocation at address 2. The separate MUSIC
   ON/OFF byte remains at **656**, now the first byte above the retired voyage
   allocation. It is never part of a cart checkpoint, so Continue/rollback
@@ -110,7 +118,7 @@ byte**. The remaining 3,584 bytes of the block stay erased and are not used.
 
 ```text
 slot +   0  magic 'S' 'H' 'V' 'Y'   (0x53 0x48 0x56 0x59)
-slot +   4  schema version          = 5
+slot +   4  schema version          = 6
 slot +   5  world layout version    = world::LAYOUT_VERSION (3 now)
 slot +   6  campaign content version = 2
 slot +   7  feature/profile signature (bitfield, section 4)
@@ -126,8 +134,8 @@ bytes 0–239; page 1 carries payload bytes 240–494 and the commit byte (the l
 byte programmed). Erased flash is `0xFF`, so an uncommitted slot has commit
 `0xFF`, not `0x00`. `0x5A` means committed; any other value is invalid.
 
-Payload capacity is 495 B. Schema 5 uses 291 B with a chart (35 scalar + 256
-chart) and 35 B without a chart. Bytes after the used payload are programmed as
+Payload capacity is 495 B. Schema 6 uses 289 B with a chart (33 scalar + 256
+chart) and 33 B without a chart. Bytes after the used payload are programmed as
 `0xFF`, matching erased flash, and are not read.
 
 CRC is **CRC-16/CCITT-FALSE**: polynomial `0x1021`, init `0xFFFF`, no
@@ -138,15 +146,15 @@ Check value for `"123456789"` is `0x29B1`; the storage tests assert that vector.
 
 ## 4. Profile signature
 
-One byte, fixed for schema 5:
+One byte, fixed for schema 6:
 
 | Bit | Feature |
 | --- | --- |
 | 0 | `SH_FEATURE_FOG_CHART` |
 | 1 | retired (sonar), 0 |
-| 2 | `SH_FEATURE_MINES` |
+| 2 | retired (mines), 0 |
 | 3 | `SH_FEATURE_SHOP` |
-| 4 | `SH_FEATURE_HULL_DAMAGE` |
+| 4 | retired (hull damage), 0 |
 | 5 | `SH_FEATURE_MULTI_HULL` |
 | 6 | `SH_FEATURE_EXPLORATION` |
 | 7 | reserved, 0 |
@@ -158,9 +166,9 @@ before offering NEW VOYAGE. `SH_FEATURE_MUSIC` is not in the signature because
 music has no saved field.
 
 Chart presence is derived from bit 0, not stored separately. Expected payload
-length is `35 + (bit0 ? 256 : 0)`.
+length is `33 + (bit0 ? 256 : 0)`.
 
-## 5. Scalar payload schema (35 B)
+## 5. Scalar payload schema (33 B)
 
 Little-endian, fixed order, no padding, no raw C++ struct bytes.
 
@@ -170,37 +178,36 @@ Little-endian, fixed order, no padding, no raw C++ struct bytes.
 | 1 | 1 | hull class | 0–2 |
 | 2 | 2 | credits | u16 |
 | 4 | 1 | air level | 0–3 |
-| 5 | 1 | hull level | 0–3 |
-| 6 | 1 | tools | CUTTER/SEAL/THRUSTER/LENS bits |
-| 7 | 1 | pickups | 8 claim bits |
-| 8 | 2 | open gates | 9 bits |
-| 10 | 2 | seen gates | 9 bits |
-| 12 | 1 | campaign milestones | 5 bits |
-| 13 | 1 | surveys | 2 bits |
-| 14 | 1 | visited settlements | 4 bits |
-| 15 | 1 | active job kind | 0–3 |
-| 16 | 1 | active mission ID | 0–6, or 0xFF |
-| 17 | 1 | job origin berth | 0–3, or 0xFF |
-| 18 | 1 | job destination berth | 0–3, or 0xFF |
-| 19 | 1 | job load | 4 for cargo jobs, else 0 |
-| 20 | 1 | job reward | credits, multiple of 5 |
-| 21 | 2 | offer cursor | pre-board generator serial |
-| 23 | 2 | board seed | serial origin, schema 5 = 0 |
-| 25 | 1 | armed mines | 8 bits |
-| 26 | 4 | voyage ticks | u32, saturating |
-| 30 | 2 | delivered jobs | u16, saturating |
-| 32 | 2 | rescue count | u16, saturating |
-| 34 | 1 | ending presented | 0/1 |
+| 5 | 1 | tools | CUTTER/SEAL/THRUSTER/LENS bits |
+| 6 | 1 | pickups | 7 claim bits |
+| 7 | 2 | open gates | 9 bits |
+| 9 | 2 | seen gates | 9 bits |
+| 11 | 1 | campaign milestones | 5 bits |
+| 12 | 1 | surveys | 2 bits |
+| 13 | 1 | visited settlements | 4 bits |
+| 14 | 1 | active job kind | 0–3 |
+| 15 | 1 | active mission ID | 0–6, or 0xFF |
+| 16 | 1 | job origin berth | 0–3, or 0xFF |
+| 17 | 1 | job destination berth | 0–3, or 0xFF |
+| 18 | 1 | job load | 4 for cargo jobs, else 0 |
+| 19 | 1 | job reward | credits, multiple of 5 |
+| 20 | 2 | offer cursor | pre-board generator serial |
+| 22 | 2 | board seed | serial origin, schema 6 = 0 |
+| 24 | 4 | voyage ticks | u32, saturating |
+| 28 | 2 | delivered jobs | u16, saturating |
+| 30 | 2 | rescue count | u16, saturating |
+| 32 | 1 | ending presented | 0/1 |
 
-Chart bytes follow at payload offset 35–290 when bit 0 of the signature is set.
-Scalar total is exactly 35 B. Schema 5 removes the retired sonar level byte;
-the payload still fits the frozen 495 B area.
+Chart bytes follow at payload offset 33–288 when bit 0 of the signature is set.
+Scalar total is exactly 33 B. Schema 6 removes the retired sonar level byte,
+the hull-level byte and the armed-mines mask; the payload still fits the frozen
+495 B area.
 
 Semantic validation, in addition to CRC and header checks:
 
 - berth 0–5; berths 4 and 5 require their restoration milestone (section 8).
 - hull class within the roster; levels 0–3; levels must be 0 when SHOP is off.
-- tools/claims/gates/milestones/surveys/visits/mines only within their masks.
+- tools/claims/gates/milestones/surveys/visits only within their masks.
 - milestones are monotonic: BEACON requires PUMP and LIFT; HOME requires
   BEACON; ending-presented requires HOME.
 - job kind NONE: mission/origin/destination are 0xFF, load/reward are 0.
@@ -208,7 +215,7 @@ Semantic validation, in addition to CRC and header checks:
   load 4, reward equals the table reward.
 - ordinary job: mission 0xFF, origin/destination 0–3 and different, load 4,
   reward equals the generated route reward.
-- no timed/express kind exists in schema 5. A pre-.27 schema 1 slot, a
+- no timed/express kind exists in schema 6. A pre-.27 schema 1 slot, a
   schema 2 slot and a dual-slot schema 3 cart are incompatible and are not
   migrated.
 - Surveys are facts, not jobs: `recordSurvey()` accepts PUMP or LIFT before
@@ -229,7 +236,7 @@ and fallback. Schema 1/2 EEPROM records, schema 3 cart records, old EEPROM bytes
 and the retired standalone chart block are **incompatible or absent, not
 migrated**. A player with an older record or a torn current record sees the
 normal incompatible/corrupt message and may start a clean NEW VOYAGE; no old
-job, reward, deadline, chart or elapsed age is preserved. Current schema 5 slots
+job, reward, deadline, chart or elapsed age is preserved. Current schema 6 slots
 still receive the full magic, length, CRC and semantic checks, so corruption is
 never silently accepted or loaded.
 
@@ -276,8 +283,8 @@ addresses 0–259 and pre-schema-4 cart slots are never inspected, offered,
 copied or repaired. A NEW VOYAGE resets the chart, applies
 `chart::revealInitial()` at the generated spawn berth, and persists that reveal
 in the first checkpoint. There is no KEEP OLD CHART prompt and no legacy import
-path. The single cart slot is erased and rewritten. Standalone chart save and voyage save remain mutually exclusive
-at compile time: `SH_FEATURE_SAVE_VOYAGE` requires `!SH_FEATURE_SAVE_CHART`.
+path. The single cart slot is erased and rewritten. Standalone chart save is retired; the fixed build writes only schema 6 voyage
+checkpoints.
 
 ## 8. Stable campaign IDs
 
@@ -336,7 +343,7 @@ Mission eligibility:
 
 ## 9. Job kinds and untimed freight semantics
 
-`ActiveJob` uses explicit kind/mission/origin fields. Schema 2 freezes it at
+`ActiveJob` uses explicit kind/mission/origin fields. Schema 5 keeps it at
 6 bytes:
 
 ```cpp
@@ -379,7 +386,7 @@ Freeze:
 - `state.offerCursor` is the serial value **before** the current station board
   was generated. `jobs::refreshOffers()` records it before its first
   `makeOffer()` and then advances the working serial as today.
-- `state.boardSeed` is the serial origin for the voyage. Schema 3 writes 0, so
+- `state.boardSeed` is the serial origin for the voyage. Schema 5 writes 0, so
   the current offer sequence is preserved exactly. It is stored for forward
   compatibility; changing it is a schema/campaign-content change.
 - Offers are not serialized. While a job is active the board shows the active
@@ -387,12 +394,12 @@ Freeze:
   no active job, restore `offerSerial` from `offerCursor` and regenerate; the
   same freight row reappears without advancing the saved cursor.
 - There is no job age or deadline to save. A schema 1 or 2 save is incompatible
-  rather than partially applied; schema 5 keeps every current corruption check.
+  rather than partially applied; schema 6 keeps every current corruption check.
 
 ## 11. Campaign state additions
 
-Proposed additions to `game::State` (AVR byte-packed, all fields also mapped to
-the payload above):
+Implemented additions to `game::State` (AVR byte-packed, all fields also mapped
+to the payload above):
 
 | Field | Width | Notes |
 | --- | ---: | --- |
@@ -410,33 +417,23 @@ the payload above):
 change. The day-zero campaign state projection is unchanged except that the
 save scalar is 4 B smaller.
 
-## 12. Feature flags and profiles
+## 12. Fixed build and profiles
 
-Proposed dependencies (to be added to `src/features.hpp` and
-`tools/features.py`):
-
-- `SH_FEATURE_CAMPAIGN` requires JOBS, STATIONS and EXPLORATION.
-- `SH_FEATURE_SAVE_VOYAGE` requires CAMPAIGN and `!SH_FEATURE_SAVE_CHART`.
-- `SH_FEATURE_MUSIC` has no state dependency; it requires the ATMlib2FX
-  library and generated music symbols.
-- Standalone `SH_FEATURE_SAVE_CHART` remains available when voyage save is off.
-
-Profile contract:
-
-| Profile | Campaign | Voyage save | Music |
-| --- | --- | --- | --- |
-| full | 1 | 1 | 0 until the measured combined-fit gate passes |
-| lean | 1 | 1 | 0 |
-| core | 1 | 1 (no chart, 35 B payload) | 0 |
-| min | 0 | 0 | 0 |
-
-Core has no chart, shop or alternate hull roster. Every required survey
-and route must work there with the base boat and visual clues. Dev mode keeps
-its current flight-only behavior and suppresses voyage reads/writes.
+The fixed build enables campaign, voyage save and synth music unconditionally.
+Feature-profile selection, `src/features.hpp`, `tools/features.py`, development
+mode, runtime-USB production builds and the standalone chart writer are retired.
+The implementation keeps only compiler/platform distinctions and the fixed
+ATMlib2FX compact-loop/ring settings in the build recipe. The early proposal
+that lean/core would carry campaign+save was not shipped.
 
 ## 13. Music integration contract and measured cost
 
-### Measured cost
+### Historical admission probe (2026-10-26, before the production synth fit)
+
+The probe below used the earlier 64-byte ring and a standalone decoder budget.
+It is retained as evidence for the original admission decision. Production now
+uses `ATM_FX_COMPACT_RING=32` and the measured whole-image result in
+[platform.md](platform.md).
 
 A bounded AVR probe was added at
 `tst/fxdatatest/probe_music/probe_music.ino`. It is a build-only sketch in a
@@ -469,20 +466,17 @@ Flash is not the immediate blocker: 20,176 + 3,660 = **23,836 B**, leaving
 projection is isolated-probe arithmetic, not a whole-game measurement; LTO can
 move it either way.
 
-Consequences:
+Historical consequences of that admission probe (superseded by the measured
+production synth fit; the full profile now ships music):
 
-- Full MUSIC must default to **0** until a measured combined image passes the
-  1,700 B static ceiling and the 600 B stack target. This is the design's
-  stated fallback, not a silent gameplay cut.
-- `.7` must first measure the actual combined image, then either carve at least
-  ~135 B of static state or leave MUSIC off. Raising the ceiling is not an
-  option.
-- Plausible carves are small: particle pool 16 B (only by dropping debris),
+- The probe implied full MUSIC should default to **0** until a measured
+  combined image passed the 1,700 B static ceiling and the 600 B stack target.
+- `.7` was to measure the actual combined image, then carve at least ~135 B of
+  static state or leave MUSIC off.
+- Plausible carves were small: particle pool 16 B (only by dropping debris),
   camera 4 B (derive from position), fractional carries 3 B, transient contact/
-  discovery bytes 5 B, dock/impact cooldowns 3 B. These do not reach 135 B
-  together. The 256 B chart is the only large block and cannot be removed
-  without losing fog. A channel/effect reduction would need listening tests and
-  is not a free byte source. Report the exact measured deficit before choosing.
+  discovery bytes 5 B, dock/impact cooldowns 3 B. The 256 B chart was the only
+  large block. The later measured fit is recorded in platform.md.
 
 ### Runtime contract
 
@@ -500,7 +494,7 @@ Consequences:
   before the next render. Service idle station/shop frames even when no OLED
   transaction occurs. The timer consumer must never read FX.
 - Chart and pause pause the player (`atm_fx_compact_pause()`) and resume in
-  place; station/shop idle frames keep playing; wreck/rescue confirmation is
+  place; station/shop idle frames keep playing; rescue confirmation is
   silent and resumes on cancel; saving pauses during the cart erase/page write
   and resumes after success. Same-cue entries do not restart; different cues
   cut/restart.
@@ -570,7 +564,10 @@ Implemented in this slice:
 - PUMP_SURVEY is a generated ring beside the Pump Refuge pump. It uses the
   existing slow half-second dwell, records before FIRST, never occupies the
   cargo slot and is idempotent. The Benthos and Cormorant WORK pages carry the
-  pump clues; the cutter and seal rumours remain useful text-only hints.
+  pump clues; the cutter and seal rumours remain useful text-only hints. After
+  FIRST, an unrecorded survey blinks on the chart, its in-world ring blinks,
+  and a wider ±48 px proximity radius raises the stop-to-survey notice while
+  the boat is still moving. Recording the fact clears all three.
 - WORK replaces the redundant SERVICE row and the old freight rows. One board
   lists eligible restoration jobs first and the repeatable freight row beneath;
   A accepts directly and auto-loads. Active-job boards keep UNDOCK as the

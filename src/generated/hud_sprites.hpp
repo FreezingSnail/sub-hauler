@@ -10,5 +10,5 @@ constexpr bool    HUD_CONTROLS_MASKED = false;
 
 constexpr uint8_t HUD_NOTICES_WIDTH  = 128;
 constexpr uint8_t HUD_NOTICES_HEIGHT = 8;
-constexpr uint8_t HUD_NOTICES_FRAMES = 15;
+constexpr uint8_t HUD_NOTICES_FRAMES = 14;
 constexpr bool    HUD_NOTICES_MASKED = false;

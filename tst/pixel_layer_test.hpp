@@ -1,24 +1,15 @@
 #pragma once
 
 #include "../src/cave_render.hpp"
-#include "../src/features.hpp"
 #include "../src/game.hpp"
 #include "../src/pilot_view.hpp"
 #include "../src/world.hpp"
 #include "test.hpp"
 
-#if SH_FEATURE_CAMPAIGN
 #include "../src/campaign_view.hpp"
-#endif
-#if SH_FEATURE_EXPLORATION
 #include "../src/exploration_view.hpp"
-#endif
-#if SH_FEATURE_CURRENTS || SH_FEATURE_MINES
 #include "../src/hazard_view.hpp"
-#endif
-#if SH_FEATURE_PARTICLES
-#include "../src/damage_view.hpp"
-#endif
+#include "../src/particles_view.hpp"
 
 // Permanent pixel tests for the single camera origin shared by every world
 // layer. Each layer is positioned with a deliberately fractional camera and
@@ -81,7 +72,7 @@ inline void PixelLayerSuite(TestRunner &runner) {
     }
 
     {
-        Test test("settlement, hazard, particle and pilot pixels share one fractional origin");
+        Test test("settlement, particle and pilot pixels share one fractional origin");
         uint8_t buffer[kBufferBytes];
         game::State state;
         game::resetWorld(state);
@@ -96,17 +87,6 @@ inline void PixelLayerSuite(TestRunner &runner) {
         test.assertEqual(pixelAt(buffer, sx, static_cast<int16_t>(sy - 2)), 1u, "gantry ring top at pixel origin");
         test.assertEqual(pixelAt(buffer, sx, sy), 0u, "dock centre stays open");
 
-        world::Mine mine;
-        test.assertTrue(world::mineInfo(0, mine), "generated mine");
-        camera = cameraNear(mine.x, mine.y, sx, sy);
-        test.assertTrue((camera.subX | camera.subY) != 0, "mine camera is fractional");
-        clear(buffer);
-#if SH_FEATURE_MINES
-        hazard_view::drawMines(buffer, state, camera);
-        test.assertEqual(pixelAt(buffer, sx, sy), 1u, "mine glyph centre at pixel origin");
-#endif
-
-#if SH_FEATURE_PARTICLES
         state.particles.x = 1111;
         state.particles.y = 777;
         state.particles.particle[0].dx = 2;
@@ -115,9 +95,8 @@ inline void PixelLayerSuite(TestRunner &runner) {
         camera = cameraNear(static_cast<int16_t>(state.particles.x + 2), static_cast<int16_t>(state.particles.y + 3), sx, sy);
         test.assertTrue((camera.subX | camera.subY) != 0, "particle camera is fractional");
         clear(buffer);
-        damage_view::drawParticles(buffer, state, camera);
+        particles_view::draw(buffer, state, camera);
         test.assertEqual(pixelAt(buffer, sx, sy), 1u, "particle at pixel origin");
-#endif
 
         state.x = 1200;
         state.y = 900;
@@ -135,7 +114,6 @@ inline void PixelLayerSuite(TestRunner &runner) {
         runner.add(test);
     }
 
-#if SH_FEATURE_EXPLORATION
     {
         Test test("exploration markers scroll with the same pixel origin");
         uint8_t buffer[kBufferBytes];
@@ -150,9 +128,7 @@ inline void PixelLayerSuite(TestRunner &runner) {
         test.assertEqual(pixelAt(buffer, static_cast<int16_t>(sx + 7), sy), 1u, "pickup bracket at pixel origin");
         runner.add(test);
     }
-#endif
 
-#if SH_FEATURE_CURRENTS
     {
         Test test("current flow marks scroll with the same pixel origin");
         uint8_t buffer[kBufferBytes];
@@ -169,9 +145,7 @@ inline void PixelLayerSuite(TestRunner &runner) {
         test.assertEqual(pixelAt(buffer, static_cast<int16_t>(sx + 3), static_cast<int16_t>(sy + 3)), 1u, "flow mark anchored at pixel origin");
         runner.add(test);
     }
-#endif
 
-#if SH_FEATURE_CAMPAIGN
     {
         Test test("campaign survey rings scroll with the same pixel origin");
         uint8_t buffer[kBufferBytes];
@@ -187,5 +161,4 @@ inline void PixelLayerSuite(TestRunner &runner) {
         test.assertEqual(pixelAt(buffer, sx, sy), 1u, "survey centre at pixel origin");
         runner.add(test);
     }
-#endif
 }

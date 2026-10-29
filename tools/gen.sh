@@ -13,6 +13,7 @@ python3 tools/gen_level.py
 python3 tools/gen_music_regions.py
 python3 tools/gen_panels.py --panels images/panels --campaign images/campaign --pause images/pause
 python3 tools/gen_sprites.py --input images/panels --output fxdata/PanelSprites.txt --header src/generated/panel_sprites.hpp --shades 2
+python3 tools/gen_sprites.py --input images/story --output fxdata/StorySprites.txt --header src/generated/story_sprites.hpp --shades 2
 python3 tools/gen_sprites.py --input images/campaign --output fxdata/CampaignSprites.txt --header src/generated/campaign_sprites.hpp --shades 2
 python3 tools/gen_sprites.py --input images/pause --output fxdata/PauseSprites.txt --header src/generated/pause_sprites.hpp --shades 2
 python3 tools/gen_hud.py --output images/hud --fxdata fxdata/fxdata.txt
@@ -23,10 +24,13 @@ python3 tools/gen_splash.py
 python3 tools/gen_sprites.py --input images/splash --output fxdata/SplashSprites.txt --header src/generated/splash_sprites.hpp --shades 2
 python3 tools/gen_cargo.py
 python3 tools/gen_music.py
-python3 tools/gen_audio_ref.py
-python3 tools/gen_audio_adpcm.py
+# Streaming-audio reference PCM and ADPCM are archival comparison evidence, not
+# shipping inputs. Rebuild them explicitly with `make gen-audio`.
 python3 tools/fxdata-build.py fxdata/fxdata.txt
 cp fxdata/fxdata.h src/fxdata.h
 python3 tools/gen_music_viewer.py
+python3 tools/gen_story_style_spikes.py
+python3 tools/gen_story_recomposed.py
+python3 tools/gen_story_fullbleed.py
 
 echo "gen: fxdata/fxdata.bin + src/fxdata.h regenerated"

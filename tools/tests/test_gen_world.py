@@ -65,7 +65,7 @@ class GenWorldTest(unittest.TestCase):
         self.assertEqual(tile(5, 80), 1)
         self.assertEqual(tile(160, 80), 1)
 
-    def test_known_settlements_and_mines(self):
+    def test_known_settlements_and_currents(self):
         self.assertEqual(
             [
                 (s.id, s.name, s.tile_x, s.tile_y, s.pixel_x, s.pixel_y)
@@ -76,19 +76,6 @@ class GenWorldTest(unittest.TestCase):
                 (1, "BENTHOS", 150, 30, 1200, 240),
                 (2, "CORMORANT", 282, 62, 2256, 496),
                 (3, "DEEP ANCHOR", 172, 132, 1376, 1056),
-            ],
-        )
-        self.assertEqual(
-            [(mine.x, mine.y) for mine in self.world.mines],
-            [
-                (690, 588),
-                (1724, 273),
-                (1976, 822),
-                (756, 1106),
-                (604, 161),
-                (1318, 607),
-                (2359, 1143),
-                (374, 835),
             ],
         )
         self.assertEqual((self.world.spawn_sub_x, self.world.spawn_sub_y), (291, 388))
@@ -147,7 +134,6 @@ class GenWorldTest(unittest.TestCase):
         second = gen_world.generate_cave(4242)
         self.assertEqual(gen_world.pack_tiles(first.grid), gen_world.pack_tiles(second.grid))
         self.assertEqual(first.chart, second.chart)
-        self.assertEqual(first.mines, second.mines)
         self.assertEqual(first.currents, second.currents)
 
     def test_cli_writes_byte_identical_outputs(self):
@@ -238,7 +224,6 @@ class GenWorldTest(unittest.TestCase):
         self.assertIn("#if defined(__AVR__)", header)
         self.assertIn("#include <avr/pgmspace.h>", header)
         self.assertIn("SETTLEMENT_META[SETTLEMENT_COUNT] PROGMEM", header)
-        self.assertIn("MINE_META[MINE_COUNT] PROGMEM", header)
         self.assertIn("CURRENT_META[CURRENT_COUNT] PROGMEM", header)
         self.assertIn("struct SettlementMeta", header)
         self.assertIn("struct CurrentMeta", header)
@@ -249,7 +234,6 @@ class GenWorldTest(unittest.TestCase):
         self.assertIn("constexpr Settlement SETTLEMENTS", header)
         self.assertIn("constexpr Current CURRENTS", header)
         self.assertIn("inline bool settlementMeta", header)
-        self.assertIn("inline bool mineMeta", header)
         self.assertIn("inline bool currentMeta", header)
         self.assertIn("inline bool routeEconomy", header)
         self.assertIn("ROUTE_REWARD_MAX", header)
@@ -258,7 +242,7 @@ class GenWorldTest(unittest.TestCase):
         # AVR metadata is position-only: the guarded branch must not reference
         # settlement name literals, which would otherwise land in .rodata and
         # be copied into SRAM.
-        device_start = header.index("#if defined(__AVR__)", header.index("struct Mine"))
+        device_start = header.index("#if defined(__AVR__)", header.index("struct Current"))
         device_end = header.index("#else", device_start)
         device_section = header[device_start:device_end]
         for name in ("TIDEWALL", "BENTHOS", "CORMORANT", "DEEP ANCHOR"):
@@ -270,7 +254,6 @@ class GenWorldTest(unittest.TestCase):
             "CHART_BYTES",
             "SPAWN_TILE_X",
             "SETTLEMENT_COUNT",
-            "MINE_COUNT",
             "CURRENT_COUNT",
         ):
             self.assertIn(symbol, header)
@@ -317,27 +300,6 @@ class GenWorldTest(unittest.TestCase):
                 bad.grid[index] = 1
         self.assertGreater(gen_world._open_components(bad.grid), 1)
         with self.assertRaisesRegex(ValueError, "not one connected"):
-            gen_world.validate_world(bad)
-
-    def test_rejects_mine_in_rock(self):
-        bad = self.corrupt()
-        bad.mines = (gen_world.Mine(0, 0),) + bad.mines[1:]
-        with self.assertRaisesRegex(ValueError, "inside rock"):
-            gen_world.validate_world(bad)
-
-    def test_rejects_mine_inside_dock_clearance(self):
-        bad = self.corrupt()
-        settlement = bad.settlements[0]
-        bad.mines = (
-            gen_world.Mine(settlement.pixel_x + 1, settlement.pixel_y),
-        ) + bad.mines[1:]
-        with self.assertRaisesRegex(ValueError, "dock clearance"):
-            gen_world.validate_world(bad)
-
-    def test_rejects_missing_mines(self):
-        bad = self.corrupt()
-        bad.mines = ()
-        with self.assertRaisesRegex(ValueError, "no mine sites"):
             gen_world.validate_world(bad)
 
     def test_rejects_current_in_rock(self):

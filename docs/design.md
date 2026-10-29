@@ -4,13 +4,18 @@ Status: post-review design (2026-10-24, cargo-free resource pass). The
 cargo-packing minigame was removed in `sub-hauler-gl1.1` because its value did
 not justify its flash/SRAM cost. The final pass moved the surviving UI text and
 fixed pilot art into FX and compacted the generated world metadata and AVR run
-state. The browser slices in `spike-trim/` remain a historical reference; the
-shipped device path is the cargo-free contract loop described below.
+state. The browser sandbox is retired (available in git history); the shipped
+device path is the cargo-free contract loop described below.
+
+Current implementation note (2026-10-28): the `full` profile also ships the
+seven-objective campaign and ending, schema 6 single-slot cart checkpoints,
+ATMlib2FX synth music and the boot introduction. Sonar is retired; campaign and
+freight work are untimed.
 
 ## Active exploration map — 2026-10-25
 
 The device now loads the authored `levels/exploration.json` world, with
-32 rooms, 42 passages, nine equipment gates and eight cove rewards. The high
+32 rooms, 42 passages, nine equipment gates and seven cove rewards. The high
 pressure region is lowest. `make gen` appends its collision/chart/object
 sections and writes the active `src/generated/level.hpp`; legacy seed-4242
 sections and `src/generated/world.hpp` stay unchanged for ABI compatibility.
@@ -30,7 +35,7 @@ the [progression design](progression.md) records the accepted direction.
   cargo is represented by coarse internal mass, trim, acceleration, and top
   speed. Accepting a contract auto-loads four units; the player starts travel
   with an explicit UNDOCK row action or B.
-- The internal view should be used at stations and for damage/repair work, not
+- The internal view should be used at stations and for maintenance work, not
   as a second full-time flight view.
 - Feel is slow, heavy, deliberate. The former packing puzzle is removed rather
   than gated: there is no loading screen, LOAD CARGO row, commit chord, or
@@ -60,17 +65,21 @@ flight or station code reads that bank.
 
 1. Dock (auto-dock within 14 px of a settlement gantry at or below the dock
    speed; the hull stops in place instead of snapping to the gantry centre).
-2. Select an offer and press `A`. Acceptance fills the hold with the contract's
-   four coarse cargo units, neutralizes trim, and keeps the boat docked.
+2. Open `WORK`, select a story restoration row or the one repeatable freight
+   row, and press `A`. Acceptance fills the hold with the contract's four
+   coarse cargo units, neutralizes trim, and keeps the boat docked. `ABANDON`
+   has its own confirmation; there is no detail step.
 3. Confirm the active board's `UNDOCK` row with `A`, or press `B`, to start
    travel. Docking latch and flight pause are unchanged.
-4. Deliver at the destination station for credits; late or wrong-station
-   arrivals follow the existing economy rules. `ABANDON` clears the hold and
-   contract while docked.
+4. Deliver at the destination station for credits. Campaign and freight work
+   are untimed, and a loaded arrival pays exactly once; wrong-berth stops keep
+   the job and load. `ABANDON` clears the hold and contract while docked.
 
-The active station board is now `[summary] ABANDON SHOP UNDOCK` (or
-`[summary] ABANDON UNDOCK` without the shop). There is no `LOAD CARGO` row and
-no way to reach a packing screen.
+The top-level station board is `WORK [SHOP] UNDOCK`; while carrying a job it is
+`[summary] ABANDON WORK [SHOP] UNDOCK`. `WORK` opens the single board with
+eligible story rows first and the freight row beneath. There is no separate
+offer list, no `LOAD CARGO` row, no job timer or late-failure state, and no way
+to reach a packing screen.
 
 ### Historical: packing prototype (removed)
 
@@ -134,7 +143,12 @@ Rules for future work:
 - Run `make gen-check` to prove reproducibility.
 - Reading this bank again requires a new measured feature decision.
 
-## Device text and fixed art
+## Device text and fixed art — historical 2026-10-24 snapshot
+
+The following records the initial cargo-free text/art pass. Current station
+and shop presentation uses baked FX menus; see
+[menu-flash-design.md](menu-flash-design.md). Current cart and firmware totals
+are in [platform.md](platform.md).
 
 All device text uses the external 6x8 FX font; `src/text.hpp` owns
 `FX::setFont`/`drawString`/`drawNumber` and switches to `dcmInvert` for selected
@@ -156,12 +170,12 @@ Both additions are append-only. The shipped `cargoBank` stays at offset
 `fxdata/fxdata-data.bin` is **13,012 B**, while the padded flashable
 `fxdata/fxdata.bin` image is **13,056 B**.
 
-## Baked world pipeline (M1)
+## Baked world pipeline (M1, historical)
 
 `tools/gen_world.py` is the single offline source of cave truth. It is a
-standard-library Python port of `generateCave` from `spike-trim/game.js` with
+standard-library Python port of the retired browser `generateCave` with
 seed `4242`; generation does not invoke Node or a browser. The PRNG, chamber
-list, tunnel wiggle, seal pass, and mine pull-back match the browser, so the
+list, tunnel wiggle and seal pass match the browser, so the
 baked bytes match the browser grid for the same seed.
 
 Artifacts:
@@ -182,16 +196,15 @@ open; this matches the browser chart.
 
 The generator validates dimensions, the two-tile sealed border, the open spawn
 footprint, open and clear settlement chambers, a single connected open
-component (junctions and dead-end branches included), mines in open water
-outside every settlement's 42 px dock clearance, and exact chart-mask
+component (junctions and dead-end branches included), and exact chart-mask
 consistency. `tools/tests/test_gen_world.py` covers known bytes/bits, the
 downsample rule, determinism, and corrupt-input rejection.
 
 `world.hpp` metadata is split by target. Host tests get full `constexpr`
 records including settlement names. AVR code never references those arrays:
-`src/generated/world.hpp` also emits position-only settlement, mine, and current
-records in `PROGMEM`, and `world::settlementInfo()`/`mineInfo()`/
-`currentInfo()` read them with `pgm_read_byte`/`pgm_read_word`. This keeps both
+`src/generated/world.hpp` also emits position-only settlement and current
+records in `PROGMEM`, and `world::settlementInfo()`/`currentInfo()` read them
+with `pgm_read_byte`/`pgm_read_word`. This keeps both
 costs off SRAM: an odr-used namespace-scope `constexpr` array is copied into
 SRAM by the AVR startup code, and name pointers would drag their string
 literals along with it. `Settlement::name` is therefore null on device. The
@@ -245,12 +258,13 @@ checkpoint records build/static evidence only.
 From `docs/platform.md`:
 
 - 128×64 SSD1306, 1,024 B framebuffer.
-- 2,560 B SRAM; **988 B** static free after the cargo-free resource pass.
-- 29,696 B flash; current image **17,548 B flash / 1,572 B static RAM**
-  (12,148 B flash free, 11,452 B under the 29,000 B planning ceiling, 128 B
-  static headroom; `test_memory` reserve **812 B** against a 600 B target).
-- AVR `game::State` is **80 B**; the compact generated metadata is 88 B
-  PROGMEM; the 128 B cave atlas stays in fast program flash.
+- 2,560 B SRAM; **900 B** static free in the current full image.
+- 29,696 B flash; current full image **29,604 B flash / 1,660 B static RAM**
+  (92 B flash free, 40 B static headroom under the 1,700 B planning ceiling;
+  combined music probe **652 B** and production save chain **690 B** against a
+  600 B target).
+- AVR `game::State` is **97 B**; the compact generated metadata is 88 B PROGMEM; the 128 B cave atlas
+  stays in fast program flash.
 - No floats, no heap in device code, no cart reads during display.
 
 The retained `cargoBank` lives in external FX flash, so it does not consume
@@ -259,11 +273,11 @@ cargo-free station/job/undock path is the device path. Measure every future
 change with `make size` and `make size-matrix`; do not assume the remaining
 headroom survives another feature.
 
-## Browser reference (historical)
+## Browser reference (retired)
 
-- `spike-trim/index.html` — PILOT and FLEET views plus the removed station
-  loading screen.
-- `spike-trim/subs.js` — shared MINNOW / HAULER / LEVIATHAN roster and selection.
+The `spike/` and `spike-trim/` sandboxes were removed; use git history for
+their sources.
+
 - `PILOT` — external sim, stations, contracts, shop. Draws the selected round
   hull; cargo is internal mass, not a stack above the hull.
 - Loading screen — historical packing prototype; not shipped on device.
@@ -278,5 +292,6 @@ bank is an ABI artifact, not a runtime plan.
 - Whether bonus crates ever affect payout, capacity, or only fill.
 - Jobs currently require a full four-unit hold so acceptance has a clear
   pass/fail. Revisit partial-hold jobs and their effect on top speed, air, and
-  deadlines.
-- Whether any save data should persist delivery or roster state.
+  routes.
+- Whether the collected survey lens should gain a new effect now that gameplay
+  sonar is retired; today it sets its tool bit but changes no reveal.

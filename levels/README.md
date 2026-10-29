@@ -1,7 +1,7 @@
 # Authored exploration level
 
 `exploration.json` is the editable source for the active game map. It contains
-32 named rooms, 42 passages, four station IDs, nine equipment gates and eight
+32 named rooms, 42 passages, four station IDs, nine equipment gates and seven
 cove rewards. Coordinates/radii are in 8-pixel tiles. `terrain` selects the
 deterministic organic carve; room `size`/`lobes` shape asymmetric chambers and
 route `via` points describe winding, variable-width passages. Room `obstacles`
@@ -14,10 +14,11 @@ allow an entrance to be sealed without blocking a neighboring route.
 Station rooms also supply a `dock: [tile_x, tile_y]` separate from the room's
 navigation centre. It places the real berth on a cave-wall ledge. Generation
 requires a clear 26x8 hull and a 48-pixel upward escape column, a nearby rock
-foundation, no hazards in the approach, and reachability under every applicable
+foundation, no obstacles in the approach, and reachability under every applicable
 equipment combination. `DOCK_*` symbols and station metadata drive auto-docking,
 chart markers, hints and spawn; `ROOM_*` still describes the route graph.
-The home boat starts centred at the Tidewall berth. Freight allowances include
+The home boat starts centred at the Tidewall berth. The generated route-timing
+metadata (retained for reference but not read by the untimed job rules) includes
 both trips between room centres and berth approaches.
 
 Run `make gen` after editing. It retains the old seed-4242 sections and appends
@@ -28,7 +29,7 @@ the new level to `fxdata/fxdata.txt`, preserving every earlier FX address.
 | --- | --- | ---: |
 | `explorationTiles` | 320x160 collision tiles, one bit per tile, 1 = solid | 6,400 B |
 | `explorationChart` | 64x32 chart cells, one bit per cell, 1 = water | 256 B |
-| `explorationObjects` | `SHL2` header + fixed gate/pickup records | 119 B |
+| `explorationObjects` | `SHL2` header + fixed gate/pickup records | 113 B |
 | `explorationTerrain` | native 2560x1280 terrain image, page-major, 1 = lit | 409,600 B |
 
 Both planes are row-major, with the leftmost tile/cell in the least significant
@@ -46,7 +47,7 @@ pixels, least significant bit at the top. A page-aligned Y origin reads eight
 128-byte strips straight into the existing screen buffer. A sub-page Y origin
 reads the next source page and shifts adjacent page rows together; the device
 does this in place with the next framebuffer page as lookahead and a 32-byte
-tail scratch, never a second whole frame. Stations, gates, finds, hazards, the
+tail scratch, never a second whole frame. Stations, gates, finds, currents, the
 boat and HUD draw from the same pixel origin. The 6,400 B collision plane still
 supplies physics; visual pixels never substitute for collision rules.
 This avoids per-frame terrain drawing with no extra SRAM. The checked tile
@@ -79,7 +80,7 @@ corrosion chips and sparse rivet groups. Seam direction follows the local
 wall-distance gradient; it does not repeat closed panels or central handles.
 
 The object stream begins with eight bytes: ASCII `SHL2`, gate count, pickup
-count, gate stride (7), pickup stride (6). Nine gate records follow, then eight
+count, gate stride (7), pickup stride (6). Nine gate records follow, then seven
 pickup records. Multibyte values are **little-endian**:
 
 - Gate: `u16 x, u16 y, u8 width, u8 height, u8 required_tools`.
@@ -88,16 +89,16 @@ pickup records. Multibyte values are **little-endian**:
 Object coordinates are world pixels. Gates use the rectangle's top-left;
 pickups use their center. Required tool bits are cutter=1, pressure seal=2,
 thruster=4. Combined requirements need every bit. Pickup kinds are cutter=1,
-seal=2, thruster=3, credits=4, hull pod=5 and survey lens=6; the lens equips bit8.
+seal=2, thruster=3, credits=4 and survey lens=6; the lens equips bit8.
 Room, gate and pickup IDs in `src/generated/exploration.hpp` are symbolic
 constants; keep source ordering stable when saved voyages are introduced.
 
-`src/generated/level.hpp` provides the active station/hazard/route metadata.
+`src/generated/level.hpp` provides the active station/current/route metadata.
 The older `src/generated/world.hpp` is retained with the legacy sections; do
 not include both world headers in one translation unit. `world.hpp` selects
 the active header and `world::FxTables` reads the new FX symbols.
 
-The object stream has a byte-identical, 119-byte PROGMEM mirror for collision
+The object stream has a byte-identical, 113-byte PROGMEM mirror for collision
 and rendering. It occupies program flash, not SRAM, and avoids cart reads in
 the inner gate-collision loop. The tile cache stays 23 bytes; no complete map
 or object array is copied into SRAM. Device code uses integer math only.
@@ -109,29 +110,29 @@ or object array is copied into SRAM. Device code uses integer math only.
   identify tools and rewards; station rumors guide required discoveries.
 - Cutter grates need a half-second slow operation nearby after finding the
   cutter. Open grates remain open for the run. Pressure/current passages pass
-  only with their required equipment; contact blocks movement without wall
-  damage. Flow marks distinguish current boundaries from grates and bulkheads.
+  only with their required equipment; contact blocks movement without damage. Flow marks distinguish current boundaries from grates and bulkheads.
 - The pressure seal and current thruster can be found in either order after
   the cutter. Every entry into the lowest region needs the seal; the return
   shaft additionally needs the thruster. Deep Anchor is the lowest settlement.
 - Three purses pay 40/90/150 credits once each, with saturation protection.
-  The hull pod adds capacity beyond purchased plates and repairs to the new
-  maximum. The lens enlarges sonar reveal radius by two upgrade steps.
+  The survey lens is still collectible, but gameplay sonar was retired
+  on 2026-10-28, so the lens currently sets its tool bit without changing any
+  reveal radius.
 - The chart remembers encountered gates and shows finds only in explored
   cells. Claimed finds and passable gates use smaller markers.
-- Contracts do not offer Deep Anchor before the pressure seal is owned.
-  Freight allowances use authored route lengths at 7 pixels/second plus
-  45 seconds of slack, without assuming cutter or thruster shortcuts are open.
-  The `freight_timing` source fields control this offline calculation. Rewards
-  retain the existing economy. Intermediate berth stops refill air while
-  retaining the active job, cargo and elapsed time.
+- Contracts do not offer Deep Anchor before the pressure seal is owned. Freight
+  and campaign work are untimed; the generated deadline column is retained in
+  the legacy route table but is not read by the job rules. Rewards use the
+  authored route economy. Intermediate berth stops refill air while retaining
+  the active job and cargo.
 
-This pass implements map exploration within the existing run. Restarting or
-losing the hull resets tools, claims and opened grates. Campaign restoration
-missions, the ending and a persistent voyage save are still proposed work in
-`docs/campaign-exploration.md`. `layout_version` is now 3, so the optional chart
-save rejects the preceding terrain's chart. The JSON schema version and SHL2
-object encoding remain version 2.
+The fixed build ships campaign restoration missions, homecoming and a
+persistent schema 6 voyage save. Continue and rescue restore
+the last committed berth, including saved tools, claims and opened grates;
+unsaved expedition gains roll back. A New Voyage resets exploration.
+See [progression.md](../docs/progression.md). `layout_version` is
+now 3, so the optional standalone chart save rejects the preceding terrain's
+chart. The JSON schema version and SHL2 object encoding remain version 2.
 
 `full`, `lean` and `core` enable `EXPLORATION`; `min` remains a flight/cave
 profile with all equipment barriers absent and no exploration state.
@@ -141,7 +142,7 @@ profile with all equipment barriers absent and no exploration state.
 Run `make dev` for noclip movement through the encoded world. D-pad moves,
 A speeds up and B opens the fully revealed chart. Equipment barriers, coves
 and finds retain their appearances, and inspection does not collect them.
-Developer flight ignores docking and resource/hazard limits. Use `make run`
+Developer flight ignores docking and resource limits. Use `make run`
 for ordinary gameplay; builds are isolated by mode.
 
 ## Validation and preview
@@ -168,10 +169,10 @@ mirror and exercise salvage, gate operation and rendering in Ardens.
 ## PNG world export
 
 After `make gen`, run `make render-world` to export the packed world using the
-actual host versions of the cave, station, gate, pickup, hazard and pilot
+actual host versions of the cave, station, gate, pickup, current and pilot
 renderers, including the streamed native terrain. It writes `build/world-render/game-world-native.png` (2560x1280,
 1-bit scene pixels without HUD) and `build/world-render/game-world.png`
-(2560x1530, labeled overview). All finds/mines/grates are in new-run state and
+(2560x1530, labeled overview). All finds/gates are in new-run state and
 all areas are visible. This preview command reads existing generated data and
 does not change game assets or the FX layout.
 `game-world-regions.png` shows eight 128x64 native crops enlarged 4× without

@@ -216,8 +216,9 @@ raw_t audio_abyssal_glass = "../fxdata/music/adpcm/abyssal_glass.bin"
 raw_t audio_tidepool_waltz = "../fxdata/music/adpcm/tidepool_waltz.bin"
 raw_t audio_bubblejet_run = "../fxdata/music/adpcm/bubblejet_run.bin"
 
-// USB-free release title loader action (sub-hauler-7px.12). Appended after the
-// sampled streams so every earlier symbol keeps its flash offset.
+// Legacy loader strings (sub-hauler-7px.12), retained because declaration
+// order is flash ABI. The title loader row was removed 2026-10-29; the library
+// DOWN check at power-on remains the bootloader entry.
 string txt_loader = 'LOADER'
 string txt_roster_load_hint = 'UP/DN A OK  L/R HULL'
 
@@ -257,6 +258,16 @@ include "HudSprites.txt"
 include "MenuSprites.txt"
 // Boot introduction appends after the shipped station/shop menus.
 include "SplashSprites.txt"
+
+// Four one-shot restoration beats. Appended after every shipped symbol so all
+// earlier FX offsets remain flash ABI. The homecoming beat lives in the
+// existing ending thanks panel, whose dimensions and address are unchanged.
+include "StorySprites.txt"
+
+// Every story beat now has a WORK quest row. Survey rows are non-cargo leads
+// and reuse their thread label; the chart hint appends after every shipped
+// symbol so earlier FX offsets remain flash ABI.
+string txt_survey_chart_hint = 'A CHART  B BACK'
 
 // Fresh voyage checkpoints (sub-hauler-7px.24). This marker is not an asset
 // declaration: it starts the cart save partition. One 4 KiB erase block holds

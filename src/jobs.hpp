@@ -2,25 +2,19 @@
 
 #include <stdint.h>
 
-#include "features.hpp"
 
-#if SH_FEATURE_JOBS
 
 #include "game.hpp"
 #include "world.hpp"
-#if SH_FEATURE_EXPLORATION
 #include "exploration.hpp"
-#endif
-#if SH_FEATURE_CAMPAIGN
 #include "campaign.hpp"
-#endif
 
 // Contract economy. Pure C++: no heap, no dynamic containers, and no float.
 // Destination choice is a deterministic hash of the origin id and a
 // monotonically increasing offer serial, so the same reset and the same dock
 // sequence produce the same freight row on host and device.
 //
-// Browser reference (`spike-trim/game.js`, makeOffer):
+// Retired browser reference (`makeOffer`, git history):
 //   distance = hypot(dx, dy) / tile            (tiles)
 //   reward   = round((20 + crates*10 + 0.5*distance) / 5) * 5
 //
@@ -60,9 +54,7 @@ static_assert(world::ROUTE_STEP_HZ == game::kStepHz, "generated route recipe use
 // Generated-bound proof for the narrow reward byte.
 static_assert(world::ROUTE_REWARD_MAX <= 250, "route reward keeps uint8_t headroom");
 
-#if SH_FEATURE_CAMPAIGN
 static_assert(sizeof(ActiveJob) == 6, "active job payload is six bytes");
-#endif
 
 #if !defined(__AVR__)
 constexpr bool routeRewardsRoundToFive() {
@@ -131,7 +123,6 @@ inline bool makeOffer(State &state, uint8_t fromId, JobOffer &out) {
     if (!pickDestination(fromId, state.offerSerial, toId))
         return false;
 
-#if SH_FEATURE_EXPLORATION
     // Do not send a new captain through a pressure boundary without the seal.
     if (!exploration::stationAvailable(state, toId)) {
         for (uint8_t offset = 1; offset < world::settlementCount(); ++offset) {
@@ -142,15 +133,9 @@ inline bool makeOffer(State &state, uint8_t fromId, JobOffer &out) {
             }
         }
     }
-#endif
     const RouteEconomy route = routeEconomy(fromId, toId);
-    out.from = fromId;
     out.to = toId;
-    out.crates = kCrates;
     out.reward = route.reward;
-#if SH_FEATURE_CAMPAIGN
-    out.kind = game::kJobKindOrdinary;
-#endif
     return true;
 }
 
@@ -160,12 +145,10 @@ inline bool refreshOffers(State &state, uint8_t stationId) {
     // snapshots) iterates rows below it.
     state.offerCount = 0;
 
-#if SH_FEATURE_CAMPAIGN
     // The saved cursor is the serial before this board; the working serial
     // advances exactly as the historical generator did. Restoring offerSerial
     // from offerCursor reproduces this board without advancing saved state.
     state.offerCursor = state.offerSerial;
-#endif
 
     JobOffer offer;
     if (!makeOffer(state, stationId, offer))
@@ -176,17 +159,14 @@ inline bool refreshOffers(State &state, uint8_t stationId) {
 }
 
 inline void clearActive(State &state) {
-#if SH_FEATURE_CAMPAIGN
     state.activeJob.kind = game::kJobKindNone;
     state.activeJob.mission = game::kMissionNone;
     state.activeJob.from = game::kJobNone;
-#endif
     state.activeJob.to = game::kJobNone;
     state.activeJob.crates = 0;
     state.activeJob.reward = 0;
 }
 
-#if SH_FEATURE_CAMPAIGN
 inline void credit(State &state, uint16_t reward) {
     if (state.credits > static_cast<uint16_t>(kCreditsMax - reward))
         state.credits = kCreditsMax;
@@ -198,7 +178,6 @@ inline void countDelivered(State &state) {
     if (state.delivered != 0xFFFFu)
         ++state.delivered;
 }
-#endif
 
 // Accept the freight offer. Auto-loads the contract's four cargo units,
 // neutralizes trim for that load, and consumes the offer. The boat stays
@@ -208,25 +187,19 @@ inline bool accept(State &state, uint8_t offerIndex) {
         return false;
 
     const JobOffer offer = state.offers[offerIndex];
-    if (offer.to == game::kJobNone || offer.crates == 0)
-        return false;
-    if (offer.from != static_cast<uint8_t>(state.docked))
-        return false;
-#if SH_FEATURE_CAMPAIGN
-    if (offer.kind != game::kJobKindOrdinary)
+    if (offer.to == game::kJobNone || offer.to == static_cast<uint8_t>(state.docked))
         return false;
     state.activeJob.kind = game::kJobKindOrdinary;
     state.activeJob.mission = game::kMissionNone;
-    state.activeJob.from = offer.from;
-#endif
+    state.activeJob.from = static_cast<uint8_t>(state.docked);
 
     game::setCargo(state, 0);
     state.activeJob.to = offer.to;
-    state.activeJob.crates = offer.crates;
+    state.activeJob.crates = kCrates;
     state.activeJob.reward = offer.reward;
     state.lastDelivery = kDeliveryNone;
 
-    game::setCargo(state, offer.crates);
+    game::setCargo(state, kCrates);
     state.ballast = static_cast<uint8_t>(game::neutralForNormalized(state.cargo));
 
     if (offerIndex + 1 < state.offerCount)
@@ -260,7 +233,6 @@ inline DeliveryResult deliver(State &state, uint8_t stationId) {
 
     const bool loaded = state.cargo >= state.activeJob.crates;
     bool paid = false;
-#if SH_FEATURE_CAMPAIGN
     if (state.activeJob.kind == game::kJobKindCampaign) {
         // A campaign load completes exactly once. A malformed or already
         // completed job cannot pay; it still resolves and clears the hold.
@@ -270,21 +242,10 @@ inline DeliveryResult deliver(State &state, uint8_t stationId) {
         // no deadline and no premium.
         paid = loaded;
     }
-#else
-    paid = loaded;
-#endif
 
     if (paid) {
-#if SH_FEATURE_CAMPAIGN
         credit(state, state.activeJob.reward);
         countDelivered(state);
-#else
-        const uint16_t reward = state.activeJob.reward;
-        if (state.credits > static_cast<uint16_t>(kCreditsMax - reward))
-            state.credits = kCreditsMax;
-        else
-            state.credits = static_cast<uint16_t>(state.credits + reward);
-#endif
     }
 
     clearActive(state);
@@ -297,9 +258,7 @@ inline DeliveryResult deliver(State &state, uint8_t stationId) {
 // Dock hook: resolve any contract ending here, then refresh this station's
 // offer. Returns the delivery outcome for the sketch/tests.
 inline DeliveryResult onDock(State &state, uint8_t stationId) {
-#if SH_FEATURE_CAMPAIGN
     campaign::markVisited(state, stationId);
-#endif
     const DeliveryResult result = deliver(state, stationId);
     refreshOffers(state, stationId);
     return result;
@@ -307,4 +266,3 @@ inline DeliveryResult onDock(State &state, uint8_t stationId) {
 
 }   // namespace jobs
 
-#endif   // SH_FEATURE_JOBS

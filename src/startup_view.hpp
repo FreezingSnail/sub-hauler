@@ -1,8 +1,7 @@
 #pragma once
 
-#include "features.hpp"
 
-#if SH_FEATURE_SAVE_VOYAGE && !SH_DEV_MODE && defined(__AVR__)
+#if defined(__AVR__)
 #include "common.hpp"
 #include "panel_view.hpp"
 #include "generated/splash_sprites.hpp"

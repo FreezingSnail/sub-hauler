@@ -1,22 +1,18 @@
 #pragma once
 
 #include "../src/cave.hpp"
-#include "../src/damage_view.hpp"
 #include "../src/game.hpp"
 #include "../src/particles.hpp"
+#include "../src/particles_view.hpp"
 #include "../src/pilot.hpp"
 #include "../src/pilot_view.hpp"
 #include "test.hpp"
 #include "world_test.hpp"
-#if SH_FEATURE_MINES
-#include "../src/hazards.hpp"
-#endif
 
-#if SH_FEATURE_PARTICLES
 
 // Particle pool tests: fixed size, deterministic spawn/update, bounded offsets
-// and lifetime, clipped pilot-view drawing, and real spawn triggers on a hard
-// wall hit and a mine hit. The pool is pure state; these tests never allocate.
+// and lifetime, clipped pilot-view drawing, and the real hard-wall spawn
+// trigger. The pool is pure state; these tests never allocate.
 namespace particles_test {
 
 using Fixture = world_test::FakeWorld;
@@ -177,23 +173,6 @@ inline void ParticlesSuite(TestRunner &runner) {
         runner.add(test);
     }
 
-#if SH_FEATURE_MINES
-    {
-        Test test("a mine hit spawns debris and still removes the mine");
-        Fixture fake;
-        game::State state;
-        game::resetWorld(state);
-        world::Mine mine;
-        test.assertTrue(world::mineInfo(0, mine), "mine 0 metadata");
-        place(state, mine.x, mine.y);
-
-        game::stepWorld(state, idle(), fake);
-        test.assertTrue(!hazards::alive(state, 0), "mine still removed exactly once");
-        test.assertTrue(particles::anyAlive(state), "mine hit spawns the pool");
-        runner.add(test);
-    }
-#endif
-
     {
         Test test("pilot-view particles are clipped to the visible buffer");
         game::State state;
@@ -210,7 +189,7 @@ inline void ParticlesSuite(TestRunner &runner) {
         uint8_t *buffer = storage + kGuard;
         clearBuffer(buffer);
 
-        damage_view::drawParticles(buffer, state, camera);
+        particles_view::draw(buffer, state, camera);
         test.assertTrue(pixelSet(buffer, 0, 0), "corner slot is visible");
         for (uint16_t i = 0; i < kGuard; ++i) {
             test.assertEqual(storage[i], 0x5A, "prefix guard untouched");
@@ -220,7 +199,7 @@ inline void ParticlesSuite(TestRunner &runner) {
         clearBuffer(buffer);
         for (uint8_t tick = 0; tick < particles::kMaxLife; ++tick)
             particles::tick(state);
-        damage_view::drawParticles(buffer, state, camera);
+        particles_view::draw(buffer, state, camera);
         bool drawn = false;
         for (uint16_t i = 0; i < kBufferBytes; ++i)
             drawn = drawn || buffer[i] != 0;
@@ -229,4 +208,3 @@ inline void ParticlesSuite(TestRunner &runner) {
     }
 }
 
-#endif   // SH_FEATURE_PARTICLES

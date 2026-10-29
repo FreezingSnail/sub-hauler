@@ -6,9 +6,7 @@
 // preservation, rescue commits and failed-write retry. Storage fault injection
 // stays in voyage_save_test's FakeStorage so there is one cart-save fixture.
 
-#include "../src/features.hpp"
 
-#if SH_FEATURE_SAVE_VOYAGE
 
 #include "../src/campaign.hpp"
 #include "../src/game.hpp"
@@ -29,12 +27,8 @@ inline bool sameOffers(const game::State &a, const game::State &b) {
     if (a.offerCount != b.offerCount || a.offerCursor != b.offerCursor || a.offerSerial != b.offerSerial)
         return false;
     for (uint8_t i = 0; i < a.offerCount; ++i) {
-        if (a.offers[i].from != b.offers[i].from || a.offers[i].to != b.offers[i].to || a.offers[i].crates != b.offers[i].crates || a.offers[i].reward != b.offers[i].reward)
+        if (a.offers[i].to != b.offers[i].to || a.offers[i].reward != b.offers[i].reward)
             return false;
-#if SH_FEATURE_CAMPAIGN
-        if (a.offers[i].kind != b.offers[i].kind)
-            return false;
-#endif
     }
     return true;
 }
@@ -106,10 +100,8 @@ inline void VoyageFlowSuite(TestRunner &runner) {
         Fixture restored;
         restored.reset();
         test.assertEqual(voyage_flow::loadCheckpoint(restored.state
-#if SH_FEATURE_FOG_CHART
                                                      ,
                                                      restored.chart
-#endif
                                                      ,
                                                      storage),
                          voyage_save::kLoaded, "Continue loads");
@@ -142,18 +134,14 @@ inline void VoyageFlowSuite(TestRunner &runner) {
         Fixture second;
         second.reset();
         test.assertEqual(voyage_flow::loadCheckpoint(first.state
-#if SH_FEATURE_FOG_CHART
                                                      ,
                                                      first.chart
-#endif
                                                      ,
                                                      storage),
                          voyage_save::kLoaded, "first Continue");
         test.assertEqual(voyage_flow::loadCheckpoint(second.state
-#if SH_FEATURE_FOG_CHART
                                                      ,
                                                      second.chart
-#endif
                                                      ,
                                                      storage),
                          voyage_save::kLoaded, "second Continue");
@@ -190,10 +178,8 @@ inline void VoyageFlowSuite(TestRunner &runner) {
         live.state.credits = 999;
         live.state.rescues = 0;
         const voyage_flow::Recovery recovery = voyage_flow::recoverCheckpoint(live.state
-#if SH_FEATURE_FOG_CHART
                                                                               ,
                                                                               live.chart
-#endif
                                                                               ,
                                                                               storage);
         test.assertEqual(recovery.load, voyage_save::kLoaded, "zero-air rescue finds the checkpoint");
@@ -206,10 +192,8 @@ inline void VoyageFlowSuite(TestRunner &runner) {
         Fixture reloaded;
         reloaded.reset();
         test.assertEqual(voyage_flow::loadCheckpoint(reloaded.state
-#if SH_FEATURE_FOG_CHART
                                                      ,
                                                      reloaded.chart
-#endif
                                                      ,
                                                      storage),
                          voyage_save::kLoaded, "committed rescue reloads");
@@ -245,10 +229,8 @@ inline void VoyageFlowSuite(TestRunner &runner) {
         Fixture restored;
         restored.reset();
         test.assertEqual(voyage_flow::loadCheckpoint(restored.state
-#if SH_FEATURE_FOG_CHART
                                                      ,
                                                      restored.chart
-#endif
                                                      ,
                                                      storage),
                          voyage_save::kLoaded, "Continue loads the service-berth checkpoint");
@@ -292,10 +274,8 @@ inline void VoyageFlowSuite(TestRunner &runner) {
         Fixture restored;
         restored.reset();
         test.assertEqual(voyage_flow::loadCheckpoint(restored.state
-#if SH_FEATURE_FOG_CHART
                                                      ,
                                                      restored.chart
-#endif
                                                      ,
                                                      storage),
                          voyage_save::kLoaded, "Continue loads the Lower Gantry checkpoint");
@@ -335,10 +315,8 @@ inline void VoyageFlowSuite(TestRunner &runner) {
         Fixture reloaded;
         reloaded.reset();
         test.assertEqual(voyage_flow::loadCheckpoint(reloaded.state
-#if SH_FEATURE_FOG_CHART
                                                      ,
                                                      reloaded.chart
-#endif
                                                      ,
                                                      storage),
                          voyage_save::kLoaded, "reload between HOME and cards succeeds");
@@ -377,10 +355,8 @@ inline void VoyageFlowSuite(TestRunner &runner) {
         live.reset();
         storage.failedAt = 5;
         const voyage_flow::Recovery failed = voyage_flow::recoverCheckpoint(live.state
-#if SH_FEATURE_FOG_CHART
                                                                             ,
                                                                             live.chart
-#endif
                                                                             ,
                                                                             storage);
         test.assertEqual(failed.load, voyage_save::kLoaded, "recovery load still succeeds");
@@ -391,20 +367,16 @@ inline void VoyageFlowSuite(TestRunner &runner) {
         storage.failed = false;
         storage.failedAt = kNoFault;
         test.assertEqual(voyage_flow::saveCheckpoint(live.state
-#if SH_FEATURE_FOG_CHART
                                                      ,
                                                      live.chart
-#endif
                                                      ,
                                                      storage),
                          voyage_save::kSaved, "retry commits the recovered checkpoint");
         Fixture reloaded;
         reloaded.reset();
         test.assertEqual(voyage_flow::loadCheckpoint(reloaded.state
-#if SH_FEATURE_FOG_CHART
                                                      ,
                                                      reloaded.chart
-#endif
                                                      ,
                                                      storage),
                          voyage_save::kLoaded, "retried rescue loads");
@@ -429,10 +401,8 @@ inline void VoyageFlowSuite(TestRunner &runner) {
         storage.resetCounters();
         storage.failErase = true;
         const voyage_flow::Recovery failed = voyage_flow::recoverCheckpoint(live.state
-#if SH_FEATURE_FOG_CHART
                                                                             ,
                                                                             live.chart
-#endif
                                                                             ,
                                                                             storage);
         test.assertEqual(failed.load, voyage_save::kLoaded, "recovery loads before save");
@@ -444,10 +414,8 @@ inline void VoyageFlowSuite(TestRunner &runner) {
         storage.failed = false;
         storage.failedAt = kNoFault;
         test.assertEqual(voyage_flow::saveCheckpoint(live.state
-#if SH_FEATURE_FOG_CHART
                                                      ,
                                                      live.chart
-#endif
                                                      ,
                                                      storage),
                          voyage_save::kSaved, "retry commits the pending-ending checkpoint");
@@ -462,10 +430,8 @@ inline void VoyageFlowSuite(TestRunner &runner) {
         setValidPayload(fixture);
         fixture.state.docked = -1;
         test.assertEqual(voyage_flow::saveCheckpoint(fixture.state
-#if SH_FEATURE_FOG_CHART
                                                      ,
                                                      fixture.chart
-#endif
                                                      ,
                                                      storage),
                          voyage_save::kInvalidState, "midwater snapshot is rejected before writing");
@@ -474,30 +440,24 @@ inline void VoyageFlowSuite(TestRunner &runner) {
         fixture.state.docked = static_cast<int8_t>(campaign::kTidewall);
         storage.failedAt = 7;
         test.assertEqual(voyage_flow::saveCheckpoint(fixture.state
-#if SH_FEATURE_FOG_CHART
                                                      ,
                                                      fixture.chart
-#endif
                                                      ,
                                                      storage),
                          voyage_save::kWriteFailed, "injected failure is reported honestly");
         storage.failed = false;
         storage.failedAt = kNoFault;
         test.assertEqual(voyage_flow::saveCheckpoint(fixture.state
-#if SH_FEATURE_FOG_CHART
                                                      ,
                                                      fixture.chart
-#endif
                                                      ,
                                                      storage),
                          voyage_save::kSaved, "explicit retry succeeds");
         Fixture restored;
         restored.reset();
         test.assertEqual(voyage_flow::loadCheckpoint(restored.state
-#if SH_FEATURE_FOG_CHART
                                                      ,
                                                      restored.chart
-#endif
                                                      ,
                                                      storage),
                          voyage_save::kLoaded, "retried checkpoint loads");
@@ -505,12 +465,3 @@ inline void VoyageFlowSuite(TestRunner &runner) {
     }
 }
 
-#else
-
-inline void VoyageFlowSuite(TestRunner &runner) {
-    Test test("voyage flow compiles out when SAVE_VOYAGE=0");
-    test.assertEqual(SH_FEATURE_SAVE_VOYAGE, 0, "feature is off in this build");
-    runner.add(test);
-}
-
-#endif   // SH_FEATURE_SAVE_VOYAGE

@@ -48,16 +48,6 @@ constexpr uint8_t PANEL_SAVE_RETRY_HEIGHT = 64;
 constexpr uint8_t PANEL_SAVE_RETRY_FRAMES = 1;
 constexpr bool    PANEL_SAVE_RETRY_MASKED = false;
 
-constexpr uint8_t PANEL_WRECK_RETRY_WIDTH  = 128;
-constexpr uint8_t PANEL_WRECK_RETRY_HEIGHT = 64;
-constexpr uint8_t PANEL_WRECK_RETRY_FRAMES = 1;
-constexpr bool    PANEL_WRECK_RETRY_MASKED = false;
-
-constexpr uint8_t PANEL_WRECK_TITLE_WIDTH  = 128;
-constexpr uint8_t PANEL_WRECK_TITLE_HEIGHT = 64;
-constexpr uint8_t PANEL_WRECK_TITLE_FRAMES = 1;
-constexpr bool    PANEL_WRECK_TITLE_MASKED = false;
-
 constexpr uint8_t TITLE_KEEP_WIDTH  = 128;
 constexpr uint8_t TITLE_KEEP_HEIGHT = 64;
 constexpr uint8_t TITLE_KEEP_FRAMES = 1;
@@ -65,7 +55,7 @@ constexpr bool    TITLE_KEEP_MASKED = false;
 
 constexpr uint8_t TITLE_MENU_WIDTH  = 128;
 constexpr uint8_t TITLE_MENU_HEIGHT = 64;
-constexpr uint8_t TITLE_MENU_FRAMES = 45;
+constexpr uint8_t TITLE_MENU_FRAMES = 30;
 constexpr bool    TITLE_MENU_MASKED = false;
 
 constexpr uint8_t TITLE_REPLACE_WIDTH  = 128;

@@ -1,14 +1,13 @@
 #pragma once
 
-// Permanent host tests for the pure IMA ADPCM codec and the bounded player
-// core. The player tests drive the same ring/decoder code that the AVR Timer4
+// Permanent host tests for the pure IMA ADPCM codec used by the generation
+// reference/asset pipeline. The retired local sampled player is not tested.
 // ISR uses; only the FX reader and PWM glue are device-specific.
 
 #include <cstdint>
 #include <vector>
 
 #include "audio/ima_adpcm.hpp"
-#include "audio/sampled_player.hpp"
 #include "test.hpp"
 
 namespace adpcm_test {
@@ -115,173 +114,6 @@ inline void suite(TestRunner &runner) {
     }
     runner.add(maximum);
 
-    Test playerTest("adpcm_player_decode");
-    {
-        std::vector<int16_t> samples(64);
-        for (size_t i = 0; i < samples.size(); ++i)
-            samples[i] = static_cast<int16_t>(static_cast<int>(i % 16) * 300 - 2000);
-        audio::ima::State encoderState{samples[0], 0};
-        const std::vector<uint8_t> encoded = encode(samples, encoderState);
-        audio::SampledPlayer player;
-        playerTest.assertTrue(player.start(2, 0, static_cast<uint24_t>(encoded.size()),
-                                       static_cast<uint24_t>(samples.size()),
-                                       samples[0], 0),
-                          "player accepts a valid stream");
-        for (uint8_t byte : encoded)
-            playerTest.assertTrue(player.pushByte(byte), "push fits in ring");
-        player.enable();
-        audio::ima::State expectedState{samples[0], 0};
-        bool matches = true;
-        for (size_t i = 0; i < samples.size(); ++i) {
-            const uint8_t nibble = (i & 1) ? static_cast<uint8_t>(encoded[i >> 1] >> 4)
-                                           : static_cast<uint8_t>(encoded[i >> 1] & 0x0F);
-            const int16_t expected = audio::ima::decode(nibble, expectedState);
-            matches = matches && player.tick() == expected;
-        }
-        playerTest.assertTrue(matches, "player output matches the standalone decoder");
-        playerTest.assertTrue(!player.error(), "no underrun while fed");
-    }
-    runner.add(playerTest);
-
-    Test loop("adpcm_player_exact_loop");
-    {
-        std::vector<int16_t> samples(16);
-        for (size_t i = 0; i < samples.size(); ++i)
-            samples[i] = static_cast<int16_t>(static_cast<int>(i) * 700 - 5000);
-        audio::ima::State encoderState{samples[0], 0};
-        const std::vector<uint8_t> encoded = encode(samples, encoderState);
-        audio::SampledPlayer player;
-        loop.assertTrue(player.start(1, 0, static_cast<uint24_t>(encoded.size()),
-                                       static_cast<uint24_t>(samples.size()),
-                                       samples[0], 0),
-                          "short loop starts");
-        for (int copy = 0; copy < 3; ++copy)
-            for (uint8_t byte : encoded)
-                loop.assertTrue(player.pushByte(byte), "loop data fits");
-        player.enable();
-        audio::ima::State expectedState{samples[0], 0};
-        bool matches = true;
-        for (size_t i = 0; i < samples.size() * 3; ++i) {
-            if (i && (i % samples.size()) == 0)
-                expectedState = audio::ima::State{samples[0], 0};
-            const size_t within = i % samples.size();
-            const uint8_t nibble = (within & 1)
-                                       ? static_cast<uint8_t>(encoded[within >> 1] >> 4)
-                                       : static_cast<uint8_t>(encoded[within >> 1] & 0x0F);
-            const int16_t expected = audio::ima::decode(nibble, expectedState);
-            matches = matches && player.tick() == expected;
-        }
-        loop.assertTrue(matches, "decoder state resets at every exact loop boundary");
-    }
-    runner.add(loop);
-
-    Test wrapping("adpcm_player_ring_wrap");
-    {
-        std::vector<int16_t> samples(256);
-        for (size_t i = 0; i < samples.size(); ++i)
-            samples[i] = static_cast<int16_t>((static_cast<int>(i) * 37) % 4000 - 2000);
-        audio::ima::State encoderState{samples[0], 0};
-        const std::vector<uint8_t> encoded = encode(samples, encoderState);
-        audio::SampledPlayer player;
-        wrapping.assertTrue(player.start(0, 0, static_cast<uint24_t>(encoded.size()),
-                                       static_cast<uint24_t>(samples.size()),
-                                       samples[0], 0),
-                          "wrapping stream starts");
-        player.enable();
-        audio::ima::State expectedState{samples[0], 0};
-        size_t produced = 0;
-        bool matches = true;
-        for (size_t i = 0; i < samples.size(); ++i) {
-            while (produced < encoded.size() && player.pushByte(encoded[produced]))
-                ++produced;
-            const uint8_t nibble = (i & 1) ? static_cast<uint8_t>(encoded[i >> 1] >> 4)
-                                           : static_cast<uint8_t>(encoded[i >> 1] & 0x0F);
-            const int16_t expected = audio::ima::decode(nibble, expectedState);
-            matches = matches && player.tick() == expected;
-        }
-        wrapping.assertTrue(matches, "read/write positions wrap without losing samples");
-        wrapping.assertEqual(produced, encoded.size(), "all bytes eventually accepted");
-    }
-    runner.add(wrapping);
-
-    Test halfbyteTest("adpcm_player_full_and_half_byte");
-    {
-        audio::SampledPlayer player;
-        halfbyteTest.assertTrue(player.start(5, 0, 127, 254, 0, 0),
-                          "full-ring stream starts");
-        for (uint8_t i = 0; i < 127; ++i)
-            halfbyteTest.assertTrue(player.pushByte(i), "usable ring accepts 127 bytes");
-        halfbyteTest.assertEqual(player.freeBytes(), 0, "one sentinel slot keeps full explicit");
-        halfbyteTest.assertTrue(!player.pushByte(0), "full ring rejects another byte");
-        player.enable();
-        player.tick();
-        halfbyteTest.assertEqual(player.freeBytes(), 0,
-                                 "low nibble does not release its byte");
-        player.tick();
-        halfbyteTest.assertEqual(player.freeBytes(), 1,
-                                 "high nibble releases exactly one byte");
-        halfbyteTest.assertTrue(player.pushByte(0x55), "freed byte can be published");
-        halfbyteTest.assertEqual(player.freeBytes(), 0, "ring is full again");
-
-        audio::SampledPlayer small;
-        halfbyteTest.assertTrue(small.start(5, 0, 1, 2, 0, 0), "single-byte stream starts");
-        halfbyteTest.assertTrue(small.pushByte(0x12), "single byte accepted");
-        halfbyteTest.assertEqual(small.freeBytes(), 126, "one byte occupies one slot");
-        small.enable();
-        small.tick();
-        halfbyteTest.assertEqual(small.freeBytes(), 126, "half byte still occupies the slot");
-        small.tick();
-        halfbyteTest.assertEqual(small.freeBytes(), 127, "both nibbles release the slot");
-    }
-    runner.add(halfbyteTest);
-
-    Test lifecycle("adpcm_player_lifecycle");
-    {
-        std::vector<int16_t> samples(32, 1200);
-        audio::ima::State encoderState{samples[0], 0};
-        const std::vector<uint8_t> encoded = encode(samples, encoderState);
-        audio::SampledPlayer player;
-        lifecycle.assertTrue(player.start(3, 0, static_cast<uint24_t>(encoded.size()),
-                                       static_cast<uint24_t>(samples.size()),
-                                       samples[0], 0),
-                          "lifecycle stream starts");
-        for (uint8_t byte : encoded)
-            player.pushByte(byte);
-        player.enable();
-        for (int i = 0; i < 8; ++i)
-            player.tick();
-        player.pause();
-        const int16_t paused = player.tick();
-        lifecycle.assertEqual(paused, 0, "pause outputs silence");
-        player.resume();
-        lifecycle.assertTrue(player.tick() == 1200, "resume retains position and predictor");
-        player.setMuted(true);
-        lifecycle.assertEqual(player.tick(), 0, "mute silences output without advancing");
-        player.setMuted(false);
-        lifecycle.assertTrue(player.start(3, 0, static_cast<uint24_t>(encoded.size()),
-                                       static_cast<uint24_t>(samples.size()),
-                                       samples[0], 0),
-                          "same-cue start is accepted as a no-op");
-        lifecycle.assertTrue(player.tick() == 1200, "same-cue start does not restart");
-        player.stop();
-        lifecycle.assertTrue(!player.active(), "stop clears active");
-        lifecycle.assertEqual(player.tick(), 0, "stopped player is silent");
-    }
-    runner.add(lifecycle);
-
-    Test errors("adpcm_player_underrun");
-    {
-        audio::SampledPlayer player;
-        errors.assertTrue(player.start(4, 0, 4, 8, 0, 0), "valid empty stream arms");
-        player.enable();
-        errors.assertEqual(player.tick(), 0, "empty ring outputs silence");
-        errors.assertTrue(player.error(), "empty ring raises an error flag");
-        errors.assertTrue(player.underrun(), "empty ring records underrun");
-        player.clearUnderrun();
-        errors.assertTrue(!player.underrun(), "underrun latch clears");
-        errors.assertTrue(!player.start(4, 0, 0, 0, 0, 0), "zero-length cue rejected");
-    }
-    runner.add(errors);
 }
 
 } // namespace adpcm_test

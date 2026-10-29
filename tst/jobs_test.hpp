@@ -1,16 +1,12 @@
 #pragma once
 
-#include "../src/features.hpp"
 
-#if SH_FEATURE_JOBS
 
 #include "../src/game.hpp"
 #include "../src/jobs.hpp"
 #include "../src/station.hpp"
 #include "../src/world.hpp"
-#if SH_FEATURE_SHOP
 #include "../src/shop.hpp"
-#endif
 #include "test.hpp"
 #include "world_test.hpp"
 
@@ -134,19 +130,14 @@ inline void JobsSuite(TestRunner &runner) {
         game::reset(second);
         test.assertTrue(jobs::refreshOffers(second, origin.id), "offer regenerates from the same state");
 
-        test.assertEqual(second.offers[0].from, first.offers[0].from, "origin is deterministic");
         test.assertEqual(second.offers[0].to, first.offers[0].to, "destination is deterministic");
-        test.assertEqual(second.offers[0].crates, first.offers[0].crates, "crate count is deterministic");
         test.assertEqual(second.offers[0].reward, first.offers[0].reward, "reward is deterministic");
         test.assertEqual(second.offerSerial, first.offerSerial, "offer serial advances identically");
 
-        test.assertEqual(first.offers[0].crates, game::kJobCrates, "the contract requires four units");
+        test.assertEqual(game::kJobCrates, 4, "the contract requires four units");
         test.assertTrue(first.offers[0].reward > 0, "reward is positive");
         test.assertEqual(first.offers[0].reward % jobs::kRewardRound, 0, "reward is a multiple of five");
-#if SH_FEATURE_CAMPAIGN
-        test.assertEqual(first.offers[0].kind, game::kJobKindOrdinary, "the freight row is ordinary work");
         test.assertEqual(first.offerCursor, 0, "the fresh board records its pre-board cursor");
-#endif
         runner.add(test);
     }
 
@@ -160,7 +151,6 @@ inline void JobsSuite(TestRunner &runner) {
             game::reset(state);
             test.assertTrue(jobs::refreshOffers(state, originId), "offer generates for every origin");
             test.assertEqual(state.offerCount, 1, "one row posts for every origin");
-            test.assertEqual(state.offers[0].from, originId, "offer records its origin");
             test.assertTrue(state.offers[0].to != originId, "destination differs from origin");
             test.assertTrue(state.offers[0].to < world::settlementCount(), "destination is a real settlement");
         }
@@ -198,7 +188,7 @@ inline void JobsSuite(TestRunner &runner) {
         game::State state;
         game::reset(state);
         test.assertTrue(jobs::refreshOffers(state, origin.id), "offer generates");
-        const jobs::RouteEconomy route = jobs::routeEconomy(state.offers[0].from, state.offers[0].to);
+        const jobs::RouteEconomy route = jobs::routeEconomy(origin.id, state.offers[0].to);
         test.assertEqual(state.offers[0].reward, route.reward, "offer reward comes from the table");
         runner.add(test);
     }
@@ -225,11 +215,9 @@ inline void JobsSuite(TestRunner &runner) {
         test.assertEqual(state.activeJob.to, chosen.to, "destination comes from the offer");
         test.assertEqual(state.activeJob.crates, game::kJobCrates, "contract requires four units");
         test.assertEqual(state.activeJob.reward, chosen.reward, "reward is fixed at acceptance");
-#if SH_FEATURE_CAMPAIGN
         test.assertEqual(state.activeJob.kind, game::kJobKindOrdinary, "active kind is ordinary freight");
         test.assertEqual(state.activeJob.mission, game::kMissionNone, "freight has no campaign mission");
-        test.assertEqual(state.activeJob.from, chosen.from, "active freight records its origin");
-#endif
+        test.assertEqual(state.activeJob.from, state.docked, "active freight records its origin");
         test.assertEqual(state.cargo, game::kJobCrates, "acceptance auto-loads four units");
         test.assertEqual(state.ballast, game::neutralFor(state.cargo), "trim is neutral for the auto-load");
         test.assertEqual(state.docked, static_cast<int8_t>(origin.id), "acceptance stays docked");
@@ -307,9 +295,7 @@ inline void JobsSuite(TestRunner &runner) {
         for (uint16_t i = 0; i < 10 * 60 * 60; ++i)
             game::step(state, idle());
         test.assertEqual(state.docked, static_cast<int8_t>(-1), "the long trip stays in open water");
-#if SH_FEATURE_CAMPAIGN
         test.assertEqual(state.voyageTicks, 10 * 60 * 60, "the voyage clock still advances");
-#endif
 
         test.assertTrue(travelTo(state, destination), "dock after the long trip");
         test.assertEqual(state.credits, reward, "a late-looking trip still pays");
@@ -370,9 +356,6 @@ inline void JobsSuite(TestRunner &runner) {
         game::State fresh;
         game::reset(fresh);
         test.assertTrue(fresh.air > 0, "a fresh run starts with air");
-#if SH_FEATURE_HULL_DAMAGE
-        test.assertTrue(fresh.hull > 0, "a fresh run starts with hull");
-#endif
 
         for (uint8_t originId = 0; originId < world::settlementCount(); ++originId) {
             world::Settlement origin;
@@ -410,10 +393,7 @@ inline void JobsSuite(TestRunner &runner) {
             test.assertEqual(resupply.air, game::airCapacity(resupply), "service refills the tank");
             test.assertEqual(resupply.activeJob.to, state.offers[0].to, "resupply retains destination");
             test.assertEqual(resupply.cargo, game::kJobCrates, "resupply preserves the loaded hold");
-#if SH_FEATURE_SHOP
             test.assertTrue(state.offers[0].reward >= shop::kAirPrice, "a contract pays for the cheapest upgrade");
-            test.assertTrue(state.offers[0].reward >= shop::kHullPrice, "a contract pays for a hull plate");
-#endif
         }
         runner.add(test);
     }
@@ -437,14 +417,9 @@ inline void JobsSuite(TestRunner &runner) {
         test.assertEqual(station::rowKind(station::kActiveSummaryRow, state), station::kRowJob, "summary row");
         test.assertEqual(station::initialRow(state), station::kActiveUndockRow, "safe UNDOCK starts the active board");
         test.assertEqual(station::selectNext(station::kActiveUndockRow, state), station::kAbandonRow, "down reaches ABANDON");
-#if SH_FEATURE_SHOP
         test.assertEqual(station::selectPrevious(station::kActiveUndockRow, state), station::kActiveShopRow, "up reaches SHOP");
         test.assertEqual(station::selectPrevious(station::kActiveShopRow, state), station::kActiveWorkRow, "SHOP follows WORK");
         test.assertEqual(station::selectPrevious(station::kActiveWorkRow, state), station::kAbandonRow, "WORK follows ABANDON");
-#else
-        test.assertEqual(station::selectPrevious(station::kActiveUndockRow, state), station::kActiveWorkRow, "up reaches WORK");
-        test.assertEqual(station::selectPrevious(station::kActiveWorkRow, state), station::kAbandonRow, "WORK follows ABANDON");
-#endif
         test.assertEqual(station::rowKind(station::kActiveWorkRow, state), station::kRowWork, "active WORK row");
         test.assertEqual(station::rowKind(station::kAbandonRow, state), station::kRowAbandon, "ABANDON row");
         test.assertEqual(station::rowKind(station::kActiveUndockRow, state), station::kRowUndock, "UNDOCK row");
@@ -455,4 +430,3 @@ inline void JobsSuite(TestRunner &runner) {
     }
 }
 
-#endif   // SH_FEATURE_JOBS

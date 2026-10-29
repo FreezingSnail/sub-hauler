@@ -9,7 +9,6 @@
 
 Arduboy2Base arduboy;
 
-#if SH_STATION_MENU_PANELS && SH_SHOP_MENU_PANELS
 namespace {
 game::State state;
 
@@ -109,7 +108,6 @@ bool shopCheck(uint8_t row, uint8_t pattern) {
     return checksum() == expected;
 }
 } // namespace
-#endif
 
 void setup() {
     Serial.begin(9600);
@@ -119,13 +117,11 @@ void setup() {
     FX::setCursorRange(0, 32767);
     text::begin();
     bool ok = true;
-#if SH_STATION_MENU_PANELS && SH_SHOP_MENU_PANELS
     uint16_t checks = 0;
     game::resetWorld(state);
     state.credits = 65535;
-    state.airLevel = state.hullLevel = shop::kMaxLevel;
+    state.airLevel = shop::kMaxLevel;
     state.air = 7;
-    state.hull = 1;
     state.tools = exploration_data::CUTTER | exploration_data::SEAL | exploration_data::THRUSTER;
     for (uint8_t berth = 0; berth < campaign::kBerthCount; ++berth) {
         state.docked = berth;
@@ -153,18 +149,15 @@ void setup() {
     ++checks;
     state.lastDelivery = jobs::kDeliveryNone;
     for (uint8_t air = 0; air <= shop::kMaxLevel; ++air)
-        for (uint8_t hull = 0; hull <= shop::kMaxLevel; ++hull)
-            for (uint8_t row = 0; row < shop::kItemCount; ++row) {
-                state.airLevel = air;
-                state.hullLevel = hull;
-                state.credits = checks & 1 ? 0 : 65535;
-                ok = shopCheck(row, 0xAA) && ok;
-                ++checks;
-            }
+        for (uint8_t row = 0; row < shop::kItemCount; ++row) {
+            state.airLevel = air;
+            state.credits = checks & 1 ? 0 : 65535;
+            ok = shopCheck(row, 0xAA) && ok;
+            ++checks;
+        }
     Serial.print(F("menu pixel cases="));
     Serial.println(checks);
-    ok = checks == 69 && ok;
-#endif
+    ok = checks == 41 && ok;
     Serial.println(ok ? F("P") : F("F"));
 }
 

@@ -1,12 +1,10 @@
 #pragma once
-#include "features.hpp"
-#if SH_FEATURE_EXPLORATION
 #include "cave_render.hpp"
 #include "exploration.hpp"
 namespace exploration_view {
 // Three-column glyphs: C, P, T, $, H, L. Pure 1-bit buffer drawing.
 inline void glyph(uint8_t *buffer, int16_t x, int16_t y, uint8_t kind) {
-    const uint16_t bits = kind == 1 ? 0x724F : kind == 2 ? 0x12EB : kind == 3 ? 0x2497 : kind == 4 ? 0x7DDF : kind == 5 ? 0x5BED : 0x7249;
+    const uint16_t bits = kind == 1 ? 0x724F : kind == 2 ? 0x12EB : kind == 3 ? 0x2497 : kind == 4 ? 0x7DDF : 0x7249;
     for (uint8_t row = 0; row < 5; ++row)
         for (uint8_t col = 0; col < 3; ++col)
             if (bits & (static_cast<uint16_t>(1u) << (row * 3 + col)))
@@ -52,4 +50,3 @@ inline void draw(uint8_t *buffer, const game::State &s, const cave::Camera &came
     }
 }
 }   // namespace exploration_view
-#endif

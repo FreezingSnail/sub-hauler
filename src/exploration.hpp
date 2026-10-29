@@ -1,6 +1,5 @@
 #pragma once
-#include "features.hpp"
-#if SH_FEATURE_EXPLORATION
+#include "campaign.hpp"
 #include "game.hpp"
 #include "generated/exploration.hpp"
 #include "world.hpp"
@@ -13,10 +12,8 @@ constexpr uint8_t kNone = 0xFF;
 constexpr uint8_t kDwellTicks = 30;
 // Contact-id namespace: pickup ids first, then gate dwell targets, then the
 // campaign survey rings. The ranges never share a value.
-#if SH_FEATURE_CAMPAIGN
 constexpr uint8_t kSurveyBase = static_cast<uint8_t>(data::PICKUP_COUNT + data::GATE_COUNT);
 constexpr uint8_t kSurveyLast = static_cast<uint8_t>(kSurveyBase + world::SURVEY_COUNT - 1);
-#endif
 constexpr int16_t kOperateSpeed = 10 * game::kQ8One;
 
 inline bool slow(const State &s) {
@@ -60,35 +57,33 @@ inline void claim(State &s, uint8_t id, const data::Pickup &p) {
     else if (p.kind == 4) {
         s.credits = s.credits > static_cast<uint16_t>(0xFFFFu - p.amount) ? 0xFFFFu : static_cast<uint16_t>(s.credits + p.amount);
     }
-#if SH_FEATURE_HULL_DAMAGE
-    else if (p.kind == 5)
-        s.hull = game::hullCapacity(s);
-#endif
     s.lastDiscovery = id;
     s.discoveryTicks = 180;
 }
 inline void update(State &s) {
-#if SH_FEATURE_STATIONS
     if (s.docked >= 0) {
         s.contactId = kNone;
         s.contactTicks = 0;
         return;
     }
-#endif
     uint8_t target = kNone;
-#if SH_FEATURE_CAMPAIGN
+    uint8_t hint = kNone;
     // Survey rings record a fact without occupying the cargo slot. They can be
-    // found before the campaign asks for them and never repeat.
+    // found before the campaign asks for them and never repeat. After FIRST the
+    // wider hint radius tells a moving pilot to stop near the ring.
     for (uint8_t i = 0; i < world::surveyCount(); ++i) {
         world::Survey survey;
         if (!world::surveyInfo(i, survey))
             continue;
         if (s.surveys & (static_cast<uint8_t>(1u) << survey.id))
             continue;
-        if (s.x >= survey.pixel_x - 18 && s.x <= survey.pixel_x + 18 && s.y >= survey.pixel_y - 12 && s.y <= survey.pixel_y + 12 && slow(s))
+        const int16_t dx = static_cast<int16_t>(s.x - survey.pixel_x);
+        const int16_t dy = static_cast<int16_t>(s.y - survey.pixel_y);
+        if (dx >= -18 && dx <= 18 && dy >= -12 && dy <= 12 && slow(s))
             target = static_cast<uint8_t>(kSurveyBase + i);
+        else if (dx >= -48 && dx <= 48 && dy >= -48 && dy <= 48 && campaign::hasMilestone(s, campaign::kMilestoneFirst))
+            hint = static_cast<uint8_t>(kSurveyBase + i);
     }
-#endif
     for (uint8_t i = 0; i < data::GATE_COUNT; ++i) {
         const data::Gate g = data::gate(i);
         if (nearGate(s, g, 48))
@@ -104,7 +99,7 @@ inline void update(State &s) {
             target = i;
     }
     if (target == kNone) {
-        s.contactId = kNone;
+        s.contactId = hint;
         s.contactTicks = 0;
         return;
     }
@@ -118,7 +113,6 @@ inline void update(State &s) {
     if (target < data::PICKUP_COUNT) {
         claim(s, target, data::pickup(target));
     } else {
-#if SH_FEATURE_CAMPAIGN
         if (target >= kSurveyBase) {
             world::Survey survey;
             if (world::surveyInfo(static_cast<uint8_t>(target - kSurveyBase), survey)) {
@@ -128,7 +122,6 @@ inline void update(State &s) {
             }
             return;
         }
-#endif
         s.openGates |= static_cast<uint16_t>(1u) << (target - data::PICKUP_COUNT);
     }
 }
@@ -137,4 +130,3 @@ inline bool stationAvailable(const State &s, uint8_t id) {
     return id != 3 || (s.tools & data::SEAL) != 0;
 }
 }   // namespace exploration
-#endif

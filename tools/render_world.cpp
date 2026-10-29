@@ -36,15 +36,9 @@ int main(int argc, char **argv) {
         for (int16_t tx = 0; tx < world::TILES_X; tx += cave::VIEW_TILES_X) {
             const cave::Camera camera = cave::cameraAtTile(tx, ty);
             cave::streamFrame(camera, terrain, buffer);
-#if SH_FEATURE_CURRENTS
             hazard_view::drawCurrents(buffer, state, camera);
-#endif
-#if SH_FEATURE_MINES
             hazard_view::drawMines(buffer, state, camera);
-#endif
-#if SH_FEATURE_EXPLORATION
             exploration_view::draw(buffer, state, camera);
-#endif
             pilot_view::draw(buffer, state, camera);
             for (int16_t y = 0; y < 64; ++y) {
                 for (int16_t x = 0; x < 128; ++x) {

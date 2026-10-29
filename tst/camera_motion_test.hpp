@@ -20,13 +20,9 @@ inline game::State boatAt(int16_t x) {
     state.yFrac = 0;
     state.vxQ8 = 0;
     state.vyQ8 = 0;
-#if SH_FEATURE_STATIONS
     state.docked = -1;
-#endif
-#if SH_FEATURE_EXPLORATION
     state.contactId = exploration::kNone;
     state.discoveryTicks = 0;
-#endif
     game::snapCamera(state);
     return state;
 }

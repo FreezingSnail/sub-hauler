@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Bake the fixed browser cave into raw 1-bit FX tables and metadata.
 
-The layout is a deterministic Python port of ``generateCave`` from
-``spike-trim/game.js`` with the shipped seed (4242). Generation has no Node,
-browser, or third-party dependency: only the Python standard library.
+The layout is a deterministic Python port of the retired browser
+``generateCave`` with the shipped seed (4242). Generation has no Node, browser,
+or third-party dependency: only the Python standard library.
 
 Binary layout
 -------------
@@ -58,7 +58,6 @@ DEFAULT_SEED = 4242
 BORDER_TILES = 2
 SETTLEMENT_CLEAR_TILES = 6
 DOCK_CLEARANCE_PX = 42
-MINE_RADIUS_PX = 3
 
 # Contract economy recipe. These are the shipping floor/round rules that were
 # previously evaluated at runtime in src/jobs.hpp:
@@ -131,12 +130,6 @@ class Settlement:
 
 
 @dataclass(frozen=True)
-class Mine:
-    x: int
-    y: int
-
-
-@dataclass(frozen=True)
 class Current:
     x: int
     y: int
@@ -153,7 +146,6 @@ class World:
     chart: bytes
     chambers: tuple[Chamber, ...]
     settlements: tuple[Settlement, ...]
-    mines: tuple[Mine, ...]
     currents: tuple[Current, ...]
     spawn_tile_x: int
     spawn_tile_y: int
@@ -309,28 +301,12 @@ def generate_cave(seed: int = DEFAULT_SEED) -> World:
         )
     )
 
-    # Mine sites use the same PRNG stream and pull-back as the browser.
-    mine_chambers = [c for c in chambers if not c.settlement]
-    mines: list[Mine] = []
-    for i in range(8):
-        c = mine_chambers[i % len(mine_chambers)]
-        angle = rand() * math.pi * 2
-        distance = (c.r - 1.5) * TILE_PIXELS
-        x = c.x * TILE_PIXELS + math.cos(angle) * distance
-        y = c.y * TILE_PIXELS + math.sin(angle) * distance
-        for _ in range(12):
-            if not solid_at(grid, x, y):
-                break
-            x += (c.x * TILE_PIXELS - x) * 0.15
-            y += (c.y * TILE_PIXELS - y) * 0.15
-        if not solid_at(grid, x, y):
-            mines.append(Mine(x=int(round(x)), y=int(round(y))))
-
     # Current zones: one per non-settlement chamber, centred on the chamber and
     # alternating horizontal/vertical with deterministic signs. No PRNG is
-    # consumed, so adding currents cannot move the mine sites.
+    # consumed, so adding currents cannot move the baked cave.
+    current_chambers = [c for c in chambers if not c.settlement]
     currents: list[Current] = []
-    for index, c in enumerate(mine_chambers):
+    for index, c in enumerate(current_chambers):
         center_x = int(round(c.x * TILE_PIXELS))
         center_y = int(round(c.y * TILE_PIXELS))
         x = center_x - CURRENT_WIDTH_PX // 2
@@ -363,7 +339,6 @@ def generate_cave(seed: int = DEFAULT_SEED) -> World:
         chart=chart,
         chambers=tuple(chambers),
         settlements=settlements,
-        mines=tuple(mines),
         currents=tuple(currents),
         spawn_tile_x=spawn.tile_x,
         spawn_tile_y=spawn.tile_y,
@@ -616,22 +591,6 @@ def validate_world(world: World) -> None:
             if rewards[forward] != rewards[reverse] or deadlines[forward] != deadlines[reverse]:
                 raise ValueError(
                     f"route economy is not symmetric for ({origin}, {destination})"
-                )
-
-    # Mines sit in open water, away from every settlement's dock radius.
-    if not world.mines:
-        raise ValueError("world has no mine sites")
-    for index, mine in enumerate(world.mines):
-        if not (0 <= mine.x < WORLD_PIXELS_X and 0 <= mine.y < WORLD_PIXELS_Y):
-            raise ValueError(f"mine {index} is outside the world")
-        if solid_at(grid, mine.x, mine.y):
-            raise ValueError(f"mine {index} is inside rock at ({mine.x}, {mine.y})")
-        for settlement in world.settlements:
-            dx = mine.x - settlement.pixel_x
-            dy = mine.y - settlement.pixel_y
-            if math.hypot(dx, dy) < DOCK_CLEARANCE_PX:
-                raise ValueError(
-                    f"mine {index} is inside {settlement.name} dock clearance"
                 )
 
     # Current zones are metadata-only rectangles. Every tile they overlap must
@@ -900,9 +859,6 @@ inline bool surveyMeta(uint8_t index, Survey &out) {
         "},"
         for s in world.settlements
     )
-    mines = "\n".join(
-        f"    {{{mine.x}, {mine.y}}}," for mine in world.mines
-    )
     currents = "\n".join(
         "    {"
         f"{current.x}, {current.y}, {current.w}, {current.h}, "
@@ -912,9 +868,6 @@ inline bool surveyMeta(uint8_t index, Survey &out) {
     )
     settlement_meta = "\n".join(
         f"    {{{s.pixel_x}, {s.pixel_y}}}," for s in world.settlements
-    )
-    mine_meta = "\n".join(
-        f"    {{{mine.x}, {mine.y}}}," for mine in world.mines
     )
     current_meta = "\n".join(
         f"    {{{current.x}, {current.y}, {current_direction(current)}}},"
@@ -938,10 +891,9 @@ inline bool surveyMeta(uint8_t index, Survey &out) {
 //   host  constexpr records including settlement names.
 // A namespace-scope constexpr array that is odr-used is copied into SRAM by the
 // AVR startup code, and name pointers would drag their string literals along
-// with it. Device code therefore never references SETTLEMENTS/MINES/CURRENTS;
-// it reads the small PROGMEM copy through settlementMeta()/mineMeta()/
-// currentMeta(). Names stay host-only so no string literal is linked into the
-// device image. Current zones are metadata only: they do not change the FX
+// with it. Device code therefore never references SETTLEMENTS/CURRENTS;
+// it reads the small PROGMEM copy through settlementMeta()/currentMeta().
+// Names stay host-only so no string literal is linked into the device image. Current zones are metadata only: they do not change the FX
 // table ABI.
 #pragma once
 
@@ -972,7 +924,6 @@ constexpr uint8_t  ROUTE_CRATES      = {CONTRACT_CRATES};
 constexpr uint16_t ROUTE_STEP_HZ     = {STEP_HZ};
 constexpr uint8_t  ROUTE_REWARD_MAX  = {route_reward_max};
 constexpr uint16_t ROUTE_DEADLINE_MAX = {route_deadline_max};
-constexpr uint8_t  MINE_COUNT        = {len(world.mines)};
 constexpr uint8_t  CURRENT_COUNT     = {len(world.currents)};
 constexpr uint8_t  BERTH_COUNT       = {berth_count};
 constexpr uint8_t  SERVICE_BERTH_COUNT = {len(service_berths)};
@@ -980,7 +931,6 @@ constexpr uint8_t  SURVEY_COUNT      = {len(surveys)};
 {berth_constants}
 {survey_constants}
 constexpr int16_t  DOCK_CLEARANCE_PX = {DOCK_CLEARANCE_PX};
-constexpr uint8_t  MINE_RADIUS_PX    = {MINE_RADIUS_PX};
 constexpr uint8_t  CURRENT_WIDTH_PX  = {CURRENT_WIDTH_PX};
 constexpr uint8_t  CURRENT_HEIGHT_PX = {CURRENT_HEIGHT_PX};
 constexpr int16_t  CURRENT_ACCEL_Q8 = {CURRENT_ACCEL_Q8};
@@ -1006,11 +956,6 @@ struct Settlement {{
     int16_t pixel_y;
 }};
 
-struct Mine {{
-    int16_t x;
-    int16_t y;
-}};
-
 // Current zone: a pixel rectangle and a signed Q8.8 acceleration. Exactly one
 // acceleration axis is non-zero for the generated set.
 struct Current {{
@@ -1024,7 +969,7 @@ struct Current {{
 {service_structs}{survey_structs}
 #if defined(__AVR__)
 
-// Compact position-only copy: {len(world.settlements)} * 4 B + {len(world.mines)} * 4 B + {len(world.currents)} * 5 B in program flash.
+// Compact position-only copy: {len(world.settlements)} * 4 B + {len(world.currents)} * 5 B in program flash.
 // Settlement ids are implicit in the index and tile coordinates derive from
 // the pixel pair. Current extents are the generated constants and the signed
 // axis direction is one compact code.
@@ -1035,10 +980,6 @@ struct SettlementMeta {{
 
 const SettlementMeta SETTLEMENT_META[SETTLEMENT_COUNT] PROGMEM = {{
 {settlement_meta}
-}};
-
-const Mine MINE_META[MINE_COUNT] PROGMEM = {{
-{mine_meta}
 }};
 
 struct CurrentMeta {{
@@ -1083,14 +1024,6 @@ inline bool settlementMeta(uint8_t id, Settlement &out) {{
     return true;
 }}
 
-inline bool mineMeta(uint8_t id, Mine &out) {{
-    if (id >= MINE_COUNT)
-        return false;
-    out.x = static_cast<int16_t>(pgm_read_word(&MINE_META[id].x));
-    out.y = static_cast<int16_t>(pgm_read_word(&MINE_META[id].y));
-    return true;
-}}
-
 inline bool currentMeta(uint8_t id, Current &out) {{
     if (id >= CURRENT_COUNT)
         return false;
@@ -1112,10 +1045,6 @@ inline bool currentMeta(uint8_t id, Current &out) {{
 
 constexpr Settlement SETTLEMENTS[SETTLEMENT_COUNT] = {{
 {settlements}
-}};
-
-constexpr Mine MINES[MINE_COUNT] = {{
-{mines}
 }};
 
 constexpr Current CURRENTS[CURRENT_COUNT] = {{
@@ -1145,13 +1074,6 @@ inline bool settlementMeta(uint8_t id, Settlement &out) {{
     if (id >= SETTLEMENT_COUNT)
         return false;
     out = SETTLEMENTS[id];
-    return true;
-}}
-
-inline bool mineMeta(uint8_t id, Mine &out) {{
-    if (id >= MINE_COUNT)
-        return false;
-    out = MINES[id];
     return true;
 }}
 
@@ -1215,7 +1137,7 @@ def main(argv=None) -> int:
         "gen_world: "
         f"seed={world.seed} world={paths[0].stat().st_size}B "
         f"chart={paths[1].stat().st_size}B "
-        f"settlements={len(world.settlements)} mines={len(world.mines)} "
+        f"settlements={len(world.settlements)} "
         f"currents={len(world.currents)} "
         "validation=pass"
     )

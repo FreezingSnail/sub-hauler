@@ -1,8 +1,6 @@
 #pragma once
 
-#include "../src/features.hpp"
 
-#if SH_FEATURE_FOG_CHART
 
 #include "../src/chart_view.hpp"
 #include "chart_test.hpp"
@@ -191,7 +189,6 @@ inline void ChartViewSuite(TestRunner &runner) {
         runner.add(test);
     }
 
-#if SH_FEATURE_JOBS
     {
         Test test("destination X blinks from the supplied phase");
         chart_test::FakeReader reader;
@@ -204,11 +201,9 @@ inline void ChartViewSuite(TestRunner &runner) {
         gameState.x = 820;
         gameState.y = 420;
         gameState.activeJob.to = 2;   // settlement 2 is chart cell 56,12
-#if SH_FEATURE_CAMPAIGN
         gameState.activeJob.kind = game::kJobKindOrdinary;
         gameState.activeJob.mission = game::kMissionNone;
         gameState.activeJob.from = 0;
-#endif
         world::Settlement destination;
         world::settlementInfo(gameState.activeJob.to,destination);
         const int16_t destX=destination.tile_x/5*2+1;
@@ -247,7 +242,51 @@ inline void ChartViewSuite(TestRunner &runner) {
         test.assertEqual(gameState.air, airBefore, "chart render does not consume air");
         runner.add(test);
     }
-#endif
+
+    {
+        Test test("survey targets blink after FIRST, ignore fog, and vanish once recorded");
+        chart_test::FakeReader reader;
+        chart::State fog;
+        chart::reset(fog);   // no cell explored: markers must still guide the pilot
+
+        game::State gameState;
+        game::resetWorld(gameState);
+
+        world::Survey pump, lift;
+        test.assertTrue(world::surveyInfo(world::SURVEY_PUMP, pump), "generated pump survey");
+        test.assertTrue(world::surveyInfo(world::SURVEY_LIFT, lift), "generated lift survey");
+        int16_t pumpCellX, pumpCellY, liftCellX, liftCellY;
+        test.assertTrue(chart::cellFromPixels(pump.pixel_x, pump.pixel_y, pumpCellX, pumpCellY), "pump maps to the chart");
+        test.assertTrue(chart::cellFromPixels(lift.pixel_x, lift.pixel_y, liftCellX, liftCellY), "lift maps to the chart");
+        const int16_t pumpX = static_cast<int16_t>(pumpCellX * chart_view::kCellPixels + 1);
+        const int16_t pumpY = static_cast<int16_t>(pumpCellY * chart_view::kCellPixels + 1);
+        const int16_t liftX = static_cast<int16_t>(liftCellX * chart_view::kCellPixels + 1);
+        const int16_t liftY = static_cast<int16_t>(liftCellY * chart_view::kCellPixels + 1);
+
+        uint8_t early[chart_view::kFrameBytes];
+        uint8_t on[chart_view::kFrameBytes];
+        uint8_t off[chart_view::kFrameBytes];
+        uint8_t recorded[chart_view::kFrameBytes];
+
+        chart_view::draw(early, fog, gameState, reader, 0);
+        test.assertEqual(pixel(early, pumpX, pumpY), 0u, "no pump X before FIRST");
+        test.assertEqual(pixel(early, liftX, liftY), 0u, "no lift X before FIRST");
+
+        gameState.campaign = campaign::kMilestoneFirst;
+        chart_view::draw(on, fog, gameState, reader, 0);
+        chart_view::draw(off, fog, gameState, reader, chart_view::kBlinkMask);
+        test.assertEqual(pixel(on, pumpX, pumpY), 1u, "pump X centre on phase 0 through fog");
+        test.assertEqual(pixel(on, pumpX - 1, pumpY - 1), 1u, "pump X diagonal on phase 0");
+        test.assertEqual(pixel(on, liftX, liftY), 1u, "lift X centre on phase 0 through fog");
+        test.assertEqual(pixel(off, pumpX, pumpY), 0u, "pump X hidden in the off phase");
+        test.assertEqual(pixel(off, liftX, liftY), 0u, "lift X hidden in the off phase");
+
+        gameState.surveys = campaign::kSurveyPump;
+        chart_view::draw(recorded, fog, gameState, reader, 0);
+        test.assertEqual(pixel(recorded, pumpX, pumpY), 0u, "recorded pump leaves the chart");
+        test.assertEqual(pixel(recorded, liftX, liftY), 1u, "unrecorded lift still marked");
+        runner.add(test);
+    }
 
     {
         Test test("chart frame clips at the 128x64 edges");
@@ -280,4 +319,3 @@ inline void ChartViewSuite(TestRunner &runner) {
     }
 }
 
-#endif   // SH_FEATURE_FOG_CHART

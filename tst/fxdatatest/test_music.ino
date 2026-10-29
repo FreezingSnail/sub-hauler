@@ -12,9 +12,7 @@
 #include <EEPROM.h>
 
 #include "src/common.hpp"
-#include "src/features.hpp"
 
-#if SH_FEATURE_MUSIC
 
 #include "src/campaign.hpp"
 #include "src/campaign_view.hpp"
@@ -30,6 +28,7 @@
 #include "src/voyage_flow.hpp"
 #include "src/voyage_view.hpp"
 #include "src/world_fx.hpp"
+#include "src/music_diag.hpp"
 
 Arduboy2Base arduboy;
 
@@ -50,7 +49,7 @@ uint16_t timedService() {
     const uint32_t elapsed = micros() - start;
     if (elapsed > s_serviceMaxUs)
         s_serviceMaxUs = static_cast<uint16_t>(elapsed);
-    return music::maxGapTicks();
+    return music_diag::maxGapTicks();
 }
 
 void noteGap(uint16_t gap) {
@@ -118,7 +117,7 @@ void setup() {
             view::frame(s_state, cave::cameraAtPixel(static_cast<int16_t>(1001 + cue * 7), static_cast<int16_t>(733 + cue * 5)), s_cache, s_tables);
             noteGap(timedService());
         }
-        ok = !music::error() && !music::underrun() && ok;
+        ok = !music::error() && !music_diag::underrun() && ok;
     }
 
     noteGap(timedService());
@@ -126,7 +125,6 @@ void setup() {
     noteGap(timedService());
 
     // Story/menu panels are large FX bursts while music stays active.
-#if SH_FEATURE_CAMPAIGN
     game::resetWorld(s_state);
     s_state.docked = static_cast<int8_t>(campaign::kCormorant);
     s_state.tools = static_cast<uint8_t>(exploration_data::SEAL);
@@ -142,13 +140,11 @@ void setup() {
         FX::display(CLEAR_BUFFER);
         noteGap(timedService());
     }
-#endif
-#if SH_FEATURE_SAVE_VOYAGE
     voyage_flow::BootStatus boot;
     boot.state = voyage_flow::kBootValid;
     boot.hasValid = true;
-    boot.hasCorrupt = false;
-    boot.hasIncompatible = false;
+    
+    
     voyage_view::drawTitle(boot, voyage_view::kTitleContinue, s_state.hullClass, voyage_view::kTitleMenu);
     noteGap(timedService());
     FX::display(CLEAR_BUFFER);
@@ -161,13 +157,11 @@ void setup() {
     noteGap(timedService());
     FX::display(CLEAR_BUFFER);
     noteGap(timedService());
-#endif
 
     // The chart is a frozen world, not a frozen soundtrack. Compose real chart
     // bursts against the cart while the flight cue stays active; each redraw
     // must service the ring between water reads.
     bool mapContinues = true;
-#if SH_FEATURE_FOG_CHART
     music::setCue(music_logic::kHarbor);
     const uint8_t mapCue = music::currentCue();
     chart::State chartState;
@@ -181,7 +175,6 @@ void setup() {
         noteGap(timedService());
         mapContinues = mapContinues && !music::paused() && music::active() && music::currentCue() == mapCue;
     }
-#endif
 
     // Pause freezes the cue; a nested save transaction must not resume it.
     music::pause();
@@ -270,7 +263,7 @@ void setup() {
     music::stop();
 
     const bool gapOk = s_gapMax <= kGapLimitTicks;
-    const bool clean = !music::error() && !music::underrun();
+    const bool clean = !music::error() && !music_diag::underrun();
     ok = ok && pausedBefore && stillPaused && resumed && frozenSwitch && offPersisted && onPersisted && toggleRestored;
     ok = ok && deviceMuted && deviceUnmuted && systemAudioUntouched && eepromPrefixUntouched(prefix) && gapOk && clean;
 
@@ -279,7 +272,7 @@ void setup() {
     Serial.print(F(" svc_us="));
     Serial.print(s_serviceMaxUs);
     Serial.print(F(" underruns="));
-    Serial.print(music::underrun() ? 1 : 0);
+    Serial.print(music_diag::underrun() ? 1 : 0);
     Serial.print(F(" errors="));
     Serial.println(music::error() ? 1 : 0);
     Serial.print(F(" ok="));
@@ -311,18 +304,5 @@ void setup() {
     Serial.println(ok ? 'P' : 'F');
 }
 
-#else
-
-#include <Arduboy2.h>
-
-Arduboy2Base arduboy;
-
-void setup() {
-    Serial.begin(9600);
-    Serial.println(F("music disabled / skipped"));
-    Serial.println('P');
-}
-
-#endif
 
 void loop() {}

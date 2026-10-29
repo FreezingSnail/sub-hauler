@@ -3,10 +3,9 @@
 
 The four main berths need one frame per idle selection and one per active-board
 selection; the two service berths need one frame each. The shop needs one frame
-per air level x hull level x selected item. Credits, air, capacity, hull and the
-active-job summary stay live native text, and the bottom 7-px hint row is a
-separate generated row so it can be redrawn without touching the last action
-bar.
+per air level. Credits, air, capacity and the active-job summary stay live
+native text, and the bottom 7-px hint row is a separate generated row so it can
+be redrawn without touching the last action bar.
 
 Layout constants are read from the C++ views and item prices/level limits from
 ``src/shop.hpp``; text comes from ``fxdata/fxdata.txt``. The output is
@@ -58,7 +57,6 @@ STATION_CONSTANTS = (
     "kCreditsX",
     "kDividerY",
     "kStatusX",
-    "kHullX",
     "kStatusY",
     "kRowX",
     "kRowY0",
@@ -104,7 +102,7 @@ def load_shop_rules(path):
         raise ValueError("shop.hpp: kMaxLevel not found")
     max_level = int(match.group(1))
     prices = []
-    for name in ("kAirPrice", "kHullPrice"):
+    for name in ("kAirPrice",):
         match = re.search(r"constexpr\s+uint8_t\s+" + name + r"\s*=\s*(\d+)\s*;", text)
         if not match:
             raise ValueError("shop.hpp: {} not found".format(name))
@@ -147,7 +145,6 @@ def draw_header(image, strings, name_symbol, layout, credits_caption=True):
     for x in range(image.width):
         pixels[x, layout["kDividerY"]] = WHITE
     draw_text(image, layout["kStatusX"], layout["kStatusY"], checked(strings, "txt_air_status"))
-    draw_text(image, layout["kHullX"], layout["kStatusY"], checked(strings, "txt_hull_status"))
 
 
 def station_rows(strings, active):
@@ -209,10 +206,9 @@ def hint_rows(strings, symbols, layout):
     return sheet
 
 
-def shop_frame(strings, layout, prices, max_level, labels, air, hull, selected):
+def shop_frame(strings, layout, prices, max_level, labels, air, selected):
     image = blank()
     draw_header(image, strings, "txt_shop", layout)
-    levels = (air, hull)
     for item, label in enumerate(labels):
         y = layout["kPanelRowY0"] + item * layout["kPanelRowStep"]
         chosen = item == selected
@@ -220,20 +216,18 @@ def shop_frame(strings, layout, prices, max_level, labels, air, hull, selected):
             bar(image, y - layout["kPanelInsetY"], layout["kPanelInvertH"])
         color = BLACK if chosen else WHITE
         draw_text(image, layout["kPanelRowX"], y, label, color)
-        level = levels[item]
-        draw_text(image, layout["kPanelLevelX"], y, "L{}".format(level), color)
-        price = checked(strings, "txt_max") if level >= max_level else str(prices[item])
+        draw_text(image, layout["kPanelLevelX"], y, "L{}".format(air), color)
+        price = checked(strings, "txt_max") if air >= max_level else str(prices[item])
         draw_text(image, layout["kPanelPriceX"], y, price, color)
     return image
 
 
 def shop_panels(strings, layout, prices, max_level, item_count):
-    labels = [checked(strings, "txt_air_tank"), checked(strings, "txt_hull_plate")][:item_count]
+    labels = [checked(strings, "txt_air_tank")][:item_count]
     frames = []
     for air in range(max_level + 1):
-        for hull in range(max_level + 1):
-            for selected in range(item_count):
-                frames.append(shop_frame(strings, layout, prices, max_level, labels, air, hull, selected))
+        for selected in range(item_count):
+            frames.append(shop_frame(strings, layout, prices, max_level, labels, air, selected))
     return frames
 
 
@@ -251,23 +245,22 @@ def preview(station_frames, shop_frames, hint_sheet, strings, layout):
         station_frames[6],                 # Tidewall active, UNDOCK selected
         station_frames[28],                # Pump Refuge service berth
         station_frames[29],                # Lower Gantry service berth
-        shop_frames[0],                    # L0/L0, AIR selected
-        shop_frames[(1 * 4 + 2) * 2 + 1],  # L1/L2, HULL selected
-        shop_frames[(3 * 4 + 3) * 2],      # L3/L3, all MAX
+        shop_frames[0],                    # L0, AIR selected
+        shop_frames[1],                    # L1, AIR selected
+        shop_frames[3],                    # L3, MAX
     ]
     # Illustrative live overlays make the preview representative of the game;
     # copies keep the generated source panels free of example values.
     hints = ("txt_cutter_rumor", "txt_autoload_hint", "txt_service_berth_hint",
              "txt_service_berth_hint", "txt_buy_hint", "txt_buy_hint", "txt_max_level")
-    levels = ((0, 0), (0, 0), (1, 2), (1, 2), (0, 0), (1, 2), (3, 3))
+    levels = (0, 0, 0, 0, 0, 1, 3)
     gap = 8
     image = Image.new("RGBA", (4 * SIZE[0] + 5 * gap, 2 * SIZE[1] + 3 * gap), (24, 24, 24, 255))
     for index, source in enumerate(picks):
         frame = source.copy()
-        air, hull = levels[index]
+        air = levels[index]
         draw_text(frame, layout["kCreditsX"] + 18, layout["kHeaderY"], "145")
         draw_text(frame, layout["kStatusX"] + 24, layout["kStatusY"], "{0}/{0}".format(300 + air * 30))
-        draw_text(frame, layout["kHullX"] + 30, layout["kStatusY"], "{0}/{0}".format(6 + hull))
         if index == 1:
             draw_text(frame, layout["kRowX"], layout["kRowY0"], "BENTHOS 145")
         draw_text(frame, layout["kHintX"], layout["kHintY"], checked(strings, hints[index]))

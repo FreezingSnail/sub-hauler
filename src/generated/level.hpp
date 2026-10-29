@@ -16,10 +16,9 @@
 //   host  constexpr records including settlement names.
 // A namespace-scope constexpr array that is odr-used is copied into SRAM by the
 // AVR startup code, and name pointers would drag their string literals along
-// with it. Device code therefore never references SETTLEMENTS/MINES/CURRENTS;
-// it reads the small PROGMEM copy through settlementMeta()/mineMeta()/
-// currentMeta(). Names stay host-only so no string literal is linked into the
-// device image. Current zones are metadata only: they do not change the FX
+// with it. Device code therefore never references SETTLEMENTS/CURRENTS;
+// it reads the small PROGMEM copy through settlementMeta()/currentMeta().
+// Names stay host-only so no string literal is linked into the device image. Current zones are metadata only: they do not change the FX
 // table ABI.
 #pragma once
 
@@ -50,7 +49,6 @@ constexpr uint8_t  ROUTE_CRATES      = 4;
 constexpr uint16_t ROUTE_STEP_HZ     = 60;
 constexpr uint8_t  ROUTE_REWARD_MAX  = 165;
 constexpr uint16_t ROUTE_DEADLINE_MAX = 49440;
-constexpr uint8_t  MINE_COUNT        = 8;
 constexpr uint8_t  CURRENT_COUNT     = 8;
 constexpr uint8_t  BERTH_COUNT       = 6;
 constexpr uint8_t  SERVICE_BERTH_COUNT = 2;
@@ -60,7 +58,6 @@ constexpr uint8_t BERTH_LOWER_GANTRY = 5;
 constexpr uint8_t SURVEY_PUMP = 0;
 constexpr uint8_t SURVEY_LIFT = 1;
 constexpr int16_t  DOCK_CLEARANCE_PX = 42;
-constexpr uint8_t  MINE_RADIUS_PX    = 3;
 constexpr uint8_t  CURRENT_WIDTH_PX  = 32;
 constexpr uint8_t  CURRENT_HEIGHT_PX = 16;
 constexpr int16_t  CURRENT_ACCEL_Q8 = 4096;
@@ -84,11 +81,6 @@ struct Settlement {
     int16_t tile_y;
     int16_t pixel_x;
     int16_t pixel_y;
-};
-
-struct Mine {
-    int16_t x;
-    int16_t y;
 };
 
 // Current zone: a pixel rectangle and a signed Q8.8 acceleration. Exactly one
@@ -126,7 +118,7 @@ struct Survey {
 
 #if defined(__AVR__)
 
-// Compact position-only copy: 4 * 4 B + 8 * 4 B + 8 * 5 B in program flash.
+// Compact position-only copy: 4 * 4 B + 8 * 5 B in program flash.
 // Settlement ids are implicit in the index and tile coordinates derive from
 // the pixel pair. Current extents are the generated constants and the signed
 // axis direction is one compact code.
@@ -140,17 +132,6 @@ const SettlementMeta SETTLEMENT_META[SETTLEMENT_COUNT] PROGMEM = {
     {1704, 256},
     {1776, 656},
     {352, 1216},
-};
-
-const Mine MINE_META[MINE_COUNT] PROGMEM = {
-    {1036, 212},
-    {1364, 124},
-    {1404, 356},
-    {2156, 396},
-    {1396, 564},
-    {2220, 748},
-    {356, 940},
-    {1708, 1092},
 };
 
 struct CurrentMeta {
@@ -205,14 +186,6 @@ inline bool settlementMeta(uint8_t id, Settlement &out) {
     out.pixel_y = static_cast<int16_t>(pgm_read_word(&SETTLEMENT_META[id].pixel_y));
     out.tile_x = static_cast<int16_t>(out.pixel_x / TILE_PIXELS);
     out.tile_y = static_cast<int16_t>(out.pixel_y / TILE_PIXELS);
-    return true;
-}
-
-inline bool mineMeta(uint8_t id, Mine &out) {
-    if (id >= MINE_COUNT)
-        return false;
-    out.x = static_cast<int16_t>(pgm_read_word(&MINE_META[id].x));
-    out.y = static_cast<int16_t>(pgm_read_word(&MINE_META[id].y));
     return true;
 }
 
@@ -306,17 +279,6 @@ constexpr Settlement SETTLEMENTS[SETTLEMENT_COUNT] = {
     {3, "DEEP ANCHOR", 44, 152, 352, 1216},
 };
 
-constexpr Mine MINES[MINE_COUNT] = {
-    {1036, 212},
-    {1364, 124},
-    {1404, 356},
-    {2156, 396},
-    {1396, 564},
-    {2220, 748},
-    {356, 940},
-    {1708, 1092},
-};
-
 constexpr Current CURRENTS[CURRENT_COUNT] = {
     {1000, 224, 32, 16, 4096, 0},
     {1328, 136, 32, 16, 0, 4096},
@@ -357,13 +319,6 @@ inline bool settlementMeta(uint8_t id, Settlement &out) {
     if (id >= SETTLEMENT_COUNT)
         return false;
     out = SETTLEMENTS[id];
-    return true;
-}
-
-inline bool mineMeta(uint8_t id, Mine &out) {
-    if (id >= MINE_COUNT)
-        return false;
-    out = MINES[id];
     return true;
 }
 

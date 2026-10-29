@@ -12,9 +12,7 @@
 #include <avr/io.h>
 
 #include "src/common.hpp"
-#include "src/features.hpp"
 
-#if SH_FEATURE_MUSIC
 
 #include "src/campaign.hpp"
 #include "src/campaign_view.hpp"
@@ -30,9 +28,8 @@
 #include "src/voyage_flow.hpp"
 #include "src/voyage_view.hpp"
 #include "src/world_fx.hpp"
-#if SH_FEATURE_FOG_CHART
 #include "src/chart.hpp"
-#endif
+#include "src/music_diag.hpp"
 
 Arduboy2Base arduboy;
 
@@ -49,9 +46,7 @@ static world::FxTables s_tables;
 static world::TileCache s_cache;
 static bool s_saveChainOk = false;
 static bool s_audioAfterSaveOk = false;
-#if SH_FEATURE_FOG_CHART
 static chart::State s_chart;
-#endif
 
 uint16_t readStackPointer() {
     uint8_t low;
@@ -78,7 +73,6 @@ void worldFrame(uint8_t frame) {
 }
 
 void storyPanels() {
-#if SH_FEATURE_CAMPAIGN
     game::resetWorld(s_state);
     s_state.docked = static_cast<int8_t>(campaign::kCormorant);
     s_state.tools = static_cast<uint8_t>(exploration_data::SEAL);
@@ -97,18 +91,10 @@ void storyPanels() {
         FX::display(CLEAR_BUFFER);
         music::service();
     }
-#endif
-#if SH_FEATURE_SAVE_VOYAGE
     voyage_flow::BootStatus boot;
     boot.state = voyage_flow::kBootValid;
     boot.hasValid = true;
-    boot.hasCorrupt = false;
-    boot.hasIncompatible = false;
-#if SH_FEATURE_MULTI_HULL
-    const uint8_t titleHull = s_state.hullClass;
-#else
-    const uint8_t titleHull = static_cast<uint8_t>(roster::kDefault);
-#endif
+            const uint8_t titleHull = s_state.hullClass;
     voyage_view::drawTitle(boot, voyage_view::kTitleContinue, titleHull, voyage_view::kTitleMenu);
     music::service();
     FX::display(CLEAR_BUFFER);
@@ -121,7 +107,6 @@ void storyPanels() {
     music::service();
     FX::display(CLEAR_BUFFER);
     music::service();
-#endif
 }
 
 uint16_t measureReserve() {
@@ -175,25 +160,20 @@ uint16_t measureReserve() {
     music::resume();
     music::service();
     storyPanels();
-#if SH_FEATURE_SAVE_VOYAGE
     // Production chain from a drawn frame while music is active: pause the
     // stream, erase/program/validate the real cart slot, resume, then service
     // the ring and check underrun/error counters.
     game::reset(s_state);
     s_state.docked = static_cast<int8_t>(campaign::kTidewall);
-#if SH_FEATURE_FOG_CHART
     chart::reset(s_chart);
-#endif
     hud::draw(s_state);
     FX::display(CLEAR_BUFFER);
     music::service();
     voyage_save::FxStorage storage;
     const music_logic::PauseToken saveToken = music::pauseForTransaction();
     const voyage_save::SaveResult saveResult = voyage_flow::startNewVoyage(s_state
-#if SH_FEATURE_FOG_CHART
                                                                            ,
                                                                            s_chart
-#endif
                                                                            ,
                                                                            storage);
     music::resumeAfterTransaction(saveToken);
@@ -203,10 +183,9 @@ uint16_t measureReserve() {
         delay(4);
     }
 #if ATM_FX_COMPACT_DIAG
-    s_audioAfterSaveOk = !music::underrun() && !music::error();
+    s_audioAfterSaveOk = !music_diag::underrun() && !music::error();
 #else
     s_audioAfterSaveOk = true;
-#endif
 #endif
     music::stop();
 
@@ -227,11 +206,7 @@ void setup() {
     arduboy.boot();
     arduboy.audio.begin();
     delay(100);
-#if SH_FEATURE_SAVE_VOYAGE
     FX::begin(FX_DATA_PAGE, FX_SAVE_PAGE);
-#else
-    FX::begin(FX_DATA_PAGE);
-#endif
     FX::setCursorRange(0, 32767);
     music::begin();
     const uint16_t reserve = measureReserve();
@@ -243,7 +218,7 @@ void setup() {
     Serial.println(s_audioAfterSaveOk ? 1 : 0);
 #if ATM_FX_COMPACT_DIAG
     Serial.print(F("save_underruns="));
-    Serial.println(music::underrun() ? 1 : 0);
+    Serial.println(music_diag::underrun() ? 1 : 0);
     Serial.print(F("save_errors="));
     Serial.println(music::error() ? 1 : 0);
 #endif
@@ -253,17 +228,3 @@ void setup() {
 void loop() {
 }
 
-#else
-
-Arduboy2Base arduboy;
-
-void setup() {
-    Serial.begin(9600);
-    Serial.println(F("music disabled / skipped"));
-    Serial.println('P');
-}
-
-void loop() {
-}
-
-#endif

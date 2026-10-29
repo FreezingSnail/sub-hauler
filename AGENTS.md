@@ -9,7 +9,11 @@ project, `docs/platform.md` for the hardware/resource contract, and
 - `docs/platform.md` is canonical for hardware, resource, and toolchain facts.
 - `src/game.hpp` is pure rules and must stay free of Arduino headers.
 - `src/render.hpp` and `src/common.hpp` are the device boundary.
-- `make gen` is the only generation entry. Never hand-edit
+- `sub-hauler.ino` is the release entry; shared game operations live in `src/app.hpp`.
+- There is one fixed game build. Do not add feature, profile, development,
+  backend, USB or instrumentation selectors.
+- `make gen` is the only shipping generation entry; `make gen-audio` rebuilds
+  archival reference PCM/ADPCM evidence only. Never hand-edit
   `fxdata/Sprites.txt`, `fxdata/fxdata.bin`, `src/fxdata.h`, or
   `src/generated/`.
 - `fxdata/fxdata.txt` declaration order is flash ABI. Append entries; never
@@ -20,16 +24,20 @@ project, `docs/platform.md` for the hardware/resource contract, and
 ```sh
 make gen                  # images + FX layout -> packed image + headers
 make gen-check            # regeneration must be byte-identical
+make gen-audio            # archival reference PCM/ADPCM evidence only
 make test                 # host C++ tests
 make test-tools           # Python tooling tests
-make build | mini         # FX / Mini firmware
+make build | mini         # FX (dist/fx) / Mini (dist/mini) firmware
 make size                 # whole-image flash/RAM report
-make fxtest               # device suites via Ardens (P/F markers)
+make fxtest               # 14 device suites via Ardens (P/F markers)
+make fxtest-save-chain    # exact production save-chain stack/audio probe
+make fxtest-flight        # 842-frame complete-flight timing/audio probe
 make run                  # Ardens with ELF + FX image
 ```
 
 Full gate before a commit: `make gen-check`, `make test`, `make test-tools`,
-`make fxtest` (when Ardens is available), `make size`.
+`make fxtest`, `make fxtest-save-chain`, `make fxtest-save-runtime-page`,
+`make fxtest-flight`, `make size`, `make mini`.
 
 ## Platform invariants
 

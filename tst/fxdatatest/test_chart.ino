@@ -7,7 +7,6 @@
 #include "src/world_fx.hpp"
 
 Arduboy2Base arduboy;
-#if SH_FEATURE_FOG_CHART
 static chart::State fog;
 static game::State state;
 static world::FxTables tables;
@@ -28,17 +27,11 @@ static bool sample(bool revealed, uint8_t phase) {
     chart::revealInitial(fog, state);
     if (revealed)
         memset(fog.explored, 0xFF, sizeof(fog.explored));
-#if SH_FEATURE_JOBS
     state.activeJob.to = 2;
-#if SH_FEATURE_CAMPAIGN
     state.activeJob.kind = game::kJobKindOrdinary;
     state.activeJob.mission = game::kMissionNone;
     state.activeJob.from = 0;
-#endif
-#endif
-#if SH_FEATURE_EXPLORATION
     state.seenGates = 0x1FF;
-#endif
     chart_view::draw(Arduboy2Base::sBuffer, fog, state, tables, phase);
     const uint16_t expected = checksum();
     FX::display(CLEAR_BUFFER);
@@ -61,7 +54,6 @@ static bool sample(bool revealed, uint8_t phase) {
     Serial.print(F(" crc=")); Serial.println(expected, HEX);
     return ok && render + display < static_cast<uint32_t>(7000) * samples;
 }
-#endif
 
 void setup() {
     Serial.begin(9600);
@@ -69,12 +61,10 @@ void setup() {
     delay(100);
     FX::begin(FX_DATA_PAGE);
     bool ok = true;
-#if SH_FEATURE_FOG_CHART
     ok = sample(false, 0) && ok;
     ok = sample(false, chart_view::kBlinkMask) && ok;
     ok = sample(true, 0) && ok;
     ok = sample(true, chart_view::kBlinkMask) && ok;
-#endif
     Serial.println(ok ? F("P") : F("F"));
 }
 void loop() {}

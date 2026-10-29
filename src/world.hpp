@@ -240,10 +240,6 @@ inline uint8_t surveyCount() {
     return SURVEY_COUNT;
 }
 
-inline uint8_t mineCount() {
-    return MINE_COUNT;
-}
-
 inline uint8_t currentCount() {
     return CURRENT_COUNT;
 }
@@ -262,10 +258,6 @@ inline int16_t spawnTileY() {
 // values for the same id, and neither one drags a world-sized table into SRAM.
 inline bool settlementInfo(uint8_t id, Settlement &out) {
     return settlementMeta(id, out);
-}
-
-inline bool mineInfo(uint8_t id, Mine &out) {
-    return mineMeta(id, out);
 }
 
 inline bool currentInfo(uint8_t id, Current &out) {

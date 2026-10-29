@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sub-hauler — story beats and sketches</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f3f2ee;color:#272725;font:16px/1.45 system-ui,sans-serif}main{max-width:1120px;margin:auto;padding:24px}h1{font-size:25px;margin:0 0 5px}h2{font-size:19px;margin:0}p{margin:5px 0 14px}.muted{color:#686863}button,input,textarea{font:inherit}button{cursor:pointer;border:1px solid #aaa9a2;background:#fff;color:inherit;padding:7px 12px;border-radius:3px}button:hover{background:#e8e7e1}button[aria-pressed=true]{background:#272725;color:white;border-color:#272725}button:focus-visible,input:focus-visible{outline:3px solid #91856b;outline-offset:3px}.controls,.shots{display:flex;gap:7px;flex-wrap:wrap}.player{max-width:920px;margin:0 auto 30px}.stage{aspect-ratio:2/1;background:white;border:1px solid #aaa9a2}.stage canvas,.thumb canvas{display:block;width:100%;height:100%}.player-label{display:flex;justify-content:space-between;gap:15px;align-items:baseline;margin:10px 0 6px}.controls{align-items:center;justify-content:space-between;margin:10px 0}.shots{margin-left:auto}.copy{display:block;font-size:13px;color:#686863;margin:12px 0 3px}.copy textarea{display:block;width:100%;padding:8px;border:1px solid #c4c2b9;background:#fff;color:#272725}.strip{border-top:1px solid #c6c4bb;padding:22px 0}.strip p{font-size:14px}.cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.thumb{padding:0;text-align:left;border:1px solid #aaa9a2;background:white;overflow:hidden}.thumb[aria-pressed=true]{background:white;color:#272725;outline:3px solid #272725;outline-offset:2px}.thumb-art{display:block;aspect-ratio:2/1}.thumb-label{display:block;padding:9px 10px;font-size:14px}.thumb small{display:block;color:#686863;font-size:12px;margin-top:2px}.key{font-size:13px;color:#686863;margin:0}.count{font-size:13px;color:#686863}@media(max-width:650px){main{padding:15px}.cards{grid-template-columns:1fr}.player-label{display:block}.controls{gap:10px}.shots{margin-left:0}h1{font-size:22px}}
+.copy[hidden]{display:none}canvas{image-rendering:pixelated;image-rendering:crisp-edges}.copy textarea{resize:vertical;min-height:110px;font-family:monospace}.native-view canvas{display:block;width:128px;height:64px}.native-view{margin:10px 0}.render-note{font-size:12px;color:#686863}
+</style>
+</head>
+<body>
+<main>
+<h1>Sub-hauler: story beats</h1>
+<section aria-labelledby="campaign-beats-heading">
+<h2 id="campaign-beats-heading">The full campaign</h2>
+<ol>
+<li><strong><a href="#first-delivery">First delivery — keep the grow rooms alive.</a></strong> Carry filter supplies from Tidewall to Benthos. The first lamps come on, and Benthos asks for help restoring the pump and freight lift.</li>
+<li><strong>Pump survey — find the fault.</strong> Inspect the pump at Pump Refuge. Its impeller is cracked; a replacement is available at Cormorant.</li>
+<li><strong>Pump delivery — bring water back.</strong> Carry the replacement impeller from Cormorant to Benthos. Water returns to the grow rooms, and Pump Refuge becomes a working service berth.</li>
+<li><strong>Lift survey — trace the breakdown.</strong> Inspect the cable housing at Freight Yard. The lift needs replacement cable from Benthos.</li>
+<li><strong>Lift delivery — move freight again.</strong> Carry cable reels from Benthos to Cormorant. The lift and workshops return to work, and Lower Gantry becomes a service berth.</li>
+<li><strong>Beacon delivery — reconnect Deep Anchor.</strong> Once the pump and lift are restored and the sub has a pressure seal, carry the assembled beacon core from Cormorant to Deep Anchor. Its beacon and inhabited capsule lights come on.</li>
+<li><strong>Homecoming — bring the first reply home.</strong> Carry Deep Anchor’s network dispatch to Tidewall. Tidewall’s signal lights complete the network; the voyage ends with a homecoming and the option to keep exploring.</li>
+</ol>
+<p class="muted">The pump and lift branches can be completed in either order. Their surveys can be recorded early. These are the existing campaign objectives; each can eventually have a short sequence of story cards.</p>
+</section>
+<section id="first-delivery" aria-labelledby="first-delivery-heading">
+<h2 id="first-delivery-heading">1. First delivery — image and story cards</h2>
+<p><a href="story-art-references.html">Visual reference shortlist — screenshots, sources and what to study</a></p>
+<p><strong>What this sequence needs to communicate:</strong> the sub arrives at Benthos; we see the grow tanks the filters help sustain; Benthos asks for help restoring the pump and freight lift.</p>
+<p class="muted">Six native 128×64 cards: arriving sub → story text → grow tanks → story text → repair request → story text. Images use the approved compositions, now in opaque black-and-white dither; story copy has its own screen.</p>
+<section class="player" aria-label="Enlarged storyboard player">
+<div id="stage" class="stage"></div>
+<div class="player-label"><h2 id="shot-title"></h2><span class="count" id="position"></span></div>
+<p id="shot-intent"></p>
+<div class="controls"><button type="button" id="prev">← Previous</button><button type="button" id="next">Next →</button><div class="shots" id="shots" aria-label="Choose a shot"></div></div>
+<p class="key">← / → or Space to step through all six cards. Select any thumbnail or card button to jump.</p>
+<details class="native-view"><summary>Native 128×64 view</summary><div id="native"></div></details>
+<label class="copy" id="copy-editor" hidden>Edit this story text (edits stay in this open page)
+<textarea id="copy" aria-label="Story text draft" rows="4" spellcheck="false"></textarea><span id="copy-status" class="render-note"></span></label>
+</section>
+<div id="storyboards"></div>
+</section>
+<p class="muted">Local card preview only — the game artwork, FX image and runtime remain unchanged.</p>
+<noscript>This local sketchbook needs JavaScript and Canvas to render its local cards and navigate between them.</noscript>
+</main>
+<script>
+'use strict';
+// Shared rough actors, not reused finished assets. All coordinates are drawing units.
+const ink='#30312e', gray='#aeb1ae', pale='#dedfda', paper='#f4f3ed';
+const group=(x,y,s,body,extra='')=>`<g transform="translate(${x} ${y}) scale(${s})" ${extra}>${body}</g>`;
+function sub(x,y,s=1){return group(x,y,s,`<path d="M9 7L-10-4L-7 19L-13 39L10 33" fill="${gray}"/><path d="M8 0C-11 0-14 39 10 43L110 43C142 39 145 4 114 0Z" fill="${pale}"/><path d="M42 0L46-19L73-19L79 1" fill="${gray}"/><path d="M54-20L54-31L66-31M-17 3L-17 34M-20 18L-9 18"/><rect x="51" y="-14" width="15" height="9" rx="2" fill="${ink}"/>${[28,62,96].map(cx=>`<circle cx="${cx}" cy="20" r="8" fill="${gray}"/><path d="M${cx-4} 16L${cx+3} 16" stroke="white"/>`).join('')}<path d="M12 35L112 35M18 47L108 47" stroke="#6e736e"/>`);}
+function crate(x,y,s=1){return group(x,y,s,`<path d="M0 4L12-3L58-3L46 4Z" fill="${pale}"/><path d="M46 4L58-3L58 33L46 40Z" fill="${gray}"/><rect x="0" y="4" width="46" height="36" fill="${paper}"/><path d="M7 8L7 35M14 8L14 35M22 8L22 35M30 8L30 35M38 8L38 35M0 11L46 11M0 31L46 31"/><path d="M13 0L31 0" stroke-width="4"/>`);}
+function lamp(x,y,on=true){return group(x,y,1,`<path d="M0-20L0 0L-18 14L18 14Z" fill="${on?'#fff':gray}"/>${on?'<path d="M-25 24L-34 40M0 26L0 45M25 24L34 40" stroke="#8b8e85"/>':''}`);}
+function windowFrame(x,y,w,h,fill='#c6cdcb'){return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="8" fill="${fill}"/><rect x="${x+6}" y="${y+6}" width="${w-12}" height="${h-12}" rx="5" fill="none" stroke="#858b85"/><path d="M${x+w/2} ${y}V${y+h}" stroke="#868d87"/>`;}
+function svg(body){return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 256" role="img" aria-label="Rough story composition"><rect width="512" height="256" fill="${paper}"/><g stroke="${ink}" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">${body}</g></svg>`;}
+function tank(x,y,w=126,h=135){return group(x,y,1,`<rect x="0" y="8" width="${w}" height="${h}" rx="12" fill="${paper}"/><path d="M5 73Q${w/2} 85 ${w-5} 73V${h-4}Q${w/2} ${h+15} 5 ${h-4}Z" fill="#c3ceca"/><ellipse cx="${w/2}" cy="8" rx="${w/2}" ry="12" fill="${pale}"/><path d="M6 74Q${w/2} 87 ${w-6} 74M13 24V58M${w-12} 28V106" stroke="#8d9e96"/><path d="M${w/2} 13V77L${w/2-17} 112M${w/2} 56L${w/2+21} 103M${w/2-4} 77L${w/2-31} 93M${w/2+7} 89L${w/2+29} 118M${w/2-14} 105L${w/2-22} 121" stroke="#788a7d"/><path d="M${w/2} 7V-32M${w/2} -6Q${w/2-37} -37 ${w/2-29} -40Q${w/2-6} -44 ${w/2} -6M${w/2} -16Q${w/2+12} -55 ${w/2+35} -46Q${w/2+36} -28 ${w/2} -16" fill="${gray}"/><path d="M${w/2-13} 4H${w/2+13}" stroke-width="5"/>`);}
+const images=[
+ {title:'1 · The sub arrives',intent:'Wide. The incoming submarine reaches Benthos with filter supplies; the lit berth and waiting cargo establish the delivery.',copy:'The sub arrives at Benthos.',art:()=>svg(`<path d="M0 0H512V256H0Z" fill="#c6cdcb" stroke="none"/><path d="M313 50H512V191H313Z" fill="${pale}"/><path d="M321 58L512 58M333 50V181M421 51V181" stroke="#969d95"/>${windowFrame(350,75,58,42,'#eeeeda')}${windowFrame(440,75,58,42,'#eeeeda')}<path d="M258 178H512V194H258Z" fill="${gray}"/><path d="M294 193L285 256M455 194L461 256"/>${sub(44,153,1.25)}${crate(268,141,.85)}<path d="M321 174Q337 155 354 172Q342 186 328 174Q336 165 345 171M358 174L384 174M365 167L388 167" stroke="#747e75"/><path d="M203 196L258 184M25 228L120 228M169 229L241 229" stroke="#8b9691"/>`)},
+ {title:'2 · The grow tanks',intent:'Inside. Large grow tanks show plants above, roots and water below, with lamps and filter equipment sustaining the room.',copy:'The filter supplies help keep the grow rooms alive.',art:()=>svg(`<path d="M0 231H512M34 0V230M398 0V231" stroke="#aeb4aa"/>${lamp(145,19,true)}${lamp(321,19,true)}${tank(67,85,131,128)}${tank(246,86,125,127)}<rect x="421" y="103" width="58" height="97" rx="8" fill="${pale}"/><rect x="433" y="115" width="32" height="66" rx="3" fill="${paper}"/><path d="M440 120V176M449 120V176M458 120V176M421 127H391V166H370M421 186H405V223H127V215"/><path d="M396 157L391 166L386 157M225 218L214 223L225 228" stroke="#7d8c80"/><circle cx="449" cy="193" r="3" fill="${ink}"/>`)},
+ {title:'3 · Benthos asks for repairs',intent:'A practical maintenance board shows two needs: a damaged pump impeller and a freight lift with failed cable. The next work is clear.',copy:'Benthos asks for help restoring the pump and freight lift.',art:()=>svg(`<rect x="12" y="10" width="488" height="207" rx="5" fill="${gray}"/><path d="M27 26H239V201H27Z" fill="${paper}"/><path d="M272 27H482V202H272Z" fill="${paper}"/><circle cx="43" cy="35" r="3" fill="${ink}"/><circle cx="468" cy="36" r="3" fill="${ink}"/><text x="54" y="57" font-family="sans-serif" font-size="15" fill="${ink}" stroke="none">PUMP</text><text x="294" y="57" font-family="sans-serif" font-size="15" fill="${ink}" stroke="none">FREIGHT LIFT</text><circle cx="130" cy="122" r="48" fill="${pale}"/><circle cx="130" cy="122" r="12" fill="${gray}"/><path d="M126 110Q92 80 106 82Q141 76 141 112M141 124Q178 107 175 126Q165 157 141 133M125 133Q120 170 105 153Q89 129 116 122" fill="${gray}"/><path d="M147 89L138 97L147 103L140 111" stroke-width="3"/><path d="M176 147L205 171M195 163L209 164L211 180"/><path d="M308 180V76H451V180M316 83H444M375 84V108M375 123V139M371 107L365 114M375 108L379 116M371 123L367 117M378 123L383 118"/><path d="M375 139L350 150M375 139L402 150"/>${crate(350,146,.9)}<path d="M0 218H512V256H0Z" fill="${pale}"/><path d="M189 239L231 218L239 224L200 247Z" fill="${gray}"/><path d="M230 219L231 209L243 205L239 216L247 220L257 212L255 226L242 230" fill="${gray}"/><path d="M292 241Q302 220 318 239Q307 253 297 240Q306 229 313 239"/>`)}
+];
+// Existing 5x7 font column bytes copied read-only from tools/gen_font.py.
+const glyphs={" ":[0,0,0,0,0],"-":[8,8,8,8,8],"/":[32,16,8,4,2],"0":[62,81,73,69,62],"1":[0,66,127,64,0],"2":[114,73,73,73,70],"3":[33,65,73,77,51],"4":[24,20,18,127,16],"5":[39,69,69,69,57],"6":[60,74,73,73,49],"7":[65,33,17,9,7],"8":[54,73,73,73,54],"9":[70,73,73,41,30],":":[0,0,20,0,0],"A":[124,18,17,18,124],"B":[127,73,73,73,54],"C":[62,65,65,65,34],"D":[127,65,65,65,62],"E":[127,73,73,73,65],"F":[127,9,9,9,1],"G":[62,65,65,81,115],"H":[127,8,8,8,127],"I":[0,65,127,65,0],"J":[32,64,65,63,1],"K":[127,8,20,34,65],"L":[127,64,64,64,64],"M":[127,2,28,2,127],"N":[127,4,8,16,127],"O":[62,65,65,65,62],"P":[127,9,9,9,6],"Q":[62,65,81,33,94],"R":[127,9,25,41,70],"S":[38,73,73,73,50],"T":[3,1,127,1,3],"U":[63,64,64,64,63],"V":[31,32,64,32,31],"W":[63,64,56,64,63],"X":[99,20,8,20,99],"Y":[3,4,120,4,3],"Z":[97,89,73,77,67],".":[0,96,96,0,0],",":[0,80,48,0,0]};
+const storyText=[
+ 'FILTER SUPPLIES\nFROM TIDEWALL.\nYOU DOCK AT BENTHOS.',
+ 'THESE TANKS GROW\nBENTHOS FOOD.\nYOUR FILTERS HELP\nKEEP THEM ALIVE.',
+ 'BENTHOS ASKS FOR\nHELP RESTORING\nTHE PUMP AND\nFREIGHT LIFT.'
+];
+const frames=images.flatMap((image,index)=>[
+ {...image,kind:'image',title:`${index*2+1} · Image — ${image.title.replace(/^\d+ · /,'')}`},
+ {kind:'text',title:`${index*2+2} · Story text`,intent:image.copy,copy:storyText[index]}
+]);
+const imageCache=new Map();
+function imagePixels(frame){
+ if(imageCache.has(frame.art))return imageCache.get(frame.art);
+ const promise=new Promise((resolve,reject)=>{
+  const picture=new Image();
+  picture.onload=()=>{
+   try{
+    const scratch=document.createElement('canvas');scratch.width=128;scratch.height=64;
+    const ctx=scratch.getContext('2d',{willReadFrequently:true});ctx.fillStyle='#fff';ctx.fillRect(0,0,128,64);ctx.drawImage(picture,0,0,128,64);
+    const pixels=ctx.getImageData(0,0,128,64),matrix=[[0,8,2,10],[12,4,14,6],[3,11,1,9],[15,7,13,5]];
+    for(let y=0;y<64;y++)for(let x=0;x<128;x++){
+     const i=(y*128+x)*4,gray=.2126*pixels.data[i]+.7152*pixels.data[i+1]+.0722*pixels.data[i+2];
+     // Reverse the paper sketch into dark space and luminous native linework.
+     const light=Math.max(0,Math.min(255,(255-gray-40)*255/150));
+     const bit=light>(matrix[y%4][x%4]+.5)*255/16?255:0;
+     pixels.data[i]=pixels.data[i+1]=pixels.data[i+2]=bit;pixels.data[i+3]=255;
+    }
+    resolve(pixels);
+   }catch(error){reject(error);}
+  };
+  picture.onerror=()=>reject(new Error('The local SVG could not be rendered.'));
+  const source=frame.art().replaceAll('#dedfda','#aeb9b0').replaceAll('#c3ceca','#8da397');
+  picture.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(source);
+ });
+ imageCache.set(frame.art,promise);return promise;
+}
+function textLines(copy){
+ const rows=[];
+ for(const paragraph of copy.toUpperCase().replace(/[^A-Z0-9 .,:/\-\n]/g,'').split('\n')){
+  let row='';
+  for(let word of paragraph.split(/\s+/).filter(Boolean)){
+   while(word.length>20){if(row){rows.push(row);row='';}rows.push(word.slice(0,20));word=word.slice(20);}
+   if(row && row.length+1+word.length>20){rows.push(row);row='';}
+   if(word)row+=(row?' ':'')+word;
+  }
+  rows.push(row);
+ }
+ return rows;
+}
+function textPixels(frame){
+ const rows=textLines(frame.copy).slice(0,6),pixels=new ImageData(128,64);
+ for(let i=3;i<pixels.data.length;i+=4)pixels.data[i]=255;
+ const top=Math.floor((64-((rows.length-1)*10+7))/2);
+ rows.forEach((row,line)=>{
+  const left=Math.floor((128-(row.length*6-1))/2);
+  [...row].forEach((char,index)=>(glyphs[char]||glyphs[' ']).forEach((bits,column)=>{
+   for(let y=0;y<7;y++)if(bits&(1<<y)){
+    const i=((top+line*10+y)*128+left+index*6+column)*4;
+    pixels.data[i]=pixels.data[i+1]=pixels.data[i+2]=255;
+   }
+  }));
+ });return pixels;
+}
+function mountCard(container,frame){
+ const canvas=document.createElement('canvas');canvas.width=128;canvas.height=64;canvas.setAttribute('role','img');canvas.setAttribute('aria-label',frame.kind==='text'?frame.copy:frame.title);container.replaceChildren(canvas);
+ const ctx=canvas.getContext('2d');ctx.imageSmoothingEnabled=false;ctx.fillStyle='#000';ctx.fillRect(0,0,128,64);
+ if(frame.kind==='text')ctx.putImageData(textPixels(frame),0,0);
+ else imagePixels(frame).then(pixels=>ctx.putImageData(pixels,0,0)).catch(error=>{container.textContent=error.message;});
+}
+let current=0;
+const storyboards=document.querySelector('#storyboards');
+const section=document.createElement('section');section.className='strip';
+const heading=document.createElement('h2');heading.textContent='The six cards · image / text';section.append(heading);
+const cards=document.createElement('div');cards.className='cards';
+frames.forEach((frame,index)=>{
+ const thumb=document.createElement('button');thumb.type='button';thumb.className='thumb';thumb.dataset.index=index;thumb.setAttribute('aria-label','Enlarge '+frame.title);
+ const art=document.createElement('span');art.className='thumb-art';thumb.append(art);mountCard(art,frame);
+ const label=document.createElement('span');label.className='thumb-label';label.textContent=frame.title;thumb.append(label);
+ thumb.addEventListener('click',()=>show(index));cards.append(thumb);
+ const button=document.createElement('button');button.type='button';button.textContent=`${index+1} ${frame.kind==='image'?'Image':'Text'}`;button.addEventListener('click',()=>show(index));document.querySelector('#shots').append(button);
+});
+section.append(cards);storyboards.append(section);
+function show(index){
+ current=((index%frames.length)+frames.length)%frames.length;const frame=frames[current];
+ mountCard(document.querySelector('#stage'),frame);mountCard(document.querySelector('#native'),frame);
+ document.querySelector('#shot-title').textContent=frame.title;
+ document.querySelector('#shot-intent').textContent=frame.intent;
+ document.querySelector('#position').textContent=`${current+1} / ${frames.length} · 128×64`;
+ document.querySelector('#copy-editor').hidden=frame.kind!=='text';
+ document.querySelector('#copy').value=frame.kind==='text'?frame.copy:'';
+ document.querySelector('#copy-status').textContent=frame.kind==='text'&&textLines(frame.copy).length>6?'Only the first six rows fit. Shorten this copy.':'20 columns per row; copy wraps automatically.';
+ [...document.querySelector('#shots').children].forEach((b,i)=>b.setAttribute('aria-pressed',String(i===current)));
+ document.querySelectorAll('.thumb').forEach(b=>b.setAttribute('aria-pressed',String(Number(b.dataset.index)===current)));
+}
+document.querySelector('#prev').addEventListener('click',()=>show(current-1));
+document.querySelector('#next').addEventListener('click',()=>show(current+1));
+document.querySelector('#copy').addEventListener('input',event=>{
+ const frame=frames[current];if(frame.kind!=='text')return;frame.copy=event.target.value;
+ mountCard(document.querySelector('#stage'),frame);mountCard(document.querySelector('#native'),frame);
+ mountCard(document.querySelector(`.thumb[data-index="${current}"] .thumb-art`),frame);
+ document.querySelector('#copy-status').textContent=textLines(frame.copy).length>6?'Only the first six rows fit. Shorten this copy.':'20 columns per row; copy wraps automatically.';
+});
+document.addEventListener('keydown',event=>{if(event.target.matches('input,textarea,[contenteditable]'))return;if(['ArrowRight','ArrowLeft',' '].includes(event.key)){event.preventDefault();show(current+(event.key==='ArrowLeft'?-1:1));}});
+show(0);
+</script>
+</body>
+</html>

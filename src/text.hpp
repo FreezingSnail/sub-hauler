@@ -34,7 +34,7 @@ inline void at(int16_t x, int16_t y) {
 }
 
 inline void print(uint24_t address) {
-    SH_CART_SERVICE();
+    cartService();
     FX::drawString(address);
 }
 

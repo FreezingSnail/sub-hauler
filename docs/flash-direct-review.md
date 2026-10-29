@@ -62,8 +62,10 @@ with LTO.
   the preceding bounded-counter policy, including transition frames.
 
 Working prototype: `/private/tmp/sub-hauler-direct-review-20261028/sub-hauler`.
-Portable patch against the earlier combined prototype:
-[`build/direct-flash-review/additional-savings.patch`](../build/direct-flash-review/additional-savings.patch).
+Portable patch against the earlier combined prototype was written to
+`build/direct-flash-review/additional-savings.patch` during the 2026-10-28
+review. `build/` is disposable and that patch is not present in this checkout;
+the review notes below are the retained record.
 The patch dry-run applies cleanly to that baseline. Exact final sections:
 `.text=27846`, `.data=14`, `.bss=1618`.
 Measurements: `/private/tmp/sub-hauler-direct-{baseline,available,milestone,floor,narrow,prices,rewards,hysteresis,ring,sonar,spec}.log`.

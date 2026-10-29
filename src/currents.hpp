@@ -1,8 +1,6 @@
 #pragma once
 
-#include "features.hpp"
 
-#if SH_FEATURE_CURRENTS
 
 #include <stdint.h>
 
@@ -58,10 +56,8 @@ inline bool findAt(int16_t x, int16_t y, world::Current &out) {
 // World-step hook. Outside every zone this leaves velocity untouched (zero
 // acceleration), and a docked boat is never pushed.
 inline void apply(game::State &state) {
-#if SH_FEATURE_STATIONS
     if (state.docked >= 0)
         return;
-#endif
     world::Current zone;
     if (!findAt(state.x, state.y, zone))
         return;
@@ -70,4 +66,3 @@ inline void apply(game::State &state) {
 
 }   // namespace currents
 
-#endif   // SH_FEATURE_CURRENTS

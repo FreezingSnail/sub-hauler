@@ -4,18 +4,16 @@
 // keeps the device-only text/cart path honest.
 #include <Arduboy2.h>
 #include <ArduboyFX.h>
-#include "src/features.hpp"
 #include "src/fxdata.h"
 #include "src/game.hpp"
 #include "src/jobs.hpp"
 #include "src/station.hpp"
 #include "src/text.hpp"
 #include "src/work_view.hpp"
+#include "src/story_view.hpp"
 #include "src/world.hpp"
-#if SH_FEATURE_CAMPAIGN
 #include "src/campaign.hpp"
 #include "src/generated/exploration.hpp"
-#endif
 
 Arduboy2Base arduboy;
 
@@ -68,7 +66,6 @@ void setup() {
     // later state mutation.
     work_view::draw(state, 0);
 
-#if SH_FEATURE_CAMPAIGN
     // At Cormorant before the repairs, PUMP is the story row and freight is
     // directly beneath it.
     berth = campaign::kCormorant;
@@ -90,9 +87,21 @@ void setup() {
     // Deliver through the real dock hook. The story reward is fixed and the
     // trip is untimed.
     const uint16_t creditsBefore = state.credits;
+    const uint8_t campaignBefore = state.campaign;
     ok = dockAt(state, campaign::kBenthos) && ok;
     ok = (state.credits == creditsBefore + campaign::missionReward(campaign::kPump)) && ok;
     ok = (state.lastDelivery == jobs::kDeliveryPaid) && ok;
+
+    // The PUMP milestone is a one-shot dock beat. Exercise the real panel
+    // reader; a repeated dock reports no new card.
+    const uint8_t pumpCard = story_view::cardForNewMilestone(campaignBefore, state.campaign);
+    ok = (pumpCard == story_view::kCardPump) && ok;
+    story_view::draw(pumpCard);
+    ok = (story_view::cardForNewMilestone(state.campaign, state.campaign) == story_view::kCardNone) && ok;
+
+    // All four appended panels stream through the shared opaque renderer.
+    for (uint8_t card = story_view::kCardFirst; card <= story_view::kCardBeacon; ++card)
+        story_view::draw(card);
 
     // Old timed kind values are no longer valid state.
     state.activeJob.kind = 3;
@@ -103,7 +112,6 @@ void setup() {
     state.activeJob.to = game::kJobNone;
     state.activeJob.crates = 0;
     state.activeJob.reward = 0;
-#endif
 
     // Repeatable freight is still one row beneath the story list and remains
     // payable after a long flight simulation.
