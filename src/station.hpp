@@ -24,22 +24,23 @@
 //
 // Auto-dock is the selected M3 input contract: a boat inside a settlement
 // ring, at or below the dock speed after a world step, docks without spending
-// a button. This mirrors the browser ring radius and speed threshold.
+// a button. The capture radius is the visible gantry footprint; the dock
+// speed threshold mirrors the browser.
 namespace station {
 
 using game::Input;
 using game::airCapacity;
 using game::kQ8One;
 using game::neutralForNormalized;
-using game::snapCamera;
 using game::State;
 #if SH_FEATURE_HULL_DAMAGE
 using game::hullCapacity;
 #endif
 
-// The generated dock ring is the single source of truth for both the drawn
-// gantry and the docking check.
-constexpr int16_t kDockRadius = world::DOCK_CLEARANCE_PX;
+// The gantry spans 13 px either side of its dock pixel. The capture radius
+// matches that footprint with one pixel of approach margin; the generated
+// world clearance is wider and only keeps hazards away from the berth.
+constexpr int16_t kDockRadius = 14;
 constexpr int32_t kDockRadiusSq = static_cast<int32_t>(kDockRadius) * kDockRadius;
 
 // Browser CFG.dockSpeed: 16 px/s. Q8.8 keeps the comparison integer.
@@ -326,9 +327,9 @@ inline void service(State &state) {
     state.airDrainTicks = 0;
 }
 
-// Dock at the nearest ring. Position snaps to the generated dock pixel, which
-// is the same anchor the gantry renderer uses; the camera snaps with it so the
-// first station frame and any later undock frame cannot show a stale view.
+// Dock at the nearest ring without moving the hull. Stopping in place keeps
+// the approach continuous, so returning from the station cannot warp the boat
+// to the gantry centre.
 inline bool dock(State &state) {
     if (state.docked >= 0)
         return false;
@@ -343,26 +344,8 @@ inline bool dock(State &state) {
     if (!inRing || !slowEnoughToDock(state))
         return false;
 
-#if SH_FEATURE_CAMPAIGN
-    world::Berth berth;
-    if (!world::berthInfo(settlementId, berth))
-        return false;
-    const int16_t dockX = berth.pixel_x;
-    const int16_t dockY = berth.pixel_y;
-#else
-    world::Settlement settlement;
-    if (!world::settlementInfo(settlementId, settlement))
-        return false;
-    const int16_t dockX = settlement.pixel_x;
-    const int16_t dockY = settlement.pixel_y;
-#endif
-
     state.docked = static_cast<int8_t>(settlementId);
     state.dockCooldown = 0;
-    state.x = dockX;
-    state.y = dockY;
-    state.xFrac = 0;
-    state.yFrac = 0;
     state.vxQ8 = 0;
     state.vyQ8 = 0;
 
@@ -379,7 +362,6 @@ inline bool dock(State &state) {
     jobs::onDock(state, settlementId);
 #endif
 #endif
-    snapCamera(state);
     return true;
 }
 

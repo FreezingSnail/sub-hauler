@@ -58,7 +58,8 @@ flight or station code reads that bank.
 
 ## Contract loading loop
 
-1. Dock (auto-dock inside a settlement ring at or below the dock speed).
+1. Dock (auto-dock within 14 px of a settlement gantry at or below the dock
+   speed; the hull stops in place instead of snapping to the gantry centre).
 2. Select an offer and press `A`. Acceptance fills the hold with the contract's
    four coarse cargo units, neutralizes trim, and keeps the boat docked.
 3. Confirm the active board's `UNDOCK` row with `A`, or press `B`, to start
