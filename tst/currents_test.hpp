@@ -6,7 +6,6 @@
 #include "test.hpp"
 #include "world_test.hpp"
 
-#if SH_FEATURE_CURRENTS
 
 namespace currents_test {
 
@@ -153,7 +152,6 @@ inline void CurrentsSuite(TestRunner &runner) {
         runner.add(test);
     }
 
-#if SH_FEATURE_STATIONS
     {
         Test test("docked boats are never pushed by a current");
         game::State state;
@@ -173,7 +171,6 @@ inline void CurrentsSuite(TestRunner &runner) {
         test.assertEqual(state.vxQ8, 0, "stepWorld does not push a docked boat");
         runner.add(test);
     }
-#endif
 
     {
         Test test("current cannot push the hull through a wall");
@@ -220,4 +217,3 @@ inline void CurrentsSuite(TestRunner &runner) {
     }
 }
 
-#endif   // SH_FEATURE_CURRENTS

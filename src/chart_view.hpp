@@ -1,18 +1,15 @@
 #pragma once
 
-#include "features.hpp"
 
-#if SH_FEATURE_FOG_CHART
 
 #include <stdint.h>
 
+#include "campaign.hpp"
 #include "cave_render.hpp"
 #include "chart.hpp"
 #include "game.hpp"
 #include "world.hpp"
-#if SH_FEATURE_EXPLORATION
 #include "exploration.hpp"
-#endif
 
 // Paused 128x64 chart. The pure page-major drawing code is shared by the host
 // tests and the firmware.
@@ -105,7 +102,6 @@ inline void drawSub(uint8_t *buffer, int16_t cellX, int16_t cellY) {
     fillCell(buffer, x, y);
 }
 
-#if SH_FEATURE_EXPLORATION
 inline void drawDiscoveries(uint8_t *buffer, const chart::State &chartState, const game::State &s) {
     for (uint8_t i = 0; i < exploration_data::PICKUP_COUNT; ++i) {
         const exploration_data::Pickup p = exploration_data::pickup(i);
@@ -130,7 +126,26 @@ inline void drawDiscoveries(uint8_t *buffer, const chart::State &chartState, con
             setPixel(buffer, cx * 2, cy * 2);
     }
 }
-#endif
+
+// Campaign survey targets use the same blinking X as an active delivery, so a
+// pilot who has finished FIRST can find the pump and lift without reading the
+// WORK clue first. A recorded survey disappears from the chart.
+inline void drawSurveyTargets(uint8_t *buffer, const game::State &state, uint8_t blinkPhase) {
+    if ((blinkPhase & kBlinkMask) != 0)
+        return;
+    for (uint8_t i = 0; i < world::surveyCount(); ++i) {
+        world::Survey survey;
+        if (!world::surveyInfo(i, survey))
+            continue;
+        if (!campaign::hasMilestone(state, campaign::kMilestoneFirst) || (state.surveys & (static_cast<uint8_t>(1u) << survey.id)))
+            continue;
+        int16_t cellX;
+        int16_t cellY;
+        if (!chart::cellFromPixels(survey.pixel_x, survey.pixel_y, cellX, cellY))
+            continue;
+        drawDestinationMark(buffer, cellX, cellY);
+    }
+}
 
 // ---------------------------------------------------------------------------
 // Frame composition
@@ -184,7 +199,6 @@ inline void drawSettlements(uint8_t *buffer, const chart::State &chartState) {
     }
 }
 
-#if SH_FEATURE_JOBS
 // The contract knows its destination, so its blinking X is drawn even when the
 // cell is still fogged. The blink phase is a frame counter owned by the caller
 // because chart frames never advance game::State.
@@ -202,7 +216,6 @@ inline void drawDestination(uint8_t *buffer, const game::State &gameState, uint8
         return;
     drawDestinationMark(buffer, cellX, cellY);
 }
-#endif
 
 inline void drawSubMarker(uint8_t *buffer, const game::State &gameState, uint8_t blinkPhase) {
     if ((blinkPhase & kBlinkMask) != 0)
@@ -219,16 +232,12 @@ inline void drawSubMarker(uint8_t *buffer, const game::State &gameState, uint8_t
 template <typename Reader> inline void draw(uint8_t *buffer, const chart::State &chartState, const game::State &gameState, Reader &reader, uint8_t blinkPhase) {
     // Water expansion overwrites all 1024 bytes, including fogged/land cells.
     drawWater(buffer, chartState, reader);
-#if SH_FEATURE_EXPLORATION
     drawDiscoveries(buffer, chartState, gameState);
-#endif
     drawSettlements(buffer, chartState);
-#if SH_FEATURE_JOBS
+    drawSurveyTargets(buffer, gameState, blinkPhase);
     drawDestination(buffer, gameState, blinkPhase);
-#endif
     drawSubMarker(buffer, gameState, blinkPhase);
 }
 
 }   // namespace chart_view
 
-#endif   // SH_FEATURE_FOG_CHART

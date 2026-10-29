@@ -5,7 +5,7 @@
   "sample_rate": 8000,
   "sample_format": "s16le",
   "reference_manifest_sha256": "fe39f4d1943840f452436d802a4a24d3dbf40203b8e1abe52242028f461fe98e",
-  "generator_sha256": "3aee37a0f910785a203a0cf6cbab9cd8702f303189f38d9ac6c007aa725d332a",
+  "generator_sha256": "f96ca6bcd4dc75bffcca948573624ed60c2b4d0bcbdc93ba1214fbd496454079",
   "initial_state": "predictor = first reference sample, step index = 0",
   "loop_reset": "predictor/index reset to initial state at the exact authored sample boundary",
   "total_samples": 2849280,

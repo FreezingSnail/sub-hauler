@@ -11,7 +11,7 @@
 //   3. Fill [bssEnd + 1, paintTop] with 0xA5 with interrupts disabled.
 //   4. Re-enable interrupts and run kRepresentativeFrames of the normal
 //      poll/update/render/present path, including FX cart reads. The M6 chart
-//      path, the M7 mine/current, damage/particle, and shop frames,
+//      path, the M7 current and particle frames,
 //      the M8 title/all-hull art path, and the cargo-free contract/undock path
 //      follow in the same measured window.
 //   5. Scan upward from bssEnd + 1 for the lowest byte that is no longer
@@ -25,92 +25,53 @@
 // 0xA5, and a path that stays inside the guard region is reported as if it
 // stopped at paintTop.
 //
-// Set SH_STACK_DIAG=1 only for a manual run. Diagnostics are separate lines;
 // the Ardens gate requires the bare marker line and defaults this to 0.
 
 #include <avr/io.h>
 #include <Arduboy2.h>
 #include <ArduboyFX.h>
 #include "src/common.hpp"
-#include "src/features.hpp"
 #include "src/game.hpp"
 #include "src/hud.hpp"
 #include "src/pilot.hpp"
 #include "src/roster.hpp"
 #include "src/render.hpp"
 #include "src/world_fx.hpp"
-#if SH_FEATURE_FOG_CHART
 #include "src/chart.hpp"
 #include "src/chart_view.hpp"
-#endif
-#if SH_FEATURE_SAVE_CHART
-#include "src/chart_save.hpp"
-#endif
-#if SH_FEATURE_SHOP
 #include "src/shop.hpp"
 #include "src/shop_view.hpp"
-#endif
-#if SH_FEATURE_STATIONS
 #include "src/station.hpp"
 #include "src/station_view.hpp"
-#endif
-#if SH_FEATURE_HULL_DAMAGE
-#include "src/damage.hpp"
-#endif
-#if SH_FEATURE_PARTICLES
 #include "src/particles.hpp"
-#endif
-#if SH_FEATURE_MULTI_HULL
 #include "src/roster_view.hpp"
-#endif
-#if SH_FEATURE_CAMPAIGN
 #include "src/campaign.hpp"
 #include "src/campaign_view.hpp"
 #include "src/work_view.hpp"
 #include "src/ending_view.hpp"
-#endif
-#if SH_FEATURE_SAVE_VOYAGE
 #include "src/voyage_flow.hpp"
 #include "src/voyage_view.hpp"
-#endif
-
-#ifndef SH_STACK_DIAG
-#define SH_STACK_DIAG 0
-#endif
 
 // Defined by the AVR linker script; points one past the last static byte.
 extern "C" char __bss_end;
 
 Arduboy2Base arduboy;
 
-#if SH_FEATURE_STATIONS && SH_FEATURE_JOBS && SH_FEATURE_FOG_CHART && SH_FEATURE_MINES && SH_FEATURE_CURRENTS && SH_FEATURE_SHOP && SH_FEATURE_HULL_DAMAGE &&                      \
-    SH_FEATURE_PARTICLES && SH_FEATURE_MULTI_HULL
-// The full AVR state budget is pinned here at 78 B after the gl1.3/gl1.4
-// compaction: diagnostic counters and the job clock were removed and route
-// reward fields were narrowed.
-#if SH_FEATURE_EXPLORATION
-#if SH_FEATURE_CAMPAIGN
-static_assert(sizeof(game::State) == 97, "full campaign+save run state is 97 bytes on AVR");
-#else
-static_assert(sizeof(game::State) == 77, "full non-campaign exploration run state is 77 bytes on AVR");
-#endif
-#else
-static_assert(sizeof(game::State) == 78, "non-exploration state remains 78 bytes");
-#endif
-#endif
+// The full AVR state budget is pinned here at 90 B after the gl1.3/gl1.4
+// compaction and the mine/hull-damage removal: diagnostic counters and the job
+// clock are gone and route reward fields are narrowed.
+static_assert(sizeof(game::State) == 90, "full campaign+save run state is 90 bytes on AVR");
 
-#if SH_FEATURE_FOG_CHART
 // The firmware owns the persistent explored set statically. Keeping the probe's
 // copy here (rather than as a local in the measured path) charges those 257 B
 // to static RAM, exactly like the shipped image, instead of pretending the
 // firmware would put them on the stack.
 chart::State probeChart;
-#endif
 
 namespace {
 
 // Re-baselined from 800 B to 600 B on 2026-10-23, after the 258 B persistent
-// chart slice entered the full image. The chart+hazard+damage+shop+
+// chart slice entered the full image. The chart+current+particle+shop+
 // title/roster+contract/undock/reset probe measures the cargo-free reserve;
 // 600 B stays the pass line.
 constexpr uint16_t kReserveTarget = 600;   // bytes of stack reserve required
@@ -136,18 +97,13 @@ __attribute__((noinline)) void runRepresentativePath() {
     world::clearCache(cache);
     game::resetWorld(state);
 
-#if SH_FEATURE_MULTI_HULL
     // Title path: draw every class silhouette through the real selection screen
     // (no cart reads), then fly the largest body for the pilot frames below.
     for (uint8_t index = 0; index < roster::kClassCount; ++index) {
         roster_view::draw(static_cast<uint8_t>(roster::classAt(index)));
         FX::display(CLEAR_BUFFER);
     }
-    // Include the explicit loader row in the measured title path.
-    roster_view::draw(static_cast<uint8_t>(roster::kDefault), roster_view::kTitleLoader);
-    FX::display(CLEAR_BUFFER);
     state.hullClass = static_cast<uint8_t>(roster::kLeviathan);
-#endif
 
     for (uint16_t frame = 0; frame < kRepresentativeFrames; ++frame) {
         arduboy.pollButtons();
@@ -163,7 +119,6 @@ __attribute__((noinline)) void runRepresentativePath() {
         FX::display(CLEAR_BUFFER);
     }
 
-#if SH_FEATURE_EXPLORATION
     // Exercise salvage, cutter operation, object rendering and discovery HUD
     // in the measured stack window, using the same run state as flight.
     const auto find = exploration_data::pickup(exploration_data::PICKUP_W);
@@ -186,9 +141,7 @@ __attribute__((noinline)) void runRepresentativePath() {
     view::frame(state, pilot_view::cameraForState(state), cache, tables);
     hud::draw(state);
     FX::display(CLEAR_BUFFER);
-#endif
 
-#if SH_FEATURE_FOG_CHART
     // Chart path: spawn reset/reveal, a few movement reveals, and real chart
     // frames. The destination X is drawn on the first frame and blinked off on
     // the rest; settlement 0 (spawn) and settlement 3 cells are explored, so
@@ -197,39 +150,19 @@ __attribute__((noinline)) void runRepresentativePath() {
     chart::reset(probeChart);
     chart::revealInitial(probeChart, state);
     chart::revealAtPixels(probeChart, state.x, state.y, chart::kMoveRevealRadius);
-#if SH_FEATURE_EXPLORATION
     chart::revealAtPixels(probeChart, exploration_data::DOCK_D_X, exploration_data::DOCK_D_Y, 0);
-#else
-    chart::revealAtPixels(probeChart, 1376, 1056, 0);
-#endif
     state.ticks = chart::kMoveRevealIntervalTicks;
     chart::revealOnStep(probeChart, state);
-#if SH_FEATURE_JOBS
     state.activeJob.to = 1;
-#if SH_FEATURE_CAMPAIGN
     state.activeJob.kind = game::kJobKindOrdinary;
     state.activeJob.mission = game::kMissionNone;
     state.activeJob.from = 0;
-#endif
-#endif
     for (uint8_t frame = 0; frame < 3; ++frame) {
         const uint8_t blink = (frame == 0) ? 0 : chart_view::kBlinkMask;
         chart_view::draw(Arduboy2Base::sBuffer, probeChart, state, tables, blink);
         FX::display(CLEAR_BUFFER);
     }
-#if SH_FEATURE_SAVE_CHART
-    // Save path: persist and reload the same probe chart through the real
-    // EEPROM adapter. The save is included in the measured window because it
-    // runs on the chart-close transition, not inside the frame loop. A blank
-    // or corrupt EEPROM block is ignored by load(), so the probe still works
-    // after a fresh flash.
-    chart_save::EepromStorage saveStorage;
-    chart_save::load(probeChart, saveStorage);
-    chart_save::save(probeChart, saveStorage);
-#endif
-#endif
 
-#if SH_FEATURE_CURRENTS
     // Current path: stand in the first generated zone and run the real step so
     // its acceleration and flow marks enter the measured path.
     world::Current current;
@@ -247,72 +180,38 @@ __attribute__((noinline)) void runRepresentativePath() {
         hud::draw(state);
         FX::display(CLEAR_BUFFER);
     }
-#endif
 
-#if SH_FEATURE_MINES
-    // Mine path: place the hull on generated mine 0, step once to consume it,
-    // then draw the one-frame impact spark with the mine already removed. With
-    // PARTICLES on this step also spawns the debris pool.
-    world::Mine mine;
-    if (world::mineInfo(0, mine)) {
-        state.x = mine.x;
-        state.y = mine.y;
-        state.xFrac = 0;
-        state.yFrac = 0;
-        state.vxQ8 = 0;
-        state.vyQ8 = 0;
-        game::Input mineInput{};
-        game::stepWorld(state, mineInput, tables, &cache);
-        const cave::Camera mineCamera = pilot_view::cameraForState(state);
-        view::frame(state, mineCamera, cache, tables);
-        hud::draw(state);
-        FX::display(CLEAR_BUFFER);
-
-#if SH_FEATURE_PARTICLES
-        // Let the pool age and draw through the real step/render path twice:
-        // this covers particle update, camera conversion, and clipping.
-        for (uint8_t frame = 0; frame < 2; ++frame) {
-            game::stepWorld(state, mineInput, tables, &cache);
-            const cave::Camera debrisCamera = pilot_view::cameraForState(state);
-            view::frame(state, debrisCamera, cache, tables);
-            hud::draw(state);
-            FX::display(CLEAR_BUFFER);
-        }
-#endif
-    }
-#endif
-
-#if SH_FEATURE_HULL_DAMAGE || SH_FEATURE_PARTICLES
-    // Damage/particle path: latch a deterministic hard wall impact, apply the
-    // real damage rule and spawn/age the debris pool, then draw the pilot frame
-    // with the hull-edge flash and particles at the impact anchor.
+    // Particle path: latch a deterministic hard wall impact, spawn/age the
+    // debris pool, then draw the pilot frame with particles at the impact
+    // anchor. The pool is bounded and needs no mine or damage state.
     state.impactAxis = 1;
     state.impactSpeedQ8 = game::kHardImpactSpeedQ8;
-#if SH_FEATURE_HULL_DAMAGE
-    damage::resolveWallImpact(state);
-    damage::tick(state);
-#endif
-#if SH_FEATURE_PARTICLES
     particles::spawn(state);
     particles::tick(state);
-#endif
-    const cave::Camera damageCamera = pilot_view::cameraForState(state);
-    view::frame(state, damageCamera, cache, tables);
+    const cave::Camera particleCamera = pilot_view::cameraForState(state);
+    view::frame(state, particleCamera, cache, tables);
     hud::draw(state);
     FX::display(CLEAR_BUFFER);
-#endif
 
-#if SH_FEATURE_SHOP
+    // Let the pool age and draw through the real step/render path twice: this
+    // covers particle update, camera conversion, and clipping.
+    game::Input debrisInput{};
+    for (uint8_t frame = 0; frame < 2; ++frame) {
+        game::stepWorld(state, debrisInput, tables, &cache);
+        const cave::Camera debrisCamera = pilot_view::cameraForState(state);
+        view::frame(state, debrisCamera, cache, tables);
+        hud::draw(state);
+        FX::display(CLEAR_BUFFER);
+    }
+
     // Shop path: dock, buy the air tank through the real transaction, and draw
-    // the two-row board. No cart reads during the display transaction.
+    // the one-row board. No cart reads during the display transaction.
     state.docked = 0;
     state.credits = 500;
     shop::buy(state, shop::kAir);
     shop_view::draw(state, shop::kFirstItem);
     FX::display(CLEAR_BUFFER);
-#endif
 
-#if SH_FEATURE_CAMPAIGN
     // Campaign app path: WORK rows at both source shapes, a completed Tidewall
     // board with VIEW ENDING, and all three homecoming cards. This keeps the
     // external text, restoration overlays and ending stats in the stack window.
@@ -350,15 +249,13 @@ __attribute__((noinline)) void runRepresentativePath() {
     }
     state.ending = 1;
 
-#if SH_FEATURE_SAVE_VOYAGE
     // Title, save-failure and recovery prompts: each is now a baked panel, but
     // the stack window still needs the real panel burst plus the surrounding
-    // status/hull selection code.
+    // hull selection code.
     voyage_flow::BootStatus boot;
     boot.state = voyage_flow::kBootValid;
     boot.hasValid = true;
-    boot.hasCorrupt = false;
-    boot.hasIncompatible = false;
+
     voyage_view::drawTitle(boot, voyage_view::kTitleContinue, state.hullClass, voyage_view::kTitleMenu);
     FX::display(CLEAR_BUFFER);
     voyage_view::drawTitle(boot, voyage_view::kTitleNewVoyage, state.hullClass, voyage_view::kTitleConfirmReplace);
@@ -371,10 +268,6 @@ __attribute__((noinline)) void runRepresentativePath() {
     FX::display(CLEAR_BUFFER);
     voyage_view::drawPauseRescue(1);
     FX::display(CLEAR_BUFFER);
-    voyage_view::drawWreck(0);
-    FX::display(CLEAR_BUFFER);
-    voyage_view::drawWreck(1);
-    FX::display(CLEAR_BUFFER);
     voyage_view::drawRescueConfirm();
     FX::display(CLEAR_BUFFER);
     voyage_view::drawAbandonConfirm();
@@ -383,23 +276,16 @@ __attribute__((noinline)) void runRepresentativePath() {
     // Real cart checkpoint transaction in the measured window.
     voyage_save::FxStorage saveStorage;
     voyage_save::newVoyage(state
-#if SH_FEATURE_FOG_CHART
                            ,
                            probeChart
-#endif
                            ,
                            saveStorage);
     voyage_save::load(state
-#if SH_FEATURE_FOG_CHART
                       ,
                       probeChart
-#endif
                       ,
                       saveStorage);
-#endif
-#endif
 
-#if SH_FEATURE_STATIONS && SH_FEATURE_JOBS
     // Contract path: post offers at a real berth, accept (auto-load), draw the
     // active station board, then undock through the board action and draw the
     // first pilot frame. This replaces the removed packing screen and keeps
@@ -417,7 +303,6 @@ __attribute__((noinline)) void runRepresentativePath() {
         hud::draw(state);
         FX::display(CLEAR_BUFFER);
     }
-#endif
 }
 
 // Returns the number of untouched bytes between __bss_end and the lowest
@@ -462,30 +347,13 @@ void setup() {
     Serial.begin(9600);
     arduboy.begin();
     delay(100);
-#if SH_FEATURE_SAVE_VOYAGE
     FX::begin(FX_DATA_PAGE, FX_SAVE_PAGE);
-#else
-    FX::begin(FX_DATA_PAGE);
-#endif
     FX::setCursorRange(0, 32767);
     text::begin();
 
     const uint16_t reserve = measureStackReserve();
 
-    // Device coverage for the title loader row. The action itself is not
-    // invoked: exitToBootloader() would leave the serial harness.
-#if SH_FEATURE_MULTI_HULL
-    const bool loaderRowsOk = roster_view::nextRow(roster_view::kTitleHull) == roster_view::kTitleLoader && roster_view::nextRow(roster_view::kTitleLoader) == roster_view::kTitleHull;
-#else
-    const bool loaderRowsOk = true;
-#endif
-
-#if SH_STACK_DIAG
-    Serial.print(F("stack_reserve="));
-    Serial.println(reserve);
-#endif
-
-    Serial.println(reserve >= kReserveTarget && loaderRowsOk ? F("P") : F("F"));
+    Serial.println(reserve >= kReserveTarget ? F("P") : F("F"));
 }
 
 void loop() {

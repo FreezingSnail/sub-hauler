@@ -2,17 +2,13 @@
 
 #include <stdint.h>
 
-#include "features.hpp"
 
-#if SH_FEATURE_CAMPAIGN
 
 #include "campaign.hpp"
 #include "cave.hpp"
 #include "cave_render.hpp"
 #include "game.hpp"
-#if SH_FEATURE_EXPLORATION
 #include "generated/exploration.hpp"
-#endif
 #include "world.hpp"
 
 #if defined(__AVR__)
@@ -47,6 +43,9 @@ inline void drawSurveyRings(uint8_t *buffer, const game::State &state, const cav
             cave::setPixel(buffer, x, y);
             continue;
         }
+        // An active objective blinks so it reads as a task, not scenery.
+        if (campaign::hasMilestone(state, campaign::kMilestoneFirst) && !(state.surveys & (static_cast<uint8_t>(1u) << survey.id)) && (state.ticks & 0x10) != 0)
+            continue;
         // Small ring with four approach brackets, distinct from a pickup.
 #if defined(__AVR__)
         Blit::draw(static_cast<int16_t>(x - 7), static_cast<int16_t>(y - 6), SURVEY_RING_WIDTH, SURVEY_RING_HEIGHT, survey_ring + 2, 0, Blit::PLUSMASK);
@@ -185,4 +184,3 @@ inline void drawRestoration(uint8_t *buffer, const game::State &state, const cav
 
 }   // namespace campaign_view
 
-#endif   // SH_FEATURE_CAMPAIGN

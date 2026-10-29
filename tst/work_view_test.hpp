@@ -1,16 +1,12 @@
 #pragma once
 
-#include "../src/features.hpp"
 
-#if SH_FEATURE_JOBS
 
 #include "../src/game.hpp"
 #include "../src/jobs.hpp"
 #include "../src/work_view.hpp"
 #include "../src/world.hpp"
-#if SH_FEATURE_CAMPAIGN
 #include "../src/generated/exploration.hpp"
-#endif
 #include "jobs_test.hpp"
 #include "test.hpp"
 
@@ -25,12 +21,10 @@ inline uint8_t kindAt(const game::State &state, uint8_t index) {
     return work_view::rowAt(state, index).kind;
 }
 
-#if SH_FEATURE_CAMPAIGN
 inline void firstComplete(game::State &state) {
     state.campaign = campaign::kMilestoneFirst;
     state.surveys = campaign::kSurveyMask;
 }
-#endif
 
 }   // namespace work_view_test
 
@@ -43,7 +37,6 @@ inline void WorkViewSuite(TestRunner &runner) {
             game::State state;
             game::reset(state);
             test.assertTrue(dockAt(state, berth), "freight berth docks");
-#if SH_FEATURE_CAMPAIGN
             // Benthos has no cargo source before FIRST; the other berths also
             // have no eligible restoration job at voyage start except Tidewall.
             if (berth == campaign::kBenthos) {
@@ -51,17 +44,10 @@ inline void WorkViewSuite(TestRunner &runner) {
                 test.assertEqual(kindAt(state, 0), work_view::kRowFreight, "the freight row is first");
                 test.assertEqual(work_view::rowAt(state, 0).mission, work_view::kNoMission, "freight has no mission id");
             }
-#else
-            // Without campaign rules there is no story list at all.
-            test.assertEqual(work_view::rowCount(state), 1, "freight-only board");
-            test.assertEqual(kindAt(state, 0), work_view::kRowFreight, "freight row");
-            test.assertEqual(work_view::rowAt(state, 0).mission, work_view::kNoMission, "freight has no mission id");
-#endif
         }
         runner.add(test);
     }
 
-#if SH_FEATURE_CAMPAIGN
     {
         Test test("restoration rows are listed before the freight row at every source berth");
         game::State state;
@@ -124,7 +110,5 @@ inline void WorkViewSuite(TestRunner &runner) {
         test.assertTrue(!work_view::accept(state, work_view::rowAt(state, 0)), "second acceptance is refused");
         runner.add(test);
     }
-#endif
 }
 
-#endif   // SH_FEATURE_JOBS

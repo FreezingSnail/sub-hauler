@@ -1,6 +1,4 @@
 #pragma once
-#include "../src/features.hpp"
-#if SH_FEATURE_EXPLORATION
 #include <fstream>
 #include <queue>
 #include <utility>
@@ -9,9 +7,7 @@
 #include "../src/exploration_view.hpp"
 #include "../src/pilot.hpp"
 #include "../src/jobs.hpp"
-#if SH_FEATURE_STATIONS
 #include "../src/station.hpp"
-#endif
 #include "test.hpp"
 #include "world_test.hpp"
 namespace exploration_test {
@@ -63,7 +59,6 @@ inline std::vector<uint8_t> reachable(world_test::FakeWorld &reader, uint8_t too
 inline void ExplorationSuite(TestRunner &runner) {
     namespace data = exploration_data;
     using namespace exploration_test;
-#if SH_FEATURE_STATIONS
     {
         Test t("wall berths dock and undock safely against the actual packed terrain");
         world_test::FakeWorld reader;
@@ -90,7 +85,6 @@ inline void ExplorationSuite(TestRunner &runner) {
         }
         runner.add(t);
     }
-#endif
     {
         Test t("exploration salvage requires a slow uninterrupted dwell and pays once");
         game::State s;
@@ -186,7 +180,7 @@ inline void ExplorationSuite(TestRunner &runner) {
         runner.add(t);
     }
     {
-        Test t("hidden rewards saturate money and add hull capacity beyond shop maximum");
+        Test t("hidden rewards saturate money");
         game::State s;
         game::resetWorld(s);
         s.credits = 65530;
@@ -194,17 +188,6 @@ inline void ExplorationSuite(TestRunner &runner) {
         place(s, purse.x, purse.y);
         dwell(s);
         t.assertEqual(s.credits, 65535, "large treasure cannot wrap credits");
-#if SH_FEATURE_HULL_DAMAGE
-#if SH_FEATURE_SHOP
-        s.hullLevel = 3;
-#endif
-        const uint8_t oldCapacity = game::hullCapacity(s);
-        const auto pod = data::pickup(data::PICKUP_CC);
-        place(s, pod.x, pod.y);
-        dwell(s);
-        t.assertEqual(game::hullCapacity(s), oldCapacity + 1, "find remains useful at max shop level");
-        t.assertEqual(s.hull, game::hullCapacity(s), "new hull capacity is repaired on pickup");
-#endif
         game::resetWorld(s);
         t.assertEqual(s.tools, 0, "restart resets run-local equipment");
         t.assertEqual(s.pickups, 0, "restart resets run-local claims");
@@ -286,4 +269,3 @@ inline void ExplorationSuite(TestRunner &runner) {
         runner.add(t);
     }
 }
-#endif

@@ -2,15 +2,11 @@
 
 #include <stdint.h>
 
-#include "features.hpp"
 
-#if SH_FEATURE_CAMPAIGN
 
 #include "game.hpp"
 #include "world.hpp"
-#if SH_FEATURE_EXPLORATION
 #include "generated/exploration.hpp"
-#endif
 
 // Pure campaign rules: stable mission/survey/berth IDs, prerequisites, repair
 // ordering, one-time completion flags and the bounded active-job invariants.
@@ -89,9 +85,9 @@ const MissionSpec kMissions[kMissionCount] PROGMEM = {
 constexpr MissionSpec kMissions[kMissionCount] = {
 #endif
     {kTidewall, kBenthos, true, kMilestoneFirst, kNoBit},             // FIRST
-    {game::kJobNone, game::kJobNone, false, kNoBit, kPumpSurveyId},   // PUMP_SURVEY
+    {kBenthos, game::kJobNone, false, kNoBit, kPumpSurveyId},         // PUMP_SURVEY
     {kCormorant, kBenthos, true, kMilestonePump, kNoBit},             // PUMP
-    {game::kJobNone, game::kJobNone, false, kNoBit, kLiftSurveyId},   // LIFT_SURVEY
+    {kCormorant, game::kJobNone, false, kNoBit, kLiftSurveyId},       // LIFT_SURVEY
     {kBenthos, kCormorant, true, kMilestoneLift, kNoBit},             // LIFT
     {kCormorant, kDeepAnchor, true, kMilestoneBeacon, kNoBit},        // BEACON
     {kDeepAnchor, kTidewall, true, kMilestoneHome, kNoBit},           // HOME
@@ -212,9 +208,10 @@ inline bool missionAvailable(const State &state, uint8_t id) {
     return missionPrerequisites(state, id) && !missionCompleted(state, id);
 }
 
-// WORK page rows. Cargo missions are compacted in stable mission-id order at
-// their source berth; surveys never occupy a row. After HOME, Tidewall adds a
-// replayable VIEW ENDING row. kWorkEnding is outside the frozen mission ids.
+// WORK page rows. Story missions are compacted in stable mission-id order at
+// their clue or source berth; the two field surveys therefore appear as
+// non-cargo quest rows. After HOME, Tidewall adds a replayable VIEW ENDING row.
+// kWorkEnding is outside the frozen mission ids.
 constexpr uint8_t kWorkEnding = 0xFE;
 
 inline bool endingAvailable(const State &state) {
@@ -225,7 +222,7 @@ inline uint8_t workMissionAt(const State &state, uint8_t berth, uint8_t row) {
     uint8_t visible = 0;
     for (uint8_t id = kFirst; id <= kHome; ++id) {
         MissionSpec spec;
-        if (!missionInfo(id, spec) || !spec.cargo || spec.from != berth)
+        if (!missionInfo(id, spec) || spec.from != berth)
             continue;
         if (!missionAvailable(state, id))
             continue;
@@ -295,19 +292,15 @@ inline bool markEndingPresented(State &state) {
 // slot is empty and the mission prerequisites hold. BEACON/HOME therefore need
 // explicit acceptance; docking never auto-loads them.
 inline bool canAccept(const State &state, uint8_t id) {
-#if SH_FEATURE_STATIONS
     if (state.docked < 0)
         return false;
-#endif
     if (game::hasActiveJob(state))
         return false;
     MissionSpec spec;
     if (!missionInfo(id, spec) || !spec.cargo)
         return false;
-#if SH_FEATURE_STATIONS
     if (spec.from != static_cast<uint8_t>(state.docked))
         return false;
-#endif
     return missionAvailable(state, id);
 }
 
@@ -395,4 +388,3 @@ inline bool stateValid(const State &state) {
 
 }   // namespace campaign
 
-#endif   // SH_FEATURE_CAMPAIGN

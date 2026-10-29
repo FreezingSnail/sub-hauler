@@ -1,8 +1,6 @@
 #pragma once
 
-#include "../src/features.hpp"
 
-#if SH_FEATURE_STATIONS
 
 #include "../src/station.hpp"
 #include "../src/station_view.hpp"
@@ -104,7 +102,7 @@ inline void StationSuite(TestRunner &runner) {
     }
 
     {
-        Test test("dock refills air, repairs hull, and neutralizes trim");
+        Test test("dock refills air and neutralizes trim");
         world::Settlement settlement;
         test.assertTrue(anySettlement(settlement), "settlement metadata loads");
 
@@ -124,16 +122,10 @@ inline void StationSuite(TestRunner &runner) {
         state.airDrainTicks = 99;
         const uint16_t approachCameraX = state.cameraXQ4;
         const uint16_t approachCameraY = state.cameraYQ4;
-#if SH_FEATURE_HULL_DAMAGE
-        state.hull = 1;
-#endif
 
         test.assertTrue(station::dock(state), "dock succeeds");
 
         test.assertEqual(state.air, game::airCapacity(state), "air is refilled to capacity");
-#if SH_FEATURE_HULL_DAMAGE
-        test.assertEqual(state.hull, game::hullCapacity(state), "hull is repaired to maximum");
-#endif
         test.assertEqual(state.ballast, game::neutralFor(state.cargo), "ballast resets to neutral for the load");
         test.assertEqual(state.ballastCarry, 0, "ballast carry is cleared");
         test.assertEqual(state.airBlowCarry, 0, "air-blow carry is cleared");
@@ -292,27 +284,13 @@ inline void StationSuite(TestRunner &runner) {
         test.assertTrue(anySettlement(settlement), "settlement metadata loads");
 
         test.assertEqual(station::kStationRowCount,
-#if SH_FEATURE_JOBS && SH_FEATURE_SHOP
                          3,
-#elif SH_FEATURE_JOBS
-                         2,
-#elif SH_FEATURE_SHOP
-                         3,
-#else
-                         2,
-#endif
                          "WORK/SERVICE, SHOP and UNDOCK rows are present");
         game::State board;
         game::reset(board);
-#if SH_FEATURE_JOBS
         test.assertEqual(station::rowKind(station::kFirstRow, board), station::kRowWork, "first row is WORK");
-#else
-        test.assertEqual(station::rowKind(station::kFirstRow, board), station::kRowService, "first row is SERVICE");
-#endif
-#if SH_FEATURE_SHOP
         test.assertEqual(station::rowKind(station::kShopRow, board), station::kRowShop, "SHOP follows WORK/SERVICE");
         test.assertEqual(station::shopRow(board), station::kShopRow, "no-job board returns to the SHOP row");
-#endif
         test.assertEqual(station::rowKind(station::kUndockRow, board), station::kRowUndock, "last row is UNDOCK");
         test.assertEqual(station::selectNext(station::kUndockRow, board), station::kFirstRow, "down wraps to the first row");
         test.assertEqual(station::selectPrevious(station::kFirstRow, board), station::kUndockRow, "up wraps to the last row");
@@ -322,26 +300,12 @@ inline void StationSuite(TestRunner &runner) {
         place(state, settlement.pixel_x, settlement.pixel_y);
         test.assertTrue(station::dock(state), "dock succeeds");
         state.air = 1;
-#if SH_FEATURE_HULL_DAMAGE
-        state.hull = 0;
-#endif
 
-#if SH_FEATURE_JOBS
         test.assertEqual(station::activate(station::kWorkRow, state), station::kActionWork, "A on WORK opens the work board");
         test.assertEqual(state.docked, static_cast<int8_t>(settlement.id), "opening WORK keeps the boat docked");
-#else
-        test.assertEqual(station::activate(station::kServiceRow, state), station::kActionServiced, "A on SERVICE services");
-        test.assertEqual(state.air, game::airCapacity(state), "service refills air");
-#if SH_FEATURE_HULL_DAMAGE
-        test.assertEqual(state.hull, game::hullCapacity(state), "service repairs hull");
-#endif
-        test.assertEqual(state.docked, static_cast<int8_t>(settlement.id), "service keeps the boat docked");
-#endif
 
-#if SH_FEATURE_SHOP
         test.assertEqual(station::activate(station::kShopRow, state), station::kActionShop, "A on SHOP opens the shop");
         test.assertEqual(state.docked, static_cast<int8_t>(settlement.id), "opening the shop keeps the boat docked");
-#endif
 
         test.assertEqual(station::activate(station::kUndockRow, state), station::kActionUndocked, "A on UNDOCK undocks");
         test.assertEqual(state.docked, static_cast<int8_t>(-1), "undock action clears the docked id");
@@ -355,20 +319,15 @@ inline void StationSuite(TestRunner &runner) {
         test.assertEqual(station_view::rowY(station::kFirstRow), station_view::kRowY0, "first row uses the layout origin");
         test.assertTrue(station_view::rowY(station::kFirstRow) - station_view::kRowInsetY >= station_view::kStatusY + 7, "first invert bar clears status");
         test.assertTrue(station_view::rowY(lastRow) + station_view::kRowInvertH <= station_view::kHintY, "last row clears the hint");
-#if SH_FEATURE_JOBS
         test.assertTrue(station_view::rowY(static_cast<uint8_t>(station::kActiveRowCount - 1)) + station_view::kRowInvertH <= station_view::kHintY,
                         "active board's last row clears the hint");
-#endif
         test.assertTrue(station_view::kHintY + 7 <= 64, "hint fits inside 64 rows");
         test.assertTrue(station_view::kRowX + 6 * 6 < 128, "row labels fit inside 128 columns");
-#if SH_FEATURE_SHOP
         test.assertEqual(station_view::kRowInvertH, 7, "shop board uses a 7 px invert");
         test.assertEqual(station_view::kRowStep, 7, "shop board rows are 7 px apart");
         test.assertEqual(station_view::kHintY, 57, "shop board hint starts at 57");
         test.assertEqual(station::kStationRowCount, 3, "no-job shop board has WORK, SHOP and UNDOCK");
-#endif
         runner.add(test);
     }
 }
 
-#endif   // SH_FEATURE_STATIONS

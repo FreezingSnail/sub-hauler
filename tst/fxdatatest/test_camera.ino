@@ -7,7 +7,6 @@
 #include <Arduboy2.h>
 #include <ArduboyFX.h>
 
-#include "src/features.hpp"
 #include "src/game.hpp"
 #include "src/pilot.hpp"
 #include "src/pilot_view.hpp"

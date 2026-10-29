@@ -10,7 +10,7 @@ constexpr bool    SHOP_HINTS_MASKED = false;
 
 constexpr uint8_t SHOP_MENU_WIDTH  = 128;
 constexpr uint8_t SHOP_MENU_HEIGHT = 64;
-constexpr uint8_t SHOP_MENU_FRAMES = 32;
+constexpr uint8_t SHOP_MENU_FRAMES = 4;
 constexpr bool    SHOP_MENU_MASKED = false;
 
 constexpr uint8_t STATION_HINTS_WIDTH  = 128;

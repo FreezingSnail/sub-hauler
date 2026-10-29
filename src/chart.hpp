@@ -1,8 +1,6 @@
 #pragma once
 
-#include "features.hpp"
 
-#if SH_FEATURE_FOG_CHART
 
 #include <stdint.h>
 
@@ -148,4 +146,3 @@ static_assert(sizeof(State) == world::CHART_BYTES, "chart state is exactly the 2
 
 }   // namespace chart
 
-#endif   // SH_FEATURE_FOG_CHART

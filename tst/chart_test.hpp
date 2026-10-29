@@ -1,8 +1,6 @@
 #pragma once
 
-#include "../src/features.hpp"
 
-#if SH_FEATURE_FOG_CHART
 
 #include "../src/chart.hpp"
 #include "../src/game.hpp"
@@ -180,4 +178,3 @@ inline void ChartSuite(TestRunner &runner) {
     }
 }
 
-#endif   // SH_FEATURE_FOG_CHART

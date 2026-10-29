@@ -10,18 +10,9 @@
 #define ATM_FX_COMPACT_DIAG 0
 #endif
 
-// This suite includes the production sketch, whose release build emits a
-// USB-free main that hides the Ardens serial marker. Force USB here.
-#undef SH_RELEASE_NO_USB
-#define SH_RELEASE_NO_USB 0
+#include "src/app.hpp"
+#include "src/music_diag.hpp"
 
-#define setup production_setup
-#define loop production_loop
-#include "production_sketch.hpp"
-#undef setup
-#undef loop
-
-#if SH_FEATURE_SAVE_VOYAGE && SH_FEATURE_MUSIC
 
 extern "C" char __bss_end;
 
@@ -48,9 +39,7 @@ void runProductionChain() {
     // boat on a real berth with an active job so ABANDON is reachable.
     game::reset(s_state);
     s_state.docked = static_cast<int8_t>(campaign::kTidewall);
-#if SH_FEATURE_FOG_CHART
     chart::reset(s_chart);
-#endif
     s_saveOk = campaign::accept(s_state, campaign::kFirst);
     s_screen = Screen::Station;
     s_stationRow = station::kAbandonRow;
@@ -81,7 +70,7 @@ void runProductionChain() {
         delay(4);
     }
 #if ATM_FX_COMPACT_DIAG
-    s_audioOk = !music::underrun() && !music::error();
+    s_audioOk = !music_diag::underrun() && !music::error();
 #else
     s_audioOk = true;
 #endif
@@ -99,7 +88,7 @@ void runProductionChain() {
 
 void setup() {
     Serial.begin(9600);
-    production_setup();
+    applicationBoot();
     runProductionChain();
 
     Serial.print(F("stack_reserve="));
@@ -110,7 +99,7 @@ void setup() {
     Serial.println(s_audioOk ? 1 : 0);
 #if ATM_FX_COMPACT_DIAG
     Serial.print(F("save_underruns="));
-    Serial.println(music::underrun() ? 1 : 0);
+    Serial.println(music_diag::underrun() ? 1 : 0);
     Serial.print(F("save_errors="));
     Serial.println(music::error() ? 1 : 0);
 #endif
@@ -119,13 +108,3 @@ void setup() {
 
 void loop() {}
 
-#else
-
-void setup() {
-    Serial.begin(9600);
-    Serial.println('P');
-}
-
-void loop() {}
-
-#endif

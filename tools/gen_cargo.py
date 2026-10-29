@@ -105,7 +105,7 @@ def _hull(name, cols, rows, blocked, load, required, bonus, max_area, max_w, max
     )
 
 
-# Hold masks and load contracts mirror spike-trim/subs.js exactly.
+# Hold masks and load contracts mirror the retired browser hull roster.
 HULLS: tuple[Hull, ...] = (
     _hull(
         "MINNOW", 6, 3,

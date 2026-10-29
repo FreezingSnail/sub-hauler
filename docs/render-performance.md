@@ -4,10 +4,11 @@
 
 The current renderer uses AVR hardware multiplication for vertical page
 combination and generated one-page HUD label stamps. The camera follows in
-Q4 and projects the fractional sub position before rounding. The complete
-flight probe passes at **12.608 ms maximum / 8.368 ms mean** over **842 frames**
+Q4 and projects the fractional sub position before rounding. The current fixed-build
+flight probe passes at **11.864 ms maximum** over **842 frames**
 with music, cold caches and discovery notices, with zero 16 ms deadline misses
-and audio errors. See [the camera review](camera-review.md) for the coverage,
+and audio errors. Command examples below that mention `DEV_MODE` or `PROFILE`
+are historical; those selectors are retired. See [the camera review](camera-review.md) for the coverage,
 resource figures and instrumentation limits; the render-only timings below
 are historical checkpoints.
 
@@ -95,8 +96,8 @@ through `FX::readDataBytes`. A sub-page Y origin reads the next source page and
 combines rows in place using the next framebuffer page as its one-page
 lookahead; only the final page needs a 32-byte stack scratch for its upper row.
 Worst case is 12 bounded reads / 1,152 B, with no terrain draw calls, clearing
-pass or extra framebuffer. Stations, equipment gates, finds, currents, mines,
-the boat and HUD compose afterward from the same pixel origin; the OLED
+pass or extra framebuffer. Stations, equipment gates, finds, currents,
+particles, the boat and HUD compose afterward from the same pixel origin; the OLED
 is presented once. Cart reads all finish before `FX::display(CLEAR_BUFFER)`.
 
 Regional scenery added in `sub-hauler-9bc` bakes moorings, kelp, wreck machinery,

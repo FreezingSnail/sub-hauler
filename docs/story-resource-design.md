@@ -1,5 +1,13 @@
 # Story, checkpoints and music within the full-build budget
 
+Status: **historical design record, superseded for production audio on
+2026-10-28.** The shipping `full` profile uses the ATMlib2FX compact synth
+(`ATM_FX_COMPACT_RING=32`), not the sampled ADPCM player proposed below. The
+sampled-asset work remains useful as comparison evidence and as the source of
+the generated ADPCM/reference files. Current behavior and whole-image numbers
+are in [platform.md](platform.md), [progression.md](progression.md) and
+[music/README.md](../music/README.md).
+
 Approved implementation direction, 2026-10-27 (`sub-hauler-7px.9`): the user
 approved cleanup of superseded experiments and continuation of this plan.
 The resource allocations remain acceptance targets, not a proven combined fit.
@@ -61,9 +69,9 @@ this explicitly; it removes runtime USB, not the bootloader.
 
 The user-visible tradeoff is that a desktop uploader cannot force an automatic
 reset from a running game. The release must retain the supported startup
-button path into the bootloader and provide a clearly labelled title action
-for upload/loader entry. Verify it on FX and Mini hardware before release.
-Do not change the bootloader, available program size or canonical ceilings.
+button path into the bootloader; no in-game title action is required. Verify it
+on FX and Mini hardware before release. Do not change the bootloader, available
+program size or canonical ceilings.
 
 ### 2. Native mission facts and generated presentation
 
@@ -212,10 +220,11 @@ cannot be substituted uncritically for the release measurement.
    Mini, and interrupted-write/branch-order/early-discovery/replay regressions.
 
 If a boundary fails its allocation, record the exact deficit and revise the
-design before integrating it. The current live-synthesis alternative remains
-available for comparison, but its measured 31,584/1,753 minimal combination
-already needs at least 2,584 B flash and 53 B static recovered before adding
-the remaining audio controls. The small story VM does not supply that saving.
+design before integrating it. At that checkpoint, the live-synthesis
+alternative remained available for comparison, but its measured 31,584/1,753
+minimal combination already needed at least 2,584 B flash and 53 B static
+recovered before adding the remaining audio controls. The later compact-synth
+integration met the canonical budgets; see platform.md.
 
 Implementation is authorized in dependency order: sampled-audio admission,
 USB-free release runtime, fitted presentation, then full cue integration and
@@ -227,14 +236,15 @@ the resource or fidelity deficit is resolved. No push is authorized.
 `sub-hauler-7px.12` adopts the approved release entry point without changing
 the canonical ceilings. Shipping builds default to `RELEASE_NO_USB=1` and place
 `ARDUBOY_NO_USB` immediately before `setup()`; `RELEASE_NO_USB=0` and
-`DEV_MODE=1` retain the runtime USB stack for development. The title screen has
-an explicit **LOADER** row using `Arduboy2Core::exitToBootloader()`. The
-library's startup **DOWN** check remains the recovery path; a desktop uploader
-cannot force an automatic reset from a running USB-free game.
+`DEV_MODE=1` retain the runtime USB stack for development. The title screen
+briefly had an explicit **LOADER** row; it was removed on 2026-10-29. The
+library's startup **DOWN** check remains the
+recovery path; a desktop uploader cannot force an automatic reset from a running
+USB-free game.
 
 Paired full-profile measurements: USB-free **17,620 B / 1,444 B**; runtime USB
 **20,282 B / 1,584 B**; the no-USB entry saves **2,662 B flash / 140 B static**.
-The title loader costs **208 B flash / 1 B static** against the .11.2 noUSB
+The removed title loader cost **208 B flash / 1 B static** against the .11.2 noUSB
 control, inside the **400 B/16 B** loader+cue/settings allocation. The current
 campaign+save USB-free image links at **27,786 B / 1,525 B**, still
 **1,286 B flash / 45 B static** over the **26,500 / 1,480** pre-audio target;

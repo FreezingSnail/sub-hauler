@@ -1,0 +1,448 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Sub-hauler FAQ and walkthrough: controls, equipment, campaign objectives, upgrades, and saves.">
+  <meta name="color-scheme" content="light">
+  <title>Sub-hauler — FAQ / Walkthrough</title>
+  <style>
+    * { box-sizing:border-box; }
+    body { max-width:88ch; margin:2rem auto; padding:0 1rem; background:#fafafa; color:#202020; font:15px/1.55 ui-monospace, 'SFMono-Regular', Consolas, monospace; }
+    a { color:#174c91; text-underline-offset:3px; }
+    a:focus-visible, summary:focus-visible, input:focus-visible, .map-scroll:focus-visible { outline:2px solid #174c91; outline-offset:4px; }
+    h1 { font-size:1.6rem; margin:0 0 .3rem; }
+    h2 { font-size:1.1rem; margin:0 0 1rem; }
+    h3 { font-size:1rem; margin:1.2rem 0 .4rem; }
+    p { margin:.5rem 0; }
+    header { border-bottom:3px double; padding-bottom:1rem; }
+    .meta, footer { font-size:.8rem; color:#505050; }
+    nav { margin:1rem 0 2rem; }
+    nav a { display:block; width:fit-content; padding:.15rem 0; }
+    section { border-top:1px solid #aaa; padding-top:1rem; margin-top:2rem; scroll-margin-top:1rem; }
+    li { margin:.35rem 0; }
+    ul, ol { padding-left:2rem; }
+    kbd { font:inherit; font-weight:bold; white-space:nowrap; }
+    .table-wrap { overflow-x:auto; }
+    table { border-collapse:collapse; width:100%; font:inherit; }
+    th, td { padding:.5rem .7rem .5rem 0; text-align:left; vertical-align:top; border-bottom:1px solid #d3d3d3; }
+    th { font-size:.85rem; }
+    td:first-child { min-width:12ch; }
+    details { margin:.8rem 0; }
+    summary { cursor:pointer; font-weight:bold; padding:.4rem 0; }
+    dt { font-weight:bold; margin-top:1rem; }
+    dd { margin:.2rem 0 0; }
+    img { display:block; width:100%; height:auto; margin-top:.7rem; }
+    .route-map { margin:1rem 0; border-bottom:1px solid #d3d3d3; padding-bottom:.5rem; }
+    .route-map p { font-size:.85rem; }
+    .map-scroll { overflow:auto; margin:.6rem 0; background:#263a47; }
+    .map-scroll svg { display:block; width:100%; height:auto; }
+    .map-zoom:checked ~ .map-scroll svg { min-width:1100px; }
+    .map-zoom + label { font-size:.8rem; cursor:pointer; }
+    .route-line { fill:none; stroke:#ffdf65; stroke-width:5; stroke-linejoin:round; stroke-linecap:round; filter:drop-shadow(0 0 2px #000); }
+    .route-stop { fill:#fff; stroke:#171717; stroke-width:2; }
+    .route-number { fill:#111; font:bold 22px ui-monospace, monospace; text-anchor:middle; dominant-baseline:central; }
+    .gate-label { font:bold 17px ui-monospace, monospace; paint-order:stroke; stroke:#081c2b; stroke-width:4; }
+    footer { border-top:1px solid #aaa; margin-top:2rem; padding:1rem 0; }
+    .skip { position:absolute; top:-4rem; }
+    .skip:focus { top:0; background:white; padding:.5rem; }
+    @media (max-width:540px) { body { margin:1rem auto; font-size:14px; } th, td { padding-right:.5rem; } }
+    @media print {
+      body { max-width:none; margin:0; padding:0; background:white; color:black; font-size:10pt; }
+      nav, .skip { display:none; }
+      h2, h3, summary { break-after:avoid; }
+      tr { break-inside:avoid; }
+      a { color:inherit; }
+      .table-wrap { overflow:visible; }
+      .map-zoom, .map-zoom + label { display:none; }
+      .map-scroll { overflow:visible; }
+      .map-zoom:checked ~ .map-scroll svg { min-width:0; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip" href="#main">Skip contents</a>
+  <header>
+    <h1>SUB-HAULER</h1>
+    <p>FAQ / Walkthrough</p>
+    <p class="meta">Arduboy FX · Default full profile · Updated 2026-10-29</p>
+  </header>
+  <nav aria-label="Contents">
+    <a href="#start">[01] Quick start</a>
+    <a href="#controls">[02] Controls / handling</a>
+    <a href="#berths">[03] Jobs / docking / shop</a>
+    <a href="#exploration">[04] Equipment / map</a>
+    <a href="#campaign">[05] Walkthrough (spoilers)</a>
+    <a href="#route-maps">[05a] Route maps (spoilers)</a>
+    <a href="#saves">[06] Saving / recovery</a>
+    <a href="#reference">[07] FAQ</a>
+  </nav>
+  <main id="main">
+    <section id="start">
+      <h2>[01] QUICK START</h2>
+      <ol>
+        <li>Select NEW VOYAGE. Left/Right chooses your hull; A confirms.</li>
+        <li>At Tidewall: WORK → FIRST → A. Cargo loads automatically.</li>
+        <li>Select UNDOCK or press B from the station board.</li>
+        <li>Reach Benthos (<a href="#map-first">route map</a>). Enter its docking ring slowly to deliver.</li>
+        <li>Read WORK for repair clues. Find the cutter near Tidewall.</li>
+      </ol>
+      <p><strong>All jobs are untimed.</strong> Stop at intermediate berths for free air and a save.</p>
+    </section>
+
+    <section id="controls">
+      <h2>[02] CONTROLS / HANDLING</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th scope="col">Screen</th><th scope="col">Input</th><th scope="col">Action</th></tr></thead>
+          <tbody>
+            <tr><td>Flight</td><td><kbd>Left / Right</kbd></td><td>Thrust. Left is weaker. Release to slow down.</td></tr>
+            <tr><td>Flight</td><td><kbd>Up</kbd></td><td>Blow ballast to rise; spends air.</td></tr>
+            <tr><td>Flight</td><td><kbd>Down</kbd></td><td>Flood ballast to sink; no extra air cost.</td></tr>
+            <tr><td>Flight</td><td><kbd>B</kbd></td><td>Open chart. B closes. Travel and air use pause.</td></tr>
+            <tr><td>Flight</td><td><kbd>A+B</kbd></td><td>Press together to pause.</td></tr>
+            <tr><td>Menus</td><td><kbd>Up / Down</kbd></td><td>Select row.</td></tr>
+            <tr><td>Menus</td><td><kbd>A</kbd></td><td>Confirm / accept / buy.</td></tr>
+            <tr><td>WORK / SHOP</td><td><kbd>B</kbd></td><td>Back to station.</td></tr>
+            <tr><td>Station</td><td><kbd>B</kbd></td><td>Undock.</td></tr>
+            <tr><td>Pause / prompt</td><td><kbd>B</kbd></td><td>Resume / cancel.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <ul>
+        <li>Releasing Up/Down holds ballast. Adjust toward the gauge notch for neutral trim; allow time to stop drifting.</li>
+        <li>Air drains throughout flight. Cargo reduces acceleration and top speed.</li>
+        <li>Fast rock impacts puff debris. Brake before narrow passages.</li>
+        <li>HUD: AIR = tank; CGO boxes = load; C/P/T = cutter/seal/thruster.</li>
+      </ul>
+    </section>
+
+    <section id="berths">
+      <h2>[03] JOBS / DOCKING / SHOP</h2>
+      <ul>
+        <li>Freight settlements: Tidewall, Benthos, Cormorant, Deep Anchor.</li>
+        <li>Dock automatically by entering the pier’s ring slowly. Air refills free.</li>
+        <li>WORK lists story deliveries, then one repeatable freight job.</li>
+        <li>One job at a time. A accepts and loads four units; you remain docked.</li>
+        <li>Dock at the destination to deliver. Other berths preserve cargo.</li>
+        <li>ABANDON needs confirmation. Unfinished story jobs can be accepted again at their source.</li>
+        <li>Pump Refuge and Lower Gantry become service berths after repairs: refill, save. No jobs or shop.</li>
+      </ul>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th scope="col">Upgrade</th><th scope="col">Price / level</th><th scope="col">Effect / level</th></tr></thead>
+          <tbody>
+            <tr><td>Air tank</td><td>60 credits</td><td>+30 air; refills tank.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Three levels. 180 credits total.</p>
+    </section>
+
+    <section id="exploration">
+      <h2>[04] EQUIPMENT / MAP</h2>
+      <p><strong>Collect / survey / cut:</strong> stay slow and close for ½ second. No action button.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th scope="col">Find</th><th scope="col">Use / location clue</th></tr></thead>
+          <tbody>
+            <tr><td>Cutter *</td><td>Opens grates. Western cove near Tidewall; old tender clue. <a href="#map-cutter">Map</a></td></tr>
+            <tr><td>Pressure seal *</td><td>Opens deep routes. Workshop beyond a cutter grate. <a href="#map-seal">Map</a></td></tr>
+            <tr><td>Thruster</td><td>Opens current shortcuts. Optional. <a href="#map-thruster">Map</a></td></tr>
+            <tr><td>Credit caches</td><td>One-time rewards: 40 / 90 / 150 credits.</td></tr>
+            <tr><td>Survey lens</td><td>Collectible; currently no gameplay benefit.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>* Required to finish. Chart reveals during travel; your position and job destination blink. New finds remain unsaved until a successful berth save.</p>
+      <details>
+        <summary>Full map (spoilers)</summary>
+        <a href="assets/exploration-terrain.svg">Open map to zoom</a>
+        <img src="assets/exploration-terrain.svg" width="1280" height="680" alt="Full terrain overview with settlement labels, gates and cove rewards">
+      </details>
+    </section>
+
+    <section id="campaign">
+      <h2>[05] WALKTHROUGH</h2>
+      <details>
+        <summary>Show objectives and ending route (spoilers)</summary>
+        <ol>
+          <li><strong>FIRST:</strong> accept at Tidewall; deliver filters to Benthos. <a href="#map-first">Map</a></li>
+          <li><strong>PUMP SURVEY:</strong> dwell at the survey ring in Pump Refuge. <a href="#map-surveys">Map</a></li>
+          <li><strong>PUMP:</strong> collect impeller at Cormorant; deliver to Benthos. Unlocks Pump Refuge service berth. <a href="#map-repairs">Map</a></li>
+          <li><strong>LIFT SURVEY:</strong> dwell at the survey ring in Freight Yard. <a href="#map-surveys">Map</a></li>
+          <li><strong>LIFT:</strong> collect cable at Benthos; deliver to Cormorant. Unlocks Lower Gantry service berth. <a href="#map-repairs">Map</a></li>
+          <li><strong>BEACON:</strong> finish PUMP + LIFT and obtain pressure seal. Collect core at Cormorant; deliver to Deep Anchor. <a href="#map-beacon">Map</a></li>
+          <li><strong>HOME:</strong> accept dispatch at Deep Anchor; deliver to Tidewall for ending. <a href="#map-home">Map</a> / <a href="#map-shortcut">Thruster shortcut</a></li>
+        </ol>
+        <p>Pump/lift branches work in either order after FIRST. Surveys can be recorded early. Tools, surveys and repairs remain subject to berth saves.</p>
+        <p>After ending: continue exploration/freight; Tidewall WORK → VIEW ENDING replays cards.</p>
+      </details>
+      <div id="route-maps">
+        <h3>[05a] ROUTE MAPS</h3>
+        <p class="meta">Yellow line = route; numbers = stops in order. Gate labels: C cutter, P seal, T thruster. Enlarge to scroll. Maps reveal explored and unexplored areas.</p>
+        <details class="route-map" id="map-first">
+<summary>FIRST: Tidewall → Benthos</summary>
+<p>No equipment. Accept FIRST at Tidewall; deliver at Benthos.</p>
+<p>1 Tidewall → 2 Lantern Fork → 3 Upper Shelf → 4 Kelp Cathedral → 5 Benthos</p>
+<input class="map-zoom" type="checkbox" id="zoom-first"> <label for="zoom-first">Enlarge map</label>
+<div class="map-scroll" tabindex="0" aria-label="FIRST: Tidewall → Benthos map; scroll when enlarged">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="94 0 828 216" width="828" height="216" role="img" aria-labelledby="title-first desc-first" data-tools="0" data-waypoints="41,30;78,18;127,29;168,18;213,32">
+<title id="title-first">FIRST: Tidewall → Benthos</title>
+<desc id="desc-first">Yellow route through the encoded cave. Numbered stops: 1 Tidewall → 2 Lantern Fork → 3 Upper Shelf → 4 Kelp Cathedral → 5 Benthos. No equipment. Accept FIRST at Tidewall; deliver at Benthos.</desc>
+<image href="assets/exploration-terrain.svg" x="0" y="0" width="1280" height="680"/>
+<polyline class="route-line" points="164,120 164,84 168,84 168,80 172,80 172,76 216,76 216,80 220,80 220,84 224,84 224,88 232,88 232,92 256,92 256,88 272,88 272,84 276,84 276,80 300,80 300,76 308,76 308,72 336,72 336,64 340,64 340,60 344,60 344,56 392,56 392,60 396,60 396,64 400,64 400,68 436,68 436,72 444,72 444,76 448,76 448,80 456,80 456,84 464,84 464,88 468,88 468,92 476,92 476,96 480,96 480,100 484,100 484,104 508,104 508,116 504,116 504,156 548,156 548,152 552,152 552,148 608,148 608,140 612,140 612,116 616,116 616,112 620,112 620,108 624,108 624,104 632,104 632,100 636,100 636,96 668,96 668,92 672,92 672,72 672,84 748,84 748,80 756,80 756,76 760,76 760,72 812,72 812,76 820,76 820,80 824,80 824,84 828,84 828,88 832,88 832,92 840,92 840,96 844,96 844,100 852,100 852,128"/>
+<circle class="route-stop" cx="164" cy="120" r="17"/>
+<text class="route-number" x="164" y="120">1</text>
+<circle class="route-stop" cx="312" cy="72" r="17"/>
+<text class="route-number" x="312" y="72">2</text>
+<circle class="route-stop" cx="508" cy="116" r="17"/>
+<text class="route-number" x="508" y="116">3</text>
+<circle class="route-stop" cx="672" cy="72" r="17"/>
+<text class="route-number" x="672" y="72">4</text>
+<circle class="route-stop" cx="852" cy="128" r="17"/>
+<text class="route-number" x="852" y="128">5</text>
+</svg>
+</div>
+</details>
+<details class="route-map" id="map-cutter">
+<summary>Cutter: Tidewall → abandoned tender</summary>
+<p>No equipment. Collect cutter at stop 3; return along the same route.</p>
+<p>1 Tidewall → 2 Mooring Chimney → 3 Abandoned tender</p>
+<input class="map-zoom" type="checkbox" id="zoom-cutter"> <label for="zoom-cutter">Enlarge map</label>
+<div class="map-scroll" tabindex="0" aria-label="Cutter: Tidewall → abandoned tender map; scroll when enlarged">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 60 238 196" width="238" height="196" role="img" aria-labelledby="title-cutter desc-cutter" data-tools="0" data-waypoints="41,30;42,47;17,33">
+<title id="title-cutter">Cutter: Tidewall → abandoned tender</title>
+<desc id="desc-cutter">Yellow route through the encoded cave. Numbered stops: 1 Tidewall → 2 Mooring Chimney → 3 Abandoned tender. No equipment. Collect cutter at stop 3; return along the same route.</desc>
+<image href="assets/exploration-terrain.svg" x="0" y="0" width="1280" height="680"/>
+<polyline class="route-line" points="164,120 156,120 156,160 160,160 160,168 164,168 164,180 168,180 168,188 144,188 144,192 140,192 140,196 92,196 92,192 84,192 84,188 80,188 80,180 76,180 76,176 72,176 72,164 68,164 68,132"/>
+<circle class="route-stop" cx="164" cy="120" r="17"/>
+<text class="route-number" x="164" y="120">1</text>
+<circle class="route-stop" cx="168" cy="188" r="17"/>
+<text class="route-number" x="168" y="188">2</text>
+<circle class="route-stop" cx="68" cy="132" r="17"/>
+<text class="route-number" x="68" y="132">3</text>
+</svg>
+</div>
+</details>
+<details class="route-map" id="map-surveys">
+<summary>Surveys: Benthos → Pump Refuge → Freight Yard</summary>
+<p>No equipment. Dwell at stops 2 and 4. Finish at Cormorant to collect PUMP after FIRST.</p>
+<p>1 Benthos → 2 Pump survey → 3 Pipe Junction → 4 Lift survey → 5 Cormorant</p>
+<input class="map-zoom" type="checkbox" id="zoom-surveys"> <label for="zoom-surveys">Enlarge map</label>
+<div class="map-scroll" tabindex="0" aria-label="Surveys: Benthos → Pump Refuge → Freight Yard map; scroll when enlarged">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="782 0 404 392" width="404" height="392" role="img" aria-labelledby="title-surveys desc-surveys" data-tools="0" data-waypoints="213,32;274,22;267,52;272,79;222,82">
+<title id="title-surveys">Surveys: Benthos → Pump Refuge → Freight Yard</title>
+<desc id="desc-surveys">Yellow route through the encoded cave. Numbered stops: 1 Benthos → 2 Pump survey → 3 Pipe Junction → 4 Lift survey → 5 Cormorant. No equipment. Dwell at stops 2 and 4. Finish at Cormorant to collect PUMP after FIRST.</desc>
+<image href="assets/exploration-terrain.svg" x="0" y="0" width="1280" height="680"/>
+<polyline class="route-line" points="852,128 852,124 932,124 932,120 936,120 936,116 944,116 944,112 948,112 948,108 952,108 952,104 956,104 956,100 972,100 972,96 980,96 980,92 988,92 988,88 992,88 992,76 996,76 996,56 1028,56 1028,60 1040,60 1040,64 1048,64 1048,68 1056,68 1056,72 1068,72 1068,76 1072,76 1072,80 1096,80 1096,88 1104,88 1104,96 1108,96 1108,100 1112,100 1112,104 1116,104 1116,128 1112,128 1112,144 1108,144 1108,156 1104,156 1104,164 1100,164 1100,168 1096,168 1096,172 1092,172 1092,176 1088,176 1088,192 1084,192 1084,196 1080,196 1080,200 1076,200 1076,204 1068,204 1068,208 1052,208 1052,212 1048,212 1048,268 1052,268 1052,272 1060,272 1060,276 1068,276 1068,280 1076,280 1076,284 1088,284 1088,316 1088,284 1076,284 1076,280 1028,280 1028,284 1020,284 1020,288 1016,288 1016,292 1012,292 1012,300 1008,300 1008,304 1004,304 1004,308 1000,308 1000,312 996,312 996,316 992,316 992,320 988,320 988,324 980,324 980,328 976,328 976,332 924,332 924,328 888,328"/>
+<circle class="route-stop" cx="852" cy="128" r="17"/>
+<text class="route-number" x="852" y="128">1</text>
+<circle class="route-stop" cx="1096" cy="88" r="17"/>
+<text class="route-number" x="1096" y="88">2</text>
+<circle class="route-stop" cx="1068" cy="208" r="17"/>
+<text class="route-number" x="1068" y="208">3</text>
+<circle class="route-stop" cx="1088" cy="316" r="17"/>
+<text class="route-number" x="1088" y="316">4</text>
+<circle class="route-stop" cx="888" cy="328" r="17"/>
+<text class="route-number" x="888" y="328">5</text>
+</svg>
+</div>
+</details>
+<details class="route-map" id="map-repairs">
+<summary>PUMP / LIFT: Cormorant ↔ Benthos</summary>
+<p>PUMP: 1 → 5. LIFT: 5 → 1. Complete each survey first. Stop 4 provides service only after PUMP.</p>
+<p>1 Cormorant → 2 Freight Yard → 3 Pipe Junction → 4 Pump Refuge → 5 Benthos</p>
+<input class="map-zoom" type="checkbox" id="zoom-repairs"> <label for="zoom-repairs">Enlarge map</label>
+<div class="map-scroll" tabindex="0" aria-label="PUMP / LIFT: Cormorant ↔ Benthos map; scroll when enlarged">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="782 0 404 392" width="404" height="392" role="img" aria-labelledby="title-repairs desc-repairs" data-tools="0" data-waypoints="222,82;274,72;267,52;270,26;213,32">
+<title id="title-repairs">PUMP / LIFT: Cormorant ↔ Benthos</title>
+<desc id="desc-repairs">Yellow route through the encoded cave. Numbered stops: 1 Cormorant → 2 Freight Yard → 3 Pipe Junction → 4 Pump Refuge → 5 Benthos. PUMP: 1 → 5. LIFT: 5 → 1. Complete each survey first. Stop 4 provides service only after PUMP.</desc>
+<image href="assets/exploration-terrain.svg" x="0" y="0" width="1280" height="680"/>
+<polyline class="route-line" points="888,328 924,328 924,332 976,332 976,328 980,328 980,324 988,324 988,320 992,320 992,316 996,316 996,312 1000,312 1000,308 1004,308 1004,304 1008,304 1008,300 1012,300 1012,292 1016,292 1016,288 1020,288 1020,284 1028,284 1028,280 1076,280 1076,284 1088,284 1088,288 1096,288 1088,288 1088,284 1076,284 1076,280 1068,280 1068,276 1060,276 1060,272 1052,272 1052,268 1048,268 1048,212 1052,212 1052,208 1068,208 1068,204 1076,204 1076,200 1080,200 1080,196 1084,196 1084,192 1088,192 1088,176 1092,176 1092,172 1096,172 1096,168 1100,168 1100,164 1104,164 1104,156 1108,156 1108,144 1112,144 1112,128 1116,128 1116,104 1112,104 1112,100 1080,100 1080,104 1080,80 1072,80 1072,76 1068,76 1068,72 1056,72 1056,68 1048,68 1048,64 1040,64 1040,60 1028,60 1028,56 996,56 996,76 992,76 992,88 988,88 988,92 980,92 980,96 972,96 972,100 956,100 956,104 952,104 952,108 948,108 948,112 944,112 944,116 936,116 936,120 932,120 932,124 852,124 852,128"/>
+<circle class="route-stop" cx="888" cy="328" r="17"/>
+<text class="route-number" x="888" y="328">1</text>
+<circle class="route-stop" cx="1096" cy="288" r="17"/>
+<text class="route-number" x="1096" y="288">2</text>
+<circle class="route-stop" cx="1068" cy="208" r="17"/>
+<text class="route-number" x="1068" y="208">3</text>
+<circle class="route-stop" cx="1080" cy="104" r="17"/>
+<text class="route-number" x="1080" y="104">4</text>
+<circle class="route-stop" cx="852" cy="128" r="17"/>
+<text class="route-number" x="852" y="128">5</text>
+</svg>
+</div>
+</details>
+<details class="route-map" id="map-seal">
+<summary>Pressure seal: Cormorant → sealed workshop</summary>
+<p>Requires cutter. Cut the workshop grate; collect seal at stop 4. Return to Cormorant to save.</p>
+<p>1 Cormorant → 2 Broken Ribs → 3 Workshop Approach → 4 Sealed workshop</p>
+<input class="map-zoom" type="checkbox" id="zoom-seal"> <label for="zoom-seal">Enlarge map</label>
+<div class="map-scroll" tabindex="0" aria-label="Pressure seal: Cormorant → sealed workshop map; scroll when enlarged">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="518 216 440 200" width="440" height="200" role="img" aria-labelledby="title-seal desc-seal" data-tools="1" data-waypoints="222,82;172,73;168,89;147,86">
+<title id="title-seal">Pressure seal: Cormorant → sealed workshop</title>
+<desc id="desc-seal">Yellow route through the encoded cave. Numbered stops: 1 Cormorant → 2 Broken Ribs → 3 Workshop Approach → 4 Sealed workshop. Requires cutter. Cut the workshop grate; collect seal at stop 4. Return to Cormorant to save.</desc>
+<image href="assets/exploration-terrain.svg" x="0" y="0" width="1280" height="680"/>
+<polyline class="route-line" points="888,328 888,316 812,316 812,312 808,312 808,308 776,308 776,304 772,304 772,300 768,300 768,292 764,292 764,284 760,284 760,276 720,276 720,292 688,292 688,296 676,296 676,300 660,300 660,340 664,340 664,356 672,356 644,356 644,352 616,352 616,348 596,348 596,344 588,344"/>
+<text class="gate-label" x="641.5" y="343" fill="#edb96a">C</text>
+<circle class="route-stop" cx="888" cy="328" r="17"/>
+<text class="route-number" x="888" y="328">1</text>
+<circle class="route-stop" cx="688" cy="292" r="17"/>
+<text class="route-number" x="688" y="292">2</text>
+<circle class="route-stop" cx="672" cy="356" r="17"/>
+<text class="route-number" x="672" y="356">3</text>
+<circle class="route-stop" cx="588" cy="344" r="17"/>
+<text class="route-number" x="588" y="344">4</text>
+</svg>
+</div>
+</details>
+<details class="route-map" id="map-beacon">
+<summary>BEACON: Cormorant → Deep Anchor</summary>
+<p>Requires pressure seal and both repairs. Accept BEACON at Cormorant; resupply at Lower Gantry.</p>
+<p>1 Cormorant → 2 Lower Gantry → 3 Pressure Boundary → 4 Basalt Junction → 5 Trench Refuge → 6 Deep Anchor</p>
+<input class="map-zoom" type="checkbox" id="zoom-beacon"> <label for="zoom-beacon">Enlarge map</label>
+<div class="map-scroll" tabindex="0" aria-label="BEACON: Cormorant → Deep Anchor map; scroll when enlarged">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="82 268 912 372" width="912" height="372" role="img" aria-labelledby="title-beacon desc-beacon" data-tools="2" data-waypoints="222,82;222,101;187,102;126,123;42,120;44,152">
+<title id="title-beacon">BEACON: Cormorant → Deep Anchor</title>
+<desc id="desc-beacon">Yellow route through the encoded cave. Numbered stops: 1 Cormorant → 2 Lower Gantry → 3 Pressure Boundary → 4 Basalt Junction → 5 Trench Refuge → 6 Deep Anchor. Requires pressure seal and both repairs. Accept BEACON at Cormorant; resupply at Lower Gantry.</desc>
+<image href="assets/exploration-terrain.svg" x="0" y="0" width="1280" height="680"/>
+<polyline class="route-line" points="888,328 924,328 924,376 920,376 920,392 916,392 916,396 888,396 888,404 888,396 796,396 796,400 760,400 760,404 756,404 756,408 724,408 724,412 716,412 716,416 708,416 708,420 700,420 700,424 696,424 696,428 688,428 688,432 684,432 684,436 680,436 680,440 676,440 676,448 672,448 672,452 668,452 668,456 660,456 660,460 656,460 656,464 560,464 560,468 548,468 548,472 540,472 540,476 536,476 536,480 532,480 532,484 524,484 524,488 520,488 520,492 472,492 472,488 468,488 468,484 464,484 464,480 460,480 460,476 456,476 456,472 396,472 396,476 392,476 392,480 388,480 388,484 384,484 384,488 380,488 380,492 344,492 344,496 300,496 300,492 296,492 296,484 288,484 288,480 284,480 284,476 280,476 280,472 276,472 276,468 272,468 272,464 264,464 264,460 260,460 260,456 212,456 212,460 200,460 200,464 196,464 196,468 188,468 188,472 184,472 184,480 168,480 168,492 164,492 164,504 152,504 152,524 156,524 156,528 172,528 172,532 188,532 188,536 196,536 196,564 192,564 192,568 188,568 188,572 180,572 180,576 176,576 176,608"/>
+<text class="gate-label" x="689.5" y="431" fill="#ba9be8">P</text>
+<circle class="route-stop" cx="888" cy="328" r="17"/>
+<text class="route-number" x="888" y="328">1</text>
+<circle class="route-stop" cx="888" cy="404" r="17"/>
+<text class="route-number" x="888" y="404">2</text>
+<circle class="route-stop" cx="748" cy="408" r="17"/>
+<text class="route-number" x="748" y="408">3</text>
+<circle class="route-stop" cx="504" cy="492" r="17"/>
+<text class="route-number" x="504" y="492">4</text>
+<circle class="route-stop" cx="168" cy="480" r="17"/>
+<text class="route-number" x="168" y="480">5</text>
+<circle class="route-stop" cx="176" cy="608" r="17"/>
+<text class="route-number" x="176" y="608">6</text>
+</svg>
+</div>
+</details>
+<details class="route-map" id="map-home">
+<summary>HOME: Deep Anchor → Tidewall (no thruster)</summary>
+<p>Accept HOME at Deep Anchor. Follow numbered berths for resupply; deliver at Tidewall.</p>
+<p>1 Deep Anchor → 2 Lower Gantry → 3 Cormorant → 4 Pump Refuge → 5 Benthos → 6 Tidewall</p>
+<input class="map-zoom" type="checkbox" id="zoom-home"> <label for="zoom-home">Enlarge map</label>
+<div class="map-scroll" tabindex="0" aria-label="HOME: Deep Anchor → Tidewall (no thruster) map; scroll when enlarged">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="82 0 1104 640" width="1104" height="640" role="img" aria-labelledby="title-home desc-home" data-tools="2" data-waypoints="44,152;42,120;126,123;187,102;222,101;222,82;274,72;267,52;270,26;213,32;168,18;127,29;78,18;41,30">
+<title id="title-home">HOME: Deep Anchor → Tidewall (no thruster)</title>
+<desc id="desc-home">Yellow route through the encoded cave. Numbered stops: 1 Deep Anchor → 2 Lower Gantry → 3 Cormorant → 4 Pump Refuge → 5 Benthos → 6 Tidewall. Accept HOME at Deep Anchor. Follow numbered berths for resupply; deliver at Tidewall.</desc>
+<image href="assets/exploration-terrain.svg" x="0" y="0" width="1280" height="680"/>
+<polyline class="route-line" points="176,608 176,576 180,576 180,572 188,572 188,568 192,568 192,564 196,564 196,536 188,536 188,532 172,532 172,528 156,528 156,524 152,524 152,504 164,504 164,492 168,492 168,480 184,480 184,472 188,472 188,468 196,468 196,464 200,464 200,460 212,460 212,456 260,456 260,460 264,460 264,464 272,464 272,468 276,468 276,472 280,472 280,476 284,476 284,480 288,480 288,484 296,484 296,492 300,492 300,496 344,496 344,492 380,492 380,488 384,488 384,484 388,484 388,480 392,480 392,476 396,476 396,472 456,472 456,476 460,476 460,480 464,480 464,484 468,484 468,488 472,488 472,492 520,492 520,488 524,488 524,484 532,484 532,480 536,480 536,476 540,476 540,472 548,472 548,468 560,468 560,464 656,464 656,460 660,460 660,456 668,456 668,452 672,452 672,448 676,448 676,440 680,440 680,436 684,436 684,432 688,432 688,428 696,428 696,424 700,424 700,420 708,420 708,416 716,416 716,412 724,412 724,408 756,408 756,404 760,404 760,400 796,400 796,396 888,396 888,404 888,396 916,396 916,392 920,392 920,376 924,376 924,328 888,328 924,328 924,332 976,332 976,328 980,328 980,324 988,324 988,320 992,320 992,316 996,316 996,312 1000,312 1000,308 1004,308 1004,304 1008,304 1008,300 1012,300 1012,292 1016,292 1016,288 1020,288 1020,284 1028,284 1028,280 1076,280 1076,284 1088,284 1088,288 1096,288 1088,288 1088,284 1076,284 1076,280 1068,280 1068,276 1060,276 1060,272 1052,272 1052,268 1048,268 1048,212 1052,212 1052,208 1068,208 1068,204 1076,204 1076,200 1080,200 1080,196 1084,196 1084,192 1088,192 1088,176 1092,176 1092,172 1096,172 1096,168 1100,168 1100,164 1104,164 1104,156 1108,156 1108,144 1112,144 1112,128 1116,128 1116,104 1112,104 1112,100 1080,100 1080,104 1080,80 1072,80 1072,76 1068,76 1068,72 1056,72 1056,68 1048,68 1048,64 1040,64 1040,60 1028,60 1028,56 996,56 996,76 992,76 992,88 988,88 988,92 980,92 980,96 972,96 972,100 956,100 956,104 952,104 952,108 948,108 948,112 944,112 944,116 936,116 936,120 932,120 932,124 852,124 852,128 852,100 844,100 844,96 840,96 840,92 832,92 832,88 828,88 828,84 824,84 824,80 820,80 820,76 812,76 812,72 760,72 760,76 756,76 756,80 748,80 748,84 672,84 672,72 672,92 668,92 668,96 636,96 636,100 632,100 632,104 624,104 624,108 620,108 620,112 616,112 616,116 612,116 612,140 608,140 608,148 552,148 552,152 548,152 548,156 504,156 504,116 508,116 508,104 484,104 484,100 480,100 480,96 476,96 476,92 468,92 468,88 464,88 464,84 456,84 456,80 448,80 448,76 444,76 444,72 436,72 436,68 400,68 400,64 396,64 396,60 392,60 392,56 344,56 344,60 340,60 340,64 336,64 336,72 308,72 308,76 300,76 300,80 276,80 276,84 272,84 272,88 256,88 256,92 232,92 232,88 224,88 224,84 220,84 220,80 216,80 216,76 172,76 172,80 168,80 168,84 164,84 164,120"/>
+<text class="gate-label" x="689.5" y="431" fill="#ba9be8">P</text>
+<circle class="route-stop" cx="176" cy="608" r="17"/>
+<text class="route-number" x="176" y="608">1</text>
+<circle class="route-stop" cx="888" cy="404" r="17"/>
+<text class="route-number" x="888" y="404">2</text>
+<circle class="route-stop" cx="888" cy="328" r="17"/>
+<text class="route-number" x="888" y="328">3</text>
+<circle class="route-stop" cx="1080" cy="104" r="17"/>
+<text class="route-number" x="1080" y="104">4</text>
+<circle class="route-stop" cx="852" cy="128" r="17"/>
+<text class="route-number" x="852" y="128">5</text>
+<circle class="route-stop" cx="164" cy="120" r="17"/>
+<text class="route-number" x="164" y="120">6</text>
+</svg>
+</div>
+</details>
+<details class="route-map" id="map-thruster">
+<summary>Optional thruster: Benthos → old relay compartment</summary>
+<p>Requires cutter. Cut the grate near the compartment; return to Benthos to save.</p>
+<p>1 Benthos → 2 Old Relay → 3 Old relay compartment</p>
+<input class="map-zoom" type="checkbox" id="zoom-thruster"> <label for="zoom-thruster">Enlarge map</label>
+<div class="map-scroll" tabindex="0" aria-label="Optional thruster: Benthos → old relay compartment map; scroll when enlarged">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="670 0 368 272" width="368" height="272" role="img" aria-labelledby="title-thruster desc-thruster" data-tools="1" data-waypoints="213,32;221,53;185,6">
+<title id="title-thruster">Optional thruster: Benthos → old relay compartment</title>
+<desc id="desc-thruster">Yellow route through the encoded cave. Numbered stops: 1 Benthos → 2 Old Relay → 3 Old relay compartment. Requires cutter. Cut the grate near the compartment; return to Benthos to save.</desc>
+<image href="assets/exploration-terrain.svg" x="0" y="0" width="1280" height="680"/>
+<polyline class="route-line" points="852,128 892,128 892,152 888,152 888,156 884,156 884,160 880,160 880,164 872,164 872,204 876,204 876,208 884,208 884,212 884,208 876,208 876,204 872,204 872,164 880,164 880,160 884,160 884,156 888,156 888,152 892,152 892,148 896,148 896,124 932,124 932,120 936,120 936,116 944,116 944,112 948,112 948,108 952,108 952,60 956,60 956,56 960,56 960,52 968,52 968,40 964,40 964,36 960,36 960,32 812,32 812,28 764,28 764,24 740,24"/>
+<text class="gate-label" x="800" y="23" fill="#edb96a">C</text>
+<circle class="route-stop" cx="852" cy="128" r="17"/>
+<text class="route-number" x="852" y="128">1</text>
+<circle class="route-stop" cx="884" cy="212" r="17"/>
+<text class="route-number" x="884" y="212">2</text>
+<circle class="route-stop" cx="740" cy="24" r="17"/>
+<text class="route-number" x="740" y="24">3</text>
+</svg>
+</div>
+</details>
+<details class="route-map" id="map-shortcut">
+<summary>HOME shortcut: Deep Anchor → Tidewall</summary>
+<p>Requires seal + thruster. Takes the return shaft; no intermediate service berth. Use the main HOME route for resupply.</p>
+<p>1 Deep Anchor → 2 Trench Refuge → 3 Basalt Junction → 4 Flooded Lock → 5 Mooring Chimney → 6 Tidewall</p>
+<input class="map-zoom" type="checkbox" id="zoom-shortcut"> <label for="zoom-shortcut">Enlarge map</label>
+<div class="map-scroll" tabindex="0" aria-label="HOME shortcut: Deep Anchor → Tidewall map; scroll when enlarged">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="82 60 492 580" width="492" height="580" role="img" aria-labelledby="title-shortcut desc-shortcut" data-tools="6" data-waypoints="44,152;42,120;126,123;86,51;42,47;41,30">
+<title id="title-shortcut">HOME shortcut: Deep Anchor → Tidewall</title>
+<desc id="desc-shortcut">Yellow route through the encoded cave. Numbered stops: 1 Deep Anchor → 2 Trench Refuge → 3 Basalt Junction → 4 Flooded Lock → 5 Mooring Chimney → 6 Tidewall. Requires seal + thruster. Takes the return shaft; no intermediate service berth. Use the main HOME route for resupply.</desc>
+<image href="assets/exploration-terrain.svg" x="0" y="0" width="1280" height="680"/>
+<polyline class="route-line" points="176,608 176,576 180,576 180,572 188,572 188,568 192,568 192,564 196,564 196,536 188,536 188,532 172,532 172,528 156,528 156,524 152,524 152,504 164,504 164,492 168,492 168,480 184,480 184,472 188,472 188,468 196,468 196,464 200,464 200,460 212,460 212,456 260,456 260,460 264,460 264,464 272,464 272,468 276,468 276,472 280,472 280,476 284,476 284,480 288,480 288,484 296,484 296,492 300,492 300,496 344,496 344,492 380,492 380,488 384,488 384,484 388,484 388,480 392,480 392,476 396,476 396,472 456,472 456,476 460,476 460,480 464,480 464,484 468,484 468,488 472,488 472,492 504,492 472,492 472,488 468,488 468,484 464,484 464,480 460,480 460,476 456,476 456,472 452,472 452,468 436,468 436,464 396,464 396,460 392,460 392,456 384,456 384,452 360,452 360,448 344,448 344,444 332,444 332,440 320,440 320,392 324,392 324,388 332,388 332,384 340,384 340,380 348,380 348,376 352,376 352,372 356,372 356,368 360,368 360,364 364,364 364,352 360,352 360,344 356,344 356,340 352,340 352,336 344,336 344,332 340,332 340,328 332,328 332,324 328,324 328,320 320,320 320,316 312,316 312,312 296,312 296,308 284,308 284,304 280,304 280,296 276,296 276,256 280,256 280,252 284,252 284,248 288,248 288,244 296,244 296,240 300,240 300,236 308,236 308,232 312,232 312,228 316,228 316,224 324,224 324,220 332,220 332,216 336,216 336,212 340,212 340,208 344,208 344,204 316,204 316,200 304,200 304,196 264,196 264,200 260,200 260,204 236,204 236,208 192,208 192,204 188,204 188,200 184,200 184,196 176,196 176,192 172,192 172,188 168,188 168,180 164,180 164,168 160,168 160,160 156,160 156,120 164,120"/>
+<text class="gate-label" x="335" y="431" fill="#ba9be8">P+T</text>
+<circle class="route-stop" cx="176" cy="608" r="17"/>
+<text class="route-number" x="176" y="608">1</text>
+<circle class="route-stop" cx="168" cy="480" r="17"/>
+<text class="route-number" x="168" y="480">2</text>
+<circle class="route-stop" cx="504" cy="492" r="17"/>
+<text class="route-number" x="504" y="492">3</text>
+<circle class="route-stop" cx="344" cy="204" r="17"/>
+<text class="route-number" x="344" y="204">4</text>
+<circle class="route-stop" cx="168" cy="188" r="17"/>
+<text class="route-number" x="168" y="188">5</text>
+<circle class="route-stop" cx="164" cy="120" r="17"/>
+<text class="route-number" x="164" y="120">6</text>
+</svg>
+</div>
+</details>
+      </div>
+    </section>
+
+    <section id="saves">
+      <h2>[06] SAVING / RECOVERY</h2>
+      <ul>
+        <li><strong>One slot.</strong> Saves on new voyage, docking, job acceptance/abandonment and successful purchases.</li>
+        <li><strong>CONTINUE:</strong> restores last saved berth, inventory, money, cargo and chart; full air. No midwater saves.</li>
+        <li><strong>RESCUE:</strong> A+B → RESCUE → A. Free return to checkpoint; unsaved finds/progress lost.</li>
+        <li><strong>SAVE FAILED:</strong> RETRY, or CONTINUE UNSAVED. Unsaved progress is not persistent.</li>
+        <li><strong>Power:</strong> let saving finish. Interrupted writes can lose the slot.</li>
+        <li><strong>NEW VOYAGE:</strong> confirms before replacing a valid save. Incompatible older saves are not migrated.</li>
+      </ul>
+    </section>
+
+    <section id="reference">
+      <h2>[07] FAQ</h2>
+      <dl>
+        <dt>Out of air?</dt>
+        <dd>You cannot blow ballast. Use RESCUE if you cannot reach a berth.</dd>
+        <dt>Cannot dock again?</dt>
+        <dd>Leave the ring fully after undocking, then re-enter slowly.</dd>
+        <dt>Story job missing?</dt>
+        <dd>Check source station, prerequisites and WORK clue. Deliver or abandon existing cargo first.</dd>
+        <dt>Can I finish without upgrades?</dt>
+        <dd>Yes. Only cutter and pressure seal are required.</dd>
+        <dt>Mute music?</dt>
+        <dd>A+B → MUSIC ON/OFF → A. All clues work without sound.</dd>
+        <dt>Enter uploader?</dt>
+        <dd>Hold Down during power-on/reset.</dd>
+      </dl>
+    </section>
+  </main>
+  <footer><a href="../README.md">Project README</a> · Offline HTML. Open spoiler panels before printing to include them.</footer>
+  <script>
+    (() => {
+      const reveal = hash => {
+        const panel = document.getElementById(hash.slice(1));
+        if (panel && panel.classList.contains('route-map')) panel.open = true;
+      };
+      document.querySelectorAll('a[href^="#map-"]').forEach(link =>
+        link.addEventListener('click', () => reveal(link.hash)));
+      window.addEventListener('hashchange', () => reveal(location.hash));
+      reveal(location.hash);
+    })();
+  </script>
+</body>
+</html>

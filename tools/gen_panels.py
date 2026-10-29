@@ -57,7 +57,11 @@ SETTLEMENT_COUNT = 4
 # story panels. The standard Arduboy 5x7 question mark is needed by the two
 # confirmation prompts, so bake it here instead of changing the shared font
 # image (its frame count and FX offsets are part of the shipped layout).
-EXTRA_GLYPHS = {0x3F: (0x02, 0x01, 0x59, 0x09, 0x06)}
+EXTRA_GLYPHS = {
+    0x3F: (0x02, 0x01, 0x59, 0x09, 0x06),
+    0x2E: (0x00, 0x00, 0x00, 0x00, 0x60),
+    0x2C: (0x00, 0x00, 0x00, 0x60, 0x40),
+}
 
 
 def load_strings(path):
@@ -166,17 +170,261 @@ def ending_network(strings):
     return image
 
 
-def ending_thanks(strings):
+def story_motif(image, kind):
+    """Author native pixel clusters in the scene plate; never resample art.
+
+    Solid light faces, broken edge highlights and sparse ordered shade establish
+    depth without greys or a second plane. Keep water and text margins quiet.
+    """
+    from PIL import ImageDraw
+    d = ImageDraw.Draw(image)
+    w, b = TEXT_COLOR, BG_COLOR
+
+    def shade(box, color=w, step=4):
+        # Deliberately bounded half-tone on a material, never on the whole plate.
+        x0, y0, x1, y1 = box
+        for y in range(y0, y1 + 1, 2):
+            for x in range(x0 + (2 if y % 4 else 0), x1 + 1, step):
+                d.point((x, y), fill=color)
+
+    def rivets(points):
+        for x, y in points:
+            d.point((x, y), fill=w)
+
+    def crew(x, y, wave=False):
+        # A round helmet, black faceplate, padded shoulders, tank and split boots.
+        d.rounded_rectangle((x, y, x + 4, y + 4), radius=1, fill=w)
+        d.line((x + 1, y + 2, x + 3, y + 2), fill=b)
+        d.rectangle((x, y + 5, x + 4, y + 9), fill=w)
+        d.line((x + 1, y + 6, x + 1, y + 8), fill=b)
+        d.line((x - 1, y + 6, x - 1, y + 9), fill=w)
+        d.rectangle((x, y + 10, x + 1, y + 12), fill=w)
+        d.rectangle((x + 3, y + 10, x + 5, y + 12), fill=w)
+        if wave:
+            d.line((x + 4, y + 6, x + 7, y + 4, x + 7, y + 1), fill=w)
+            d.point((x + 6, y + 1), fill=w)
+        else:
+            d.line((x + 5, y + 6, x + 6, y + 9), fill=w)
+
+    def boat(x, y):
+        # A curved pressure hull: lit crown, dark belly, recessed glass and fins.
+        d.polygon(((x - 3, y + 4), (x + 2, y + 4), (x + 2, y + 12),
+                   (x - 3, y + 12), (x - 1, y + 8)), fill=w)
+        d.rounded_rectangle((x, y, x + 35, y + 15), radius=7, fill=w)
+        d.line((x + 7, y + 2, x + 26, y + 2), fill=b)
+        d.rectangle((x + 12, y - 5, x + 21, y), fill=w)
+        d.rectangle((x + 14, y - 3, x + 19, y - 1), fill=b)
+        d.line((x + 17, y - 6, x + 17, y - 8, x + 21, y - 8), fill=w)
+        for px in (x + 8, x + 17, x + 26):
+            d.ellipse((px - 2, y + 5, px + 3, y + 10), fill=b)
+            d.line((px, y + 6, px + 1, y + 6), fill=w)
+        d.line((x + 4, y + 12, x + 30, y + 12), fill=b)
+        shade((x + 6, y + 13, x + 28, y + 14), b)
+        d.line((x + 9, y + 16, x + 27, y + 16), fill=w)
+        d.line((x - 5, y + 4, x - 5, y + 11), fill=w)
+        d.point((x + 34, y + 7), fill=b)
+
+    if kind == "first":
+        # Receding occupied modules and the near pressure-glass hand.
+        d.polygon(((2, 18), (48, 11), (61, 11), (61, 43), (2, 43)), outline=w)
+        d.line((3, 39, 58, 39), fill=w)
+        d.line((3, 41, 58, 41), fill=w)
+        for x in (6, 25, 46):
+            d.line((x, 18, x, 37), fill=w)
+            rivets([(x + 2, 19), (x + 2, 35)])
+        for x, y, width in ((11, 22, 10), (32, 18, 13)):
+            d.rounded_rectangle((x, y, x + width, y + 13), radius=3, outline=w)
+            d.rounded_rectangle((x + 2, y + 2, x + width - 2, y + 10), radius=2, fill=w)
+            d.rectangle((x + 4, y + 5, x + 6, y + 7), fill=b)
+            d.rectangle((x + 3, y + 9, x + 7, y + 10), fill=b)
+        shade((8, 36, 53, 37))
+        d.line((53, 12, 53, 35, 60, 35), fill=w, width=2)
+        d.rectangle((55, 27, 59, 31), outline=w)
+        d.rectangle((64, 11, 121, 43), outline=w)
+        d.line((118, 13, 118, 41), fill=w)
+        shade((109, 14, 116, 40))
+        d.ellipse((66, 11, 106, 43), fill=w)
+        d.ellipse((69, 13, 103, 42), fill=b)
+        d.ellipse((72, 15, 100, 40), fill=w)
+        d.arc((74, 17, 98, 38), 180, 260, fill=b)
+        rivets([(86, 12), (68, 27), (104, 27), (86, 42)])
+        d.rectangle((81, 27, 89, 33), fill=b)
+        d.polygon(((83, 33), (89, 32), (94, 39), (83, 39)), fill=b)
+        for x, top in ((80, 23), (83, 20), (86, 19), (89, 22)):
+            d.line((x, top, x, 29), fill=b, width=2)
+        d.line((81, 30, 77, 27, 76, 24), fill=b, width=2)
+        d.rectangle((122, 18, 125, 35), outline=w)
+    elif kind == "pump":
+        # Heavy cast casing, flanged pipe and outflow over a recessed sump.
+        d.line((3, 43, 124, 43), fill=w)
+        d.rectangle((4, 15, 9, 38), outline=w)
+        d.line((5, 16, 8, 16), fill=w)
+        d.rounded_rectangle((10, 17, 34, 37), radius=5, fill=w)
+        d.rounded_rectangle((12, 19, 32, 35), radius=4, fill=b)
+        d.ellipse((15, 21, 29, 34), outline=w)
+        d.ellipse((19, 25, 25, 31), fill=w)
+        d.line((22, 23, 22, 33), fill=b)
+        d.line((17, 28, 27, 28), fill=b)
+        d.line((13, 38, 13, 40, 32, 40, 32, 38), fill=w, width=2)
+        d.line((34, 24, 49, 24, 49, 29), fill=w, width=5)
+        d.line((35, 24, 47, 24), fill=b)
+        for x in (35, 41):
+            d.line((x, 20, x, 27), fill=w)
+        d.line((19, 16, 19, 13, 33, 13), fill=w, width=2)
+        d.ellipse((29, 11, 35, 15), fill=w)
+        d.point((32, 13), fill=b)
+        for x, y in ((46, 31), (49, 32), (52, 30)):
+            d.line((x, y, x, y + 4), fill=w)
+        d.polygon(((39, 39), (45, 36), (55, 36), (62, 41), (39, 41)), outline=w)
+        d.line((45, 38, 55, 38), fill=w)
+        rivets([(43, 40), (50, 40), (59, 40)])
+        # Refuge at a different depth, with a lit lintel and shadowed doorway.
+        d.polygon(((70, 16), (77, 12), (121, 12), (124, 16)), fill=w)
+        d.rectangle((72, 17, 122, 42), outline=w)
+        d.line((75, 18, 75, 39), fill=w)
+        d.line((74, 22, 120, 22), fill=w)
+        d.rectangle((84, 18, 103, 42), fill=w)
+        d.rectangle((87, 22, 100, 41), fill=b)
+        d.rectangle((108, 18, 118, 25), outline=w)
+        d.line((110, 20, 116, 20), fill=w)
+        shade((77, 25, 82, 38))
+        d.rectangle((105, 40, 121, 41), fill=w)
+        crew(89, 27)
+        crew(110, 29)
+        d.line((64, 13, 64, 32, 69, 32), fill=w)
+        d.line((66, 13, 66, 30), fill=w)
+    elif kind == "lift":
+        # Back wall and receding floor leave the moving load in clear water.
+        d.line((6, 23, 6, 39, 16, 39), fill=w)
+        d.line((9, 23, 16, 23), fill=w)
+        d.rectangle((94, 15, 122, 25), outline=w)
+        for x in (98, 108, 118):
+            d.line((x, 17, x, 23), fill=w)
+        shade((95, 27, 121, 29))
+        d.line((4, 43, 124, 43), fill=w)
+        d.line((34, 40, 120, 40), fill=w)
+        for x in (38, 58, 98, 120):
+            d.line((x, 41, x - 5, 43), fill=w)
+        # Riveted lattice mast and braced overhead boom.
+        d.rectangle((19, 11, 27, 42), fill=w)
+        d.rectangle((21, 13, 25, 40), fill=b)
+        for y in range(15, 39, 8):
+            d.line((21, y, 25, y + 5, 21, y + 8), fill=w)
+        d.rectangle((19, 11, 84, 17), fill=w)
+        d.rectangle((29, 13, 81, 15), fill=b)
+        for x in range(31, 78, 10):
+            d.line((x, 13, x + 5, 15), fill=w)
+        d.line((27, 35, 48, 18), fill=w, width=2)
+        d.line((29, 36, 50, 19), fill=w)
+        d.ellipse((74, 13, 82, 21), fill=w)
+        d.ellipse((76, 15, 80, 19), fill=b)
+        d.line((77, 21, 77, 25), fill=w)
+        d.line((79, 21, 79, 25), fill=w)
+        d.arc((75, 23, 81, 28), 0, 160, fill=w)
+        d.line((78, 27, 66, 31), fill=w)
+        d.line((78, 27, 89, 31), fill=w)
+        d.polygon(((64, 32), (68, 29), (90, 29), (90, 38), (86, 41), (64, 41)), fill=w)
+        d.rectangle((66, 33, 85, 39), fill=b)
+        d.line((67, 34, 84, 38), fill=w)
+        d.line((84, 34, 67, 38), fill=w)
+        d.line((87, 32, 89, 30), fill=b)
+        d.line((88, 34, 88, 37), fill=b)
+        crew(44, 27, True)
+        crew(110, 28)
+        d.rectangle((97, 35, 105, 39), outline=w)
+    elif kind == "beacon":
+        # Foreground crag, shaded facets, anchored lattice mast.
+        d.polygon(((2, 43), (7, 38), (15, 37), (20, 33), (29, 35),
+                   (33, 39), (42, 39), (48, 43)), fill=w)
+        d.polygon(((4, 43), (15, 40), (19, 36), (24, 38), (32, 41), (40, 41), (43, 43)), fill=b)
+        shade((7, 41, 36, 43))
+        d.polygon(((18, 36), (22, 21), (29, 21), (34, 37)), fill=w)
+        d.polygon(((22, 33), (25, 24), (27, 24), (30, 35)), fill=b)
+        d.line((22, 28, 29, 31, 21, 34), fill=w)
+        d.rectangle((18, 16, 33, 23), fill=w)
+        d.rectangle((20, 18, 31, 21), fill=b)
+        d.rectangle((24, 18, 27, 21), fill=w)
+        d.polygon(((17, 15), (25, 11), (34, 15)), fill=w)
+        d.line((21, 14, 29, 14), fill=b)
+        d.line((20, 24, 11, 37), fill=w)
+        d.line((31, 24, 40, 39), fill=w)
+        # Sparse broken light fans, not a filled cone across quiet water.
+        for x, y in ((39, 17), (46, 15), (54, 13), (41, 22), (51, 22),
+                     (61, 22), (39, 26), (46, 29), (54, 32)):
+            d.line((x, y, x + 3, y), fill=w)
+        # A small occupied outpost behind the answering lantern.
+        d.polygon(((79, 43), (85, 39), (119, 39), (125, 43)), outline=w)
+        d.rectangle((89, 35, 115, 40), outline=w)
+        for x in (92, 100, 108):
+            d.rectangle((x, 36, x + 3, 38), fill=w)
+        d.line((101, 34, 101, 24), fill=w)
+        d.rectangle((98, 24, 104, 27), fill=w)
+        d.point((101, 25), fill=b)
+        for x, y in ((89, 24), (83, 22), (111, 24), (118, 22), (89, 29), (115, 30)):
+            d.line((x, y, x + 3, y), fill=w)
+        rivets([(62, 40), (65, 41), (71, 37), (73, 37)])
+    elif kind == "home":
+        # Distant pressure buildings with warm windows, a closer welcoming quay.
+        d.polygon(((80, 16), (87, 12), (121, 12), (125, 16)), outline=w)
+        d.rectangle((84, 17, 123, 30), outline=w)
+        d.line((87, 17, 87, 28), fill=w)
+        for x in (91, 102, 113):
+            d.rounded_rectangle((x, 18, x + 6, 25), radius=1, fill=w)
+            d.line((x + 1, 24, x + 5, 24), fill=b)
+        shade((86, 28, 122, 30))
+        boat(12, 26)
+        d.rectangle((62, 39, 125, 42), fill=w)
+        d.line((63, 41, 124, 41), fill=b)
+        for x in (66, 92, 119):
+            d.line((x, 42, x + 2, 43), fill=w)
+        for x in (67, 83, 99, 116):
+            d.point((x, 40), fill=b)
+        d.line((60, 16, 60, 36), fill=w)
+        d.rectangle((57, 16, 63, 20), fill=w)
+        d.point((60, 18), fill=b)
+        d.line((56, 14, 64, 14), fill=w)
+        crew(72, 26, True)
+        crew(90, 26, True)
+        crew(110, 26)
+        d.line((5, 43, 52, 43), fill=w)
+        d.line((49, 34, 54, 34), fill=w)
+        rivets([(4, 24), (6, 22), (51, 40), (54, 41)])
+
+
+def story_card(strings, title, lines, motif):
     image = Image.new("RGBA", SIZE, BG_COLOR)
-    for item in (
-        line(strings, "txt_thank_you", 4, 8),
-        line(strings, "txt_thanks_from", 4, 22),
-        line(strings, "txt_thanks_from2", 4, 32),
-        line(strings, "txt_keep_exploring", 4, 44),
-        line(strings, "txt_a_next", 3, 56),
-    ):
-        draw_text(image, item[1], item[2], item[0], item[3])
-    return image
+    draw_text(image, 4, 1, title)
+    story_motif(image, motif)
+    for index, text in enumerate(lines):
+        draw_text(image, 4, 46 + index * 8, text)
+    draw_text(image, 3, 56, checked_text(strings, "txt_a_next"))
+    return ("story_" + motif + "_128x64", image)
+
+
+STORY_CARDS = (
+    ("first", "BENTHOS", ("A HAND AT THE GLASS.",)),
+    ("pump", "PUMP REFUGE", ("THE CREWS COME BACK.",)),
+    ("lift", "CORMORANT", ("CRATES CLIMB AGAIN.",)),
+    ("beacon", "DEEP ANCHOR", ("A LIGHT ANSWERS.",)),
+)
+
+
+def story_panels(strings):
+    return [story_card(strings, title, lines, motif) for motif, title, lines in STORY_CARDS]
+
+
+def story_preview(strings):
+    """Five native cards; enlargement uses only integer nearest-neighbor pixels."""
+    cards = story_panels(strings) + [("home", ending_thanks(strings))]
+    sheet = Image.new("RGBA", (SIZE[0] * len(cards), SIZE[1]), BG_COLOR)
+    for index, (_name, image) in enumerate(cards):
+        sheet.paste(image, (SIZE[0] * index, 0))
+    return sheet
+
+
+def ending_thanks(strings):
+    """Homecoming recognition: the first Tidewall card after the lit network."""
+    return story_card(strings, "TIDEWALL", ("THEY KNOW YOUR HULL.",), "home")[1]
 
 
 def prompt(strings, title, rows, hint, selected):
@@ -213,8 +461,6 @@ def panels(strings):
         ("panel_save_continue_128x64", prompt(strings, "txt_save_failed", ("txt_retry", "txt_continue_unsaved"), "txt_save_hint", 1)),
         ("panel_pause_resume_128x64", prompt(strings, "txt_paused", ("txt_resume", "txt_rescue"), "txt_pause_hint", 0)),
         ("panel_pause_rescue_128x64", prompt(strings, "txt_paused", ("txt_resume", "txt_rescue"), "txt_pause_hint", 1)),
-        ("panel_wreck_retry_128x64", prompt(strings, "txt_hull_lost", ("txt_retry_berth", "txt_title"), "txt_save_hint", 0)),
-        ("panel_wreck_title_128x64", prompt(strings, "txt_hull_lost", ("txt_retry_berth", "txt_title"), "txt_save_hint", 1)),
         ("panel_rescue_confirm_128x64", confirm(strings, "txt_back_last_berth", "txt_unsaved_lost", 24, 38)),
         ("panel_abandon_confirm_128x64", confirm(strings, "txt_abandon_job", "txt_yes_no", 24, 24)),
     ]
@@ -284,7 +530,7 @@ STATUS_STRINGS = (
     "txt_save_unreadable",
 )
 HULL_STRINGS = ("txt_minnow", "txt_hauler", "txt_leviathan")
-TITLE_ROWS = ("txt_continue", "txt_new_voyage", "txt_loader")
+TITLE_ROWS = ("txt_continue", "txt_new_voyage")
 
 
 def ending_stats(strings):
@@ -320,12 +566,12 @@ def title_menu_frame(strings, status, hull, selected):
 
 def title_panels(strings):
     """One frame per status x hull x selected menu row, plus both confirmations."""
-    menu = Image.new("RGBA", (128 * 45, 64), BG_COLOR)
+    menu = Image.new("RGBA", (128 * 30, 64), BG_COLOR)
     for status in range(5):
         for hull in range(3):
-            for selected in range(3):
+            for selected in range(2):
                 frame = title_menu_frame(strings, status, hull, selected)
-                menu.paste(frame, (128 * (status * 9 + hull * 3 + selected), 0))
+                menu.paste(frame, (128 * (status * 6 + hull * 2 + selected), 0))
     replace = Image.new("RGBA", (128 * 5, 64), BG_COLOR)
     for status in range(5):
         frame = Image.new("RGBA", SIZE, BG_COLOR)
@@ -458,6 +704,8 @@ def main(argv=None):
     parser.add_argument("--panels", default="images/panels")
     parser.add_argument("--campaign", default="images/campaign")
     parser.add_argument("--pause", default="images/pause")
+    parser.add_argument("--story", default="images/story")
+    parser.add_argument("--preview", default="docs/assets/story-flourishes-preview.png")
     parser.add_argument("--fxdata", default="fxdata/fxdata.txt")
     parser.add_argument("--campaign-src", default="src/campaign.hpp")
     parser.add_argument("--level", default="src/generated/level.hpp")
@@ -466,10 +714,18 @@ def main(argv=None):
     routes = load_routes(args.campaign_src)
     rewards = load_rewards(args.level)
     panel_rows = panels(strings) + work_panels(strings, routes, rewards) + title_panels(strings)
+    story_rows = story_panels(strings)
     write_dir(args.panels, panel_rows)
     write_dir(args.campaign, campaign_panels())
     write_dir(args.pause, pause_panels(strings))
-    print("gen_panels: wrote {} panels, {} campaign sprites and {} pause frames".format(len(panel_rows), len(campaign_panels()), 6))
+    write_dir(args.story, story_rows)
+    Path(args.preview).parent.mkdir(parents=True, exist_ok=True)
+    preview = story_preview(strings)
+    preview.save(args.preview)
+    preview.resize((preview.width * 4, preview.height * 4), Image.Resampling.NEAREST).save(
+        Path(args.preview).with_name(Path(args.preview).stem + "-4x.png"))
+    print("gen_panels: wrote {} panels, {} story cards, {} campaign sprites and {} pause frames".format(
+        len(panel_rows), len(story_rows), len(campaign_panels()), 6))
 
 
 if __name__ == "__main__":

@@ -34,7 +34,6 @@ NOTICE_STRINGS = (
     "txt_found_seal",
     "txt_found_thruster",
     "txt_found_credits",
-    "txt_found_hull",
     "txt_found_lens",
     "txt_survey_hint",
     "txt_salvage_hint",

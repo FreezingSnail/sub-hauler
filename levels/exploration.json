@@ -609,11 +609,7 @@
         300,
         83
       ],
-      "radius": 4,
-      "pickup": {
-        "kind": "hull",
-        "amount": 1
-      }
+      "radius": 4
     },
     {
       "id": "DL",

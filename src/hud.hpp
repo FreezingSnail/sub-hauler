@@ -4,9 +4,7 @@
 
 #include "game.hpp"
 #include "world.hpp"
-#if SH_FEATURE_EXPLORATION
 #include "exploration_view.hpp"
-#endif
 
 #if defined(__AVR__)
 #include "cave_render.hpp"
@@ -77,7 +75,6 @@ enum Notice : uint8_t {
     kNoticeFoundSeal,
     kNoticeFoundThruster,
     kNoticeFoundCredits,
-    kNoticeFoundHull,
     kNoticeFoundLens,
     kNoticeSurveyHint,
     kNoticeSalvageHint,
@@ -90,7 +87,7 @@ enum Notice : uint8_t {
 };
 
 inline void drawNotice(uint8_t notice) {
-    SH_CART_SERVICE();
+    cartService();
     const uint24_t address = hud_notices + 2 + static_cast<uint24_t>(notice - 1) * 128;
     FX::readDataBytes(address, Arduboy2Base::sBuffer + 7 * 128, 128);
 }
@@ -110,14 +107,12 @@ inline void draw(const game::State &state) {
     if (airFill > 0)
         cave::fillRect(Arduboy2Base::sBuffer, static_cast<int16_t>(kAirX + 1), static_cast<int16_t>(kAirY + 1), airFill, static_cast<uint8_t>(kAirH - 2), true);
 
-#if SH_FEATURE_EXPLORATION
     if (state.tools & exploration_data::CUTTER)
         exploration_view::glyph(Arduboy2Base::sBuffer, 57, 2, 1);
     if (state.tools & exploration_data::SEAL)
         exploration_view::glyph(Arduboy2Base::sBuffer, 64, 2, 2);
     if (state.tools & exploration_data::THRUSTER)
         exploration_view::glyph(Arduboy2Base::sBuffer, 71, 2, 3);
-#endif
     // Ballast gauge: white fill grows from the bottom, the notch marks neutral
     // trim for the current cargo load.
     arduboy.drawRect(kGaugeX, kGaugeY, kGaugeW, kGaugeH, WHITE);
@@ -141,30 +136,19 @@ inline void draw(const game::State &state) {
             cave::fillRect(Arduboy2Base::sBuffer, static_cast<int16_t>(x + 1), static_cast<int16_t>(kCargoY + 1), static_cast<uint8_t>(kCargoPip - 2), static_cast<uint8_t>(kCargoPip - 2), true);
     }
 
-#if SH_DEV_MODE
-    cave::fillRect(Arduboy2Base::sBuffer, kHintBackingX, kHintBackingY, kHintBackingW, kHintBackingH, false);
-    text::at(kHintX, kHintY);
-    text::print(txt_dev_noclip);
-    return;
-#endif
-#if SH_FEATURE_EXPLORATION
     uint8_t notice = kNoticeNone;
     if (state.discoveryTicks) {
-#if SH_FEATURE_CAMPAIGN
         if (state.lastDiscovery == exploration::kNone) {
             notice = kNoticeSurveyRecorded;
         } else
-#endif
         {
             const uint8_t kind = exploration_data::pickup(state.lastDiscovery).kind;
-            notice = kind == 1 ? kNoticeFoundCutter : kind == 2 ? kNoticeFoundSeal : kind == 3 ? kNoticeFoundThruster : kind == 4 ? kNoticeFoundCredits : kind == 5 ? kNoticeFoundHull : kNoticeFoundLens;
+            notice = kind == 1 ? kNoticeFoundCutter : kind == 2 ? kNoticeFoundSeal : kind == 3 ? kNoticeFoundThruster : kind == 4 ? kNoticeFoundCredits : kNoticeFoundLens;
         }
     } else if (state.contactId != exploration::kNone) {
-#if SH_FEATURE_CAMPAIGN
         if (state.contactId >= exploration::kSurveyBase)
             notice = kNoticeSurveyHint;
         else
-#endif
             notice = state.contactId < exploration_data::PICKUP_COUNT ? kNoticeSalvageHint : kNoticeCutHint;
     } else {
         for (uint8_t i = 0; i < exploration_data::GATE_COUNT; ++i) {
@@ -176,7 +160,6 @@ inline void draw(const game::State &state) {
                      : ((g.required & exploration_data::THRUSTER) && !(state.tools & exploration_data::THRUSTER)) ? kNoticeNeedThruster
                                                                                                                   : kNoticeNeedCutter;
         }
-#if SH_FEATURE_CAMPAIGN
         // An inactive service mooring still reads as a clue, never as a
         // dockable station. It never blocks travel or hides a pickup.
         if (notice == kNoticeNone) {
@@ -192,7 +175,6 @@ inline void draw(const game::State &state) {
                 }
             }
         }
-#endif
     }
     if (notice) {
         // The stamp replaces the whole 8-px text page; clear the one backing
@@ -208,7 +190,6 @@ inline void draw(const game::State &state) {
         }
         return;
     }
-#endif
     // No notice: leave the bottom row untouched so the map shows through.
 }
 

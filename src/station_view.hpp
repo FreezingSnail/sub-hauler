@@ -2,31 +2,18 @@
 
 #include <stdint.h>
 
-#include "features.hpp"
 
-#if SH_FEATURE_STATIONS
 
 #include "game.hpp"
 #include "station.hpp"
-#if SH_FEATURE_JOBS
 #include "jobs.hpp"
-#endif
-#if SH_FEATURE_EXPLORATION
 #include "generated/exploration.hpp"
-#endif
 
 // The full profile bakes every fixed station-board pixel into 30 opaque FX
 // frames: three idle selections and four active selections for each of the four
 // freight berths, plus one UNDOCK frame for each service berth. Lean/core
 // profiles keep the native rows; they have different board shapes and do not
 // carry the generated menu set.
-#ifndef SH_STATION_MENU_PANELS
-#if SH_FEATURE_STATIONS && SH_FEATURE_JOBS && SH_FEATURE_SHOP && SH_FEATURE_HULL_DAMAGE && SH_FEATURE_CAMPAIGN
-#define SH_STATION_MENU_PANELS 1
-#else
-#define SH_STATION_MENU_PANELS 0
-#endif
-#endif
 
 #if defined(__AVR__)
 #include "panel_view.hpp"
@@ -36,7 +23,7 @@
 // function is device-only because it uses the external FX font.
 //
 // Header: settlement name and the credits placeholder.
-// Status: current air and hull, including run-only shop upgrades.
+// Status: current air, including run-only shop upgrades.
 // Rows:   WORK/SHOP/UNDOCK, or summary/ABANDON/WORK/SHOP/UNDOCK when a contract
 //         is active. One inverted selection bar. WORK opens the single board
 //         that lists restoration jobs first and the repeatable freight row
@@ -51,10 +38,8 @@ constexpr uint8_t kHeaderY = 2;
 constexpr uint8_t kCreditsX = 80;
 constexpr uint8_t kDividerY = 11;
 constexpr uint8_t kStatusX = 2;
-constexpr uint8_t kHullX = 72;
 constexpr uint8_t kStatusY = 15;
 constexpr uint8_t kRowX = 4;
-#if SH_FEATURE_SHOP
 // Five rows (summary/ABANDON/WORK/SHOP/UNDOCK) must fit above the hint:
 // header/status end at y=21, rows are 22+7*row, and the hint starts at 57.
 constexpr uint8_t kRowY0 = 22;
@@ -63,18 +48,9 @@ constexpr uint8_t kRowInsetY = 0;
 constexpr uint8_t kRowInvertH = 7;
 constexpr uint8_t kHintX = 3;
 constexpr uint8_t kHintY = 57;
-#else
-constexpr uint8_t kRowY0 = 24;
-constexpr uint8_t kRowStep = 8;
-constexpr uint8_t kRowInsetY = 1;
-constexpr uint8_t kRowInvertH = 8;
-constexpr uint8_t kHintX = 3;
-constexpr uint8_t kHintY = 56;
-#endif
 constexpr uint8_t kOfferChars = 20;   // "DEEP ANCHOR 240"
 constexpr uint8_t kCreditsNumberX = static_cast<uint8_t>(kCreditsX + 3 * 6);
 constexpr uint8_t kAirNumberX = static_cast<uint8_t>(kStatusX + 4 * 6);
-constexpr uint8_t kHullNumberX = static_cast<uint8_t>(kHullX + 5 * 6);
 
 // Row i's text baseline is rowY(i); the invert bar extends kRowInsetY above
 // it. Keep the last row clear of the hint and the hint inside the display.
@@ -85,16 +61,11 @@ constexpr uint8_t rowY(uint8_t row) {
 static_assert(station::kStationRowCount > 0, "station board needs at least one row");
 static_assert(rowY(0) - kRowInsetY >= kStatusY + 7, "rows start below the status line");
 static_assert(rowY(static_cast<uint8_t>(station::kStationRowCount - 1)) + kRowInvertH <= kHintY, "last row clears the hint");
-#if SH_FEATURE_JOBS
 static_assert(rowY(static_cast<uint8_t>(station::kActiveRowCount - 1)) + kRowInvertH <= kHintY, "active board clears the hint");
-#endif
 static_assert(kHintY + 7 <= 64, "hint stays on screen");
-#if SH_FEATURE_JOBS
 static_assert(kCreditsX + 8 * 6 <= 128, "CR 65535 fits at the right edge");
-#endif
 static_assert(kRowX + kOfferChars * 6 <= 128, "offer text fits inside 128 columns");
 
-#if SH_STATION_MENU_PANELS
 // Frame ABI: four main berths with three idle selections (WORK/SHOP/UNDOCK)
 // and four active selections (ABANDON/WORK/SHOP/UNDOCK), then one selected
 // UNDOCK frame for each service berth. The inert active summary row is never a
@@ -142,18 +113,15 @@ inline uint8_t panelHint(const game::State &state) {
     if (jobs::deliveryFailed(state))
         return kPanelShortLoad;
     if (!station::jobActive(state)) {
-#if SH_FEATURE_EXPLORATION
         if (!(state.tools & exploration_data::CUTTER))
             return kPanelCutterRumor;
         if (state.docked == 1 && !(state.tools & exploration_data::THRUSTER))
             return kPanelThrusterRumor;
         if (state.docked == 2 && !(state.tools & exploration_data::SEAL))
             return kPanelSealRumor;
-#endif
     }
     return station::jobActive(state) ? kPanelAutoload : kPanelStation;
 }
-#endif
 
 #if defined(__AVR__)
 
@@ -173,58 +141,28 @@ inline uint24_t nameFor(uint8_t id) {
         return txt_cormorant;
     if (id == 3)
         return txt_deep_anchor;
-#if SH_FEATURE_CAMPAIGN
     if (id == 4)
         return txt_pump_refuge;
     if (id == 5)
         return txt_lower_gantry;
-#endif
     return txt_station;
 }
 
 inline uint24_t rowLabel(uint8_t row, const game::State &state) {
     const station::RowKind kind = station::rowKind(row, state);
-#if SH_FEATURE_SHOP
     // The shop label is folded into an if-chain instead of the switch: adding a
     // sixth RowKind would widen the compiler's jump table by two bytes of RAM.
-#if SH_FEATURE_JOBS
     if (kind == station::kRowWork)
         return txt_work;
-#else
-    if (kind == station::kRowService)
-        return txt_service;
-#endif
     if (kind == station::kRowShop)
         return txt_shop;
     if (kind == station::kRowUndock)
         return txt_undock;
-#if SH_FEATURE_JOBS
     if (kind == station::kRowAbandon)
         return txt_abandon;
-#endif
     return 0;
-#else
-    switch (kind) {
-#if SH_FEATURE_JOBS
-    case station::kRowWork:
-        return txt_work;
-#else
-    case station::kRowService:
-        return txt_service;
-#endif
-    case station::kRowUndock:
-        return txt_undock;
-#if SH_FEATURE_JOBS
-    case station::kRowAbandon:
-        return txt_abandon;
-#endif
-    default:
-        return 0;
-    }
-#endif
 }
 
-#if SH_FEATURE_JOBS
 inline void printDestination(uint8_t toId, uint16_t reward) {
     text::print(nameFor(toId));
     text::character(' ');
@@ -236,11 +174,9 @@ inline void printRow(uint8_t row, const game::State &state) {
     case station::kRowJob:
         printDestination(state.activeJob.to, state.activeJob.reward);
         break;
-#if SH_FEATURE_JOBS
     case station::kRowWork:
         text::print(txt_work);
         break;
-#endif
     case station::kRowAbandon:
         text::print(txt_abandon);
         break;
@@ -249,13 +185,7 @@ inline void printRow(uint8_t row, const game::State &state) {
         break;
     }
 }
-#else
-inline void printRow(uint8_t row, const game::State &state) {
-    text::print(rowLabel(row, state));
-}
-#endif
 
-#if SH_STATION_MENU_PANELS
 inline void drawPanelValues(const game::State &state) {
     text::normal();
     text::at(kCreditsX + 3 * 6, kHeaderY);
@@ -264,12 +194,7 @@ inline void drawPanelValues(const game::State &state) {
     text::number(state.air);
     text::character('/');
     text::number(game::airCapacity(state));
-    text::at(kHullX + 5 * 6, kStatusY);
-    text::number(state.hull);
-    text::character('/');
-    text::number(game::hullCapacity(state));
 }
-#endif
 
 inline void drawStatus(const game::State &state) {
     text::at(kStatusX, kStatusY);
@@ -277,17 +202,8 @@ inline void drawStatus(const game::State &state) {
     text::number(state.air);
     text::character('/');
     text::number(game::airCapacity(state));
-
-#if SH_FEATURE_HULL_DAMAGE
-    text::at(kHullX, kStatusY);
-    text::print(txt_hull_status);
-    text::number(state.hull);
-    text::character('/');
-    text::number(game::hullCapacity(state));
-#endif
 }
 
-#if SH_STATION_MENU_PANELS
 // Full-profile board: one opaque 128x64 frame carries the berth name, credits
 // and status captions, divider, row labels and the selected bar. Live numbers,
 // the active-job summary and the 7-px hint row are the only native overlays.
@@ -309,86 +225,8 @@ inline void draw(const game::State &state, uint8_t selected) {
 
     panel_view::drawHint7(station_hints, panelHint(state));
 }
-#else
-inline void draw(const game::State &state, uint8_t selected) {
-    if (state.docked < 0)
-        return;
-
-    text::normal();
-    text::at(kNameX, kHeaderY);
-    text::print(nameFor(static_cast<uint8_t>(state.docked)));
-
-#if SH_FEATURE_JOBS
-    text::at(kCreditsX, kHeaderY);
-    text::print(txt_credits);
-    text::number(state.credits);
-#endif
-
-    arduboy.drawFastHLine(0, kDividerY, 128, WHITE);
-    drawStatus(state);
-
-    const uint8_t rowCount = station::rowCount(state);
-    for (uint8_t row = 0; row < rowCount; ++row) {
-        const uint8_t y = rowY(row);
-        const bool chosen = row == selected;
-
-        if (chosen) {
-            arduboy.fillRect(0, static_cast<int16_t>(y - kRowInsetY), 128, kRowInvertH, WHITE);
-            // The bar is the cell background. Invert mode paints only the
-            // glyph strokes black, so the cell cannot spill into the next row.
-            text::inverted();
-        } else {
-            text::normal();
-        }
-
-        text::at(kRowX, y);
-        printRow(row, state);
-    }
-    text::normal();
-
-    text::at(kHintX, kHintY);
-#if SH_FEATURE_CAMPAIGN
-    if (station::serviceBerth(state)) {
-        text::print(txt_service_berth_hint);
-        return;
-    }
-#endif
-#if SH_FEATURE_JOBS
-    // A failed delivery replaces the control hint until the next accept or
-    // abandon. Treat it as a transient board note, not a permanent flag.
-    if (jobs::deliveryFailed(state)) {
-        text::print(txt_short_load);
-        return;
-    }
-#if SH_FEATURE_EXPLORATION
-    if (!station::jobActive(state)) {
-        uint24_t rumor = 0;
-        if (!(state.tools & exploration_data::CUTTER))
-            rumor = txt_cutter_rumor;
-        else if (state.docked == 1 && !(state.tools & exploration_data::THRUSTER))
-            rumor = txt_thruster_rumor;
-        else if (state.docked == 2 && !(state.tools & exploration_data::SEAL))
-            rumor = txt_seal_rumor;
-        if (rumor) {
-            text::print(rumor);
-            return;
-        }
-    }
-#endif
-    // Acceptance already fills the hold; the active board only needs the
-    // abandon/undock actions.
-    if (station::jobActive(state))
-        text::print(txt_autoload_hint);
-    else
-        text::print(txt_station_hint);
-#else
-    text::print(txt_station_hint);
-#endif
-}
-#endif   // SH_STATION_MENU_PANELS
 
 #endif   // __AVR__
 
 }   // namespace station_view
 
-#endif   // SH_FEATURE_STATIONS

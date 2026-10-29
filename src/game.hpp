@@ -2,11 +2,8 @@
 
 #include <stdint.h>
 
-#include "features.hpp"
 #include "roster.hpp"
-#if SH_FEATURE_EXPLORATION
 #include "generated/exploration.hpp"
-#endif
 
 // Pure submarine rules. No Arduino headers: this file is compiled into the
 // host test binary and the firmware from the same source.
@@ -27,7 +24,7 @@ constexpr int16_t kSubpixelOne = 4096;   // Q12 sub-pixel one
 constexpr int16_t kSpawnX = 64;
 constexpr int16_t kSpawnY = 32;
 
-// HAULER hull footprint, shared by world collision and hazard collision.
+// HAULER hull footprint, shared by world collision and debris placement.
 // The 26x8 hull is centred on the whole-pixel state position.
 constexpr int16_t kHullHalfW = 13;
 constexpr int16_t kHullHalfH = 4;
@@ -41,18 +38,8 @@ constexpr int16_t kNeutralPerCargo = 5;   // neutral falls 5 per cargo unit
 
 constexpr int16_t kAirCapacity = 300;      // integer air units at full tank
 constexpr uint16_t kAirDrainTicks = 150;   // 0.4 units/s -> one unit per 150 ticks
-#if SH_FEATURE_SHOP
 constexpr int16_t kAirCapacityPerLevel = 30;   // air-tank upgrade step
-#endif
 
-#if SH_FEATURE_HULL_DAMAGE
-// Browser startHp. Damage sources arrive with SH_FEATURE_HULL_DAMAGE (M7);
-// the station already repairs the value so the M3 board has a real readout.
-constexpr uint8_t kHullMax = 6;
-#if SH_FEATURE_SHOP
-constexpr uint8_t kHullCapacityPerLevel = 1;   // hull-plate upgrade step
-#endif
-#endif
 constexpr uint8_t kBlowCarryStep = 3;       // 3.0 air units/s while blowing
 constexpr uint8_t kBallastCarryStep = 18;   // 18 ballast units/s blow or flood
 constexpr uint8_t kRateTicks = 60;          // carry denominator for per-second rates
@@ -74,9 +61,8 @@ constexpr int16_t kDragDivisor = 50;
 
 // A blocked-axis speed at or above 16 px/s is a hard wall hit. That is well
 // under the 30 px/s base top speed but above a gentle nudge, so deliberate
-// collisions damage the hull and puff debris while scrapes stay free. Shared
-// by the damage rules and the particle spawn trigger so the two flags can be
-// compiled independently.
+// collisions puff debris while scrapes stay free. Shared by the particle spawn
+// trigger and the wall-impact presentation.
 constexpr int16_t kHardImpactSpeedQ8 = 16 * kQ8One;
 
 // ---------------------------------------------------------------------------
@@ -90,7 +76,6 @@ struct Input {
     bool right;   // forward thrust
 };
 
-#if SH_FEATURE_PARTICLES
 // Fixed debris pool: four particles, no heap, no per-particle velocity bytes.
 // Deltas are signed offsets from one shared anchor captured at the impact, so
 // each particle fits in three bytes; slot parity owns the fixed outward
@@ -108,9 +93,7 @@ struct ParticlePool {
     int16_t y;
     Particle particle[kParticleCount];
 };
-#endif
 
-#if SH_FEATURE_JOBS
 // Contract storage is fixed and integer-only. The WORK board carries one
 // repeatable freight row; accepting it replaces that row until the next dock.
 // Every job is untimed: air and handling are the expedition pressure.
@@ -118,7 +101,6 @@ constexpr uint8_t kJobOffers = 1;
 constexpr uint8_t kJobCrates = 4;
 constexpr uint8_t kJobNone = 0xFF;
 
-#if SH_FEATURE_CAMPAIGN
 // Explicit job kind. The save schema records only NONE, ORDINARY or CAMPAIGN;
 // there is no timed job kind. See docs/progression-implementation.md.
 constexpr uint8_t kJobKindNone = 0;
@@ -126,32 +108,22 @@ constexpr uint8_t kJobKindOrdinary = 1;
 constexpr uint8_t kJobKindCampaign = 2;
 
 constexpr uint8_t kMissionNone = 0xFF;
-#endif
 
 struct JobOffer {
-    uint8_t from;        // origin settlement id
-    uint8_t to;          // destination settlement id
-    uint8_t crates;      // required cargo units
-    uint8_t reward;      // credits, a multiple of 5; generated bound-checked
-#if SH_FEATURE_CAMPAIGN
-    uint8_t kind;   // always ORDINARY
-#endif
+    uint8_t to;      // destination settlement id
+    uint8_t reward;  // credits, a multiple of 5; generated bound-checked
 };
 
 struct ActiveJob {
-#if SH_FEATURE_CAMPAIGN
     uint8_t kind;        // kJobKindNone / ORDINARY / CAMPAIGN
     uint8_t mission;     // campaign mission id or kMissionNone
     uint8_t from;        // origin berth or kJobNone
-#endif
     uint8_t to;
     uint8_t crates;
     uint8_t reward;   // promoted when credits are paid
 };
-#endif
 
 struct State {
-#if SH_FEATURE_EXPLORATION
     uint8_t tools;        // CUTTER / SEAL / THRUSTER / LENS
     uint8_t pickups;      // one bit per unique cove reward
     uint16_t openGates;   // cutter grates opened during this run
@@ -161,7 +133,6 @@ struct State {
     uint8_t discoveryTicks;
     uint8_t lastDiscovery;   // pickup id, valid only while discoveryTicks != 0
     uint8_t blockedGate;     // gate id, valid only when impactAxis == 4
-#endif
 
     int16_t x;   // whole-pixel world position
     int16_t y;
@@ -172,11 +143,9 @@ struct State {
     uint8_t ballast;   // 0..100
     int16_t air;     // integer units, 0..airCapacity(state)
     uint8_t cargo;   // 0..4
-#if SH_FEATURE_MULTI_HULL
     // Selected roster class, owned by the title screen and kept across
-    // dock/undock. One byte; the damage hull byte above is unrelated.
+    // dock/undock.
     uint8_t hullClass;
-#endif
     bool facingLeft;
     uint16_t ticks;
     uint8_t ballastCarry;    // 0..59 fractional ballast units
@@ -189,26 +158,13 @@ struct State {
     uint16_t cameraXQ4;   // unsigned Q4 world origin (1/16 px)
     uint16_t cameraYQ4;
     int16_t impactSpeedQ8;   // speed on the blocked axis before it was zeroed
-    uint8_t impactAxis;      // 0 none, 1 x, 2 y, 3 mine hit (one frame)
-#if SH_FEATURE_MINES
-    uint8_t minesAlive;   // one bit per generated mine, 1 = still armed
-#endif
+    uint8_t impactAxis;      // 0 none, 1 x, 2 y, 4 blocking gate (one frame)
 
-#if SH_FEATURE_STATIONS
     int8_t docked;          // -1 = free flight, else the settlement id
     uint8_t dockCooldown;   // non-zero while the undock ring latch is armed
-#endif
-#if SH_FEATURE_HULL_DAMAGE
-    uint8_t hull;             // 0..hullCapacity(state), repaired at a station
-    uint8_t damageCooldown;   // flight ticks before another wall hit can damage
-#endif
-#if SH_FEATURE_PARTICLES
     ParticlePool particles;   // fixed debris pool, 4 slots
-#endif
-#if SH_FEATURE_JOBS
     uint16_t credits;
     uint8_t lastDelivery;   // jobs::DeliveryResult from the last resolved contract
-#if SH_FEATURE_CAMPAIGN
     // Campaign/voyage scalar state (the storage payload owns the fixed byte
     // order; this struct order is not serialized).
     uint8_t campaign;       // milestone bits FIRST..HOME
@@ -221,27 +177,15 @@ struct State {
     uint8_t ending;         // ending cards presented
     uint16_t offerCursor;   // serial before the current station board
     uint16_t offerSerial;   // working offer generator serial
-#else
-    uint16_t offerSerial;   // deterministic offer generator cursor
-#endif
     uint8_t offerCount;     // 0..kJobOffers valid entries in offers
     JobOffer offers[kJobOffers];
     ActiveJob activeJob;
-#endif
-#if SH_FEATURE_SHOP
-    // Shop levels: two bytes, persisted in voyage checkpoints, no extra UI state.
+    // Shop level: one byte, persisted in voyage checkpoints, no extra UI state.
     uint8_t airLevel;
-    uint8_t hullLevel;
-#endif
 };
 
-#if SH_FEATURE_JOBS
 inline bool hasActiveJob(const State &state) {
-#if SH_FEATURE_CAMPAIGN
     return state.activeJob.kind != kJobKindNone;
-#else
-    return state.activeJob.to != kJobNone;
-#endif
 }
 
 // Charge one flight tick to the campaign voyage clock. Job age is no longer
@@ -249,22 +193,15 @@ inline bool hasActiveJob(const State &state) {
 // frames never call a world step, and the station guard keeps a direct step()
 // call honest too.
 inline void tickVoyage(State &state) {
-#if SH_FEATURE_STATIONS
     if (state.docked >= 0)
         return;
-#endif
-#if SH_FEATURE_CAMPAIGN
     if (state.voyageTicks != 0xFFFFFFFFu)
         ++state.voyageTicks;
-#else
-    (void)state;
-#endif
 }
-#endif
 
 // True only for an x/y wall impact at or above the hard-hit speed. The impact
 // fields are latched by moveAxis(), so callers test this immediately after the
-// axis move that produced it; a mine hit uses impactAxis 3 and never matches.
+// axis move that produced it.
 inline bool hardWallImpact(const State &state) {
     return (state.impactAxis == 1 || state.impactAxis == 2) && state.impactSpeedQ8 >= kHardImpactSpeedQ8;
 }
@@ -329,36 +266,11 @@ inline void setCargo(State &state, int16_t cargo) {
     state.cargo = clampCargo(cargo);
 }
 
-// Tank and hull limits include the run-only shop upgrades. With SHOP=0 the
-// level fields do not exist and both helpers fold to the base constants, so
-// the lean/core/min paths keep their original values and code shape.
+// Tank capacity includes the run-only shop upgrade. The level field is
+// persisted in voyage checkpoints.
 inline int16_t airCapacity(const State &state) {
-#if SH_FEATURE_SHOP
     return static_cast<int16_t>(kAirCapacity + kAirCapacityPerLevel * state.airLevel);
-#else
-    (void)state;
-    return kAirCapacity;
-#endif
 }
-
-#if SH_FEATURE_HULL_DAMAGE
-inline uint8_t hullCapacity(const State &state) {
-#if SH_FEATURE_SHOP
-    return static_cast<uint8_t>(kHullMax + kHullCapacityPerLevel * state.hullLevel
-#if SH_FEATURE_EXPLORATION
-                                + ((state.pickups & (1u << exploration_data::PICKUP_CC)) != 0)
-#endif
-    );
-#else
-    (void)state;
-    return kHullMax
-#if SH_FEATURE_EXPLORATION
-           + ((state.pickups & (1u << exploration_data::PICKUP_CC)) != 0)
-#endif
-        ;
-#endif
-}
-#endif
 
 // ---------------------------------------------------------------------------
 // Motion integration
@@ -402,38 +314,20 @@ inline void reset(State &state) {
     // keeps every byte (including inactive feature state) deterministic without
     // a long field-by-field clear in the device image.
     state = State{};
-#if SH_FEATURE_EXPLORATION
     state.contactId = 0xFF;
-#endif
     state.x = kSpawnX;
     state.y = kSpawnY;
     state.ballast = static_cast<uint8_t>(neutralForNormalized(0));
     state.air = airCapacity(state);
-#if SH_FEATURE_MULTI_HULL
     state.hullClass = roster::kDefault;
-#endif
-#if SH_FEATURE_MINES
-    // The generated world ships MINE_COUNT = 8, so all bits start armed.
-    // hazards::reset() masks this to MINE_COUNT for callers that need it.
-    state.minesAlive = 0xFF;
-#endif
-#if SH_FEATURE_STATIONS
     state.docked = -1;
-#endif
-#if SH_FEATURE_HULL_DAMAGE
-    state.hull = hullCapacity(state);
-#endif
-#if SH_FEATURE_JOBS
     state.activeJob.to = kJobNone;
-#if SH_FEATURE_CAMPAIGN
     state.activeJob.kind = kJobKindNone;
     state.activeJob.mission = kMissionNone;
     state.activeJob.from = kJobNone;
     // Schema 1 starts with boardSeed 0, preserving the historical sequence.
     state.offerSerial = state.boardSeed;
     state.offerCursor = state.boardSeed;
-#endif
-#endif
 }
 
 // Physics-only half of the fixed step. Callers that own collision use this
@@ -509,12 +403,8 @@ inline void step(State &state, const Input &input) {
     advanceAxis(state.x, state.xFrac, state.vxQ8);
     advanceAxis(state.y, state.yFrac, state.vyQ8);
     ++state.ticks;
-#if SH_FEATURE_CAMPAIGN
-#if SH_FEATURE_JOBS
     // Campaign voyage clock; job timers are gone.
     tickVoyage(state);
-#endif
-#endif
 }
 
 }   // namespace game

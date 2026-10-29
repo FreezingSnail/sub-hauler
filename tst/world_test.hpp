@@ -193,9 +193,8 @@ inline void WorldSuite(TestRunner &runner) {
     }
 
     {
-        Test test("generated settlement and mine metadata accessors");
+        Test test("generated settlement metadata accessors");
         test.assertEqual(world::settlementCount(), 4, "settlement count");
-        test.assertEqual(world::mineCount(), 8, "mine count");
         test.assertEqual(world::spawnTileX(), exploration_data::DOCK_T_X / 8, "spawn tile x");
         test.assertEqual(world::spawnTileY(), exploration_data::DOCK_T_Y / 8, "spawn tile y");
 
@@ -208,12 +207,6 @@ inline void WorldSuite(TestRunner &runner) {
         test.assertEqual(settlement.pixel_y, exploration_data::DOCK_T_Y, "settlement pixel y");
         test.assertTrue(settlement.name != nullptr, "settlement name present");
         test.assertTrue(!world::settlementInfo(4, settlement), "settlement bounds");
-
-        world::Mine mine;
-        test.assertTrue(world::mineInfo(1, mine), "mine 1 exists");
-        test.assertEqual(mine.x, world::MINES[1].x, "mine x");
-        test.assertEqual(mine.y, world::MINES[1].y, "mine y");
-        test.assertTrue(!world::mineInfo(8, mine), "mine bounds");
         runner.add(test);
     }
 

@@ -1,9 +1,10 @@
 # Roadmap — Arduboy device port
 
-Status: **voyage progression release candidate, 2026-10-28** (`sub-hauler-7px`).
-`spike-trim/` remains a historical behavioural
-reference; the device firmware implements the full dock → accept → auto-load →
-undock → travel → deliver loop across three hulls. The cargo-packing minigame
+Status: **full release build, 2026-10-28** (`sub-hauler-7px`). The browser
+sandbox is retired (available in git history); the device firmware
+implements the full dock → WORK → auto-load → undock → travel → deliver loop
+across three hulls, plus campaign restoration, schema 5 cart checkpoints, synth
+music and the boot introduction. The cargo-packing minigame
 was removed because its value did not justify its flash/SRAM cost; the final
 pass moved UI text and fixed pilot art to FX and compacted generated metadata
 and AVR run state. This document sequences the port so each milestone leaves a
@@ -32,35 +33,26 @@ rewriting the game.
 
 ## Current baseline
 
-Measured 2026-10-28 after the voyage progression slice (full profile, default
-`CAMPAIGN=1 SAVE_VOYAGE=1 MUSIC=1 SAVE_CHART=0`):
+Measured 2026-10-29 on the fixed build:
 
 | Resource | Current | Planning ceiling | Hardware limit |
 | --- | ---: | ---: | ---: |
-| Flash | 27,010 B | 29,000 B | 29,696 B |
-| Static SRAM | 1,619 B | 1,700 B | 2,560 B |
-| Stack | 646 B combined probe / 666 B save chain | ≥600 B reserve | remainder |
+| Flash | 29,604 B | 29,000 B, advisory | 29,696 B |
+| Static SRAM | 1,660 B | 1,700 B | 2,560 B |
+| Stack | 652 B combined probe / 690 B save chain | ≥600 B reserve | remainder |
 
-The 1,700 B static ceiling is a planning target, not a hardware fact. The full
-image has **81 B** of static headroom and **941 B** of static free SRAM. The
-600 B stack target is unchanged; campaign+save measures **728 B**, the exact
-production save chain **666 B**, and the combined music probe **646 B**.
+The fixed build has **92 B** of hardware flash headroom, **40 B** static
+headroom and **900 B** static free SRAM. It is 604 B over the 29,000 B advisory
+line, which is accepted as advisory; the hardware limit is 29,696 B. Host tests
+pass **246**, tooling **119**, and all **14** default device suites print `P`.
+The separate flight probe covers 842 complete frames at 11.864 ms maximum with
+zero deadline misses and zero audio underruns/errors.
 
-The flash planning ceiling remains **29,000 B** (2,686 B under the 29,696 B
-hardware limit; the current image is **1,990 B** under the planning line).
-Dated cargo-free and campaign-slice checkpoints below remain historical.
-Any future persistent feature still needs a recorded cost.
-
-The shipped matrix is full **27,010 B / 1,619 B**, lean **14,406 B / 1,418 B**,
-core **11,812 B / 1,159 B**, min **5,912 B / 1,115 B**. Against the cargo-free
-baseline (20,196 / 17,362 / 14,756 / 10,456 B flash and 1,592 / 1,580 / 1,321 /
-1,259 B static), this pass saves **2,648 / 2,570 / 2,130 / 1,314 B flash** and
-**20 / 20 / 19 / 7 B static**. The measured `SAVE_CHART=1` variant was last
-recorded at 29,330 B / 1,690 B before the cargo carve; enabling it requires a
-fresh measurement.
+Feature-profile, development, runtime-USB, streaming-backend and EEPROM
+chart-save variants are retired. Dated checkpoints below remain historical.
 
 Whole-image measurements only: LTO makes per-symbol arithmetic misleading. Use
-`make size` and record profile A/B deltas.
+`make size` and record fixed-build A/B deltas.
 
 ### Cargo packing removal — 2026-10-24
 

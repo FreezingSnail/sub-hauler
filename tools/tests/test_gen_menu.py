@@ -20,7 +20,7 @@ class MenuGenerationTest(unittest.TestCase):
 
     def test_rules_exclude_enum_sentinel_and_preserve_economy(self):
         prices, maximum, items = gen_menu.load_shop_rules(ROOT / "src/shop.hpp")
-        self.assertEqual((prices, maximum, items), ([60, 70], 3, 2))
+        self.assertEqual((prices, maximum, items), ([60], 3, 1))
 
     def test_notice_selectors_match_generated_hint_order(self):
         for path, symbols in (("station_view.hpp", gen_menu.STATION_HINTS), ("shop_view.hpp", gen_menu.SHOP_HINTS)):
@@ -35,7 +35,7 @@ class MenuGenerationTest(unittest.TestCase):
         prices, maximum, items = gen_menu.load_shop_rules(ROOT / "src/shop.hpp")
         groups = (
             ("station_menu_128x64.png", gen_menu.station_panels(self.strings, self.station), 30),
-            ("shop_menu_128x64.png", gen_menu.shop_panels(self.strings, self.shop, prices, maximum, items), 32),
+            ("shop_menu_128x64.png", gen_menu.shop_panels(self.strings, self.shop, prices, maximum, items), 4),
         )
         for name, frames, count in groups:
             self.assertEqual(len(frames), count)
@@ -47,7 +47,7 @@ class MenuGenerationTest(unittest.TestCase):
     def test_baked_shop_selection_is_roomy_and_price_comes_from_rules(self):
         prices, maximum, items = gen_menu.load_shop_rules(ROOT / "src/shop.hpp")
         normal = gen_menu.shop_panels(self.strings, self.shop, prices, maximum, items)[0]
-        changed = gen_menu.shop_panels(self.strings, self.shop, [61, prices[1]], maximum, items)[0]
+        changed = gen_menu.shop_panels(self.strings, self.shop, [61], maximum, items)[0]
         self.assertNotEqual(normal.tobytes(), changed.tobytes())
         x = 127
         top = self.shop["kPanelRowY0"] - self.shop["kPanelInsetY"]

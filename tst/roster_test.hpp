@@ -5,24 +5,11 @@
 #include "../src/roster.hpp"
 #include "test.hpp"
 
-#if SH_FEATURE_STATIONS
 #include "../src/station.hpp"
-#endif
 
 // Roster rules, default reset, and the single-hull collapse. The state field,
 // title layout, and class art are covered by roster_view_test.hpp and
 // pilot_view_test.hpp.
-#if !SH_FEATURE_MULTI_HULL
-static_assert(roster::kClassCount == 1, "single-hull build exposes one class");
-static_assert(roster::classAt(0) == roster::kHauler, "single-hull index 0 is HAULER");
-static_assert(roster::classAt(2) == roster::kHauler, "single-hull out-of-range clamps to HAULER");
-static_assert(roster::next(roster::kMinnow) == roster::kHauler, "single-hull next stays HAULER");
-static_assert(roster::previous(roster::kLeviathan) == roster::kHauler, "single-hull previous stays HAULER");
-static_assert(!roster::valid(roster::kMinnow), "MINNOW is absent when MULTI_HULL=0");
-static_assert(!roster::valid(roster::kLeviathan), "LEVIATHAN is absent when MULTI_HULL=0");
-static_assert(roster::indexOf(roster::kLeviathan) == 0, "single-hull index is always 0");
-static_assert(roster::nameOf(roster::kMinnow)[0] == 'H', "single-hull host names fold to HAULER");
-#endif
 
 inline void RosterSuite(TestRunner &runner) {
     {
@@ -31,11 +18,7 @@ inline void RosterSuite(TestRunner &runner) {
 
         game::State state{};
         game::reset(state);
-#if SH_FEATURE_MULTI_HULL
         test.assertEqual(state.hullClass, static_cast<uint8_t>(roster::kHauler), "reset selects HAULER");
-#else
-        test.assertEqual(roster::kClassCount, 1, "single-hull roster count");
-#endif
         runner.add(test);
     }
 
@@ -52,7 +35,6 @@ inline void RosterSuite(TestRunner &runner) {
         runner.add(test);
     }
 
-#if SH_FEATURE_MULTI_HULL
     {
         Test test("roster: MINNOW/HAULER/LEVIATHAN order and records");
         test.assertEqual(roster::kClassCount, 3, "three classes");
@@ -110,7 +92,6 @@ inline void RosterSuite(TestRunner &runner) {
         runner.add(test);
     }
 
-#if SH_FEATURE_STATIONS
     {
         Test test("roster: selection persists across dock and undock");
         game::State state{};
@@ -124,18 +105,4 @@ inline void RosterSuite(TestRunner &runner) {
         test.assertEqual(state.hullClass, static_cast<uint8_t>(roster::kLeviathan), "hull survives a second dock");
         runner.add(test);
     }
-#endif
-#else
-    {
-        Test test("roster: single-hull build collapses to HAULER");
-        test.assertEqual(roster::classAt(0), roster::kHauler, "index 0");
-        test.assertEqual(roster::classAt(9), roster::kHauler, "out-of-range index");
-        test.assertEqual(roster::next(roster::kHauler), roster::kHauler, "next stays HAULER");
-        test.assertEqual(roster::previous(roster::kHauler), roster::kHauler, "previous stays HAULER");
-        test.assertEqual(roster::sanitize(roster::kMinnow), roster::kHauler, "disabled class sanitizes");
-        test.assertTrue(!roster::valid(roster::kLeviathan), "LEVIATHAN invalid");
-        test.assertTrue(roster::nameOf(roster::kLeviathan)[0] == 'H', "host name folds to HAULER");
-        runner.add(test);
-    }
-#endif
 }

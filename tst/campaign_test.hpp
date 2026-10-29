@@ -1,8 +1,6 @@
 #pragma once
 
-#include "../src/features.hpp"
 
-#if SH_FEATURE_CAMPAIGN
 
 #include "../src/campaign.hpp"
 #include "../src/exploration.hpp"
@@ -38,8 +36,7 @@ inline bool sameOffers(const game::State &a, const game::State &b) {
     if (a.offerCount != b.offerCount)
         return false;
     for (uint8_t i = 0; i < a.offerCount; ++i) {
-        if (a.offers[i].from != b.offers[i].from || a.offers[i].to != b.offers[i].to || a.offers[i].crates != b.offers[i].crates || a.offers[i].reward != b.offers[i].reward ||
-            a.offers[i].kind != b.offers[i].kind)
+        if (a.offers[i].to != b.offers[i].to || a.offers[i].reward != b.offers[i].reward)
             return false;
     }
     return true;
@@ -331,8 +328,7 @@ inline void CampaignSuite(TestRunner &runner) {
         game::reset(state);
         test.assertTrue(at(state, campaign::kTidewall), "dock at Tidewall");
         test.assertEqual(state.offerCount, 1, "one repeatable freight row");
-        test.assertEqual(state.offers[0].kind, game::kJobKindOrdinary, "the freight row is ordinary");
-        const jobs::RouteEconomy freightRoute = jobs::routeEconomy(state.offers[0].from, state.offers[0].to);
+        const jobs::RouteEconomy freightRoute = jobs::routeEconomy(campaign::kTidewall, state.offers[0].to);
         test.assertEqual(state.offers[0].reward, freightRoute.reward, "freight pays the route reward");
 
         test.assertEqual(work_view::rowCount(state), 2, "FIRST story row plus freight");
@@ -461,6 +457,37 @@ inline void CampaignSuite(TestRunner &runner) {
             exploration::update(state);
         test.assertEqual(state.surveys, recorded, "repeat dwell cannot change the survey mask");
         test.assertTrue(campaign::recordSurvey(state, campaign::kPumpSurveyId), "survey record is repeat-safe");
+        runner.add(test);
+    }
+
+    {
+        Test test("after FIRST a moving pilot near an unrecorded survey gets the stop hint");
+        game::State state;
+        game::reset(state);
+        world::Survey survey;
+        test.assertTrue(world::surveyInfo(0, survey), "generated pump survey exists");
+        state.x = static_cast<int16_t>(survey.pixel_x + 40);   // wide hint zone, outside the dwell zone
+        state.y = survey.pixel_y;
+        state.vxQ8 = exploration::kOperateSpeed + 1;           // moving, so no dwell target
+        state.vyQ8 = 0;
+        state.contactId = exploration::kNone;
+        exploration::update(state);
+        test.assertEqual(state.contactId, exploration::kNone, "no hint before FIRST");
+        test.assertEqual(state.contactTicks, 0, "no dwell progress before FIRST");
+
+        state.campaign = campaign::kMilestoneFirst;
+        exploration::update(state);
+        test.assertEqual(state.contactId, static_cast<uint8_t>(exploration::kSurveyBase + survey.id), "survey hint after FIRST");
+        test.assertEqual(state.contactTicks, 0, "hint alone does not record");
+        test.assertEqual(state.surveys, 0, "survey remains unrecorded");
+
+        state.x = survey.pixel_x;
+        state.vxQ8 = 0;
+        for (uint8_t i = 0; i < exploration::kDwellTicks; ++i)
+            exploration::update(state);
+        test.assertTrue(campaign::surveyRecorded(state, campaign::kPumpSurveyId), "stopping still records the survey");
+        exploration::update(state);
+        test.assertEqual(state.contactId, exploration::kNone, "recorded survey stops hinting");
         runner.add(test);
     }
 
@@ -608,4 +635,3 @@ inline void CampaignSuite(TestRunner &runner) {
     }
 }
 
-#endif   // SH_FEATURE_CAMPAIGN

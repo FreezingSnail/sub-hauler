@@ -8,7 +8,6 @@
 
 Arduboy2Base arduboy;
 
-#if SH_FEATURE_SAVE_VOYAGE && SH_FEATURE_MULTI_HULL && !SH_DEV_MODE
 uint16_t checksum() {
     uint16_t crc = 0;
     for (uint16_t i = 0; i < 1024; ++i)
@@ -42,9 +41,9 @@ void setup() {
         Blit::draw(0, 0, TITLE_MENU_WIDTH, TITLE_MENU_HEIGHT, title_menu + 2, frame, Blit::OVERWRITE);
         const uint16_t expected = checksum();
         voyage_flow::BootStatus status = {};
-        status.state = static_cast<voyage_flow::BootState>(frame / 9);
+        status.state = static_cast<voyage_flow::BootState>(frame / 6);
         background(0x5A);
-        voyage_view::drawTitle(status, frame % 3, (frame % 9) / 3, voyage_view::kTitleMenu);
+        voyage_view::drawTitle(status, frame % 2, (frame % 6) / 2, voyage_view::kTitleMenu);
         ok = (checksum() == expected) && ok;
         ++cases;
     }
@@ -69,7 +68,3 @@ void setup() {
 }
 
 void loop() {}
-#else
-void setup() { Serial.begin(9600); Serial.println(F("P")); }
-void loop() {}
-#endif

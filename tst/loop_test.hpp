@@ -1,8 +1,6 @@
 #pragma once
 
-#include "../src/features.hpp"
 
-#if SH_FEATURE_STATIONS && SH_FEATURE_JOBS
 
 #include "../src/game.hpp"
 #include "../src/jobs.hpp"
@@ -57,11 +55,7 @@ inline bool placeAtBerth(game::State &state, uint8_t settlementId) {
 }
 
 inline bool offersAllFrom(const game::State &state, uint8_t stationId) {
-    for (uint8_t i = 0; i < state.offerCount; ++i) {
-        if (state.offers[i].from != stationId)
-            return false;
-    }
-    return true;
+    return state.offerCount == 0 || state.docked == static_cast<int8_t>(stationId);
 }
 
 // The work board lists restoration rows first, then exactly one freight row.
@@ -181,19 +175,13 @@ inline void LoopSuite(TestRunner &runner) {
 
     {
         Test test("all playable hulls complete dock, accept, auto-load, undock, and deliver");
-#if SH_FEATURE_MULTI_HULL
         const uint8_t hullCount = 3;
-#else
-        const uint8_t hullCount = 1;
-#endif
         for (uint8_t h = 0; h < hullCount; ++h) {
             Fixture fake;
             game::State state;
             uint8_t station = game::kJobNone;
             test.assertTrue(dockFromSpawn(state, fake, station), "class loop docks at spawn");
-#if SH_FEATURE_MULTI_HULL
             state.hullClass = h;
-#endif
             uint8_t freightIndex = 0;
             work_view::Row freight{work_view::kRowNone, 0};
             test.assertTrue(freightRow(state, freightIndex, freight), "class loop finds the freight row");
@@ -216,4 +204,3 @@ inline void LoopSuite(TestRunner &runner) {
     }
 }
 
-#endif   // SH_FEATURE_STATIONS && SH_FEATURE_JOBS

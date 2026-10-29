@@ -6,9 +6,6 @@
 #include "src/exploration_view.hpp"
 #include "src/pilot.hpp"
 #include "src/world_fx.hpp"
-#if SH_DEV_MODE
-#include "src/dev_mode.hpp"
-#endif
 Arduboy2Base arduboy;
 void setup() {
     Serial.begin(9600);
@@ -16,7 +13,6 @@ void setup() {
     delay(100);
     FX::begin(FX_DATA_PAGE);
     bool ok = true;
-#if SH_FEATURE_EXPLORATION
     game::State state;
     game::resetWorld(state);
     const auto cutter = exploration_data::pickup(exploration_data::PICKUP_W);
@@ -45,26 +41,6 @@ void setup() {
     const cave::Camera camera = cave::cameraCenteredAtPixel(purse.x, purse.y);
     exploration_view::draw(Arduboy2Base::sBuffer, state, camera);
     FX::display(CLEAR_BUFFER);
-#endif
-#if SH_DEV_MODE
-    game::State inspect;
-    game::resetWorld(inspect);
-    inspect.air = 0;
-    inspect.x = 100;
-    inspect.y = 100;
-    dev_mode::step(inspect, game::Input{false, false, false, true}, true);
-    ok = ok && inspect.x == 100 + dev_mode::kFastStepPixels && inspect.air == game::airCapacity(inspect);
-#if SH_FEATURE_STATIONS
-    ok = ok && inspect.docked == -1;
-#endif
-#if SH_FEATURE_FOG_CHART
-    chart::State chart;
-    chart::reset(chart);
-    dev_mode::revealChart(chart);
-    for (uint16_t i = 0; i < world::CHART_BYTES; ++i)
-        ok = ok && chart.explored[i] == 0xFF;
-#endif
-#endif
     Serial.println(ok ? F("P") : F("F"));
 }
 void loop() {

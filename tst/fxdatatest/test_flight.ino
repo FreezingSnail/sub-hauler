@@ -22,28 +22,11 @@
 #ifndef ATM_FX_COMPACT_DIAG
 #define ATM_FX_COMPACT_DIAG 1
 #endif
-#ifndef SH_FLIGHT_PROBE
-#define SH_FLIGHT_PROBE 1
-#endif
 #include <avr/io.h>
 
-// The production sketch's release build emits a USB-free main that hides the
-// Ardens serial marker. Force USB for this harness.
-#undef SH_RELEASE_NO_USB
-#define SH_RELEASE_NO_USB 0
+#include "src/app.hpp"
+#include "src/music_diag.hpp"
 
-#define setup production_setup
-#define loop production_loop
-#include "production_sketch.hpp"
-#undef setup
-#undef loop
-
-#if SH_FEATURE_MUSIC && SH_FEATURE_STATIONS && SH_FEATURE_EXPLORATION
-
-namespace flight_probe {
-uint32_t sceneUs = 0;
-uint32_t hudUs = 0;
-} // namespace flight_probe
 
 extern "C" char __bss_end;
 
@@ -56,23 +39,12 @@ bool s_stackGuardOk = true;
 constexpr uint32_t kFullFlightTargetUs = 13000;
 constexpr uint32_t kHardDeadlineUs = 16000;
 constexpr uint16_t kGapLimitTicks = 8;
-constexpr uint8_t kHistogramBins = 17;   // 0..15 ms, overflow
-constexpr uint8_t kCaseCount = 32;
-
-uint16_t s_histogram[kHistogramBins];
-uint32_t s_caseMax[kCaseCount];
-uint8_t s_caseMisses[kCaseCount];
 uint16_t s_musicGapMax;
 bool s_musicError;
 bool s_musicUnderrun;
 uint32_t s_frames;
 uint32_t s_sumFrameUs;
 uint32_t s_maxFrameUs;
-uint32_t s_maxUpdateUs;
-uint32_t s_maxSceneUs;
-uint32_t s_maxHudUs;
-uint32_t s_maxDisplayUs;
-uint32_t s_maxServiceUs;
 uint16_t s_deadlineMisses;
 uint16_t s_coldFrames;
 uint16_t s_warmFrames;
@@ -84,7 +56,6 @@ uint8_t s_case;
 bool s_caseOk = true;
 bool s_cueOk = true;
 uint16_t s_failMask = 0;
-uint32_t s_caseFailMask = 0;
 int16_t s_revPeakDelta = 0;
 int16_t s_revVx = 0;
 uint16_t s_minStackPointer = 0xFFFF;
@@ -92,7 +63,6 @@ uint16_t s_minStackPointer = 0xFFFF;
 void fail(uint16_t bit) {
     s_caseOk = false;
     s_failMask |= bit;
-    s_caseFailMask |= (1UL << s_case);
 }
 
 uint16_t readStackPointer() {
@@ -103,31 +73,13 @@ uint16_t readStackPointer() {
     return static_cast<uint16_t>(low) | (static_cast<uint16_t>(high) << 8);
 }
 
-void record(uint32_t updateUs, uint32_t sceneUs, uint32_t hudUs, uint32_t displayUs, uint32_t serviceUs, uint32_t frameUs) {
+void record(uint32_t frameUs) {
     ++s_frames;
     s_sumFrameUs += frameUs;
     if (frameUs > s_maxFrameUs)
         s_maxFrameUs = frameUs;
-    if (frameUs > s_caseMax[s_case])
-        s_caseMax[s_case] = frameUs;
-    if (updateUs > s_maxUpdateUs)
-        s_maxUpdateUs = updateUs;
-    if (sceneUs > s_maxSceneUs)
-        s_maxSceneUs = sceneUs;
-    if (hudUs > s_maxHudUs)
-        s_maxHudUs = hudUs;
-    if (displayUs > s_maxDisplayUs)
-        s_maxDisplayUs = displayUs;
-    if (serviceUs > s_maxServiceUs)
-        s_maxServiceUs = serviceUs;
-    if (frameUs >= kHardDeadlineUs) {
+    if (frameUs >= kHardDeadlineUs)
         ++s_deadlineMisses;
-        ++s_caseMisses[s_case];
-    }
-    uint8_t bin = static_cast<uint8_t>(frameUs / 1000u);
-    if (bin >= kHistogramBins)
-        bin = kHistogramBins - 1;
-    ++s_histogram[bin];
 }
 
 // Place the boat so the shipping follow target equals the requested camera
@@ -141,7 +93,6 @@ void placeAtCamera(int16_t cameraX, int16_t cameraY, bool clearCache) {
     s_state.vxQ8 = 0;
     s_state.vyQ8 = 0;
     s_state.air = game::airCapacity(s_state);
-    s_state.hull = game::hullCapacity(s_state);
     s_state.docked = -1;
     s_state.dockCooldown = 255;
     game::snapCamera(s_state);
@@ -175,30 +126,18 @@ bool flightFrame(uint8_t buttons, bool cold, bool measure) {
     s_previousButtons = buttons;
     s_present = true;
 
-    const uint32_t updateStart = micros();
     updateFlight();
-    const uint32_t updateEnd = micros();
 
-    uint32_t displayUs = 0;
-    if (s_present) {
-        const uint32_t displayStart = micros();
+    if (s_present)
         FX::display(CLEAR_BUFFER);
-        displayUs = micros() - displayStart;
-    }
-    const uint32_t serviceStart = micros();
     music::service();
-    const uint32_t serviceUs = micros() - serviceStart;
     const uint32_t frameUs = micros() - frameStart;
 
     if (s_screen != Screen::Pilot)
         fail(1);
 
     if (measure) {
-        const uint32_t total = updateEnd - updateStart;
-        const uint32_t sceneUs = flight_probe::sceneUs;
-        const uint32_t hudUs = flight_probe::hudUs;
-        const uint32_t updateUs = total > sceneUs + hudUs ? total - sceneUs - hudUs : 0;
-        record(updateUs, sceneUs, hudUs, displayUs, serviceUs, frameUs);
+        record(frameUs);
 
         const cave::Camera camera = pilot_view::cameraForState(s_state);
         s_remainderMask |= static_cast<uint8_t>(1u << (camera.subY & 7));
@@ -226,10 +165,10 @@ void runSequence(const uint8_t *buttons, uint16_t count, bool cold) {
 }
 
 void noteMusic() {
-    if (music::maxGapTicks() > s_musicGapMax)
-        s_musicGapMax = music::maxGapTicks();
+    if (music_diag::maxGapTicks() > s_musicGapMax)
+        s_musicGapMax = music_diag::maxGapTicks();
     s_musicError = s_musicError || music::error();
-    s_musicUnderrun = s_musicUnderrun || music::underrun();
+    s_musicUnderrun = s_musicUnderrun || music_diag::underrun();
 }
 
 void setCue(uint8_t cue) {
@@ -390,12 +329,6 @@ void setup() {
         music::toggleEnabled();
     music::resume();
 
-    for (uint8_t i = 0; i < kHistogramBins; ++i)
-        s_histogram[i] = 0;
-    for (uint8_t i = 0; i < kCaseCount; ++i) {
-        s_caseMax[i] = 0;
-        s_caseMisses[i] = 0;
-    }
     s_stackGuard = &__bss_end + 1;
     for (uint8_t i = 0; i < kStackGuardBytes; ++i)
         s_stackGuard[i] = static_cast<char>(0xA5);
@@ -440,29 +373,10 @@ void setup() {
     Serial.print(s_frames);
     Serial.print(F(" max_us="));
     Serial.print(s_maxFrameUs);
-    Serial.print(F(" mean_us="));
-    Serial.print(meanFrameUs);
     Serial.print(F(" misses16="));
-    Serial.print(s_deadlineMisses);
-    Serial.print(F(" update_max="));
-    Serial.print(s_maxUpdateUs);
-    Serial.print(F(" scene_max="));
-    Serial.print(s_maxSceneUs);
-    Serial.print(F(" hud_max="));
-    Serial.print(s_maxHudUs);
-    Serial.print(F(" display_max="));
-    Serial.print(s_maxDisplayUs);
-    Serial.print(F(" service_max="));
-    Serial.println(s_maxServiceUs);
-    Serial.print(F("flight hist="));
-    for (uint8_t i = 0; i < kHistogramBins; ++i) {
-        Serial.print(s_histogram[i]);
-        Serial.print(i + 1 == kHistogramBins ? '\n' : '/');
-    }
+    Serial.println(s_deadlineMisses);
     Serial.print(F("flight music gap="));
     Serial.print(s_musicGapMax);
-    Serial.print(F(" svc_us="));
-    Serial.print(s_maxServiceUs);
     Serial.print(F(" underruns="));
     Serial.print(s_musicUnderrun ? 1 : 0);
     Serial.print(F(" errors="));
@@ -471,62 +385,16 @@ void setup() {
     Serial.print(s_remainderMask, HEX);
     Serial.print(F(" cue="));
     Serial.print(s_cueMask, HEX);
-    Serial.print(F(" cold="));
-    Serial.print(s_coldFrames);
-    Serial.print(F(" warm="));
-    Serial.print(s_warmFrames);
-    Serial.print(F(" bounds="));
-    Serial.print(s_boundaryRuns);
     Serial.print(F(" cases_ok="));
     Serial.print(s_caseOk ? 1 : 0);
     Serial.print(F(" timing_ok="));
     Serial.print(timingOk ? 1 : 0);
     Serial.print(F(" music_ok="));
     Serial.print(musicOk ? 1 : 0);
-    Serial.print(F(" stack_guard="));
-    Serial.print(s_stackGuardOk ? 1 : 0);
     Serial.print(F(" fail_mask="));
-    Serial.print(s_failMask);
-    Serial.print(F(" rev="));
-    Serial.print(s_revPeakDelta);
-    Serial.print('/');
-    Serial.println(s_revVx);
-    Serial.print(F("flight case_max="));
-    for (uint8_t i = 0; i < kCaseCount; ++i) {
-        Serial.print(s_caseMax[i]);
-        if (i + 1 == kCaseCount)
-            Serial.println();
-        else
-            Serial.print(',');
-    }
-    Serial.print(F("flight case_miss="));
-    for (uint8_t i = 0; i < kCaseCount; ++i) {
-        Serial.print(s_caseMisses[i]);
-        if (i + 1 == kCaseCount)
-            Serial.println();
-        else
-            Serial.print(',');
-    }
-    Serial.print(F("flight case_fail_mask="));
-    Serial.println(s_caseFailMask, HEX);
-
+    Serial.println(s_failMask);
     Serial.println(coverageOk && timingOk && musicOk ? 'P' : 'F');
 }
 
 void loop() {}
 
-#else
-
-#include <Arduboy2.h>
-
-Arduboy2Base arduboy;
-
-void setup() {
-    Serial.begin(9600);
-    Serial.println(F("flight probe requires music/stations/exploration"));
-    Serial.println('F');
-}
-
-void loop() {}
-
-#endif

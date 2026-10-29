@@ -14,12 +14,7 @@ inline uint8_t pixelAt(const uint8_t *buffer, int16_t x, int16_t y) {
 }
 
 inline void selectHull(game::State &state, roster::HullClass hull) {
-#if SH_FEATURE_MULTI_HULL
     state.hullClass = static_cast<uint8_t>(hull);
-#else
-    (void)state;
-    (void)hull;
-#endif
 }
 
 }   // namespace pilot_view_test

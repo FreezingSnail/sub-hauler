@@ -109,7 +109,6 @@ inline void drawHauler(uint8_t *buffer, int16_t left, int16_t top, bool mirror, 
     fillLocal(buffer, left, top, mirror, 23, 5, 2, 1, false);
 }
 
-#if SH_FEATURE_MULTI_HULL
 // MINNOW: 24x7 rounded shuttle with one door and a short offset sail.
 inline void drawMinnow(uint8_t *buffer, int16_t left, int16_t top, bool mirror, bool loaded) {
     fillLocal(buffer, left, top, mirror, 15, 1, 6, 1, true);
@@ -148,7 +147,6 @@ inline void drawLeviathan(uint8_t *buffer, int16_t left, int16_t top, bool mirro
 
     fillLocal(buffer, left, top, mirror, 0, 4, 1, 2, false);
 }
-#endif
 #endif   // !__AVR__
 
 // Draw one hull body at a footprint origin. Title and pilot share this exact
@@ -158,7 +156,6 @@ inline void drawAt(uint8_t *buffer, int16_t left, int16_t top, bool mirror, bool
 #if defined(__AVR__)
     (void)buffer;
     const uint16_t frame = static_cast<uint16_t>((mirror ? 2 : 0) + (loaded ? 1 : 0));
-#if SH_FEATURE_MULTI_HULL
     // if-chain, not switch: a three-case switch emits a RAM jump table.
     if (hull == roster::kMinnow) {
         Blit::draw(left, top, MINNOW_WIDTH, MINNOW_HEIGHT, minnow + 2, frame, Blit::PLUSMASK);
@@ -168,12 +165,8 @@ inline void drawAt(uint8_t *buffer, int16_t left, int16_t top, bool mirror, bool
         Blit::draw(left, top, LEVIATHAN_WIDTH, LEVIATHAN_HEIGHT, leviathan + 2, frame, Blit::PLUSMASK);
         return;
     }
-#else
-    (void)hull;
-#endif
     Blit::draw(left, top, HAULER_WIDTH, HAULER_HEIGHT, hauler + 2, frame, Blit::PLUSMASK);
 #else
-#if SH_FEATURE_MULTI_HULL
     if (hull == roster::kMinnow) {
         drawMinnow(buffer, left, top, mirror, loaded);
         return;
@@ -182,9 +175,6 @@ inline void drawAt(uint8_t *buffer, int16_t left, int16_t top, bool mirror, bool
         drawLeviathan(buffer, left, top, mirror, loaded);
         return;
     }
-#else
-    (void)hull;
-#endif
     drawHauler(buffer, left, top, mirror, loaded);
 #endif
 }
@@ -198,11 +188,7 @@ inline void draw(uint8_t *buffer, const game::State &state, const cave::Camera &
     if (!visible(left, top))
         return;
 
-#if SH_FEATURE_MULTI_HULL
     const roster::HullClass hull = roster::sanitize(static_cast<roster::HullClass>(state.hullClass));
-#else
-    const roster::HullClass hull = roster::kHauler;
-#endif
     drawAt(buffer, left, top, state.facingLeft, state.cargo > 0, hull);
 }
 

@@ -39,9 +39,6 @@ void setup() {
     ok = ok && survey.id == world::SURVEY_PUMP && survey.pixel_x == 2192 && survey.pixel_y == 176;
     ok = ok && world::surveyInfo(1, survey) && survey.id == world::SURVEY_LIFT;
     ok = ok && world::surveyCount() == 2 && !world::surveyInfo(2, survey);
-    world::Mine mine;
-    ok = world::mineInfo(1, mine) && ok;
-    ok = ok && mine.x == exploration_data::ROOM_K_X + 20 && mine.y == exploration_data::ROOM_K_Y - 20;
     world::Current current;
     ok = world::currentInfo(0, current) && ok;
     ok = ok && current.w == 32 && current.h == 16 && current.ax_q8 == 4096 && current.ay_q8 == 0;

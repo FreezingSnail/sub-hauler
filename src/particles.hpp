@@ -2,10 +2,8 @@
 
 #include <stdint.h>
 
-#include "features.hpp"
 #include "game.hpp"
 
-#if SH_FEATURE_PARTICLES
 
 // Fixed-size debris/wash pool. Pure C++: no heap, String, float, or cart read.
 //
@@ -72,4 +70,3 @@ inline bool anyAlive(const game::State &state) {
 
 }   // namespace particles
 
-#endif   // SH_FEATURE_PARTICLES

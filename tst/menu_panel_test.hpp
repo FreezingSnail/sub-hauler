@@ -6,7 +6,6 @@
 #include "test.hpp"
 
 inline void MenuPanelSuite(TestRunner &runner) {
-#if SH_STATION_MENU_PANELS
     {
         Test test("all selectable station boards map uniquely to generated frames");
         bool seen[STATION_MENU_FRAMES] = {};
@@ -53,24 +52,21 @@ inline void MenuPanelSuite(TestRunner &runner) {
         test.assertEqual(station_view::panelHint(state), station_view::kPanelServiceHint, "service hint overrides carried-job hint");
         runner.add(test);
     }
-#endif
-#if SH_SHOP_MENU_PANELS
     {
         Test test("every shop level and selection has a distinct generated screen");
         bool seen[SHOP_MENU_FRAMES] = {};
         uint8_t count = 0;
         for (uint8_t air = 0; air <= shop::kMaxLevel; ++air)
-            for (uint8_t hull = 0; hull <= shop::kMaxLevel; ++hull)
-                for (uint8_t row = 0; row < shop::kItemCount; ++row) {
-                    const uint16_t frame = shop_view::panelFrame(air, hull, row);
-                    test.assertTrue(shop_view::validPanelFrame(air, hull, row), "purchasable levels and selected rows are valid");
-                    test.assertTrue(frame < SHOP_MENU_FRAMES, "shop frame is in the generated sheet");
-                    if (frame < SHOP_MENU_FRAMES) {
-                        test.assertTrue(!seen[frame], "each shop state has its own screen");
-                        seen[frame] = true;
-                        ++count;
-                    }
+            for (uint8_t row = 0; row < shop::kItemCount; ++row) {
+                const uint16_t frame = shop_view::panelFrame(air, row);
+                test.assertTrue(shop_view::validPanelFrame(air, row), "purchasable levels and selected rows are valid");
+                test.assertTrue(frame < SHOP_MENU_FRAMES, "shop frame is in the generated sheet");
+                if (frame < SHOP_MENU_FRAMES) {
+                    test.assertTrue(!seen[frame], "each shop state has its own screen");
+                    seen[frame] = true;
+                    ++count;
                 }
+            }
         test.assertEqual(count, SHOP_MENU_FRAMES, "every generated shop frame is reachable");
         game::State state;
         game::resetWorld(state);
@@ -79,9 +75,9 @@ inline void MenuPanelSuite(TestRunner &runner) {
         test.assertEqual(shop_view::panelHint(state, shop::kAir), shop_view::kPanelLowCredits, "low credits stays visible");
         state.airLevel = shop::kMaxLevel;
         test.assertEqual(shop_view::panelHint(state, shop::kAir), shop_view::kPanelMaxLevel, "MAX takes precedence over low credits");
-        state.credits = shop::kHullPrice;
-        test.assertEqual(shop_view::panelHint(state, shop::kHull), shop_view::kPanelBuy, "affordable upgrade shows buy controls");
+        state.airLevel = 0;
+        state.credits = shop::kAirPrice;
+        test.assertEqual(shop_view::panelHint(state, shop::kAir), shop_view::kPanelBuy, "affordable upgrade shows buy controls");
         runner.add(test);
     }
-#endif
 }

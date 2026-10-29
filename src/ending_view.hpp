@@ -2,9 +2,7 @@
 
 #include <stdint.h>
 
-#include "features.hpp"
 
-#if SH_FEATURE_CAMPAIGN
 
 #include "campaign.hpp"
 #include "game.hpp"
@@ -124,4 +122,3 @@ inline void draw(uint8_t card, const game::State &state) {
 
 }   // namespace ending_view
 
-#endif   // SH_FEATURE_CAMPAIGN

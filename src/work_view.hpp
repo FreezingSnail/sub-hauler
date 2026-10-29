@@ -2,16 +2,12 @@
 
 #include <stdint.h>
 
-#include "features.hpp"
 
-#if SH_FEATURE_JOBS
 
 #include "game.hpp"
 #include "jobs.hpp"
-#if SH_FEATURE_CAMPAIGN
 #include "campaign.hpp"
 #include "generated/exploration.hpp"
-#endif
 
 #if defined(__AVR__)
 
@@ -60,17 +56,12 @@ inline bool jobActive(const game::State &state) {
 }
 
 inline uint8_t storyCount(const game::State &state) {
-#if SH_FEATURE_CAMPAIGN
     if (state.docked < 0)
         return 0;
     uint8_t count = 0;
     while (count < 0xFF && campaign::workMissionAt(state, static_cast<uint8_t>(state.docked), count) != campaign::kMissionNone)
         ++count;
     return count;
-#else
-    (void)state;
-    return 0;
-#endif
 }
 
 // Accepting any job loads the cargo and clears the row list. The WORK screen
@@ -89,7 +80,6 @@ inline Row rowAt(const game::State &state, uint8_t index) {
     if (jobActive(state))
         return row;
 
-#if SH_FEATURE_CAMPAIGN
     if (index < storyCount(state)) {
         const uint8_t mission = campaign::workMissionAt(state, static_cast<uint8_t>(state.docked), index);
         row.kind = mission == campaign::kWorkEnding ? kRowEnding : kRowStory;
@@ -97,7 +87,6 @@ inline Row rowAt(const game::State &state, uint8_t index) {
         return row;
     }
     index = static_cast<uint8_t>(index - storyCount(state));
-#endif
     if (index == 0 && state.offerCount > 0) {
         row.kind = kRowFreight;
         row.mission = kNoMission;
@@ -106,28 +95,26 @@ inline Row rowAt(const game::State &state, uint8_t index) {
 }
 
 // Dispatch A on a WORK row. Ending rows are presentation-only and return false;
-// the sketch opens the cards itself.
+// the sketch opens the cards itself. Survey story rows are also presentation
+// leads: the sketch opens the chart, and recording still happens in the field.
 inline bool accept(game::State &state, const Row &row) {
     if (row.kind == kRowFreight)
         return jobs::accept(state, 0);
-#if SH_FEATURE_CAMPAIGN
     if (row.kind == kRowStory)
         return campaign::accept(state, row.mission);
-#endif
     return false;
 }
 
 #if defined(__AVR__)
 
-#if SH_FEATURE_CAMPAIGN
-// Branches, not a switch: the six 24-bit labels would emit a RAM-resident
-// CSWTCH table. Survey ids are holes and never reach a WORK row.
+// Branches, not a switch: the story labels would emit a RAM-resident CSWTCH
+// table. A survey row shares its thread label with the later cargo row.
 inline uint24_t missionLabel(uint8_t mission) {
     if (mission == campaign::kFirst)
         return txt_first;
-    if (mission == campaign::kPump)
+    if (mission == campaign::kPumpSurvey || mission == campaign::kPump)
         return txt_pump;
-    if (mission == campaign::kLift)
+    if (mission == campaign::kLiftSurvey || mission == campaign::kLift)
         return txt_lift;
     if (mission == campaign::kBeacon)
         return txt_beacon;
@@ -191,7 +178,6 @@ inline uint24_t equipmentClue(const game::State &state) {
         return txt_seal_rumor;
     return 0;
 }
-#endif
 
 inline void drawHeader(const game::State &state) {
     text::normal();
@@ -207,33 +193,26 @@ inline void drawActive(const game::State &state) {
     text::at(kRowX, kRowY0);
     text::print(txt_carrying);
     text::character(' ');
-#if SH_FEATURE_CAMPAIGN
     if (state.activeJob.kind == game::kJobKindCampaign) {
         text::print(missionLabel(state.activeJob.mission));
     } else {
         text::print(txt_cargo);
     }
-#else
-    text::print(txt_cargo);
-#endif
 
     text::at(kRowX, static_cast<uint8_t>(kRowY0 + kRowStep));
     text::print(txt_deliver_to);
     text::at(kRowX, static_cast<uint8_t>(kRowY0 + 2 * kRowStep));
     text::print(station_view::nameFor(state.activeJob.to));
 
-#if SH_FEATURE_CAMPAIGN
     const uint24_t clue = clueFor(state, static_cast<uint8_t>(state.docked));
     if (clue) {
         text::at(kRowX, kClueY);
         text::print(clue);
     }
-#endif
     text::at(3, kHintY);
     text::print(txt_back_hint);
 }
 
-#if SH_FEATURE_CAMPAIGN
 inline void drawStoryRow(uint8_t y, const Row &row, bool selected) {
     if (selected) {
         arduboy.fillRect(0, y, 128, kRowInvertH, WHITE);
@@ -252,7 +231,6 @@ inline void drawStoryRow(uint8_t y, const Row &row, bool selected) {
     }
     text::normal();
 }
-#endif
 
 inline void drawFreightRow(uint8_t y, const game::State &state, bool selected) {
     if (selected) {
@@ -300,27 +278,23 @@ inline void draw(const game::State &state, uint8_t selected) {
         const uint8_t y = static_cast<uint8_t>(kRowY0 + visible * kRowStep);
         if (row.kind == kRowFreight)
             drawFreightRow(y, state, index == selected);
-#if SH_FEATURE_CAMPAIGN
         else if (row.kind == kRowStory || row.kind == kRowEnding)
             drawStoryRow(y, row, index == selected);
-#endif
     }
 
-#if SH_FEATURE_CAMPAIGN
     const uint24_t clue = clueFor(state, static_cast<uint8_t>(state.docked));
     const uint24_t hint = clue ? clue : equipmentClue(state);
     if (hint) {
         text::at(3, kClueY);
         text::print(hint);
     }
-#endif
 
     text::at(3, kHintY);
-    text::print(txt_work_accept_hint);
+    const uint8_t mission = rowAt(state, selected).mission;
+    text::print(mission == campaign::kPumpSurvey || mission == campaign::kLiftSurvey ? txt_survey_chart_hint : txt_work_accept_hint);
 }
 
 #endif   // __AVR__
 
 }   // namespace work_view
 
-#endif   // SH_FEATURE_JOBS

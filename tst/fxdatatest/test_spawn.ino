@@ -9,9 +9,7 @@
 #include <Arduboy2.h>
 #include <ArduboyFX.h>
 
-#include "src/features.hpp"
 
-#if SH_FEATURE_SAVE_VOYAGE
 
 #include "src/campaign.hpp"
 #include "src/cave.hpp"
@@ -59,9 +57,7 @@ struct RamStorage {
 uint8_t RamStorage::bytes[voyage_save::kSlotBytes];
 RamStorage storage;
 game::State state;
-#if SH_FEATURE_FOG_CHART
 chart::State chartState;
-#endif
 
 struct FxReader {
     uint8_t tileByte(uint16_t index) {
@@ -91,18 +87,14 @@ void setup() {
     FX::setCursorRange(0, 32767);
     for (uint16_t i = 0; i < voyage_save::kSlotBytes; ++i)
         storage.bytes[i] = 0xFF;
-#if SH_FEATURE_FOG_CHART
     chart::reset(chartState);
-#endif
 
     bool ok = true;
     world::Berth tidewall;
     ok = world::berthInfo(static_cast<uint8_t>(campaign::kTidewall), tidewall) && ok;
     ok = (voyage_save::newVoyage(state
-#if SH_FEATURE_FOG_CHART
                                  ,
                                  chartState
-#endif
                                  ,
                                  storage) == voyage_save::kSaved) &&
          ok;
@@ -114,10 +106,8 @@ void setup() {
     state.cameraXQ4 = 0;
     state.cameraYQ4 = 0;
     ok = (voyage_save::load(state
-#if SH_FEATURE_FOG_CHART
                             ,
                             chartState
-#endif
                             ,
                             storage) == voyage_save::kLoaded) &&
          ok;
@@ -140,18 +130,3 @@ void setup() {
 void loop() {
 }
 
-#else
-
-Arduboy2Base arduboy;
-
-void setup() {
-    Serial.begin(9600);
-    arduboy.begin();
-    Serial.println(F("save disabled / skipped"));
-    Serial.println('P');
-}
-
-void loop() {
-}
-
-#endif

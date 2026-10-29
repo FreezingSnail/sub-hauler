@@ -2,7 +2,6 @@
 
 #include <stdint.h>
 
-#include "features.hpp"
 #include "game.hpp"
 #include "generated/music_regions.hpp"
 

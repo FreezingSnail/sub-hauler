@@ -1,8 +1,9 @@
 # Offline reference audio
 
-`tools/gen_audio_ref.py` is called by `tools/gen.sh`; `make gen` is the only
-entry point. It produces deterministic mono 8 kHz s16le references for the six
-authored scores without a GUI or audio device.
+`tools/gen_audio_ref.py` is archival comparison evidence, not a firmware build
+input. Run it explicitly with `make gen-audio`. It produces deterministic mono
+8 kHz s16le references for the six authored scores without a GUI or audio
+device.
 
 ## Pipeline
 
@@ -39,13 +40,12 @@ Generated PCM/WAV/50 kHz intermediates stay under the ignored `build/` tree.
 
 ## Verification
 
-Use `AUDIO_REFERENCE_FORCE=1 make gen` to rebuild the capture tool and render
-all six cues afresh through the single generation entry. Compare output hashes
-between two such runs when validating renderer determinism; ordinary generation
-can reuse verified caches.
+Use `AUDIO_REFERENCE_FORCE=1 make gen-audio` to rebuild the capture tool and
+render all six cues afresh. Compare output hashes between two such runs when
+validating renderer determinism; ordinary runs can reuse verified caches.
+`make gen-check` covers the shipping synth/FX generation only.
 
-`make gen-check` re-runs the full generation and requires the manifest and all
-streams to be byte-identical. The native suite covers the quarter-phase
+The native suite covers the quarter-phase
 resampler, DC/passband/stopband behavior, guard contract and capture-step
 arithmetic. The Python suite covers exact sample counts, WAV headers, manifest
 provenance and the global calibration contract.
