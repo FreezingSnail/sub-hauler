@@ -36,6 +36,11 @@ class FxTables {
         FX::readDataBytes(static_cast<uint24_t>(explorationChart + index), buffer, length);
     }
 
+    // Terrain is a bounded burst set: eight 128-byte page strips when the
+    // camera Y is page-aligned, or the same eight plus four 32-byte tail strips for
+    // a sub-page Y shift. test_music measures that general path with the real
+    // streaming player (gap remains well inside the 128-tick limit), so no
+    // per-strip service call is added to the hot render loop.
     void terrainBytes(uint32_t index, uint8_t *buffer, uint16_t length) {
         FX::readDataBytes(static_cast<uint24_t>(explorationTerrain + index), buffer, length);
     }

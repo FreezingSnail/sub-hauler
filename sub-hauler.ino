@@ -3,12 +3,25 @@
 // M3 station slice: world-aware submarine, HAULER silhouette, compact HUD, and
 // the D-pad flight contract. Slow boats inside a settlement ring dock; the
 // station board refills, repairs, and undocks. M6 adds a paused B-key chart
-// with persistent fog exploration and the A-key sonar ping. The sketch owns
+// with persistent fog exploration. The sketch owns
 // pilot state, the FX table reader, the visible-window cache, and the screen
 // state machine; rules and drawing stay in src/ headers.
 
 #include <Arduboy2.h>
 #include <ArduboyFX.h>
+
+// The device flight benchmark times the real scene/HUD calls from inside the
+// shipping draw path. The hooks compile out of every normal image.
+#ifndef SH_FLIGHT_PROBE
+#define SH_FLIGHT_PROBE 0
+#endif
+#if SH_FLIGHT_PROBE
+namespace flight_probe {
+extern uint32_t sceneUs;
+extern uint32_t hudUs;
+}
+#endif
+
 #include "src/common.hpp"
 #include "src/features.hpp"
 #include "src/game.hpp"
@@ -51,14 +64,12 @@
 #if SH_FEATURE_SAVE_CHART && !SH_DEV_MODE
 #include "src/chart_save.hpp"
 #endif
-#if SH_FEATURE_SONAR
-#include "src/sonar.hpp"
-#endif
 
 #if SH_FEATURE_SAVE_VOYAGE && !SH_DEV_MODE
 #define SH_VOYAGE_UI 1
 #include "src/voyage_flow.hpp"
 #include "src/voyage_view.hpp"
+#include "src/startup_view.hpp"
 #else
 #define SH_VOYAGE_UI 0
 #endif
@@ -216,8 +227,18 @@ static void drawVoyageNotice(uint24_t label) {
 
 static void drawPilot() {
     const cave::Camera camera = pilot_view::cameraForState(s_state);
+#if SH_FLIGHT_PROBE
+    const uint32_t probeSceneStart = micros();
+#endif
     view::frame(s_state, camera, s_cache, s_tables);
+#if SH_FLIGHT_PROBE
+    flight_probe::sceneUs = micros() - probeSceneStart;
+    const uint32_t probeHudStart = micros();
+#endif
     hud::draw(s_state);
+#if SH_FLIGHT_PROBE
+    flight_probe::hudUs = micros() - probeHudStart;
+#endif
 #if SH_VOYAGE_UI
     uint24_t notice = 0;
     if (s_savedNoticeTicks != 0)
@@ -941,20 +962,6 @@ static void updateFlight() {
     }
 #endif
 
-#if SH_FEATURE_SONAR
-    // A is the free-flight sonar ping. The chart branch above returns before
-    // this point and a docking step returns before this point; fire() rejects
-    // a docked state as well, so the action stays out of both screens. The
-    // shop passes the purchased level; a SHOP=0 build passes 0.
-#if SH_FEATURE_SHOP
-    const uint8_t sonarLevel = s_state.sonarLevel;
-#else
-    const uint8_t sonarLevel = 0;
-#endif
-    if (just(A_BUTTON))
-        sonar::fire(s_state, s_chart, sonarLevel);
-#endif
-
     drawPilot();
 #endif   // SH_DEV_MODE
 }
@@ -1224,6 +1231,9 @@ void setup() {
     FX::begin(FX_DATA_PAGE);
 #endif
     FX::setCursorRange(0, 32767);
+#if SH_VOYAGE_UI
+    startup_view::show();
+#endif
     text::begin();
 #if SH_FEATURE_MUSIC
     music::begin();

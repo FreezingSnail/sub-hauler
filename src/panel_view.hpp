@@ -4,14 +4,15 @@
 
 #include "features.hpp"
 
-// Shared renderer for generated 128x64 story panels. The panel image already
-// contains every fixed label and the selected-row bar, so one Blit call replaces
-// repeated cursor/string drawing. Device-only: the host tests exercise the pure
-// card/row contracts.
-#if (SH_FEATURE_CAMPAIGN || SH_FEATURE_SAVE_VOYAGE) && defined(__AVR__)
+// Shared renderer for generated 128x64 story/menu panels. The panel image
+// already contains every fixed label and the selected-row bar, so one Blit call
+// replaces repeated cursor/string drawing. Device-only: the host tests exercise
+// the pure card/row contracts.
+#if (SH_FEATURE_CAMPAIGN || SH_FEATURE_SAVE_VOYAGE || SH_FEATURE_STATIONS) && defined(__AVR__)
 
 #include "cart_service.hpp"
 #include "common.hpp"
+#include "generated/menu_sprites.hpp"
 #include "generated/panel_sprites.hpp"
 
 namespace panel_view {
@@ -30,14 +31,21 @@ inline void draw(uint24_t image, uint16_t frame, uint8_t height) {
     // 128-byte bursts keep each cart transaction short; the foreground service
     // hook runs between bursts so a 1,024-byte panel cannot stretch the audio
     // refill window past its deadline.
-    for (uint16_t offset = 0; offset < bytes; offset = static_cast<uint16_t>(offset + 16)) {
+    for (uint16_t offset = 0; offset < bytes; offset = static_cast<uint16_t>(offset + 128)) {
         SH_CART_SERVICE();
-        FX::readDataBytes(source + offset, dest + offset, 16);
+        FX::readDataBytes(source + offset, dest + offset, 128);
     }
 }
 
 inline void draw(uint24_t image) {
     draw(image, 0, kHeight);
+}
+
+// The existing clipped blitter handles the seven-row hint and preserves y56.
+// Reuse it instead of keeping another page shifter and scratch buffer.
+inline void drawHint7(uint24_t image, uint16_t frame) {
+    SH_CART_SERVICE();
+    Blit::draw(0, 57, kWidth, 7, image + 2, frame, Blit::OVERWRITE);
 }
 
 }   // namespace panel_view

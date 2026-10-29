@@ -128,6 +128,8 @@ inline uint32_t cacheRowBits(const world::TileCache &cache, uint8_t row) {
 
 // Compose the visible 16x8 tile window and the settlement gantries. Reads only
 // the supplied cache, so the caller owns cart access through refreshCache().
+// This is the tile-grid host reference for cache/atlas behavior; the device
+// terrain path is streamFrame(), which owns arbitrary pixel origins.
 inline void composeFrame(const Camera &camera, const world::TileCache &cache, uint8_t *buffer) {
     for (uint16_t i = 0; i < static_cast<uint16_t>(VIEW_WIDTH) * VIEW_HEIGHT / 8; ++i)
         buffer[i] = 0;
@@ -188,14 +190,87 @@ inline void composeFrame(const Camera &camera, const world::TileCache &cache, ui
 constexpr uint16_t TERRAIN_ROW_BYTES = world::PIXELS_X;
 constexpr uint32_t TERRAIN_BYTES = static_cast<uint32_t>(world::PIXELS_X) * world::PIXELS_Y / 8;
 
-// The camera is tile/page aligned. Each visible OLED page is one contiguous
-// strip in the baked terrain panorama, with no tile selection or bit shifts.
-// Reader owns cart access; all eight reads finish before OLED presentation.
+// Vertical page combination for a sub-page camera origin. For remainder s in
+// 1..7, factor is 2^(8-s); highByte(a * factor) is a >> s and
+// lowByte(b * factor) is b << (8-s). AVR's 8x8 hardware multiply computes both
+// products without the repeated variable shifts. The host test checks every
+// byte pair for all seven factors against the direct shift expression.
+inline uint8_t combineShiftedBytes(uint8_t currentPage, uint8_t nextPage, uint8_t factor) {
+#if defined(__AVR__)
+    // Two 8x8 hardware multiplies. r1 is restored to zero before returning.
+    uint8_t result;
+    asm volatile("mul %1, %3\n\t"
+                 "mov %0, r1\n\t"
+                 "mul %2, %3\n\t"
+                 "or %0, r0\n\t"
+                 "eor r1, r1\n\t"
+                 : "=&a"(result)
+                 : "a"(currentPage), "a"(nextPage), "a"(factor)
+                 : "r0", "cc");
+    return result;
+#else
+    const uint16_t lower = static_cast<uint16_t>(currentPage) * factor;
+    const uint16_t upper = static_cast<uint16_t>(nextPage) * factor;
+    return static_cast<uint8_t>((lower >> 8) | static_cast<uint8_t>(upper));
+#endif
+}
+
+// Stream the baked terrain at the camera's exact pixel origin. The panorama is
+// 2560 columns x 160 eight-pixel source pages: one source byte is one screen
+// column and bit b is the row b within that page. A horizontal pixel origin is
+// therefore just a byte offset, so every X position still needs one contiguous
+// 128-byte read per output page. A vertical sub-page offset needs the next
+// source page and a per-byte bit shift.
+//
+// The cascade keeps the next source page in the next framebuffer page, which
+// is its own destination one step later. That avoids a second 128-byte buffer:
+// read page p, read page p+1 into dest p+1, combine p from p/p+1, and move on.
+// The final page has no spare page, so it reads the last source page in four
+// 32-byte bursts into a 32-byte stack scratch. There is no whole-frame temporary
+// and no static buffer. Reader owns cart access; all reads finish before OLED
+// presentation.
 template <typename Reader> inline void streamFrame(const Camera &camera, Reader &reader, uint8_t *buffer) {
-    uint32_t offset = static_cast<uint32_t>(camera.tileY) * TERRAIN_ROW_BYTES + camera.tileX * world::TILE_PIXELS;
+    const uint32_t firstLine = static_cast<uint32_t>(camera.tileY) * TERRAIN_ROW_BYTES + pixelOriginX(camera);
+
+    if (camera.subY == 0) {
+        uint32_t offset = firstLine;
+        for (uint8_t page = 0; page < VIEW_TILES_Y; ++page) {
+            reader.terrainBytes(offset, buffer + page * VIEW_WIDTH, VIEW_WIDTH);
+            offset += TERRAIN_ROW_BYTES;
+        }
+        drawSettlements(buffer, camera);
+        return;
+    }
+
+    // Seed every page with its lower source page. Each later read overwrites
+    // the page above and leaves it as the next page's lower row.
+    uint32_t offset = firstLine;
     for (uint8_t page = 0; page < VIEW_TILES_Y; ++page) {
         reader.terrainBytes(offset, buffer + page * VIEW_WIDTH, VIEW_WIDTH);
         offset += TERRAIN_ROW_BYTES;
+    }
+
+    const uint8_t shiftY = camera.subY;
+    const uint8_t factor = static_cast<uint8_t>(1u << (8 - shiftY));
+    for (uint8_t page = 0; page + 1 < VIEW_TILES_Y; ++page) {
+        const uint8_t *lower = buffer + page * VIEW_WIDTH;
+        const uint8_t *upper = buffer + (page + 1) * VIEW_WIDTH;
+        uint8_t *dest = buffer + page * VIEW_WIDTH;
+        for (uint8_t i = 0; i < VIEW_WIDTH; ++i)
+            dest[i] = combineShiftedBytes(lower[i], upper[i], factor);
+    }
+
+    // The last destination already holds source page q+7. The upper row q+8
+    // is only needed here, so read it in bounded chunks instead of keeping a
+    // second full page on the stack.
+    constexpr uint8_t kChunk = 32;
+    uint8_t scratch[kChunk];
+    uint8_t *last = buffer + (VIEW_TILES_Y - 1) * VIEW_WIDTH;
+    const uint32_t upperLine = firstLine + static_cast<uint32_t>(VIEW_TILES_Y) * TERRAIN_ROW_BYTES;
+    for (uint8_t x = 0; x < VIEW_WIDTH; x = static_cast<uint8_t>(x + kChunk)) {
+        reader.terrainBytes(upperLine + x, scratch, kChunk);
+        for (uint8_t i = 0; i < kChunk; ++i)
+            last[x + i] = combineShiftedBytes(last[x + i], scratch[i], factor);
     }
     drawSettlements(buffer, camera);
 }

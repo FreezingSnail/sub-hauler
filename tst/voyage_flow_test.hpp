@@ -118,9 +118,9 @@ inline void VoyageFlowSuite(TestRunner &runner) {
         test.assertEqual(restored.state.activeJob.kind, game::kJobKindOrdinary, "ordinary kind restored");
         test.assertEqual(restored.state.activeJob.reward, source.state.activeJob.reward, "freight reward restored");
         test.assertEqual(restored.state.offerCursor, 0x0123, "saved offer cursor restored");
-        test.assertEqual(restored.state.x, game::cameraTargetX(restored.state) + 44, "intermediate berth x feeds the camera");
-        test.assertEqual(restored.state.cameraX, game::cameraTargetX(restored.state), "intermediate camera x is snapped");
-        test.assertEqual(restored.state.cameraY, game::cameraTargetY(restored.state), "intermediate camera y is snapped");
+        test.assertEqual(restored.state.x, game::cameraPixelX(restored.state) + 44, "intermediate berth x feeds the camera");
+        test.assertEqual(restored.state.cameraXQ4, game::cameraTargetXQ4(restored.state), "intermediate camera x is snapped");
+        test.assertEqual(restored.state.cameraYQ4, game::cameraTargetYQ4(restored.state), "intermediate camera y is snapped");
         test.assertEqual(restored.state.air, game::airCapacity(restored.state), "berth restore refills air");
         test.assertEqual(restored.state.vxQ8, 0, "transient velocity resets");
         test.assertEqual(restored.state.vyQ8, 0, "transient vertical velocity resets");
@@ -255,8 +255,8 @@ inline void VoyageFlowSuite(TestRunner &runner) {
         test.assertEqual(restored.state.docked, campaign::kPumpRefuge, "Pump Refuge id restored");
         test.assertEqual(restored.state.x, berth.pixel_x, "generated service berth x restored");
         test.assertEqual(restored.state.y, berth.pixel_y, "generated service berth y restored");
-        test.assertEqual(restored.state.cameraX, game::cameraTargetX(restored.state), "service berth camera x is snapped");
-        test.assertEqual(restored.state.cameraY, game::cameraTargetY(restored.state), "service berth camera y is snapped");
+        test.assertEqual(restored.state.cameraXQ4, game::cameraTargetXQ4(restored.state), "service berth camera x is snapped");
+        test.assertEqual(restored.state.cameraYQ4, game::cameraTargetYQ4(restored.state), "service berth camera y is snapped");
         test.assertEqual(restored.state.cargo, game::kJobCrates, "loaded cargo survives the service berth");
         test.assertEqual(restored.state.activeJob.kind, game::kJobKindOrdinary, "active cargo job restored");
         test.assertEqual(restored.state.air, game::airCapacity(restored.state), "service berth restores full air");
@@ -302,8 +302,8 @@ inline void VoyageFlowSuite(TestRunner &runner) {
         test.assertEqual(restored.state.docked, campaign::kLowerGantry, "Lower Gantry id restored");
         test.assertEqual(restored.state.x, berth.pixel_x, "generated Lower Gantry x restored");
         test.assertEqual(restored.state.y, berth.pixel_y, "generated Lower Gantry y restored");
-        test.assertEqual(restored.state.cameraX, game::cameraTargetX(restored.state), "Lower Gantry camera x is snapped");
-        test.assertEqual(restored.state.cameraY, game::cameraTargetY(restored.state), "Lower Gantry camera y is snapped");
+        test.assertEqual(restored.state.cameraXQ4, game::cameraTargetXQ4(restored.state), "Lower Gantry camera x is snapped");
+        test.assertEqual(restored.state.cameraYQ4, game::cameraTargetYQ4(restored.state), "Lower Gantry camera y is snapped");
         test.assertEqual(restored.state.cargo, game::kJobCrates, "loaded cargo survives the service berth");
         test.assertEqual(restored.state.activeJob.kind, game::kJobKindOrdinary, "active cargo job restored");
         test.assertEqual(restored.state.air, game::airCapacity(restored.state), "service berth restores full air");

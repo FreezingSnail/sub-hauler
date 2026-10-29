@@ -3,16 +3,19 @@
 #include "adpcm_test.hpp"
 #include "cave_test.hpp"
 #include "collision_test.hpp"
+#include "camera_motion_test.hpp"
 #include "damage_test.hpp"
 #include "features.hpp"
 #include "game_test.hpp"
 #include "music_logic_test.hpp"
 #include "streamfx_loop_test.hpp"
 #include "pause_test.hpp"
+#include "pixel_layer_test.hpp"
 #include "pilot_view_test.hpp"
 #include "roster_test.hpp"
 #include "roster_view_test.hpp"
 #include "test.hpp"
+#include "menu_panel_test.hpp"
 #include "world_test.hpp"
 #include "exploration_test.hpp"
 #include "dev_mode_test.hpp"
@@ -36,11 +39,6 @@
 #include "voyage_flow_test.hpp"
 #include "voyage_view_test.hpp"
 
-#if SH_FEATURE_SONAR
-#include "sonar_test.hpp"
-#include "sonar_view_test.hpp"
-#endif
-
 #if SH_FEATURE_STATIONS
 #include "station_test.hpp"
 #endif
@@ -63,6 +61,7 @@
 
 int main() {
     TestRunner runner;
+    MenuPanelSuite(runner);
 #if SH_DEV_MODE
     DevModeSuite(runner);
 #endif
@@ -70,12 +69,14 @@ int main() {
     adpcm_test::suite(runner);
     CaveSuite(runner);
     CollisionSuite(runner);
+    CameraMotionSuite(runner);
     DamageSuite(runner);
     PauseSuite(runner);
     GameSuite(runner);
     MusicLogicSuite(runner);
     streamfx_loop_test::suite(runner);
     PilotViewSuite(runner);
+    PixelLayerSuite(runner);
     RosterSuite(runner);
 #if SH_FEATURE_MULTI_HULL
     TitleSuite(runner);
@@ -101,10 +102,6 @@ int main() {
     VoyageSaveSuite(runner);
     VoyageFlowSuite(runner);
     VoyageViewSuite(runner);
-#if SH_FEATURE_SONAR
-    SonarSuite(runner);
-    SonarViewSuite(runner);
-#endif
 #if SH_FEATURE_STATIONS
     StationSuite(runner);
 #endif

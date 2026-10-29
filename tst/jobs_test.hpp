@@ -411,8 +411,7 @@ inline void JobsSuite(TestRunner &runner) {
             test.assertEqual(resupply.activeJob.to, state.offers[0].to, "resupply retains destination");
             test.assertEqual(resupply.cargo, game::kJobCrates, "resupply preserves the loaded hold");
 #if SH_FEATURE_SHOP
-            test.assertTrue(state.offers[0].reward >= shop::kSonarPrice, "a contract pays for the cheapest upgrade");
-            test.assertTrue(state.offers[0].reward >= shop::kAirPrice, "a contract pays for an air tank");
+            test.assertTrue(state.offers[0].reward >= shop::kAirPrice, "a contract pays for the cheapest upgrade");
             test.assertTrue(state.offers[0].reward >= shop::kHullPrice, "a contract pays for a hull plate");
 #endif
         }

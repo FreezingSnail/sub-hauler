@@ -11,7 +11,7 @@
 //   3. Fill [bssEnd + 1, paintTop] with 0xA5 with interrupts disabled.
 //   4. Re-enable interrupts and run kRepresentativeFrames of the normal
 //      poll/update/render/present path, including FX cart reads. The M6 chart
-//      and sonar paths, the M7 mine/current, damage/particle, and shop frames,
+//      path, the M7 mine/current, damage/particle, and shop frames,
 //      the M8 title/all-hull art path, and the cargo-free contract/undock path
 //      follow in the same measured window.
 //   5. Scan upward from bssEnd + 1 for the lowest byte that is no longer
@@ -45,9 +45,6 @@
 #endif
 #if SH_FEATURE_SAVE_CHART
 #include "src/chart_save.hpp"
-#endif
-#if SH_FEATURE_SONAR
-#include "src/sonar.hpp"
 #endif
 #if SH_FEATURE_SHOP
 #include "src/shop.hpp"
@@ -86,19 +83,19 @@ extern "C" char __bss_end;
 
 Arduboy2Base arduboy;
 
-#if SH_FEATURE_STATIONS && SH_FEATURE_JOBS && SH_FEATURE_FOG_CHART && SH_FEATURE_SONAR && SH_FEATURE_MINES && SH_FEATURE_CURRENTS && SH_FEATURE_SHOP && SH_FEATURE_HULL_DAMAGE &&                      \
+#if SH_FEATURE_STATIONS && SH_FEATURE_JOBS && SH_FEATURE_FOG_CHART && SH_FEATURE_MINES && SH_FEATURE_CURRENTS && SH_FEATURE_SHOP && SH_FEATURE_HULL_DAMAGE &&                      \
     SH_FEATURE_PARTICLES && SH_FEATURE_MULTI_HULL
-// The full AVR state budget is pinned here at 80 B after the gl1.3/gl1.4
+// The full AVR state budget is pinned here at 78 B after the gl1.3/gl1.4
 // compaction: diagnostic counters and the job clock were removed and route
 // reward fields were narrowed.
 #if SH_FEATURE_EXPLORATION
 #if SH_FEATURE_CAMPAIGN
-static_assert(sizeof(game::State) == 99, "full campaign+save run state is 99 bytes on AVR");
+static_assert(sizeof(game::State) == 97, "full campaign+save run state is 97 bytes on AVR");
 #else
-static_assert(sizeof(game::State) == 79, "full non-campaign exploration run state is 79 bytes on AVR");
+static_assert(sizeof(game::State) == 77, "full non-campaign exploration run state is 77 bytes on AVR");
 #endif
 #else
-static_assert(sizeof(game::State) == 80, "non-exploration state remains 80 bytes");
+static_assert(sizeof(game::State) == 78, "non-exploration state remains 78 bytes");
 #endif
 #endif
 
@@ -113,7 +110,7 @@ chart::State probeChart;
 namespace {
 
 // Re-baselined from 800 B to 600 B on 2026-10-23, after the 258 B persistent
-// chart slice entered the full image. The chart+sonar+hazard+damage+shop+
+// chart slice entered the full image. The chart+hazard+damage+shop+
 // title/roster+contract/undock/reset probe measures the cargo-free reserve;
 // 600 B stays the pass line.
 constexpr uint16_t kReserveTarget = 600;   // bytes of stack reserve required
@@ -232,24 +229,6 @@ __attribute__((noinline)) void runRepresentativePath() {
 #endif
 #endif
 
-#if SH_FEATURE_SONAR
-    // Sonar path: a real ping spends air, reveals through the same probeChart
-    // (no duplicated chart state), the next world step decrements the cooldown,
-    // and a pilot frame draws the expanding ring under the HAULER. The cart
-    // reads stay inside view::frame, before the display transaction.
-    game::Input sonarInput{};
-#if SH_FEATURE_SHOP
-    sonar::fire(state, probeChart, state.sonarLevel);
-#else
-    sonar::fire(state, probeChart, 0);
-#endif
-    game::stepWorld(state, sonarInput, tables, &cache);
-    const cave::Camera sonarCamera = pilot_view::cameraForState(state);
-    view::frame(state, sonarCamera, cache, tables);
-    hud::draw(state);
-    FX::display(CLEAR_BUFFER);
-#endif
-
 #if SH_FEATURE_CURRENTS
     // Current path: stand in the first generated zone and run the real step so
     // its acceleration and flow marks enter the measured path.
@@ -325,7 +304,7 @@ __attribute__((noinline)) void runRepresentativePath() {
 
 #if SH_FEATURE_SHOP
     // Shop path: dock, buy the air tank through the real transaction, and draw
-    // the three-row board. No cart reads during the display transaction.
+    // the two-row board. No cart reads during the display transaction.
     state.docked = 0;
     state.credits = 500;
     shop::buy(state, shop::kAir);

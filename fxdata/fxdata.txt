@@ -249,6 +249,15 @@ string txt_cargo = 'CARGO'
 string txt_work_accept_hint = 'A ACCEPT  B BACK'
 string txt_short_load = 'SHORT LOAD'
 
+// Pilot HUD stamps (sub-hauler-7px.22 stage B): fixed AIR/CGO/control labels
+// and air/cargo/ballast outlines baked from the same 6x8 glyph table. Appended
+// after every shipped symbol so earlier FX offsets remain flash ABI.
+include "HudSprites.txt"
+// Station/shop menus append after the shipped HUD section.
+include "MenuSprites.txt"
+// Boot introduction appends after the shipped station/shop menus.
+include "SplashSprites.txt"
+
 // Fresh voyage checkpoints (sub-hauler-7px.24). This marker is not an asset
 // declaration: it starts the cart save partition. One 4 KiB erase block holds
 // the single checkpoint slot; the generator pads the region to 4 KiB of erased

@@ -15,6 +15,9 @@
 #include "src/generated/cargo.hpp"
 #include "src/generated/music.hpp"
 #include "src/generated/audio.hpp"
+#include "src/generated/hud_sprites.hpp"
+#include "src/generated/menu_sprites.hpp"
+#include "src/generated/splash_sprites.hpp"
 #include "src/generated/exploration.hpp"
 
 // First byte of fxdata/tables/world.bin: tile row 0 is inside the sealed
@@ -110,7 +113,15 @@ static_assert(txt_story == txt_unsaved_find + sizeof("UNSAVED FIND"), "WORK stor
 static_assert(txt_cargo == txt_story + sizeof("STORY"), "WORK freight label follows the story label");
 static_assert(txt_work_accept_hint == txt_cargo + sizeof("CARGO"), "WORK accept hint follows the freight label");
 static_assert(txt_short_load == txt_work_accept_hint + sizeof("A ACCEPT  B BACK"), "short-load note follows the accept hint");
-static_assert(FX_DATA_BYTES == txt_short_load + sizeof("SHORT LOAD"), "FX image ends after the WORK labels");
+static_assert(hud_controls == txt_short_load + sizeof("SHORT LOAD"), "HUD stamps append after every shipped WORK label");
+static_assert(hud_notices == hud_controls + spriteBytes(HUD_CONTROLS_WIDTH, HUD_CONTROLS_HEIGHT, HUD_CONTROLS_FRAMES, HUD_CONTROLS_MASKED), "HUD notices follow the controls");
+static_assert(shop_hints == hud_notices + spriteBytes(HUD_NOTICES_WIDTH, HUD_NOTICES_HEIGHT, HUD_NOTICES_FRAMES, HUD_NOTICES_MASKED), "menus append after shipped HUD stamps");
+static_assert(shop_menu == shop_hints + spriteBytes(SHOP_HINTS_WIDTH, SHOP_HINTS_HEIGHT, SHOP_HINTS_FRAMES, SHOP_HINTS_MASKED), "shop screens follow their hints");
+static_assert(station_hints == shop_menu + spriteBytes(SHOP_MENU_WIDTH, SHOP_MENU_HEIGHT, SHOP_MENU_FRAMES, SHOP_MENU_MASKED), "station hints follow shop screens");
+static_assert(station_menu == station_hints + spriteBytes(STATION_HINTS_WIDTH, STATION_HINTS_HEIGHT, STATION_HINTS_FRAMES, STATION_HINTS_MASKED), "station screens follow their hints");
+static_assert(startup == station_menu + spriteBytes(STATION_MENU_WIDTH, STATION_MENU_HEIGHT, STATION_MENU_FRAMES, STATION_MENU_MASKED), "startup appends after the menu screens");
+static_assert(STARTUP_FRAMES == 2 && !STARTUP_MASKED, "two opaque startup frames");
+static_assert(FX_DATA_BYTES == startup + spriteBytes(STARTUP_WIDTH, STARTUP_HEIGHT, STARTUP_FRAMES, STARTUP_MASKED), "FX image ends after startup screens");
 static_assert(FX_SAVE_BYTES == 4096, "save partition is one 4 KiB erase block");
 static_assert(FX_SAVE_PAGE == 0xFFF0, "save partition is the last 16 cart pages");
 static_assert((FX_DATA_BYTES + 255) / 256 + FX_SAVE_BYTES / 256 + FX_DATA_PAGE == 65536, "data and save partitions tile the cart image");

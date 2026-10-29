@@ -59,21 +59,37 @@ generation entry and the six music cues remain available in the jukebox.
 
 | Profile | Flash | Static RAM |
 | --- | ---: | ---: |
-| `full` (campaign + voyage save + music) | 27,010 B | 1,619 B |
-| `lean` | 14,406 B | 1,418 B |
-| `core` | 11,812 B | 1,159 B |
-| `min` | 5,912 B | 1,115 B |
+| `full` (campaign + voyage save + synth music) | 29,616 B | 1,662 B |
+| `lean` | 14,874 B | 1,417 B |
+| `core` | 12,742 B | 1,159 B |
+| `min` | 6,778 B | 1,115 B |
 
-The full default fits the 29,696 B hardware limit with 2,686 B free and the
-29,000 B planning line by 1,990 B; static RAM leaves 81 B under the 1,700 B
-ceiling and 941 B free. AVR `game::State` is 99 B in the campaign+save build
-(79 B with campaign off). Measured stack reserves are 728 B for campaign+save,
-666 B for the exact production save chain with active music, and 646 B for the
-combined music probe, all above the 600 B target. All eleven default device
-suites pass, alongside 242/145/115/72 host tests, 135 tooling tests,
-deterministic generation and the full Mini build.
+The full default now links the production ATMlib2FX synth and fits the
+29,696 B hardware limit with 80 B free; static RAM leaves 38 B under the
+1,700 B ceiling and 898 B free. The paired music-off image is
+**24,940 B / 1,458 B**. The 29,000 B advisory planning line is not claimed for
+this final-stretch build. AVR `game::State` is 97 B in the campaign+save
+build (77 B with campaign off). Measured stack reserves are 689 B for the exact
+production save chain with active music and 614 B for the combined music probe,
+both above the 600 B target. All fourteen default device suites pass, plus the
+separate `test_flight` probe, alongside 251/149/131/87 host tests, 144 tooling
+tests, deterministic generation and the full Mini build. `test_music` reports
+gap=1 tick, svc_us=96, underruns=0 and errors=0 with a forced
+fractional-camera frame.
 No manual interactive playthrough, physical save write or speaker check is
 claimed.
+
+Normal voyage startup now shows Snailware followed by the Sub-hauler splash,
+then the existing title menu. The logo holds for about 1 s and the title splash
+for about 2.4 s. Press any button to skip; its release is consumed before menu
+input. See the [splash preview and measurements](docs/startup-splashes.md).
+
+Gameplay sonar and its upgrade are removed. Station/shop menus use generated
+FX images with live numeric overlays; the shop has two more widely spaced rows.
+The music-off image is **24,940 B / 1,458 B**; the
+`MUSIC_BACKEND=stream` comparison build is **27,122 B / 1,618 B**. Normal
+`make build`, `make run`, `make mini` and `make size` use the synth. See the
+[menu measurements and preview](docs/menu-flash-design.md).
 
 Exploration is enabled in full/lean/core; min remains free-flight/cave with
 barriers disabled. The `full` profile enables the complete voyage progression:
@@ -86,10 +102,16 @@ Freight allowances follow the winding route lengths and allow intermediate
 berth stops for resupply. Rewards retain the existing economy.
 
 The drawing pass streams native terrain directly from FX into the existing
-screen buffer in eight 128-byte bursts, then draws objects and HUD overlays.
-HUD fills use framebuffer page writes. The AVR benchmark measures 34–58% less
-render/presentation time in dev mode, with identical frame checksums.
-See [render timings and reproduction commands](docs/render-performance.md).
+screen buffer. A page-aligned Y origin keeps eight 128-byte bursts; a sub-page Y
+origin reads the next source page and combines rows with AVR multiplies, with a 32-byte tail
+scratch and no second framebuffer. Stations, gates, finds, hazards, particles,
+the boat and HUD all use the camera's exact pixel origin, so the whole world
+scrolls smoothly while collision stays tile-based. HUD fills use framebuffer
+page writes. The fractional follow camera retains 1/16-pixel state and projects
+the sub before rounding. The full-flight music probe measures **12.368 ms
+maximum / 8.346 ms mean** across 842 frames, with zero deadline misses or
+audio errors.
+See [camera measurements and verification](docs/camera-review.md).
 
 The paused chart now holds its image between sub/destination blink changes
 instead of redrawing at 60 Hz, so it redraws every 16 frames while open. Chart
@@ -128,20 +150,22 @@ Measured on 2026-10-28 with the full profile:
 
 | Image | Flash | Static RAM |
 | --- | ---: | ---: |
-| USB-free release, full default | 27,010 B | 1,619 B |
-| Mini, full default | 27,010 B | 1,619 B |
-| USB-free release, lean/core/min | 14,406 / 11,812 / 5,912 B | 1,418 / 1,159 / 1,115 B |
+| USB-free release, full default | 29,616 B | 1,662 B |
+| Mini, full default | 29,616 B | 1,662 B |
+| USB-free release, lean/core/min | 14,874 / 12,742 / 6,778 B | 1,417 / 1,159 / 1,115 B |
 
 The single WORK board (`.27`) removes the station offer rows and all job
 timers: story restoration is listed first and the one repeatable freight row
-sits beneath. The full default now enables campaign, voyage save and music and
-measures **27,010 B / 1,619 B**, inside the 29,696 B hardware and 1,700 B static
-limits. A build-only actual-game probe with the real player ISR, six cues,
-cold/cached world paths, restoration overlays and WORK/ending/title/prompt
-panels measured **903 B** stack reserve against 600 B; the current combined
-probe reports **646 B** and the exact production save chain **666 B**.
-`test_music` reports zero underruns and zero errors. Schema 4 uses one 4 KiB
-cart save block; schema 1/2/3 records and the old chart bytes are not migrated,
+sits beneath. The full default now enables campaign, voyage save and ATMlib2FX
+synth music and measures **29,616 B / 1,662 B**, 80 B under the 29,696 B hardware limit
+and inside the 1,700 B static limit. The music-off image is
+**24,940 B / 1,458 B**; the streaming comparison build is
+**27,122 B / 1,618 B**. A build-only actual-game probe with the real synth ISR,
+six cues, cold/cached world paths, restoration overlays and WORK/ending/title/
+prompt panels is covered by the device suite; the current combined probe
+reports **614 B** and the exact production save chain **689 B**.
+`test_music` reports zero underruns and zero errors. Schema 5 uses one 4 KiB
+cart save block; schema 1/2/3/4 records and the old chart bytes are not migrated,
 and there is no keep-chart prompt. No physical loader, uploader, save-write or
 speaker check is claimed.
 
@@ -190,7 +214,7 @@ three hulls plus the device-suite smoke run.
 | --- | ---: | ---: | --- |
 | `full` | 17,548 B | 1,572 B | 12,148 B under hardware; 11,452 B under the 29,000 B planning ceiling |
 | `lean` | 14,792 B | 1,560 B | no currents, mines, particles, shop, or save |
-| `core` | 12,626 B | 1,302 B | single HAULER, no fog/sonar/multi-hull |
+| `core` | 12,626 B | 1,302 B | single HAULER, no fog/multi-hull |
 | `min` | 9,142 B | 1,252 B | pilot + cave only |
 
 Flash hardware limit is **29,696 B**; static planning ceiling is **1,700 B**
@@ -236,9 +260,10 @@ uses `Arduboy2Base` plus the external font adapter in `src/text.hpp`.
 make gen          # images/fonts -> Sprites/PilotSprites/fxdata.bin + headers
 make gen-check    # regeneration must be byte-identical
 make build        # dist/<profile>/<project>.ino.hex + .elf
-make test         # host rules tests (242 full / 145 lean / 115 core / 72 min)
-make test-tools   # Python tooling tests (135)
-make fxtest       # device smoke/render/save/music suites through Ardens (11 each P)
+make test         # host rules tests (251 full / 161 lean / 131 core / 87 min)
+make test-tools   # Python tooling tests (144)
+make fxtest       # device smoke/render/save/music suites through Ardens (12 each P)
+make fxtest-flight # complete flight-frame timing with active music (13 ms target)
 make size         # flash/RAM headroom
 make size-matrix  # build and report full, lean, core, min
 make mini         # Arduboy Mini firmware for the selected profile
@@ -256,8 +281,9 @@ The editable music scores and viewer catalog live in [`music/`](music/README.md)
 `ATMLIB2FX_ROOT` for another location). The six cues range from Abyssal Glass
 (40 BPM) through Tidepool Waltz (75 BPM, 3/4) to Bubblejet Run (100 BPM),
 with the original Harbor Bubbles, Kelp Drift and Sonar Lullaby loops included.
-The jukebox plays the packed assets; the full game also streams the same six
-cues through the sibling ArduboyStreamFX player.
+The jukebox plays the packed assets; the full game decodes the same six cues
+with the ATMlib2FX compact synth. `MUSIC_BACKEND=stream` keeps the earlier
+ArduboyStreamFX build as an explicit comparison target.
 
 ## Feature profiles
 
@@ -340,7 +366,9 @@ two 256 B pages and sets the commit byte last. A power interruption during that
 erase/write may lose the checkpoint; a torn record is rejected and the title
 offers a clean New Voyage.
 Saves happen on berth/delivery transitions with music paused; no voyage byte is
-stored in internal EEPROM and schema 1/2/3 records are not migrated.
+stored in internal EEPROM and schema 1/2/3/4 records are not migrated. Removing
+the sonar upgrade changes the current record to schema 5; start a New Voyage
+after upgrading from schema 4.
 
 The optional standalone chart save (`SH_FEATURE_SAVE_CHART`, default `0`, and
 mutually exclusive with voyage save) still uses a 260 B versioned,

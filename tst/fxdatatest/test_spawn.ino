@@ -73,12 +73,12 @@ struct FxReader {
 } tables;
 
 bool checkPlacement(const world::Berth &berth) {
-    const cave::Camera camera = cave::cameraAtTile(world::tileFromPixel(state.cameraX), world::tileFromPixel(state.cameraY));
-    const int16_t sx = static_cast<int16_t>(state.x - camera.tileX * world::TILE_PIXELS);
-    const int16_t sy = static_cast<int16_t>(state.y - camera.tileY * world::TILE_PIXELS);
+    const cave::Camera camera = cave::cameraAtTile(world::tileFromPixel(game::cameraPixelX(state)), world::tileFromPixel(game::cameraPixelY(state)));
+    const int16_t sx = static_cast<int16_t>(state.x - cave::pixelOriginX(camera));
+    const int16_t sy = static_cast<int16_t>(state.y - cave::pixelOriginY(camera));
     const bool visible = sx < cave::VIEW_WIDTH && sy < cave::VIEW_HEIGHT && static_cast<int16_t>(sx + game::kHullW) > 0 && static_cast<int16_t>(sy + game::kHullH) > 0;
-    return state.docked == static_cast<int8_t>(berth.id) && state.x == berth.pixel_x && state.y == berth.pixel_y && state.cameraX == game::cameraTargetX(state) &&
-           state.cameraY == game::cameraTargetY(state) && visible && !world::tileSolid(tables, berth.tile_x, berth.tile_y);
+    return state.docked == static_cast<int8_t>(berth.id) && state.x == berth.pixel_x && state.y == berth.pixel_y && state.cameraXQ4 == game::cameraTargetXQ4(state) &&
+           state.cameraYQ4 == game::cameraTargetYQ4(state) && visible && !world::tileSolid(tables, berth.tile_x, berth.tile_y);
 }
 
 }   // namespace
@@ -111,8 +111,8 @@ void setup() {
     // Continue must reproduce the same berth position, camera and visible hull.
     state.x = 64;
     state.y = 32;
-    state.cameraX = 0;
-    state.cameraY = 0;
+    state.cameraXQ4 = 0;
+    state.cameraYQ4 = 0;
     ok = (voyage_save::load(state
 #if SH_FEATURE_FOG_CHART
                             ,
@@ -127,10 +127,10 @@ void setup() {
     // the screen tag, not the stored position or snap.
     ok = station::undock(state) && ok;
     ok = (state.docked < 0) && ok;
-    const cave::Camera undockedCamera = cave::cameraAtTile(world::tileFromPixel(state.cameraX), world::tileFromPixel(state.cameraY));
-    const int16_t undockedX = static_cast<int16_t>(state.x - undockedCamera.tileX * world::TILE_PIXELS);
-    const int16_t undockedY = static_cast<int16_t>(state.y - undockedCamera.tileY * world::TILE_PIXELS);
-    ok = (state.cameraX == game::cameraTargetX(state) && state.cameraY == game::cameraTargetY(state) && undockedX < cave::VIEW_WIDTH && undockedY < cave::VIEW_HEIGHT &&
+    const cave::Camera undockedCamera = cave::cameraAtTile(world::tileFromPixel(game::cameraPixelX(state)), world::tileFromPixel(game::cameraPixelY(state)));
+    const int16_t undockedX = static_cast<int16_t>(state.x - cave::pixelOriginX(undockedCamera));
+    const int16_t undockedY = static_cast<int16_t>(state.y - cave::pixelOriginY(undockedCamera));
+    ok = (state.cameraXQ4 == game::cameraTargetXQ4(state) && state.cameraYQ4 == game::cameraTargetYQ4(state) && undockedX < cave::VIEW_WIDTH && undockedY < cave::VIEW_HEIGHT &&
           static_cast<int16_t>(undockedX + game::kHullW) > 0 && static_cast<int16_t>(undockedY + game::kHullH) > 0) &&
          ok;
 

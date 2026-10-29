@@ -25,6 +25,108 @@ static uint16_t checksum() {
     return value;
 }
 
+// Executes the actual AVR helper, not the host formula. Each source byte is
+// isolated against zero for all seven shifts, then a mixed deterministic pattern
+// checks both sources together.
+static bool kernelCheck() {
+    bool ok = true;
+    for (uint8_t shift = 1; shift < 8; ++shift) {
+        const uint8_t factor = static_cast<uint8_t>(1u << (8 - shift));
+        for (uint16_t value = 0; value < 256; ++value) {
+            const uint8_t v = static_cast<uint8_t>(value);
+            if (cave::combineShiftedBytes(v, 0, factor) != static_cast<uint8_t>(v >> shift))
+                ok = false;
+            if (cave::combineShiftedBytes(0, v, factor) != static_cast<uint8_t>(v << (8 - shift)))
+                ok = false;
+        }
+        for (uint16_t i = 0; i < 256; ++i) {
+            const uint8_t a = static_cast<uint8_t>(i * 37 + shift * 11);
+            const uint8_t b = static_cast<uint8_t>(i * 91 + shift * 7);
+            const uint8_t expected = static_cast<uint8_t>((a >> shift) | (b << (8 - shift)));
+            if (cave::combineShiftedBytes(a, b, factor) != expected)
+                ok = false;
+        }
+    }
+    return ok;
+}
+
+// The pilot frame has no persistent control row: with no contextual notice the
+// full 9-px bottom band must keep the scene pixels it started with.
+static bool hudNoControlsCheck() {
+    game::State state;
+    game::resetWorld(state);
+#if SH_FEATURE_EXPLORATION
+    state.discoveryTicks = 0;
+    state.contactId = exploration::kNone;
+#endif
+    uint8_t expectedPage6[128];
+    uint8_t expectedPage7[128];
+    bool ok = true;
+    for (uint8_t pattern = 0; pattern < 3; ++pattern) {
+        for (uint16_t i = 0; i < 1024; ++i)
+            Arduboy2Base::sBuffer[i] = static_cast<uint8_t>(pattern == 0 ? 0x00 : pattern == 1 ? 0xFF : (i * 73 + 19));
+        for (uint8_t i = 0; i < 128; ++i) {
+            expectedPage6[i] = Arduboy2Base::sBuffer[6 * 128 + i];
+            expectedPage7[i] = Arduboy2Base::sBuffer[7 * 128 + i];
+        }
+
+        hud::draw(state);
+
+        for (uint8_t i = 0; i < 128; ++i) {
+            // y55 is bit 7 of page 6; page 7 starts at y56.
+            if ((Arduboy2Base::sBuffer[6 * 128 + i] & 0x80) != (expectedPage6[i] & 0x80) ||
+                Arduboy2Base::sBuffer[7 * 128 + i] != expectedPage7[i]) {
+                Serial.print(F("hud footer mismatch pattern="));
+                Serial.print(pattern);
+                Serial.print(F(" x="));
+                Serial.println(i);
+                ok = false;
+            }
+        }
+    }
+    return ok;
+}
+
+static bool hudNoticeCheck() {
+    static const uint24_t kNoticeText[] = {
+        txt_survey_recorded, txt_found_cutter, txt_found_seal, txt_found_thruster,
+        txt_found_credits, txt_found_hull, txt_found_lens, txt_survey_hint,
+        txt_salvage_hint, txt_cut_hint, txt_need_seal, txt_need_thruster,
+        txt_need_cutter, txt_repair_pump, txt_repair_lift,
+    };
+    uint8_t expected[128];
+    bool ok = true;
+    for (uint8_t frame = 0; frame < sizeof(kNoticeText) / sizeof(kNoticeText[0]); ++frame) {
+        for (uint16_t i = 0; i < 1024; ++i)
+            Arduboy2Base::sBuffer[i] = static_cast<uint8_t>(i * 73 + 19);
+        cave::fillRect(Arduboy2Base::sBuffer, hud::kHintBackingX, hud::kHintBackingY, hud::kHintBackingW, hud::kHintBackingH, false);
+        text::normal();
+        text::at(hud::kHintX, hud::kHintY);
+        text::print(kNoticeText[frame]);
+        for (uint8_t i = 0; i < 128; ++i)
+            expected[i] = Arduboy2Base::sBuffer[7 * 128 + i];
+
+        for (uint16_t i = 0; i < 1024; ++i)
+            Arduboy2Base::sBuffer[i] = static_cast<uint8_t>(i * 73 + 19);
+        cave::fillRect(Arduboy2Base::sBuffer, hud::kHintBackingX, hud::kHintBackingY, hud::kHintBackingW, 1, false);
+        hud::drawNotice(static_cast<uint8_t>(frame + 1));
+        for (uint8_t i = 0; i < 128; ++i) {
+            if (Arduboy2Base::sBuffer[7 * 128 + i] != expected[i]) {
+                Serial.print(F("hud notice mismatch frame="));
+                Serial.print(frame);
+                Serial.print(F(" x="));
+                Serial.print(i);
+                Serial.print(F(" got="));
+                Serial.print(Arduboy2Base::sBuffer[7 * 128 + i], HEX);
+                Serial.print(F(" want="));
+                Serial.println(expected[i], HEX);
+                ok = false;
+            }
+        }
+    }
+    return ok;
+}
+
 static bool sample(uint8_t id, int16_t x, int16_t y, bool cold) {
     game::resetWorld(state);
     state.x = x;
@@ -73,10 +175,17 @@ void setup() {
     FX::begin(FX_DATA_PAGE);
     FX::setCursorRange(0, 32767);
     text::begin();
-    bool ok = true;
+    bool ok = kernelCheck();
+#if !SH_DEV_MODE
+    ok = hudNoControlsCheck() && ok;
+#endif
+    ok = hudNoticeCheck() && ok;
     for (uint8_t cold = 0; cold < 2; ++cold) {
         ok = sample(0, world::SPAWN_SUB_X, world::SPAWN_SUB_Y, cold) && ok;
         ok = sample(1, 64, 64, cold) && ok;   // solid rock, worst cache lookup load
+        // Fractional origin: exercises the vertical page shift and the last
+        // page's bounded upper-row chunks in the device render path.
+        ok = sample(6, static_cast<int16_t>(world::SPAWN_SUB_X + 3), static_cast<int16_t>(world::SPAWN_SUB_Y + 5), cold) && ok;
 #if SH_FEATURE_EXPLORATION
         ok = sample(2, exploration_data::ROOM_F_X, exploration_data::ROOM_F_Y, cold) && ok;
         const auto gate = exploration_data::gate(exploration_data::GATE_E_V);

@@ -47,7 +47,7 @@ inline void step(game::State &state, const game::Input &input, bool fast) {
     if (dx)
         state.facingLeft = dx < 0;
     ++state.ticks;
-    game::updateCamera(state);
+    game::updateCamera(state, game::kDevCameraMaxStepQ4);
 }
 
 #if SH_FEATURE_FOG_CHART

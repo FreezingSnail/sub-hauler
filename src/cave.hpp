@@ -8,8 +8,9 @@
 //
 // The display shows 16x8 tiles (128x64 pixels). Rendering walks that fixed
 // window only: there is no whole-map loop and no world-sized buffer. The
-// camera is supplied in tile coordinates; sub-tile scrolling is intentionally
-// out of scope for the M1 debug view.
+// camera carries a whole-pixel origin split into its containing tile plus a
+// 0..7 sub-tile offset, so terrain and overlays scroll at true pixel
+// granularity while collision and the tile cache stay tile-based.
 //
 // This header is pure C++ so the host tests can include it. The atlas is
 // marked PROGMEM only on AVR, where a namespace-scope const array would
@@ -32,21 +33,36 @@ constexpr uint8_t VIEW_TILES_Y = 8;
 constexpr int16_t VIEW_WIDTH = VIEW_TILES_X * world::TILE_PIXELS;    // 128
 constexpr int16_t VIEW_HEIGHT = VIEW_TILES_Y * world::TILE_PIXELS;   // 64
 
+constexpr int16_t MAX_CAMERA_PIXEL_X = static_cast<int16_t>(world::PIXELS_X - VIEW_WIDTH);
+constexpr int16_t MAX_CAMERA_PIXEL_Y = static_cast<int16_t>(world::PIXELS_Y - VIEW_HEIGHT);
 constexpr int16_t MAX_CAMERA_TILE_X = static_cast<int16_t>(world::TILES_X - VIEW_TILES_X);
 constexpr int16_t MAX_CAMERA_TILE_Y = static_cast<int16_t>(world::TILES_Y - VIEW_TILES_Y);
 
 static_assert(VIEW_WIDTH == 128, "cave view is the full display width");
 static_assert(VIEW_HEIGHT == 64, "cave view is the full display height");
 static_assert(world::TILE_PIXELS == 8, "tile atlas assumes 8x8 tiles");
+static_assert(MAX_CAMERA_PIXEL_X == 2432, "pixel camera clamp is part of the map contract");
+static_assert(MAX_CAMERA_PIXEL_Y == 1216, "pixel camera clamp is part of the map contract");
 static_assert(MAX_CAMERA_TILE_X == 304, "camera clamp is part of the map contract");
 static_assert(MAX_CAMERA_TILE_Y == 152, "camera clamp is part of the map contract");
 
+// tileX/tileY are the floor tile used by the collision cache. subX/subY are
+// the pixel remainder (0..7). Keeping both avoids a division on every layer
+// mapping and keeps Camera an aggregate that existing {x, y} initializers can
+// still use (the sub-byte fields then zero-initialize).
 struct Camera {
     int16_t tileX;
     int16_t tileY;
+    uint8_t subX;
+    uint8_t subY;
+    // Transient Q4 remainder of the exact camera origin from the rounded pixel
+    // origin (-8..7). Only pilot_view uses it for fractional hull projection;
+    // terrain and integer-world overlays use the shared rounded pixel origin.
+    int8_t fracX;
+    int8_t fracY;
 };
 
-inline int16_t clampTile(int16_t value, int16_t limit) {
+inline int16_t clampI16(int16_t value, int16_t limit) {
     if (value < 0)
         return 0;
     if (value > limit)
@@ -54,20 +70,41 @@ inline int16_t clampTile(int16_t value, int16_t limit) {
     return value;
 }
 
-// Top-left tile of the visible window, clamped so the 16x8 window always sits
-// inside the baked map, including at the origin and both far edges.
-inline Camera cameraAtTile(int16_t tileX, int16_t tileY) {
+// Whole-pixel top-left origin of the visible window.
+inline int16_t pixelOriginX(const Camera &camera) {
+    return static_cast<int16_t>(camera.tileX * world::TILE_PIXELS + camera.subX);
+}
+
+inline int16_t pixelOriginY(const Camera &camera) {
+    return static_cast<int16_t>(camera.tileY * world::TILE_PIXELS + camera.subY);
+}
+
+inline Camera cameraAtPixel(int16_t pixelX, int16_t pixelY) {
+    pixelX = clampI16(pixelX, MAX_CAMERA_PIXEL_X);
+    pixelY = clampI16(pixelY, MAX_CAMERA_PIXEL_Y);
     Camera camera;
-    camera.tileX = clampTile(tileX, MAX_CAMERA_TILE_X);
-    camera.tileY = clampTile(tileY, MAX_CAMERA_TILE_Y);
+    camera.tileX = static_cast<int16_t>(pixelX >> 3);
+    camera.tileY = static_cast<int16_t>(pixelY >> 3);
+    camera.subX = static_cast<uint8_t>(pixelX & 7);
+    camera.subY = static_cast<uint8_t>(pixelY & 7);
+    camera.fracX = 0;
+    camera.fracY = 0;
     return camera;
 }
 
-// Centre the window on a pixel coordinate, then snap to the tile grid. The
-// M1 camera is static; M2 owns smooth sub-tile movement.
+// Top-left tile of the visible window, clamped so the 16x8 window always sits
+// inside the baked map, including at the origin and both far edges. Callers
+// that only know a tile still get a pixel origin at that tile's top-left.
+inline Camera cameraAtTile(int16_t tileX, int16_t tileY) {
+    const int16_t px = clampI16(static_cast<int16_t>(tileX * world::TILE_PIXELS), MAX_CAMERA_PIXEL_X);
+    const int16_t py = clampI16(static_cast<int16_t>(tileY * world::TILE_PIXELS), MAX_CAMERA_PIXEL_Y);
+    return cameraAtPixel(px, py);
+}
+
+// Centre the window on a pixel coordinate and keep the exact pixel origin.
 inline Camera cameraCenteredAtPixel(int16_t pixelX, int16_t pixelY) {
-    return cameraAtTile(static_cast<int16_t>((pixelX - VIEW_WIDTH / 2) / world::TILE_PIXELS),
-                        static_cast<int16_t>((pixelY - VIEW_HEIGHT / 2) / world::TILE_PIXELS));
+    return cameraAtPixel(static_cast<int16_t>(pixelX - VIEW_WIDTH / 2),
+                         static_cast<int16_t>(pixelY - VIEW_HEIGHT / 2));
 }
 
 // The tile cache is one tile larger than the view on every side. Its origin is
@@ -167,11 +204,11 @@ constexpr int16_t GANTRY_REACH_UP = 14;
 constexpr int16_t GANTRY_REACH_DOWN = 5;
 
 inline int16_t dockScreenX(const Camera &camera, int16_t pixelX) {
-    return static_cast<int16_t>(pixelX - camera.tileX * world::TILE_PIXELS);
+    return static_cast<int16_t>(pixelX - pixelOriginX(camera));
 }
 
 inline int16_t dockScreenY(const Camera &camera, int16_t pixelY) {
-    return static_cast<int16_t>(pixelY - camera.tileY * world::TILE_PIXELS);
+    return static_cast<int16_t>(pixelY - pixelOriginY(camera));
 }
 
 inline bool gantryVisible(int16_t screenX, int16_t screenY) {

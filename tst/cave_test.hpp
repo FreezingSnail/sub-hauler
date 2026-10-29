@@ -97,6 +97,24 @@ inline void CaveSuite(TestRunner &runner) {
     static_assert(world::CACHE_TILES_Y == cave::VIEW_TILES_Y + 2, "cache has a one-tile margin per side");
 
     {
+        Test test("byte-combine kernel matches direct shifts for every factor and byte pair");
+        bool matches = true;
+        for (uint8_t shift = 1; shift < 8 && matches; ++shift) {
+            const uint8_t factor = static_cast<uint8_t>(1u << (8 - shift));
+            for (uint16_t a = 0; a < 256 && matches; ++a)
+                for (uint16_t b = 0; b < 256; ++b) {
+                    const uint8_t expected = static_cast<uint8_t>((static_cast<uint8_t>(a) >> shift) | (static_cast<uint8_t>(b) << (8 - shift)));
+                    if (cave::combineShiftedBytes(static_cast<uint8_t>(a), static_cast<uint8_t>(b), factor) != expected) {
+                        matches = false;
+                        break;
+                    }
+                }
+        }
+        test.assertTrue(matches, "all 7 x 256 x 256 combinations match");
+        runner.add(test);
+    }
+
+    {
         Test test("streamed scenery matches native image crops across the actual world");
         struct NativeTerrain {
             std::vector<uint8_t> pixels;
@@ -130,7 +148,7 @@ inline void CaveSuite(TestRunner &runner) {
                     // pixel and the same native page/bit orientation.
                     for (int16_t sy = 0; sy < cave::VIEW_HEIGHT; ++sy) {
                         for (int16_t sx = 0; sx < cave::VIEW_WIDTH; ++sx) {
-                            const int16_t wx = camera.tileX * 8 + sx, wy = camera.tileY * 8 + sy;
+                            const int16_t wx = static_cast<int16_t>(cave::pixelOriginX(camera) + sx), wy = static_cast<int16_t>(cave::pixelOriginY(camera) + sy);
                             const uint8_t value = terrain.pixels[(static_cast<uint32_t>(wy) / 8) * world::PIXELS_X + wx];
                             if (value & (1u << (wy % 8)))
                                 cave::setPixel(composed, sx, sy);
@@ -149,6 +167,65 @@ inline void CaveSuite(TestRunner &runner) {
             }
         }
         test.assertTrue(matches, "all scene pixels identical, exactly eight bounded reads into guarded framebuffer");
+        runner.add(test);
+    }
+
+    {
+        Test test("sub-pixel camera streams the exact native crop at every remainder");
+        struct NativeTerrain {
+            std::vector<uint8_t> pixels;
+            uint8_t reads = 0;
+            uint16_t bytes = 0;
+            bool bounds = true;
+            void terrainBytes(uint32_t offset, uint8_t *dest, uint16_t length) {
+                ++reads;
+                bytes = static_cast<uint16_t>(bytes + length);
+                if (offset + length > pixels.size()) {
+                    bounds = false;
+                    return;
+                }
+                std::memcpy(dest, pixels.data() + offset, length);
+            }
+        } terrain;
+        terrain.pixels.resize(cave::TERRAIN_BYTES);
+        std::ifstream image("fxdata/tables/exploration-terrain.bin", std::ios::binary);
+        const bool imageLoaded = static_cast<bool>(image.read(reinterpret_cast<char *>(terrain.pixels.data()), terrain.pixels.size())) && image.peek() == std::char_traits<char>::eof();
+        test.assertTrue(imageLoaded, "exact generated native scenery image loads");
+
+        const int16_t baseX[] = {0, 1, 7, 123, 1234, 2425, cave::MAX_CAMERA_PIXEL_X};
+        const int16_t baseY[] = {0, 1, 7, 400, 1200, 1209, cave::MAX_CAMERA_PIXEL_Y};
+        uint8_t streamed[1026], composed[1024];
+        bool matches = imageLoaded;
+        uint16_t cases = 0;
+        for (int16_t bx : baseX)
+            for (int16_t by : baseY)
+                for (int8_t sx = 0; sx < 8; ++sx)
+                    for (int8_t sy = 0; sy < 8; ++sy) {
+                        const cave::Camera camera = cave::cameraAtPixel(static_cast<int16_t>(bx + sx), static_cast<int16_t>(by + sy));
+                        const int16_t ox = cave::pixelOriginX(camera), oy = cave::pixelOriginY(camera);
+                        for (int16_t y = 0; y < cave::VIEW_HEIGHT; ++y) {
+                            for (int16_t x = 0; x < cave::VIEW_WIDTH; ++x) {
+                                const int16_t wx = static_cast<int16_t>(ox + x), wy = static_cast<int16_t>(oy + y);
+                                const uint8_t value = terrain.pixels[(static_cast<uint32_t>(wy) / 8) * cave::TERRAIN_ROW_BYTES + wx];
+                                if (value & (1u << (wy % 8)))
+                                    cave::setPixel(composed, x, y);
+                                else
+                                    cave::clearPixel(composed, x, y);
+                            }
+                        }
+                        cave::drawSettlements(composed, camera);
+                        terrain.reads = terrain.bytes = 0;
+                        streamed[0] = streamed[1025] = 0xA5;
+                        cave::streamFrame(camera, terrain, streamed + 1);
+                        const uint8_t expectedReads = static_cast<uint8_t>(camera.subY ? 12 : 8);
+                        const uint16_t expectedBytes = static_cast<uint16_t>(camera.subY ? 1152 : 1024);
+                        matches = matches && terrain.bounds && terrain.reads == expectedReads && terrain.bytes == expectedBytes;
+                        matches = matches && streamed[0] == 0xA5 && streamed[1025] == 0xA5;
+                        matches = matches && std::memcmp(streamed + 1, composed, 1024) == 0;
+                        ++cases;
+                    }
+        test.assertTrue(matches, "every X/Y remainder matches the native crop through bounded reads");
+        test.assertEqual(cases, 7 * 7 * 8 * 8, "all fractional origin cases ran");
         runner.add(test);
     }
 
@@ -366,7 +443,7 @@ inline void CaveSuite(TestRunner &runner) {
             const int16_t x = cave::dockScreenX(camera, settlement.pixel_x);
             const int16_t y = cave::dockScreenY(camera, settlement.pixel_y);
             mappingHolds =
-                mappingHolds && x == static_cast<int16_t>(settlement.pixel_x - camera.tileX * world::TILE_PIXELS) && y == static_cast<int16_t>(settlement.pixel_y - camera.tileY * world::TILE_PIXELS);
+                mappingHolds && x == static_cast<int16_t>(settlement.pixel_x - cave::pixelOriginX(camera)) && y == static_cast<int16_t>(settlement.pixel_y - cave::pixelOriginY(camera));
             if (id != 0)
                 othersHidden = othersHidden && !cave::gantryVisible(x, y);
         }

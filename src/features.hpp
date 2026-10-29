@@ -18,10 +18,6 @@
 #define SH_FEATURE_FOG_CHART 1
 #endif
 
-#ifndef SH_FEATURE_SONAR
-#define SH_FEATURE_SONAR 1
-#endif
-
 #ifndef SH_FEATURE_MINES
 #define SH_FEATURE_MINES 1
 #endif
@@ -51,14 +47,9 @@
 #endif
 
 // Dependency checks. These direct checks also enforce the aggregate rules:
-// STATIONS=0 implies JOBS and SHOP are 0; FOG_CHART=0 implies SONAR and
-// SAVE_CHART are 0.
+// STATIONS=0 implies JOBS and SHOP are 0; FOG_CHART=0 implies SAVE_CHART is 0.
 #if SH_FEATURE_JOBS && !SH_FEATURE_STATIONS
 #error "SH_FEATURE_JOBS requires SH_FEATURE_STATIONS"
-#endif
-
-#if SH_FEATURE_SONAR && !SH_FEATURE_FOG_CHART
-#error "SH_FEATURE_SONAR requires SH_FEATURE_FOG_CHART"
 #endif
 
 #if SH_FEATURE_SAVE_CHART && !SH_FEATURE_FOG_CHART
@@ -102,6 +93,12 @@
 #define SH_FEATURE_MUSIC 1
 #endif
 
+// Music backend selection. Production uses the ATMlib2FX compact synth; set to
+// 1 only for the explicit ArduboyStreamFX comparison build.
+#ifndef SH_MUSIC_STREAMING
+#define SH_MUSIC_STREAMING 0
+#endif
+
 // Campaign requires the full station/contract/authored-map stack. The save
 // feature then requires campaign; it also replaces the standalone chart save.
 #if SH_FEATURE_CAMPAIGN && !SH_FEATURE_JOBS
@@ -119,7 +116,7 @@
 #if SH_FEATURE_SAVE_VOYAGE && SH_FEATURE_SAVE_CHART
 #error "SH_FEATURE_SAVE_VOYAGE requires !SH_FEATURE_SAVE_CHART"
 #endif
-#if SH_FEATURE_MUSIC && !SH_FEATURE_SAVE_VOYAGE
+#if SH_FEATURE_MUSIC && !SH_FEATURE_SAVE_VOYAGE && !SH_FLIGHT_PROBE
 #error "SH_FEATURE_MUSIC requires SH_FEATURE_SAVE_VOYAGE for the pause MUSIC control"
 #endif
 

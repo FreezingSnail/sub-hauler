@@ -110,7 +110,7 @@ byte**. The remaining 3,584 bytes of the block stay erased and are not used.
 
 ```text
 slot +   0  magic 'S' 'H' 'V' 'Y'   (0x53 0x48 0x56 0x59)
-slot +   4  schema version          = 4
+slot +   4  schema version          = 5
 slot +   5  world layout version    = world::LAYOUT_VERSION (3 now)
 slot +   6  campaign content version = 2
 slot +   7  feature/profile signature (bitfield, section 4)
@@ -126,8 +126,8 @@ bytes 0–239; page 1 carries payload bytes 240–494 and the commit byte (the l
 byte programmed). Erased flash is `0xFF`, so an uncommitted slot has commit
 `0xFF`, not `0x00`. `0x5A` means committed; any other value is invalid.
 
-Payload capacity is 495 B. Schema 4 uses 292 B with a chart (36 scalar + 256
-chart) and 36 B without a chart. Bytes after the used payload are programmed as
+Payload capacity is 495 B. Schema 5 uses 291 B with a chart (35 scalar + 256
+chart) and 35 B without a chart. Bytes after the used payload are programmed as
 `0xFF`, matching erased flash, and are not read.
 
 CRC is **CRC-16/CCITT-FALSE**: polynomial `0x1021`, init `0xFFFF`, no
@@ -138,12 +138,12 @@ Check value for `"123456789"` is `0x29B1`; the storage tests assert that vector.
 
 ## 4. Profile signature
 
-One byte, fixed for schema 4:
+One byte, fixed for schema 5:
 
 | Bit | Feature |
 | --- | --- |
 | 0 | `SH_FEATURE_FOG_CHART` |
-| 1 | `SH_FEATURE_SONAR` |
+| 1 | retired (sonar), 0 |
 | 2 | `SH_FEATURE_MINES` |
 | 3 | `SH_FEATURE_SHOP` |
 | 4 | `SH_FEATURE_HULL_DAMAGE` |
@@ -158,9 +158,9 @@ before offering NEW VOYAGE. `SH_FEATURE_MUSIC` is not in the signature because
 music has no saved field.
 
 Chart presence is derived from bit 0, not stored separately. Expected payload
-length is `36 + (bit0 ? 256 : 0)`.
+length is `35 + (bit0 ? 256 : 0)`.
 
-## 5. Scalar payload schema (36 B)
+## 5. Scalar payload schema (35 B)
 
 Little-endian, fixed order, no padding, no raw C++ struct bytes.
 
@@ -171,31 +171,30 @@ Little-endian, fixed order, no padding, no raw C++ struct bytes.
 | 2 | 2 | credits | u16 |
 | 4 | 1 | air level | 0–3 |
 | 5 | 1 | hull level | 0–3 |
-| 6 | 1 | sonar level | 0–3 |
-| 7 | 1 | tools | CUTTER/SEAL/THRUSTER/LENS bits |
-| 8 | 1 | pickups | 8 claim bits |
-| 9 | 2 | open gates | 9 bits |
-| 11 | 2 | seen gates | 9 bits |
-| 13 | 1 | campaign milestones | 5 bits |
-| 14 | 1 | surveys | 2 bits |
-| 15 | 1 | visited settlements | 4 bits |
-| 16 | 1 | active job kind | 0–3 |
-| 17 | 1 | active mission ID | 0–6, or 0xFF |
-| 18 | 1 | job origin berth | 0–3, or 0xFF |
-| 19 | 1 | job destination berth | 0–3, or 0xFF |
-| 20 | 1 | job load | 4 for cargo jobs, else 0 |
-| 21 | 1 | job reward | credits, multiple of 5 |
-| 22 | 2 | offer cursor | pre-board generator serial |
-| 24 | 2 | board seed | serial origin, schema 4 = 0 |
-| 26 | 1 | armed mines | 8 bits |
-| 27 | 4 | voyage ticks | u32, saturating |
-| 31 | 2 | delivered jobs | u16, saturating |
-| 33 | 2 | rescue count | u16, saturating |
-| 35 | 1 | ending presented | 0/1 |
+| 6 | 1 | tools | CUTTER/SEAL/THRUSTER/LENS bits |
+| 7 | 1 | pickups | 8 claim bits |
+| 8 | 2 | open gates | 9 bits |
+| 10 | 2 | seen gates | 9 bits |
+| 12 | 1 | campaign milestones | 5 bits |
+| 13 | 1 | surveys | 2 bits |
+| 14 | 1 | visited settlements | 4 bits |
+| 15 | 1 | active job kind | 0–3 |
+| 16 | 1 | active mission ID | 0–6, or 0xFF |
+| 17 | 1 | job origin berth | 0–3, or 0xFF |
+| 18 | 1 | job destination berth | 0–3, or 0xFF |
+| 19 | 1 | job load | 4 for cargo jobs, else 0 |
+| 20 | 1 | job reward | credits, multiple of 5 |
+| 21 | 2 | offer cursor | pre-board generator serial |
+| 23 | 2 | board seed | serial origin, schema 5 = 0 |
+| 25 | 1 | armed mines | 8 bits |
+| 26 | 4 | voyage ticks | u32, saturating |
+| 30 | 2 | delivered jobs | u16, saturating |
+| 32 | 2 | rescue count | u16, saturating |
+| 34 | 1 | ending presented | 0/1 |
 
-Chart bytes follow at payload offset 36–291 when bit 0 of the signature is set.
-Scalar total is exactly 36 B. Schema 3 deletes the two job-timer fields; the
-payload still fits the frozen 495 B area.
+Chart bytes follow at payload offset 35–290 when bit 0 of the signature is set.
+Scalar total is exactly 35 B. Schema 5 removes the retired sonar level byte;
+the payload still fits the frozen 495 B area.
 
 Semantic validation, in addition to CRC and header checks:
 
@@ -209,7 +208,7 @@ Semantic validation, in addition to CRC and header checks:
   load 4, reward equals the table reward.
 - ordinary job: mission 0xFF, origin/destination 0–3 and different, load 4,
   reward equals the generated route reward.
-- no timed/express kind exists in schema 4. A pre-.27 schema 1 slot, a
+- no timed/express kind exists in schema 5. A pre-.27 schema 1 slot, a
   schema 2 slot and a dual-slot schema 3 cart are incompatible and are not
   migrated.
 - Surveys are facts, not jobs: `recordSurvey()` accepts PUMP or LIFT before
@@ -225,12 +224,12 @@ applied.
 
 ### Schema 3 invalidation
 
-Schema 4 keeps the single-slot cart layout but removes the dual-copy sequence
+Schema 5 keeps the single-slot cart layout but removes the dual-copy sequence
 and fallback. Schema 1/2 EEPROM records, schema 3 cart records, old EEPROM bytes
 and the retired standalone chart block are **incompatible or absent, not
 migrated**. A player with an older record or a torn current record sees the
 normal incompatible/corrupt message and may start a clean NEW VOYAGE; no old
-job, reward, deadline, chart or elapsed age is preserved. Current schema 4 slots
+job, reward, deadline, chart or elapsed age is preserved. Current schema 5 slots
 still receive the full magic, length, CRC and semantic checks, so corruption is
 never silently accepted or loaded.
 
@@ -267,12 +266,12 @@ unchanged old record cannot be mistaken for a successful write.
 
 Worst case erase is one 4 KiB block (~40 ms) plus two 256 B page programs
 (~3.3 ms each), on a transition only. The 4 KiB partition is `FX_SAVE_BYTES`;
-no per-frame autosave, pickups, sonar, chart closing, music progress or
+no per-frame autosave, pickups, chart closing, music progress or
 developer traversal touches it.
 
 ## 7. No legacy chart migration
 
-Schema 4 removes the old standalone chart migration completely. EEPROM
+Schema 5 removes the old standalone chart migration completely. EEPROM
 addresses 0–259 and pre-schema-4 cart slots are never inspected, offered,
 copied or repaired. A NEW VOYAGE resets the chart, applies
 `chart::revealInitial()` at the generated spawn berth, and persists that reveal
@@ -388,7 +387,7 @@ Freeze:
   no active job, restore `offerSerial` from `offerCursor` and regenerate; the
   same freight row reappears without advancing the saved cursor.
 - There is no job age or deadline to save. A schema 1 or 2 save is incompatible
-  rather than partially applied; schema 4 keeps every current corruption check.
+  rather than partially applied; schema 5 keeps every current corruption check.
 
 ## 11. Campaign state additions
 
@@ -428,10 +427,10 @@ Profile contract:
 | --- | --- | --- | --- |
 | full | 1 | 1 | 0 until the measured combined-fit gate passes |
 | lean | 1 | 1 | 0 |
-| core | 1 | 1 (no chart, 36 B payload) | 0 |
+| core | 1 | 1 (no chart, 35 B payload) | 0 |
 | min | 0 | 0 | 0 |
 
-Core has no chart, sonar, shop or alternate hull roster. Every required survey
+Core has no chart, shop or alternate hull roster. Every required survey
 and route must work there with the base boat and visual clues. Dev mode keeps
 its current flight-only behavior and suppresses voyage reads/writes.
 
@@ -487,8 +486,10 @@ Consequences:
 
 ### Runtime contract
 
-- Compile with `ATM_FX_COMPACT_RING=64`, `ATM_FX_COMPACT_LOOP=1` (streaming
-  defaults on) and all effects enabled.
+- Compile with `ATM_FX_COMPACT_RING=32` (production 2026-10-28; largest
+  authored record is 28 B), `ATM_FX_COMPACT_LOOP=1` (streaming loops on) and all
+  effects enabled. The earlier design text used 64 B; the measured production
+  image uses 32 B without underruns.
 - `atm_fx_compact_fetch(offset, dst, n)` calls
   `FX::readDataBytes((uint24_t)offset, dst, n)`; offsets are data-section-
   relative and the FX page is added exactly once.

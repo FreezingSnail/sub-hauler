@@ -62,14 +62,14 @@ inline void DevModeSuite(TestRunner &runner) {
             dev_mode::step(s, game::Input{true, false, true, false}, true);
         t.assertEqual(s.x, game::kHullHalfW, "west edge keeps hull inside world");
         t.assertEqual(s.y, game::kHullHalfH, "north edge keeps hull inside world");
-        t.assertEqual(s.cameraX, 0, "west camera clamp");
-        t.assertEqual(s.cameraY, 0, "north camera clamp");
+        t.assertEqual(s.cameraXQ4, 0, "west camera clamp");
+        t.assertEqual(s.cameraYQ4, 0, "north camera clamp");
         for (uint16_t i = 0; i < 1000; ++i)
             dev_mode::step(s, game::Input{false, true, false, true}, true);
         t.assertEqual(s.x, world::PIXELS_X - game::kHullHalfW, "east clamp");
         t.assertEqual(s.y, world::PIXELS_Y - game::kHullHalfH, "south clamp");
-        t.assertEqual(s.cameraX, game::kCameraMaxX, "east camera clamp");
-        t.assertEqual(s.cameraY, game::kCameraMaxY, "south camera clamp");
+        t.assertEqual(s.cameraXQ4, game::kCameraMaxXQ4, "east camera clamp");
+        t.assertEqual(s.cameraYQ4, game::kCameraMaxYQ4, "south camera clamp");
         runner.add(t);
     }
     {

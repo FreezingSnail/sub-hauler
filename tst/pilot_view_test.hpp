@@ -28,29 +28,37 @@ inline void PilotViewSuite(TestRunner &runner) {
     using namespace pilot_view_test;
 
     {
-        Test test("pilot camera floors the whole-pixel camera to a tile");
+        Test test("pilot camera preserves the whole-pixel camera origin");
         game::State state;
         game::resetWorld(state);
 
         const cave::Camera camera = pilot_view::cameraForState(state);
         test.assertEqual(camera.tileX, static_cast<int16_t>(world::SPAWN_TILE_X - 6), "spawn camera tile x");
         test.assertEqual(camera.tileY, static_cast<int16_t>(world::SPAWN_TILE_Y - 4), "spawn camera tile y");
-        test.assertEqual(pilot_view::screenX(state, camera), static_cast<int16_t>(48), "spawn screen x");
+        test.assertEqual(cave::pixelOriginX(camera), game::cameraPixelX(state), "spawn camera x keeps its pixel origin");
+        test.assertEqual(cave::pixelOriginY(camera), game::cameraPixelY(state), "spawn camera y keeps its pixel origin");
+        test.assertEqual(pilot_view::screenX(state, camera), static_cast<int16_t>(44), "spawn screen x");
         test.assertEqual(pilot_view::screenY(state, camera), static_cast<int16_t>(32), "spawn screen y");
 
-        // Sub-tile camera offsets floor down; the display still clamps at the
-        // same far-edge tile as the cave window.
-        state.cameraX = 247;
-        state.cameraY = 359;
+        // Sub-tile camera offsets keep the remainder for rendering while the
+        // collision tile still floors to the containing 8-px cell.
+        state.cameraXQ4 = game::cameraPixelToQ4(247);
+        state.cameraYQ4 = game::cameraPixelToQ4(359);
         const cave::Camera mid = pilot_view::cameraForState(state);
         test.assertEqual(mid.tileX, static_cast<int16_t>(30), "sub-tile x floors");
         test.assertEqual(mid.tileY, static_cast<int16_t>(44), "sub-tile y floors");
+        test.assertEqual(mid.subX, static_cast<uint8_t>(7), "sub-tile x remainder");
+        test.assertEqual(mid.subY, static_cast<uint8_t>(7), "sub-tile y remainder");
+        test.assertEqual(pilot_view::screenX(state, mid), static_cast<int16_t>(state.x - 247), "sub-pixel x maps from the exact origin");
+        test.assertEqual(pilot_view::screenY(state, mid), static_cast<int16_t>(state.y - 359), "sub-pixel y maps from the exact origin");
 
-        state.cameraX = game::kViewW * 100;
-        state.cameraY = game::kViewH * 100;
+        state.cameraXQ4 = 0xFFFF;
+        state.cameraYQ4 = 0xFFFF;
         const cave::Camera far = pilot_view::cameraForState(state);
         test.assertEqual(far.tileX, cave::MAX_CAMERA_TILE_X, "far x clamps to display window");
         test.assertEqual(far.tileY, cave::MAX_CAMERA_TILE_Y, "far y clamps to display window");
+        test.assertEqual(cave::pixelOriginX(far), cave::MAX_CAMERA_PIXEL_X, "far pixel x clamps");
+        test.assertEqual(cave::pixelOriginY(far), cave::MAX_CAMERA_PIXEL_Y, "far pixel y clamps");
         runner.add(test);
     }
 

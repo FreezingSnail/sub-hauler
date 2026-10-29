@@ -213,7 +213,7 @@ inline bool checkpointMatches(const State &a, const State &b) {
         return false;
 #endif
 #if SH_FEATURE_SHOP
-    if (a.airLevel != b.airLevel || a.hullLevel != b.hullLevel || a.sonarLevel != b.sonarLevel)
+    if (a.airLevel != b.airLevel || a.hullLevel != b.hullLevel)
         return false;
 #endif
 #if SH_FEATURE_MULTI_HULL
@@ -287,7 +287,6 @@ inline void setValidPayload(Fixture &fixture) {
 #if SH_FEATURE_SHOP
     fixture.state.airLevel = 1;
     fixture.state.hullLevel = 2;
-    fixture.state.sonarLevel = 3;
 #endif
 #if SH_FEATURE_MULTI_HULL
     fixture.state.hullClass = static_cast<uint8_t>(roster::kLeviathan);
@@ -315,8 +314,8 @@ inline void VoyageSaveSuite(TestRunner &runner) {
         test.assertEqual(voyage_save::kPayloadCapacity, 495, "payload capacity");
         test.assertEqual(voyage_save::kCommitOffset, 511, "commit byte offset");
         test.assertEqual(voyage_save::kPageBytes, 256, "flash page");
-        test.assertEqual(voyage_save::kScalarBytes, 36, "scalar payload width");
-        test.assertEqual(voyage_save::kPayloadBytes, static_cast<uint16_t>(36 + (SH_FEATURE_FOG_CHART ? world::CHART_BYTES : 0)), "payload width follows chart bit");
+        test.assertEqual(voyage_save::kScalarBytes, 35, "scalar payload width");
+        test.assertEqual(voyage_save::kPayloadBytes, static_cast<uint16_t>(35 + (SH_FEATURE_FOG_CHART ? world::CHART_BYTES : 0)), "payload width follows chart bit");
         for (uint8_t berth = 0; berth < campaign::kBerthCount; ++berth) {
             world::Berth info;
             test.assertTrue(world::berthInfo(berth, info), "every valid campaign berth has generated metadata");
@@ -366,14 +365,14 @@ inline void VoyageSaveSuite(TestRunner &runner) {
         Fixture fresh;
         fresh.state.x = 0;
         fresh.state.y = 0;
-        fresh.state.cameraX = 0;
-        fresh.state.cameraY = 0;
+        fresh.state.cameraXQ4 = 0;
+        fresh.state.cameraYQ4 = 0;
         test.assertEqual(fresh.newVoyage(storage), voyage_save::kSaved, "new voyage saves");
         test.assertEqual(fresh.state.docked, campaign::kTidewall, "new voyage docks at Tidewall");
         test.assertEqual(fresh.state.x, berth.pixel_x, "new voyage berth x");
         test.assertEqual(fresh.state.y, berth.pixel_y, "new voyage berth y");
-        test.assertEqual(fresh.state.cameraX, game::cameraTargetX(fresh.state), "new voyage camera x is snapped");
-        test.assertEqual(fresh.state.cameraY, game::cameraTargetY(fresh.state), "new voyage camera y is snapped");
+        test.assertEqual(fresh.state.cameraXQ4, game::cameraTargetXQ4(fresh.state), "new voyage camera x is snapped");
+        test.assertEqual(fresh.state.cameraYQ4, game::cameraTargetYQ4(fresh.state), "new voyage camera y is snapped");
 #if SH_FEATURE_FOG_CHART
         test.assertTrue(spawnExplored(fresh.state, fresh.chart), "first checkpoint includes the spawn reveal");
 #endif
@@ -385,13 +384,13 @@ inline void VoyageSaveSuite(TestRunner &runner) {
         restored.reset();
         restored.state.x = 64;
         restored.state.y = 32;
-        restored.state.cameraX = 0;
-        restored.state.cameraY = 0;
+        restored.state.cameraXQ4 = 0;
+        restored.state.cameraYQ4 = 0;
         test.assertEqual(restored.load(storage), voyage_save::kLoaded, "Continue loads the new voyage");
         test.assertEqual(restored.state.x, berth.pixel_x, "Continue berth x");
         test.assertEqual(restored.state.y, berth.pixel_y, "Continue berth y");
-        test.assertEqual(restored.state.cameraX, game::cameraTargetX(restored.state), "Continue camera x is snapped");
-        test.assertEqual(restored.state.cameraY, game::cameraTargetY(restored.state), "Continue camera y is snapped");
+        test.assertEqual(restored.state.cameraXQ4, game::cameraTargetXQ4(restored.state), "Continue camera x is snapped");
+        test.assertEqual(restored.state.cameraYQ4, game::cameraTargetYQ4(restored.state), "Continue camera y is snapped");
 #if SH_FEATURE_FOG_CHART
         test.assertTrue(spawnExplored(restored.state, restored.chart), "Continue restores the saved spawn reveal");
         test.assertTrue(sameChart(fresh.chart, restored.chart), "first checkpoint chart round-trips exactly");
@@ -431,36 +430,34 @@ inline void VoyageSaveSuite(TestRunner &runner) {
 #if SH_FEATURE_SHOP
         test.assertEqual(storage.bytes[payload + 4], 1, "air level offset 4");
         test.assertEqual(storage.bytes[payload + 5], 2, "hull level offset 5");
-        test.assertEqual(storage.bytes[payload + 6], 3, "sonar level offset 6");
 #else
         test.assertEqual(storage.bytes[payload + 4], 0, "no-shop air level offset 4");
         test.assertEqual(storage.bytes[payload + 5], 0, "no-shop hull level offset 5");
-        test.assertEqual(storage.bytes[payload + 6], 0, "no-shop sonar level offset 6");
 #endif
-        test.assertEqual(storage.bytes[payload + 7], voyage_save::toolsMask(), "tools offset 7");
-        test.assertEqual(storage.bytes[payload + 8], static_cast<uint8_t>(voyage_save::pickupsMask() & 0xA5u), "pickups offset 8");
-        test.assertEqual(readU16(storage, static_cast<uint16_t>(payload + 9)), static_cast<uint16_t>(voyage_save::gatesMask() & 0x155u), "open gates offset 9");
-        test.assertEqual(readU16(storage, static_cast<uint16_t>(payload + 11)), static_cast<uint16_t>(voyage_save::gatesMask() & 0x0AAu), "seen gates offset 11");
-        test.assertEqual(storage.bytes[payload + 13], campaign::kMilestoneFirst, "milestones offset 13");
-        test.assertEqual(storage.bytes[payload + 14], campaign::kSurveyMask, "surveys offset 14");
-        test.assertEqual(storage.bytes[payload + 15], 0x0A, "visited offset 15");
-        test.assertEqual(storage.bytes[payload + 16], game::kJobKindNone, "job kind offset 16");
-        test.assertEqual(storage.bytes[payload + 17], game::kMissionNone, "mission offset 17");
-        test.assertEqual(storage.bytes[payload + 18], game::kJobNone, "origin offset 18");
-        test.assertEqual(storage.bytes[payload + 19], game::kJobNone, "destination offset 19");
-        test.assertEqual(storage.bytes[payload + 20], 0, "job load offset 20");
-        test.assertEqual(storage.bytes[payload + 21], 0, "job reward offset 21");
-        test.assertEqual(readU16(storage, static_cast<uint16_t>(payload + 22)), 0xBEEF, "offer cursor offset 22");
-        test.assertEqual(readU16(storage, static_cast<uint16_t>(payload + 24)), 0, "board seed offset 24");
+        test.assertEqual(storage.bytes[payload + 6], voyage_save::toolsMask(), "tools offset 6");
+        test.assertEqual(storage.bytes[payload + 7], static_cast<uint8_t>(voyage_save::pickupsMask() & 0xA5u), "pickups offset 7");
+        test.assertEqual(readU16(storage, static_cast<uint16_t>(payload + 8)), static_cast<uint16_t>(voyage_save::gatesMask() & 0x155u), "open gates offset 8");
+        test.assertEqual(readU16(storage, static_cast<uint16_t>(payload + 10)), static_cast<uint16_t>(voyage_save::gatesMask() & 0x0AAu), "seen gates offset 10");
+        test.assertEqual(storage.bytes[payload + 12], campaign::kMilestoneFirst, "milestones offset 12");
+        test.assertEqual(storage.bytes[payload + 13], campaign::kSurveyMask, "surveys offset 13");
+        test.assertEqual(storage.bytes[payload + 14], 0x0A, "visited offset 14");
+        test.assertEqual(storage.bytes[payload + 15], game::kJobKindNone, "job kind offset 15");
+        test.assertEqual(storage.bytes[payload + 16], game::kMissionNone, "mission offset 16");
+        test.assertEqual(storage.bytes[payload + 17], game::kJobNone, "origin offset 17");
+        test.assertEqual(storage.bytes[payload + 18], game::kJobNone, "destination offset 18");
+        test.assertEqual(storage.bytes[payload + 19], 0, "job load offset 19");
+        test.assertEqual(storage.bytes[payload + 20], 0, "job reward offset 20");
+        test.assertEqual(readU16(storage, static_cast<uint16_t>(payload + 21)), 0xBEEF, "offer cursor offset 21");
+        test.assertEqual(readU16(storage, static_cast<uint16_t>(payload + 23)), 0, "board seed offset 23");
 #if SH_FEATURE_MINES
-        test.assertEqual(storage.bytes[payload + 26], 0x55, "mines offset 26");
+        test.assertEqual(storage.bytes[payload + 25], 0x55, "mines offset 25");
 #else
-        test.assertEqual(storage.bytes[payload + 26], 0, "no-mines offset 26");
+        test.assertEqual(storage.bytes[payload + 25], 0, "no-mines offset 25");
 #endif
-        test.assertEqual(readU32(storage, static_cast<uint16_t>(payload + 27)), 0x12345678u, "voyage ticks offset 27");
-        test.assertEqual(readU16(storage, static_cast<uint16_t>(payload + 31)), 0x0102, "delivered offset 31");
-        test.assertEqual(readU16(storage, static_cast<uint16_t>(payload + 33)), 0x0304, "rescues offset 33");
-        test.assertEqual(storage.bytes[payload + 35], 0, "ending offset 35");
+        test.assertEqual(readU32(storage, static_cast<uint16_t>(payload + 26)), 0x12345678u, "voyage ticks offset 26");
+        test.assertEqual(readU16(storage, static_cast<uint16_t>(payload + 30)), 0x0102, "delivered offset 30");
+        test.assertEqual(readU16(storage, static_cast<uint16_t>(payload + 32)), 0x0304, "rescues offset 32");
+        test.assertEqual(storage.bytes[payload + 34], 0, "ending offset 34");
 #if SH_FEATURE_FOG_CHART
         for (uint16_t i = 0; i < world::CHART_BYTES; ++i)
             test.assertEqual(storage.bytes[payload + voyage_save::kScalarBytes + i], fixture.chart.explored[i], "chart follows scalar bytes");
@@ -720,11 +717,11 @@ inline void VoyageSaveSuite(TestRunner &runner) {
     }
 #else
     {
-        Test test("new voyage without a chart writes the 36-byte scalar");
+        Test test("new voyage without a chart writes the 35-byte scalar");
         FakeStorage storage(0xFF);
         Fixture fresh;
         test.assertEqual(fresh.newVoyage(storage), voyage_save::kSaved, "new voyage saves");
-        test.assertEqual(voyage_save::kPayloadBytes, 36, "no-chart payload is 36 bytes");
+        test.assertEqual(voyage_save::kPayloadBytes, 35, "no-chart payload is 35 bytes");
         test.assertEqual(voyage_save::inspect(storage).status, voyage_save::kSlotValid, "new voyage is valid");
         test.assertTrue(allBytesAre(storage, voyage_save::kSlotBytes, kSaveBytes - 1, 0xFF), "block tail stays erased");
         runner.add(test);
@@ -851,7 +848,7 @@ inline void VoyageSaveSuite(TestRunner &runner) {
 
         bad = base;
         bad.state.boardSeed = 1;
-        expectInvalid(bad, "schema 4 board seed must be zero");
+        expectInvalid(bad, "schema 5 board seed must be zero");
 
         bad = base;
         bad.state.docked = -1;
@@ -892,9 +889,6 @@ inline void VoyageSaveSuite(TestRunner &runner) {
 #if SH_FEATURE_FOG_CHART
         expected |= voyage_save::kSignatureFogChart;
 #endif
-#if SH_FEATURE_SONAR
-        expected |= voyage_save::kSignatureSonar;
-#endif
 #if SH_FEATURE_MINES
         expected |= voyage_save::kSignatureMines;
 #endif
@@ -913,10 +907,10 @@ inline void VoyageSaveSuite(TestRunner &runner) {
         test.assertEqual(voyage_save::kProfileSignature, expected, "profile signature bits");
         test.assertEqual(SH_FEATURE_SAVE_CHART, 0, "voyage save excludes chart save");
 #if SH_FEATURE_FOG_CHART
-        test.assertEqual(voyage_save::kPayloadBytes, 292, "chart profile payload is 292 B");
+        test.assertEqual(voyage_save::kPayloadBytes, 291, "chart profile payload is 291 B");
         test.assertEqual(voyage_save::kChartBytes, world::CHART_BYTES, "chart bytes are part of the payload");
 #else
-        test.assertEqual(voyage_save::kPayloadBytes, 36, "no-chart payload is 36 B");
+        test.assertEqual(voyage_save::kPayloadBytes, 35, "no-chart payload is 35 B");
         test.assertEqual(voyage_save::kChartBytes, 0, "no chart bytes");
 #endif
 #if !SH_FEATURE_SHOP
