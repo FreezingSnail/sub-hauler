@@ -18,9 +18,9 @@
 //
 // Prices are sized against the M3 delivery rewards (~70-90 credits for a
 // four-crate contract at the generated settlement distances). One delivery
-// buys the first upgrade; buying all nine levels costs 540 credits, about
-// seven deliveries. There is no stock besides the level counter and no save:
-// levels last for the current run only.
+// buys the first upgrade; buying all six levels costs 390 credits, about five
+// deliveries. There is no stock besides the level counter; levels persist in
+// voyage checkpoints (schema 5) and reset on a new voyage.
 namespace shop {
 
 using game::State;
@@ -28,7 +28,6 @@ using game::State;
 enum Item : uint8_t {
     kAir,
     kHull,
-    kSonar,
     kItemCount
 };
 
@@ -37,7 +36,6 @@ constexpr uint8_t kFirstItem = 0;
 
 constexpr uint8_t kAirPrice = 60;
 constexpr uint8_t kHullPrice = 70;
-constexpr uint8_t kSonarPrice = 50;
 
 // kSoldOut is the max-level result: every level has been purchased, so the
 // row can only be read. Insufficient credits is a separate failure.
@@ -54,8 +52,6 @@ inline uint8_t priceFor(Item item) {
         return kAirPrice;
     if (item == kHull)
         return kHullPrice;
-    if (item == kSonar)
-        return kSonarPrice;
     return 0;
 }
 
@@ -64,16 +60,12 @@ inline uint8_t levelFor(const State &state, Item item) {
         return state.airLevel;
     if (item == kHull)
         return state.hullLevel;
-    if (item == kSonar)
-        return state.sonarLevel;
     return kMaxLevel;
 }
 
 inline uint8_t &levelRef(State &state, Item item) {
     if (item == kHull)
         return state.hullLevel;
-    if (item == kSonar)
-        return state.sonarLevel;
     return state.airLevel;
 }
 
@@ -97,9 +89,7 @@ inline Result canBuy(const State &state, Item item) {
 
 // Atomic purchase. A rejected buy changes nothing: no credits, no level, no
 // refill. A successful air purchase fills the new tank; a hull purchase
-// repairs to the new maximum. Sonar has no immediate state beyond its level,
-// which the ping rules already consume via sonar::costForLevel() and
-// sonar::radiusForLevel().
+// repairs to the new maximum.
 inline Result buy(State &state, Item item) {
     const Result result = canBuy(state, item);
     if (result != kBought)
@@ -118,7 +108,7 @@ inline Result buy(State &state, Item item) {
     return kBought;
 }
 
-// Three-row selection wrap. The sketch reuses its station row byte as the
+// Two-row selection wrap. The sketch reuses its station row byte as the
 // shop selection, so no extra static state is needed.
 inline uint8_t selectNext(uint8_t selected) {
     if (selected >= static_cast<uint8_t>(kItemCount - 1))
@@ -133,8 +123,8 @@ inline uint8_t selectPrevious(uint8_t selected) {
 }
 
 static_assert(kMaxLevel > 0, "shop needs at least one upgrade level");
-static_assert(kItemCount == 3, "shop board has three item rows");
-static_assert(kAirPrice > 0 && kHullPrice > 0 && kSonarPrice > 0, "prices are positive");
+static_assert(kItemCount == 2, "shop board has two item rows");
+static_assert(kAirPrice > 0 && kHullPrice > 0, "prices are positive");
 
 }   // namespace shop
 

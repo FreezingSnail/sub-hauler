@@ -13,7 +13,7 @@ inline void glyph(uint8_t *buffer, int16_t x, int16_t y, uint8_t kind) {
                 cave::setPixel(buffer, x + col, y + row);
 }
 inline void draw(uint8_t *buffer, const game::State &s, const cave::Camera &camera) {
-    const int16_t ox = camera.tileX * 8, oy = camera.tileY * 8;
+    const int16_t ox = cave::pixelOriginX(camera), oy = cave::pixelOriginY(camera);
     for (uint8_t i = 0; i < exploration_data::GATE_COUNT; ++i) {
         const exploration_data::Gate g = exploration_data::gate(i);
         const int16_t x = g.x - ox, y = g.y - oy;

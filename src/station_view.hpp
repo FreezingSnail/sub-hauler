@@ -11,6 +11,26 @@
 #if SH_FEATURE_JOBS
 #include "jobs.hpp"
 #endif
+#if SH_FEATURE_EXPLORATION
+#include "generated/exploration.hpp"
+#endif
+
+// The full profile bakes every fixed station-board pixel into 30 opaque FX
+// frames: three idle selections and four active selections for each of the four
+// freight berths, plus one UNDOCK frame for each service berth. Lean/core
+// profiles keep the native rows; they have different board shapes and do not
+// carry the generated menu set.
+#ifndef SH_STATION_MENU_PANELS
+#if SH_FEATURE_STATIONS && SH_FEATURE_JOBS && SH_FEATURE_SHOP && SH_FEATURE_HULL_DAMAGE && SH_FEATURE_CAMPAIGN
+#define SH_STATION_MENU_PANELS 1
+#else
+#define SH_STATION_MENU_PANELS 0
+#endif
+#endif
+
+#if defined(__AVR__)
+#include "panel_view.hpp"
+#endif
 
 // Station board, 128x64. The layout is pure and host-checkable; the draw
 // function is device-only because it uses the external FX font.
@@ -52,6 +72,9 @@ constexpr uint8_t kHintX = 3;
 constexpr uint8_t kHintY = 56;
 #endif
 constexpr uint8_t kOfferChars = 20;   // "DEEP ANCHOR 240"
+constexpr uint8_t kCreditsNumberX = static_cast<uint8_t>(kCreditsX + 3 * 6);
+constexpr uint8_t kAirNumberX = static_cast<uint8_t>(kStatusX + 4 * 6);
+constexpr uint8_t kHullNumberX = static_cast<uint8_t>(kHullX + 5 * 6);
 
 // Row i's text baseline is rowY(i); the invert bar extends kRowInsetY above
 // it. Keep the last row clear of the hint and the hint inside the display.
@@ -70,6 +93,67 @@ static_assert(kHintY + 7 <= 64, "hint stays on screen");
 static_assert(kCreditsX + 8 * 6 <= 128, "CR 65535 fits at the right edge");
 #endif
 static_assert(kRowX + kOfferChars * 6 <= 128, "offer text fits inside 128 columns");
+
+#if SH_STATION_MENU_PANELS
+// Frame ABI: four main berths with three idle selections (WORK/SHOP/UNDOCK)
+// and four active selections (ABANDON/WORK/SHOP/UNDOCK), then one selected
+// UNDOCK frame for each service berth. The inert active summary row is never a
+// frame selector; its destination/reward stays a native overlay.
+constexpr uint8_t kPanelMainBerths = 4;
+constexpr uint8_t kPanelServiceBerths = 2;
+constexpr uint8_t kPanelFramesPerBerth = 3 + 4;
+constexpr uint8_t kPanelFrameCount = kPanelMainBerths * kPanelFramesPerBerth + kPanelServiceBerths;
+
+// Hint order matches tools/gen_menu.STATION_HINTS so one byte selects the
+// generated 128x7 row. The priority is the shipped board contract.
+enum PanelHint : uint8_t {
+    kPanelServiceHint = 0,
+    kPanelShortLoad,
+    kPanelCutterRumor,
+    kPanelThrusterRumor,
+    kPanelSealRumor,
+    kPanelAutoload,
+    kPanelStation,
+};
+
+constexpr bool panelMainBerth(uint8_t berth) {
+    return berth < kPanelMainBerths;
+}
+
+inline bool panelValidFrame(uint8_t berth, bool active, uint8_t selected) {
+    if (panelMainBerth(berth)) {
+        if (active)
+            return selected >= station::kAbandonRow && selected <= station::kActiveUndockRow;
+        return selected < station::kStationRowCount;
+    }
+    return berth < kPanelMainBerths + kPanelServiceBerths && !active && selected == 0;
+}
+
+inline uint16_t panelFrame(uint8_t berth, bool active, uint8_t selected) {
+    if (!panelMainBerth(berth))
+        return static_cast<uint16_t>(kPanelMainBerths * kPanelFramesPerBerth + (berth - kPanelMainBerths));
+    const uint16_t base = static_cast<uint16_t>(berth * kPanelFramesPerBerth);
+    return active ? static_cast<uint16_t>(base + 3 + (selected - station::kAbandonRow)) : static_cast<uint16_t>(base + selected);
+}
+
+inline uint8_t panelHint(const game::State &state) {
+    if (station::serviceBerth(state))
+        return kPanelServiceHint;
+    if (jobs::deliveryFailed(state))
+        return kPanelShortLoad;
+    if (!station::jobActive(state)) {
+#if SH_FEATURE_EXPLORATION
+        if (!(state.tools & exploration_data::CUTTER))
+            return kPanelCutterRumor;
+        if (state.docked == 1 && !(state.tools & exploration_data::THRUSTER))
+            return kPanelThrusterRumor;
+        if (state.docked == 2 && !(state.tools & exploration_data::SEAL))
+            return kPanelSealRumor;
+#endif
+    }
+    return station::jobActive(state) ? kPanelAutoload : kPanelStation;
+}
+#endif
 
 #if defined(__AVR__)
 
@@ -171,6 +255,22 @@ inline void printRow(uint8_t row, const game::State &state) {
 }
 #endif
 
+#if SH_STATION_MENU_PANELS
+inline void drawPanelValues(const game::State &state) {
+    text::normal();
+    text::at(kCreditsX + 3 * 6, kHeaderY);
+    text::number(state.credits);
+    text::at(kStatusX + 4 * 6, kStatusY);
+    text::number(state.air);
+    text::character('/');
+    text::number(game::airCapacity(state));
+    text::at(kHullX + 5 * 6, kStatusY);
+    text::number(state.hull);
+    text::character('/');
+    text::number(game::hullCapacity(state));
+}
+#endif
+
 inline void drawStatus(const game::State &state) {
     text::at(kStatusX, kStatusY);
     text::print(txt_air_status);
@@ -187,6 +287,29 @@ inline void drawStatus(const game::State &state) {
 #endif
 }
 
+#if SH_STATION_MENU_PANELS
+// Full-profile board: one opaque 128x64 frame carries the berth name, credits
+// and status captions, divider, row labels and the selected bar. Live numbers,
+// the active-job summary and the 7-px hint row are the only native overlays.
+inline void draw(const game::State &state, uint8_t selected) {
+    if (state.docked < 0)
+        return;
+
+    const uint8_t berth = static_cast<uint8_t>(state.docked);
+    const bool service = station::serviceBerth(state);
+    const bool active = !service && station::jobActive(state);
+
+    panel_view::draw(station_menu, panelFrame(berth, active, selected), 64);
+    drawPanelValues(state);
+
+    if (active) {
+        text::at(kRowX, rowY(0));
+        printDestination(state.activeJob.to, state.activeJob.reward);
+    }
+
+    panel_view::drawHint7(station_hints, panelHint(state));
+}
+#else
 inline void draw(const game::State &state, uint8_t selected) {
     if (state.docked < 0)
         return;
@@ -262,6 +385,7 @@ inline void draw(const game::State &state, uint8_t selected) {
     text::print(txt_station_hint);
 #endif
 }
+#endif   // SH_STATION_MENU_PANELS
 
 #endif   // __AVR__
 

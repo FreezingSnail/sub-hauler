@@ -170,12 +170,6 @@ struct State {
     int16_t vxQ8;      // Q8.8 pixels per second
     int16_t vyQ8;      // positive is down
     uint8_t ballast;   // 0..100
-#if SH_FEATURE_SONAR
-    // Sonar state is two bytes total. The host build files these into existing
-    // alignment holes; the AVR layout is byte-packed, so the device image grows
-    // by exactly these two bytes (1,678 -> 1,680 B).
-    uint8_t sonarCooldown;   // flight ticks until the next ping is allowed
-#endif
     int16_t air;     // integer units, 0..airCapacity(state)
     uint8_t cargo;   // 0..4
 #if SH_FEATURE_MULTI_HULL
@@ -192,8 +186,8 @@ struct State {
     // Follow camera and collision feedback. The camera is owned by update, not
     // render, so it can be reproduced by the host tests and stays independent
     // of display timing.
-    int16_t cameraX;   // whole-pixel world offset
-    int16_t cameraY;
+    uint16_t cameraXQ4;   // unsigned Q4 world origin (1/16 px)
+    uint16_t cameraYQ4;
     int16_t impactSpeedQ8;   // speed on the blocked axis before it was zeroed
     uint8_t impactAxis;      // 0 none, 1 x, 2 y, 3 mine hit (one frame)
 #if SH_FEATURE_MINES
@@ -235,10 +229,9 @@ struct State {
     ActiveJob activeJob;
 #endif
 #if SH_FEATURE_SHOP
-    // Run-only shop levels: three bytes, no save field, no extra UI state.
+    // Shop levels: two bytes, persisted in voyage checkpoints, no extra UI state.
     uint8_t airLevel;
     uint8_t hullLevel;
-    uint8_t sonarLevel;
 #endif
 };
 
@@ -516,11 +509,6 @@ inline void step(State &state, const Input &input) {
     advanceAxis(state.x, state.xFrac, state.vxQ8);
     advanceAxis(state.y, state.yFrac, state.vyQ8);
     ++state.ticks;
-#if SH_FEATURE_SONAR
-    // One flight tick, one cooldown tick. stepWorld below owns the other path.
-    if (state.sonarCooldown > 0)
-        --state.sonarCooldown;
-#endif
 #if SH_FEATURE_CAMPAIGN
 #if SH_FEATURE_JOBS
     // Campaign voyage clock; job timers are gone.

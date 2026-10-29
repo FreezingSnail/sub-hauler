@@ -18,18 +18,16 @@
 #include "hazard_view.hpp"
 #endif
 #include "pilot_view.hpp"
-#if SH_FEATURE_SONAR
-#include "sonar_view.hpp"
-#endif
 #include "world.hpp"
 #include "world_fx.hpp"
 
 // M2 pilot view: compose the visible 16x8 tile window and the HAULER at the
 // camera derived from the pilot state.
 //
-// Terrain streams from a baked native image in eight 128-byte bursts directly
-// into the existing framebuffer. The 18x10 collision cache is still refreshed
-// when the camera moves (one transaction per packed byte). All cart reads
+// Terrain streams from a baked native image at the camera's exact pixel origin;
+// page-aligned Y frames keep eight 128-byte bursts, fractional Y frames combine page
+// rows through a small stack scratch. The 18x10 collision cache remains
+// tile-based and refreshes only when the camera tile moves. All cart reads
 // finish before the single FX::display(CLEAR_BUFFER) in the sketch.
 namespace view {
 
@@ -38,10 +36,6 @@ inline void frame(const game::State &state, const cave::Camera &camera, world::T
     cave::streamFrame(camera, tables, Arduboy2Base::sBuffer);
 #if SH_FEATURE_CAMPAIGN
     campaign_view::drawRestoration(Arduboy2Base::sBuffer, state, camera);
-#endif
-#if SH_FEATURE_SONAR
-    // Ring first: the filled HAULER silhouette stays solid and readable.
-    sonar_view::draw(Arduboy2Base::sBuffer, state, camera);
 #endif
 #if SH_FEATURE_CURRENTS
     hazard_view::drawCurrents(Arduboy2Base::sBuffer, state, camera);

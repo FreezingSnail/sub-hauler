@@ -161,8 +161,8 @@ inline void HazardsSuite(TestRunner &runner) {
         place(state, mine.x, mine.y);
 
         const cave::Camera camera = pilot_view::cameraForState(state);
-        const int16_t originX = static_cast<int16_t>(camera.tileX * world::TILE_PIXELS);
-        const int16_t originY = static_cast<int16_t>(camera.tileY * world::TILE_PIXELS);
+        const int16_t originX = cave::pixelOriginX(camera);
+        const int16_t originY = cave::pixelOriginY(camera);
         const int16_t screenX = static_cast<int16_t>(mine.x - originX);
         const int16_t screenY = static_cast<int16_t>(mine.y - originY);
 

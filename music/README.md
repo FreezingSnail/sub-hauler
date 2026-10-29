@@ -70,13 +70,15 @@ streams and a source/event/stream hash manifest into `fxdata/music/`, appends
 the streams to the ordered FX layout, and stages the jukebox. Detailed
 `report.json` / `review.json` files are in `build/music/<score-id>/`.
 
-The full game streams these cues through the sibling **ArduboyStreamFX**
-player, using the generated `sh_*` FX offsets and
-`music_data::sh_*_bytes` lengths from `src/generated/music.hpp` and servicing
-the ring in the foreground between complete SPI transactions. The
+The full game plays these cues through the production **ATMlib2FX compact
+synth** (`ATM_FX_COMPACT_RING=32`, streaming loops, all native effects), using
+the generated `sh_*` FX offsets and `music_data::sh_*_bytes` lengths from
+`src/generated/music.hpp` and servicing the foreground FX refill between
+complete SPI transactions. `MUSIC_BACKEND=stream` keeps the earlier
+ArduboyStreamFX comparison build. The
 [progression design](../docs/progression.md#music-follows-place-and-recovery)
 defines region/berth cues, pause and save behavior, and mute. Asset bytes are
-external cart storage; the measured AVR player cost and combined image are in
+external cart storage; the measured AVR backend cost and combined image are in
 [platform.md](../docs/platform.md).
 
 `make gen` also writes raw 4-bit IMA ADPCM loops under

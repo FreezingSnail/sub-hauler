@@ -6,8 +6,8 @@
 // Emulator/host-harness only. It performs real cart erase/page writes, so never
 // run it on a physical cart.
 
-#ifndef STREAMFX_DIAG
-#define STREAMFX_DIAG 0
+#ifndef ATM_FX_COMPACT_DIAG
+#define ATM_FX_COMPACT_DIAG 0
 #endif
 
 // This suite includes the production sketch, whose release build emits a
@@ -80,8 +80,8 @@ void runProductionChain() {
         music::service();
         delay(4);
     }
-#if STREAMFX_DIAG
-    s_audioOk = streamfx::diagUnderruns == 0 && streamfx::diagErrors == 0;
+#if ATM_FX_COMPACT_DIAG
+    s_audioOk = !music::underrun() && !music::error();
 #else
     s_audioOk = true;
 #endif
@@ -108,11 +108,11 @@ void setup() {
     Serial.println(s_saveOk ? 1 : 0);
     Serial.print(F("audio_after_save="));
     Serial.println(s_audioOk ? 1 : 0);
-#if STREAMFX_DIAG
+#if ATM_FX_COMPACT_DIAG
     Serial.print(F("save_underruns="));
-    Serial.println(streamfx::diagUnderruns);
+    Serial.println(music::underrun() ? 1 : 0);
     Serial.print(F("save_errors="));
-    Serial.println(streamfx::diagErrors);
+    Serial.println(music::error() ? 1 : 0);
 #endif
     Serial.println(s_reserve >= kReserveTarget && s_saveOk && s_audioOk ? 'P' : 'F');
 }

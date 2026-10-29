@@ -37,90 +37,158 @@ constexpr int16_t kCameraScreenY = 32;
 
 // Directional look-ahead: shift the target half a pixel per px/s of Q8.8
 // velocity. Base top speed (30 px/s) gives 15 px right and max vertical
-// (20 px/s) gives 10 px down; reverse velocity mirrors that exactly. The
-// look-ahead is stateless, so a stop immediately recentres the target while
-// the camera itself still eases back, and a reversal flips the target without
-// a camera snap.
-constexpr uint8_t kCameraLookAheadShift = 9;
-constexpr uint16_t kCameraLookAheadMask = (1u << kCameraLookAheadShift) - 1u;
-static_assert((-1 >> kCameraLookAheadShift) == -1, "signed right shift must floor");
+// (20 px/s) gives 10 px down; reverse velocity mirrors that exactly. In Q4 the
+// same lead is velocityQ8 / 32, so 30 px/s = 240 Q4 = 15 px. The look-ahead is
+// stateless, so a stop immediately recentres the target while the camera itself
+// still eases back, and a reversal flips the target without a camera snap.
+constexpr uint8_t kCameraLookAheadShiftQ4 = 5;
+constexpr uint16_t kCameraLookAheadMaskQ4 = (1u << kCameraLookAheadShiftQ4) - 1u;
+static_assert((-1 >> kCameraLookAheadShiftQ4) == -1, "signed right shift must floor");
 
 constexpr int16_t kCameraMaxX = static_cast<int16_t>(world::PIXELS_X) - kViewW;
 constexpr int16_t kCameraMaxY = static_cast<int16_t>(world::PIXELS_Y) - kViewH;
 
+constexpr uint8_t kCameraQ4Shift = 4;
+constexpr uint16_t kCameraQ4One = 1u << kCameraQ4Shift;
+constexpr uint32_t kCameraMaxXQ4Wide = static_cast<uint32_t>(kCameraMaxX) * kCameraQ4One;
+constexpr uint32_t kCameraMaxYQ4Wide = static_cast<uint32_t>(kCameraMaxY) * kCameraQ4One;
+static_assert(kCameraMaxXQ4Wide <= 0xFFFFu, "Q4 camera x fits the existing 16-bit fields");
+static_assert(kCameraMaxYQ4Wide <= 0xFFFFu, "Q4 camera y fits the existing 16-bit fields");
+constexpr uint16_t kCameraMaxXQ4 = static_cast<uint16_t>(kCameraMaxXQ4Wide);
+constexpr uint16_t kCameraMaxYQ4 = static_cast<uint16_t>(kCameraMaxYQ4Wide);
+constexpr uint16_t kCameraScreenXQ4 = static_cast<uint16_t>(kCameraScreenX) << kCameraQ4Shift;
+constexpr uint16_t kCameraScreenYQ4 = static_cast<uint16_t>(kCameraScreenY) << kCameraQ4Shift;
+
+// Correction bounds. Normal flight tops out at 0.5 px/frame, so 2 px/frame is
+// four times the tracking requirement and still bounds a 15 px look-ahead drop
+// (stop or collision) to a 2 px terrain step instead of the old 3.75 px jolt.
+// Developer direct traversal moves 6 px/frame, so only that explicit path may
+// use the larger bound; gameplay camera state and saves are unchanged.
+constexpr uint16_t kCameraMaxStepQ4 = 2u << kCameraQ4Shift;
+constexpr uint16_t kDevCameraMaxStepQ4 = 6u << kCameraQ4Shift;
+
 static_assert(kCameraMaxX >= 0 && kCameraMaxY >= 0, "world must be at least one view");
 static_assert(kCameraScreenX >= 0 && kCameraScreenX < static_cast<int16_t>(world::PIXELS_X), "camera target x can clamp");
 static_assert(kCameraScreenY >= 0 && kCameraScreenY < static_cast<int16_t>(world::PIXELS_Y), "camera target y can clamp");
-
 // Full look-ahead must keep the whole 26x8 hull inside the 128x64 view.
-static_assert(kCameraScreenX - (kMaxVxBaseQ8 >> kCameraLookAheadShift) >= 0, "left look-ahead keeps the hull on screen");
-static_assert(kCameraScreenX + (kMaxVxBaseQ8 >> kCameraLookAheadShift) + kHullW <= kViewW, "right look-ahead keeps the hull on screen");
-static_assert(kCameraScreenY - (kMaxVyQ8 >> kCameraLookAheadShift) >= 0, "top look-ahead keeps the hull on screen");
-static_assert(kCameraScreenY + (kMaxVyQ8 >> kCameraLookAheadShift) + kHullH <= kViewH, "bottom look-ahead keeps the hull on screen");
+static_assert(kCameraScreenXQ4 - (kMaxVxBaseQ8 >> kCameraLookAheadShiftQ4) >= 0, "left look-ahead keeps the hull on screen");
+static_assert(kCameraScreenXQ4 + (kMaxVxBaseQ8 >> kCameraLookAheadShiftQ4) + (kHullW << kCameraQ4Shift) <= (kViewW << kCameraQ4Shift), "right look-ahead keeps the hull on screen");
+static_assert(kCameraScreenYQ4 - (kMaxVyQ8 >> kCameraLookAheadShiftQ4) >= 0, "top look-ahead keeps the hull on screen");
+static_assert(kCameraScreenYQ4 + (kMaxVyQ8 >> kCameraLookAheadShiftQ4) + (kHullH << kCameraQ4Shift) <= (kViewH << kCameraQ4Shift), "bottom look-ahead keeps the hull on screen");
 
-// Arithmetic shift floors, which would give -1..-511 a one-pixel lead while
-// +1..+511 have none. Correct the negative remainder so both signs truncate
-// toward zero: +/-1..+/-511 -> 0, +/-512 -> +/-1, keeping framing symmetric
-// while the boat slows or reverses.
-inline int16_t cameraLookAheadQ8(int16_t velocityQ8) {
-    const int16_t lead = static_cast<int16_t>(velocityQ8 >> kCameraLookAheadShift);
-    if (velocityQ8 < 0 && (velocityQ8 & kCameraLookAheadMask) != 0)
+// Arithmetic shift floors, which would give -1..-31 a one-Q4 lead while
+// +1..+31 have none. Correct the negative remainder so both signs truncate
+// toward zero, keeping framing symmetric while the boat slows or reverses.
+inline int16_t cameraLookAheadQ4(int16_t velocityQ8) {
+    const int16_t lead = static_cast<int16_t>(velocityQ8 >> kCameraLookAheadShiftQ4);
+    if (velocityQ8 < 0 && (velocityQ8 & kCameraLookAheadMaskQ4) != 0)
         return static_cast<int16_t>(lead + 1);
     return lead;
 }
 
-// Integer shift lerp: one quarter of the error per tick, but never less than
-// one pixel while the camera is off target. Both bounds are enforced here.
-inline int16_t lerpCamera(int16_t current, int16_t target) {
-    const int16_t delta = static_cast<int16_t>(target - current);
+// Exact Q4 world position from the integer world pixel plus its Q12 remainder.
+// xFrac is always 0..4095, so the top four Q12 bits are the Q4 fraction.
+inline int32_t cameraPositionXQ4(const State &state) {
+    return static_cast<int32_t>(state.x) * kCameraQ4One + (state.xFrac >> 8);
+}
+
+inline int32_t cameraPositionYQ4(const State &state) {
+    return static_cast<int32_t>(state.y) * kCameraQ4One + (state.yFrac >> 8);
+}
+
+// The target adds velocity look-ahead before clamping, so the camera can lead a
+// moving boat but never leaves the baked world. Zero velocity reduces both
+// targets to the historical centred framing. The clamp is applied in signed
+// 32-bit space before the result is stored as unsigned Q4.
+inline uint16_t cameraTargetXQ4(const State &state) {
+    const int32_t target = cameraPositionXQ4(state) + cameraLookAheadQ4(state.vxQ8) - kCameraScreenXQ4;
+    if (target < 0)
+        return 0;
+    if (target > kCameraMaxXQ4)
+        return kCameraMaxXQ4;
+    return static_cast<uint16_t>(target);
+}
+
+inline uint16_t cameraTargetYQ4(const State &state) {
+    const int32_t target = cameraPositionYQ4(state) + cameraLookAheadQ4(state.vyQ8) - kCameraScreenYQ4;
+    if (target < 0)
+        return 0;
+    if (target > kCameraMaxYQ4)
+        return kCameraMaxYQ4;
+    return static_cast<uint16_t>(target);
+}
+
+// Quarter-step easing in Q4. A zero integer step uses one Q4 unit so the camera
+// settles instead of sticking a few sixteenths short. maxStepQ4 bounds a large
+// target jump without quantizing normal fractional motion to whole pixels.
+inline uint16_t lerpCameraQ4(uint16_t current, uint16_t target, uint16_t maxStepQ4) {
+    const int32_t delta = static_cast<int32_t>(target) - current;
     if (delta == 0)
         return current;
-
-    int16_t stepPx = static_cast<int16_t>(delta / 4);
-    if (stepPx == 0)
-        stepPx = static_cast<int16_t>(delta > 0 ? 1 : -1);
-    return static_cast<int16_t>(current + stepPx);
+    int32_t step = delta / 4;
+    if (step == 0)
+        step = delta > 0 ? 1 : -1;
+    if (step > static_cast<int32_t>(maxStepQ4))
+        step = maxStepQ4;
+    else if (step < -static_cast<int32_t>(maxStepQ4))
+        step = -static_cast<int32_t>(maxStepQ4);
+    return static_cast<uint16_t>(static_cast<int32_t>(current) + step);
 }
 
-// The target adds the velocity look-ahead before clamping, so the camera can
-// lead a moving boat but never leaves the baked world. Zero velocity reduces
-// both targets to the historical centred framing; spawn, Continue, recovery
-// and docking all zero velocity before snapCamera(), so those views are
-// unchanged. Docked frames do not call updateCamera, keeping the berth still.
-inline int16_t cameraTargetX(const State &state) {
-    const int16_t lead = cameraLookAheadQ8(state.vxQ8);
-    return clampI16(static_cast<int16_t>(state.x - kCameraScreenX + lead), 0, kCameraMaxX);
+// Rounded whole-pixel origin used by every renderer layer. Rounding once here
+// keeps terrain and integer-world overlays on the same shared camera origin.
+inline int16_t cameraPixelXQ4(uint16_t q4) {
+    return static_cast<int16_t>((q4 + (1u << (kCameraQ4Shift - 1))) >> kCameraQ4Shift);
 }
 
-inline int16_t cameraTargetY(const State &state) {
-    const int16_t lead = cameraLookAheadQ8(state.vyQ8);
-    return clampI16(static_cast<int16_t>(state.y - kCameraScreenY + lead), 0, kCameraMaxY);
+inline int16_t cameraPixelYQ4(uint16_t q4) {
+    return static_cast<int16_t>((q4 + (1u << (kCameraQ4Shift - 1))) >> kCameraQ4Shift);
 }
 
-// Update owns the camera. Rendering reads cameraX/cameraY without changing
-// them, so display timing can never feed back into movement.
+constexpr uint16_t cameraPixelToQ4(int16_t pixel) {
+    return static_cast<uint16_t>(pixel) << kCameraQ4Shift;
+}
+
+inline int16_t cameraPixelX(const State &state) {
+    return cameraPixelXQ4(state.cameraXQ4);
+}
+
+inline int16_t cameraPixelY(const State &state) {
+    return cameraPixelYQ4(state.cameraYQ4);
+}
+
+// Signed residual of the exact Q4 origin from the rounded pixel, in Q4 units.
+// The transient Camera carries it so the hull can be projected from fractional
+// boat-minus-camera before the final pixel round.
+inline int8_t cameraResidualXQ4(const State &state) {
+    return static_cast<int8_t>(static_cast<int32_t>(state.cameraXQ4) - (static_cast<int32_t>(cameraPixelX(state)) * kCameraQ4One));
+}
+
+inline int8_t cameraResidualYQ4(const State &state) {
+    return static_cast<int8_t>(static_cast<int32_t>(state.cameraYQ4) - (static_cast<int32_t>(cameraPixelY(state)) * kCameraQ4One));
+}
+
+// Update owns the camera. Rendering reads the Q4 fields without changing them,
+// so display timing can never feed back into movement.
 //
-// The target moves with velocity: forward travel leads the hull, a reversal
-// swaps the lead to the other side, and stopping decays back to the centred
-// target. The quarter-step lerp eases every one of those target changes; the
-// camera is never snapped during flight. Clamping happens on the target
-// before easing, so look-ahead at a world edge simply parks the camera on the
-// boundary. Berth snaps are the deliberate exception: spawn, Continue, rescue
-// and dock zero velocity and call snapCamera() for an exact authored view.
-//
-// No post-lerp clamp is needed: cameraTargetX/Y are clamped, and lerpCamera
-// moves by a step no larger than the remaining delta (delta/4 truncated toward
-// zero, with a one-pixel floor). Starting from an in-range camera, every
-// result stays between the current value and the target. resetWorld snaps from
-// reset()'s zero camera; both endpoints are in range by the asserts above.
+// The target moves with fractional position and velocity. Forward travel leads
+// the hull, a reversal swaps the lead, and stopping decays back to centred
+// framing. Quarter-step easing retains sub-pixel motion; the correction bound
+// only clips large jumps. Berth snaps are the deliberate exception: spawn,
+// Continue, rescue and dock zero velocity and call snapCamera() for an exact
+// authored view.
+inline void updateCamera(State &state, uint16_t maxStepQ4) {
+    state.cameraXQ4 = lerpCameraQ4(state.cameraXQ4, cameraTargetXQ4(state), maxStepQ4);
+    state.cameraYQ4 = lerpCameraQ4(state.cameraYQ4, cameraTargetYQ4(state), maxStepQ4);
+}
+
 inline void updateCamera(State &state) {
-    state.cameraX = lerpCamera(state.cameraX, cameraTargetX(state));
-    state.cameraY = lerpCamera(state.cameraY, cameraTargetY(state));
+    updateCamera(state, kCameraMaxStepQ4);
 }
 
 inline void snapCamera(State &state) {
-    state.cameraX = cameraTargetX(state);
-    state.cameraY = cameraTargetY(state);
+    state.cameraXQ4 = cameraTargetXQ4(state);
+    state.cameraYQ4 = cameraTargetYQ4(state);
 }
 
 // Place the boat at the baked spawn and snap the camera. reset()/step() remain
@@ -317,12 +385,6 @@ template <typename Reader> inline void stepWorld(State &state, const Input &inpu
 #endif
     updateCamera(state);
     ++state.ticks;
-#if SH_FEATURE_SONAR
-    // One flight tick, one cooldown tick. step() owns the pure-physics path;
-    // stepFlight calls this function exactly once per frame.
-    if (state.sonarCooldown > 0)
-        --state.sonarCooldown;
-#endif
 #if SH_FEATURE_CAMPAIGN
     // Flight tick for the campaign voyage clock (docked frames never step).
     tickVoyage(state);

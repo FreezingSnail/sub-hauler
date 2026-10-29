@@ -12,9 +12,6 @@
 #if SH_FEATURE_STATIONS
 #include "../src/station.hpp"
 #endif
-#if SH_FEATURE_SONAR
-#include "../src/sonar.hpp"
-#endif
 #include "test.hpp"
 #include "world_test.hpp"
 namespace exploration_test {
@@ -270,27 +267,6 @@ inline void ExplorationSuite(TestRunner &runner) {
         t.assertTrue(offered, "seal unlocks delivery offers to the deep station");
         runner.add(t);
     }
-#if SH_FEATURE_SONAR
-    {
-        Test t("found survey lens reveals extra contacts without extra sonar air cost");
-        game::State base, lens;
-        game::resetWorld(base);
-        game::resetWorld(lens);
-        place(base, 1000, 600);
-        place(lens, 1000, 600);
-        lens.tools = data::LENS;
-        chart::State first, second;
-        chart::reset(first);
-        chart::reset(second);
-        sonar::fire(base, first, 0);
-        sonar::fire(lens, second, 0);
-        t.assertEqual(base.air, lens.air, "lens expands survey without charging more air");
-        const int16_t cx = chart::cellFromPixelX(lens.x), cy = chart::cellFromPixelY(lens.y);
-        t.assertTrue(!chart::isExplored(first, cx + 5, cy), "ordinary sonar stops short");
-        t.assertTrue(chart::isExplored(second, cx + 5, cy), "lens reaches the distant contact cell");
-        runner.add(t);
-    }
-#endif
     {
         Test t("discovery rendering clips glyphs and gates at every edge of the display");
         game::State s;

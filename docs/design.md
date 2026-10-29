@@ -204,12 +204,14 @@ in `game::State`.
 
 `src/cave.hpp` holds the window math and tile atlas, `src/cave_render.hpp`
 composes a frame, and `src/render.hpp` is the device entry. The view is native
-1-bit and integer-only: no float, anti-aliasing, greyscale, or scrolling.
+1-bit and integer-only: no float, anti-aliasing or greyscale.
 
-- The camera is a tile-aligned 16×8 window. `cave::cameraCenteredAtPixel()`
-  centres it and clamps the top-left tile to `[0, 304] × [0, 152]`, so the
-  window always covers exactly 128×64 pixels inside the baked map, including
-  at the origin and both far edges.
+- The camera is a pixel-precise 16×8 window. `cave::cameraAtPixel()` stores the
+  top-left pixel as floor tile plus `subX/subY` remainder and clamps it to
+  `[0, 2432] × [0, 1216]`, so the window always covers exactly 128×64 pixels
+  inside the baked map, including at the origin and both far edges. Terrain and
+  every world overlay scroll from that same origin; collision and the tile
+  cache keep using the floor tile.
 - `world::refreshCache(cache, reader, cameraTileX - 1, cameraTileY - 1)` fills
   the 18×10 tile cache one tile before the window. The extra ring is what makes
   every visible tile's four neighbours available for edge selection without a

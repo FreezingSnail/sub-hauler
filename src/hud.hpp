@@ -11,15 +11,17 @@
 #if defined(__AVR__)
 #include "cave_render.hpp"
 #include "common.hpp"
+#include "generated/hud_sprites.hpp"
 #endif
 
 // Compact pilot HUD. Drawn after the cave and sub but before the one
 // FX::display transaction, so it never competes with cart reads.
 //
 // Air is a top-left bar, ballast is a left-edge gauge with a neutral notch,
-// cargo is a row of four pips, and the bottom line gives the D-pad contract.
-// Labels come from the external FX text section; there is no float, heap, or
-// String. Placement keeps the 26x8 boat (screen x ~44, y ~32) clear.
+// and cargo is a row of four pips. The bottom row is reserved for contextual
+// notices; with no notice the map stays visible. Labels come from the external
+// FX text section; there is no float, heap, or String. Placement keeps the
+// 26x8 boat (screen x ~44, y ~32) clear.
 namespace hud {
 
 constexpr uint8_t kAirLabelX = 1;
@@ -43,6 +45,10 @@ constexpr uint8_t kCargoPip = 4;
 
 constexpr uint8_t kHintX = 3;
 constexpr uint8_t kHintY = 56;
+// "CREDITS FOUND" is 13 cells; the old notice path printed one space then the
+// amount, so keep the number at the same exact x.
+constexpr uint8_t kCreditsAmountX = static_cast<uint8_t>(kHintX + 13 * 6 + 6);
+static_assert(kCreditsAmountX == 87, "credits amount keeps its shipped position");
 
 // Opaque HUD plates. The map uses black rock and white water, so each cluster
 // clears its own backing before drawing to keep labels readable over either.
@@ -62,6 +68,33 @@ constexpr uint8_t kHintBackingW = 128;
 constexpr uint8_t kHintBackingH = 9;
 
 #if defined(__AVR__)
+// Notice frame order is generated ABI (gen_hud.NOTICE_STRINGS). One byte
+// selects the 128-byte row; no per-notice 24-bit addresses live in flash.
+enum Notice : uint8_t {
+    kNoticeNone = 0,
+    kNoticeSurveyRecorded,
+    kNoticeFoundCutter,
+    kNoticeFoundSeal,
+    kNoticeFoundThruster,
+    kNoticeFoundCredits,
+    kNoticeFoundHull,
+    kNoticeFoundLens,
+    kNoticeSurveyHint,
+    kNoticeSalvageHint,
+    kNoticeCutHint,
+    kNoticeNeedSeal,
+    kNoticeNeedThruster,
+    kNoticeNeedCutter,
+    kNoticeRepairPump,
+    kNoticeRepairLift,
+};
+
+inline void drawNotice(uint8_t notice) {
+    SH_CART_SERVICE();
+    const uint24_t address = hud_notices + 2 + static_cast<uint24_t>(notice - 1) * 128;
+    FX::readDataBytes(address, Arduboy2Base::sBuffer + 7 * 128, 128);
+}
+
 inline void draw(const game::State &state) {
     // Black plates first, then the HUD clusters on top.
     cave::fillRect(Arduboy2Base::sBuffer, kTopBackingX, kTopBackingY, kTopBackingW, kTopBackingH, false);
@@ -108,45 +141,45 @@ inline void draw(const game::State &state) {
             cave::fillRect(Arduboy2Base::sBuffer, static_cast<int16_t>(x + 1), static_cast<int16_t>(kCargoY + 1), static_cast<uint8_t>(kCargoPip - 2), static_cast<uint8_t>(kCargoPip - 2), true);
     }
 
-    cave::fillRect(Arduboy2Base::sBuffer, kHintBackingX, kHintBackingY, kHintBackingW, kHintBackingH, false);
 #if SH_DEV_MODE
+    cave::fillRect(Arduboy2Base::sBuffer, kHintBackingX, kHintBackingY, kHintBackingW, kHintBackingH, false);
     text::at(kHintX, kHintY);
     text::print(txt_dev_noclip);
     return;
 #endif
 #if SH_FEATURE_EXPLORATION
-    uint24_t notice = 0;
+    uint8_t notice = kNoticeNone;
     if (state.discoveryTicks) {
 #if SH_FEATURE_CAMPAIGN
         if (state.lastDiscovery == exploration::kNone) {
-            notice = txt_survey_recorded;
+            notice = kNoticeSurveyRecorded;
         } else
 #endif
         {
             const uint8_t kind = exploration_data::pickup(state.lastDiscovery).kind;
-            notice = kind == 1 ? txt_found_cutter : kind == 2 ? txt_found_seal : kind == 3 ? txt_found_thruster : kind == 4 ? txt_found_credits : kind == 5 ? txt_found_hull : txt_found_lens;
+            notice = kind == 1 ? kNoticeFoundCutter : kind == 2 ? kNoticeFoundSeal : kind == 3 ? kNoticeFoundThruster : kind == 4 ? kNoticeFoundCredits : kind == 5 ? kNoticeFoundHull : kNoticeFoundLens;
         }
     } else if (state.contactId != exploration::kNone) {
 #if SH_FEATURE_CAMPAIGN
         if (state.contactId >= exploration::kSurveyBase)
-            notice = txt_survey_hint;
+            notice = kNoticeSurveyHint;
         else
 #endif
-            notice = state.contactId < exploration_data::PICKUP_COUNT ? txt_salvage_hint : txt_cut_hint;
+            notice = state.contactId < exploration_data::PICKUP_COUNT ? kNoticeSalvageHint : kNoticeCutHint;
     } else {
         for (uint8_t i = 0; i < exploration_data::GATE_COUNT; ++i) {
             const exploration_data::Gate g = exploration_data::gate(i);
             if (!exploration::closed(state, i, g) || !exploration::nearGate(state, g, 24))
                 continue;
-            notice = (g.required == exploration_data::CUTTER && (state.tools & exploration_data::CUTTER))         ? txt_cut_hint
-                     : ((g.required & exploration_data::SEAL) && !(state.tools & exploration_data::SEAL))         ? txt_need_seal
-                     : ((g.required & exploration_data::THRUSTER) && !(state.tools & exploration_data::THRUSTER)) ? txt_need_thruster
-                                                                                                                  : txt_need_cutter;
+            notice = (g.required == exploration_data::CUTTER && (state.tools & exploration_data::CUTTER))         ? kNoticeCutHint
+                     : ((g.required & exploration_data::SEAL) && !(state.tools & exploration_data::SEAL))         ? kNoticeNeedSeal
+                     : ((g.required & exploration_data::THRUSTER) && !(state.tools & exploration_data::THRUSTER)) ? kNoticeNeedThruster
+                                                                                                                  : kNoticeNeedCutter;
         }
 #if SH_FEATURE_CAMPAIGN
         // An inactive service mooring still reads as a clue, never as a
         // dockable station. It never blocks travel or hides a pickup.
-        if (notice == 0) {
+        if (notice == kNoticeNone) {
             for (uint8_t i = 0; i < world::serviceBerthCount(); ++i) {
                 world::Berth berth;
                 if (!world::serviceBerthInfo(i, berth) || (state.campaign & berth.milestone) != 0)
@@ -154,7 +187,7 @@ inline void draw(const game::State &state) {
                 const int16_t dx = static_cast<int16_t>(berth.pixel_x - state.x);
                 const int16_t dy = static_cast<int16_t>(berth.pixel_y - state.y);
                 if (dx > -40 && dx < 40 && dy > -32 && dy < 32) {
-                    notice = berth.milestone == 2 ? txt_repair_pump : txt_repair_lift;
+                    notice = berth.milestone == 2 ? kNoticeRepairPump : kNoticeRepairLift;
                     break;
                 }
             }
@@ -162,24 +195,21 @@ inline void draw(const game::State &state) {
 #endif
     }
     if (notice) {
-        text::at(kHintX, kHintY);
-        text::print(notice);
+        // The stamp replaces the whole 8-px text page; clear the one backing
+        // row above it (y55) to preserve the old 9-px plate exactly.
+        cave::fillRect(Arduboy2Base::sBuffer, kHintBackingX, kHintBackingY, kHintBackingW, 1, false);
+        drawNotice(notice);
         if (state.discoveryTicks) {
-            const exploration_data::Pickup p = exploration_data::pickup(state.lastDiscovery);
-            if (p.kind == 4) {
-                text::character(' ');
+            if (notice == kNoticeFoundCredits) {
+                const exploration_data::Pickup p = exploration_data::pickup(state.lastDiscovery);
+                text::at(kCreditsAmountX, kHintY);
                 text::number(p.amount);
             }
         }
         return;
     }
 #endif
-    // Locked M2 flight contract: D-pad only; A/B stay reserved. Two short
-    // segments keep both thrust and ballast controls readable in one text row.
-    text::at(kHintX, kHintY);
-    text::print(txt_thrust);
-    text::at(65, kHintY);
-    text::print(txt_trim);
+    // No notice: leave the bottom row untouched so the map shows through.
 }
 
 #endif   // __AVR__

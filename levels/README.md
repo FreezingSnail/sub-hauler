@@ -42,10 +42,13 @@ offline operation, with no grayscale or smoothing on the device. All tile
 centres keep their solid/water identity and the visual boundary stays within
 three pixels of the collision silhouette in both directions. Interior speckles
 and regional scenery are added afterward. Byte offset `(pixel_y / 8) * 2560 + pixel_x` holds eight vertical
-pixels, least significant bit at the top. The tile-aligned camera reads eight
-128-byte strips straight into the existing screen buffer. Stations, gates,
-finds, hazards, the boat and HUD draw afterward. The 6,400 B collision plane
-still supplies physics; visual pixels never substitute for collision rules.
+pixels, least significant bit at the top. A page-aligned Y origin reads eight
+128-byte strips straight into the existing screen buffer. A sub-page Y origin
+reads the next source page and shifts adjacent page rows together; the device
+does this in place with the next framebuffer page as lookahead and a 32-byte
+tail scratch, never a second whole frame. Stations, gates, finds, hazards, the
+boat and HUD draw from the same pixel origin. The 6,400 B collision plane still
+supplies physics; visual pixels never substitute for collision rules.
 This avoids per-frame terrain drawing with no extra SRAM. The checked tile
 renderer remains a legacy reference for collision-tile art. The streamed
 image also contains the offline scenery described below; crop tests preserve

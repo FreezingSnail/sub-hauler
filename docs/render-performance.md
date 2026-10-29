@@ -1,5 +1,19 @@
 # Rendering performance
 
+## Fractional camera — 2026-10-28
+
+The current renderer uses AVR hardware multiplication for vertical page
+combination and generated one-page HUD label stamps. The camera follows in
+Q4 and projects the fractional sub position before rounding. The complete
+flight probe passes at **12.608 ms maximum / 8.368 ms mean** over **842 frames**
+with music, cold caches and discovery notices, with zero 16 ms deadline misses
+and audio errors. See [the camera review](camera-review.md) for the coverage,
+resource figures and instrumentation limits; the render-only timings below
+are historical checkpoints.
+
+Run `make fxtest-flight` for the complete frame gate, in addition to
+`make fxtest FXTEST_ONLY=test_render` for pixels and scene timing.
+
 ## Paused chart — 2026-10-26
 
 The second profile shows **77.9% CPU active**, with the largest samples in
@@ -75,12 +89,15 @@ rendering, so its profiler entries do not identify just the submarine sprite.
 `make gen` bakes the static rock pixels into `exploration-terrain.bin`, a
 2560×1280 native 1-bit panorama. It uses **409,600 B (400 KiB)** of FX storage.
 Each byte holds eight vertical pixels, in the OLED framebuffer layout. The
-8-pixel camera alignment lets the device read eight contiguous 128-byte strips
-directly into the existing 1,024-byte framebuffer through `FX::readDataBytes`.
-No terrain draw calls, tile selection, bit shifting, clearing pass or extra
-framebuffer are needed on device. Stations, equipment gates, finds, currents,
-mines, sonar, the boat and HUD compose afterward; the OLED is presented once.
-Cart reads all finish before `FX::display(CLEAR_BUFFER)`.
+camera now carries a true pixel origin: a page-aligned Y origin still reads eight
+contiguous 128-byte strips directly into the existing 1,024-byte framebuffer
+through `FX::readDataBytes`. A sub-page Y origin reads the next source page and
+combines rows in place using the next framebuffer page as its one-page
+lookahead; only the final page needs a 32-byte stack scratch for its upper row.
+Worst case is 12 bounded reads / 1,152 B, with no terrain draw calls, clearing
+pass or extra framebuffer. Stations, equipment gates, finds, currents, mines,
+the boat and HUD compose afterward from the same pixel origin; the OLED
+is presented once. Cart reads all finish before `FX::display(CLEAR_BUFFER)`.
 
 Regional scenery added in `sub-hauler-9bc` bakes moorings, kelp, wreck machinery,
 crystals and rock textures into those same image bytes. It does not change the

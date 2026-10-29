@@ -39,8 +39,8 @@ __attribute__((noinline)) inline void mineGlyph(uint8_t *buffer, int16_t x, int1
 }
 
 inline void drawMines(uint8_t *buffer, const game::State &state, const cave::Camera &camera) {
-    const int16_t originX = static_cast<int16_t>(camera.tileX * world::TILE_PIXELS);
-    const int16_t originY = static_cast<int16_t>(camera.tileY * world::TILE_PIXELS);
+    const int16_t originX = cave::pixelOriginX(camera);
+    const int16_t originY = cave::pixelOriginY(camera);
     world::Mine mine;
     const uint8_t count = world::mineCount();
     for (uint8_t id = 0; id < count; ++id) {
@@ -95,8 +95,8 @@ __attribute__((noinline)) inline void flowMark(uint8_t *buffer, int16_t x, int16
 }
 
 inline void drawCurrents(uint8_t *buffer, const game::State &state, const cave::Camera &camera) {
-    const int16_t originX = static_cast<int16_t>(camera.tileX * world::TILE_PIXELS);
-    const int16_t originY = static_cast<int16_t>(camera.tileY * world::TILE_PIXELS);
+    const int16_t originX = cave::pixelOriginX(camera);
+    const int16_t originY = cave::pixelOriginY(camera);
     const int16_t shift = static_cast<int16_t>((state.ticks >> 3) & 3);
 
     world::Current zone;

@@ -12,7 +12,7 @@ Keep dated measurements in the checkpoint table instead of copying them around.
 | MCU | ATmega32u4 |
 | Display | 128×64 SSD1306 OLED, native 1-bit |
 | Framebuffer | 1,024 B (`Arduboy2Base::sBuffer`) |
-| Cart | external FX flash; flashable `fxdata/fxdata.bin` (2,012,928 B); the unpadded 2,008,674 B payload is `fxdata/fxdata-data.bin` |
+| Cart | external FX flash; flashable `fxdata/fxdata.bin` (2,081,792 B); the unpadded 2,077,552 B payload is `fxdata/fxdata-data.bin` |
 | Display mode | native 1-bit via `Arduboy2Base` |
 | Logical frame | `FRAME(x)` = `x`; one image per frame |
 | Blitting | `Blit::draw` plus-mask blits into `sBuffer`; no OLED access |
@@ -27,33 +27,57 @@ Keep dated measurements in the checkpoint table instead of copying them around.
 | Resource | Limit | Measurement |
 | --- | --- | --- |
 | Program flash | 29,696 B | `.text` + `.data` from `make size` |
-| Flash planning ceiling | 29,000 B | raised from 28,000 B on 2026-10-23 for the M8 roster; the current full default has 2,686 B of hardware headroom and 1,990 B under this planning line |
+| Flash planning line | 29,000 B, advisory | user accepted the 29,696 B hardware ceiling for the final stretch on 2026-10-28 |
 | SRAM | 2,560 B | `.data` + `.bss` static; the remainder is stack/locals |
 | Static SRAM planning ceiling | 1,700 B | dated whole-image target, raised from 1,680 B on 2026-10-23 |
 | Stack | explicit reserve | static free bytes alone do not prove stack fit |
 
-The Makefile reports whole-image totals with `make size`. LTO makes per-symbol
-size arithmetic misleading. The shipped `full` default now enables campaign,
-voyage save and music: **27,010 B flash / 1,619 B static SRAM** (`.text/.data/
-.bss` **26,998 / 12 / 1,607 B**), leaving **2,686 B** hardware flash, **1,990 B**
-under the flash planning ceiling, **81 B** static planning headroom and
-**941 B** static free SRAM. The other shipped profiles stay campaign/save/music
-off. The stack target remains 600 B.
+Final-stretch acceptance (2026-10-28): the user authorizes using program flash
+up to the **29,696 B hardware limit**. The former 29,000 B planning ceiling
+is advisory for this work; no additional flash reserve is required. Static
+SRAM remains capped at **1,700 B** and measured stack reserve must remain at
+least **600 B**. Prior task documents quoting a hard 29,000 B flash ceiling
+are superseded by this decision.
+
+Current music backend: the production `full` profile links the ATMlib2FX
+compact synth (`ATM_FX_COMPACT_LOOP=1`, `ATM_FX_COMPACT_RING=32`) over the six
+authored C1 streams. The paired music-off/on whole-image values are **24,940 B /
+1,458 B** and **29,616 B / 1,662 B** (`.text/.data/.bss` **29,604 / 12 / 1,650
+B**). The synth build uses 29,616 B of the 29,696 B hardware flash limit (80 B free) and
+leaves 38 B static headroom / 898 B static free SRAM. The 29,000 B planning line
+remains advisory and is not claimed. `MUSIC_BACKEND=stream` keeps the earlier
+ArduboyStreamFX comparison build at **27,122 B / 1,618 B**; it is not the normal
+build target.
+
+Startup splash measurements and art provenance are in
+[startup-splashes.md](startup-splashes.md). The new FX section appends after
+all shipped menus.
+
+The shipped `full` default now enables campaign, voyage save and synth music.
+The other shipped profiles stay campaign/save/music off. The stack target
+remains 600 B.
 
 ## Stack measurement
 
-Current checkpoint (2026-10-28): **`stack_reserve=728`** for campaign+save,
-**666** for the exact production `updateStation()`→`requestSave()`→
-`saveVoyageNow()` chain with active music (`make fxtest-save-chain`), and
-**646** for the combined `test_memory_music` probe; all exceed the 600 B target. The representative path includes salvage, cutter operation,
-object rendering, chart gate markers and discovery HUD messages in addition
-to the earlier flight/chart/sonar/hazard/shop/roster/contract paths. All
-eleven default device suites print `P`. AVR `game::State` is **99 B** in the full
-campaign+save build (79 B with campaign off), including 11 B for run-local
+Current checkpoint (2026-10-28, startup splashes): **`stack_reserve=689`**
+for the exact production `updateStation()`→`requestSave()`→`saveVoyageNow()`
+chain with active synth music (`make fxtest-save-chain`), and **614** for the
+combined `test_memory_music` probe (`stack_reserve=614`), which also renders a
+fractional camera through the terrain shift path; both exceed the 600 B target.
+The device suites compile the serial marker with `SERIAL_BUFFER_SIZE=8` so their
+USB-only RX buffer is not charged against the production no-USB stack path. All
+fourteen default device suites print `P`, plus the separate `test_flight` probe.
+The representative path includes salvage, cutter operation, object rendering,
+chart gate markers and discovery HUD messages in addition to the earlier
+flight/chart/hazard/shop/roster/contract paths. The additional
+`make fxtest-flight` probe passes at **12.368 ms maximum / 8.346 ms mean** over
+**842** complete flight frames with active music, zero 16 ms deadline misses and
+zero audio underruns/errors; see `docs/camera-review.md` for coverage and
+instrumentation limits. AVR `game::State` is **97 B** in the full
+campaign+save build (77 B with campaign off), including 11 B for run-local
 tools, claims, gate masks and interaction/notice state plus the campaign
-counters. The following
-method and older probe coverage explain the measurement; dated older figures
-remain historical checkpoints.
+counters. The following method and older probe coverage explain the
+measurement; dated older figures remain historical checkpoints.
 
 Static free SRAM (`.data` + `.bss`) does not prove stack fit: the stack, locals,
 and interrupt frames share the remaining bytes. The painted-stack probe is
@@ -258,7 +282,12 @@ Dated whole-image numbers are evidence, not guaranteed headroom.
 | 2026-10-25 | 20,500 B | 1,583 B | Authored exploration map: 32 rooms/42 passages, 9 equipment gates, 8 unique coves; active collision/chart/object sections append after the unchanged 34,540 B prefix. Packed payload/image **41,553 / 41,728 B**. Full/lean/core/min flash **20,500 / 17,668 / 15,166 / 9,142 B**, static **1,583 / 1,571 / 1,313 / 1,252 B**; Mini full **20,500 / 1,583 B**. Full run state **91 B** (+11). Host **140/107/82/39**, optional chart-save host **143**, tooling **88**, all **4** Ardens suites P; expanded stack probe **775 B** at target600. `make gen-check` deterministic; real hull/tool reachability validated for all eight capability subsets. Tools/claims/open grates remain run-local; campaign/ending/voyage save not implemented; no manual playthrough or physical-device soak. |
 | 2026-10-26 | 20,178 B | 1,583 B | First campaign slice (`sub-hauler-7px.5`): FIRST/PUMP campaign work, PUMP survey rings, WORK page, generated Pump Refuge/Lower Gantry service metadata, native restoration overlays and service-berth Continue restore. Full/lean/core/min **20,178 / 17,368 / 14,756 / 8,750 B** flash and **1,583 / 1,571 / 1,313 / 1,252 B** static; full `.text/.data/.bss` **20,122 / 56 / 1,527 B**; Mini full **20,178 / 1,583 B**; host tests **153/120/92/47**, campaign overrides **195/161/133**, DEV **158/125/97/52**, campaign DEV **200/166/138**; tooling **108**, all six Ardens suites P; `test_memory` diagnostics **`stack_reserve=756`** (600 B target). Campaign-enabled full AVR override compiles to **29,998 B / 1,660 B** but does not link: 302 B over hardware and 998 B over the 29,000 B planning line, so CAMPAIGN/SAVE_VOYAGE remain default-off until task .6 trims the combined sequence. No manual playthrough or physical-device soak. |
 | 2026-10-28 | 27,010 B | 1,619 B | Fresh voyage checkpoint in one Arduboy FX cart save block (`sub-hauler-7px.24`): `savesection 4096`, `FX_SAVE_PAGE=0xFFF0`, one 512 B schema 4 slot committed over two 256 B pages with commit last. Runtime `FX::programSavePage` is the page base for seekSave/erase/page writes. No voyage byte touches internal EEPROM; schema 1/2/3 records and the old chart block are not migrated. A power interruption during erase/write may lose the checkpoint; torn records never load and the title offers a clean New Voyage. First checkpoint persists the spawn chart reveal; early PUMP/LIFT survey bits remain valid before FIRST. Full campaign+save+music **27,010 B / 1,619 B** (`.text/.data/.bss` **26,998 / 12 / 1,607**), 1,990 B under the 29,000 B planning line, 81 B static headroom, 2,686 B hardware flash free; `test_save_chain` **`stack_reserve=666`** for the exact `updateStation()`→`requestSave()`→`saveVoyageNow()` production path with active music (`save_chain=1`, `save_underruns=0`, `save_errors=0`); combined `test_memory_music` **646**, campaign+save no-music `test_memory` **728**, music **underruns=0 errors=0**. Full default is **27,010 / 1,619 B**; lean/core/min remain **14,406 / 11,812 / 5,912 B** flash and **1,418 / 1,159 / 1,115 B** static; FX payload/image **2,008,674 / 2,012,928 B** (4,096 B save partition, earlier data offsets unchanged). Host **242** full default (**178** with campaign off); tooling **135**; `make gen-check` deterministic; all **11** default full Ardens suites pass, including `test_save` blank/valid/repeated/corrupt/interrupted-commit, exact `test_save_chain`, `test_music`, and emulator-only runtime-page cases. Mini campaign+save+music repeats **27,010 / 1,619 B**. No manual playthrough or physical-device save writes. |
+| 2026-10-28 | 27,938 B | 1,619 B | True pixel-granularity camera scrolling (`sub-hauler-7px.22`): `cave::Camera` carries floor tile plus `subX/subY`; `cameraAtPixel()` clamps to `[0,2432] × [0,1216]`; collision/cache stay tile-based. Terrain stream keeps the X-aligned 8×128 B path and adds a sub-page-Y path that reads the next source page, combines in place through the next framebuffer page, and fetches the final upper row as four 32 B tail bursts (12 reads / 1,152 B worst case, 32 B stack scratch). Settlements, campaign markers, hazards/currents, particles, exploration markers and pilot all map from `pixelOriginX/Y`. Full default **27,938 B / 1,619 B** (`.text/.data/.bss` **27,926 / 12 / 1,607**), **1,062 B** under the 29,000 planning line, 1,758 B hardware free, 81 B static headroom; lean/core/min **14,970 / 12,348 / 6,368 B** flash and **1,418 / 1,159 / 1,115 B** static. Mini full repeats **27,938 / 1,619 B**. Host **253/154/124/80**; tooling **135**; `make gen-check` deterministic; all **12** default full Ardens suites P. `test_memory_music` **`stack_reserve=638`**, `test_save_chain` **666**. `test_music` remains **gap=65 ticks**, **svc_us=84**, **isr_ticks=27**, underruns/errors **0** with a forced fractional-camera render; `test_render` case 6 (fractional origin) passes its 15 ms scene+HUD+display budget. No manual GUI playthrough claimed. |
 
+| 2026-10-28 | 27,720 B | 1,617 B | Sonar retirement (`sub-hauler-7px.28`): removed the free-flight A-button ping, cooldown/ring state, chart reveal, shop SONAR row/price/level, and the `SH_FEATURE_SONAR` gate; fog-chart passive reveal and the Sonar Lullaby music cue are unchanged. Save schema **5** removes the sonar level byte: scalar **35 B**, no-chart payload **35 B**, chart payload **291 B**; schema 4 slots are incompatible, with no migration. Paired removal delta from the prior current tree: **−508 B flash / −2 B static** with music (**27,720 / 1,617 B**) and **−488 B / −2 B** music-off (**25,520 / 1,458 B**). `test_memory_music` **`stack_reserve=636`**, `test_save_chain` **664**; Mini full repeats **27,720 / 1,617 B**. Host **248**; tooling **137**; all default Ardens suites P plus `test_flight` P. FX declaration offsets unchanged (`txt_sonar` remains unused); `make gen-check` deterministic. |
+| 2026-10-28 | 29,696 B | 1,662 B | ATMlib2FX synth is the production music backend (`SH_MUSIC_STREAMING=0`, `ATM_FX_COMPACT_LOOP=1`, `ATM_FX_COMPACT_RING=32`). Paired full music-off/on **25,000 / 1,458 → 29,696 / 1,662 B** (`.text/.data/.bss` **29,684 / 12 / 1,650**); 0 B hardware flash free, 38 B static headroom, 898 B static free. Mini full repeats **29,696 / 1,662 B**. `MUSIC_BACKEND=stream` keeps the comparison at **27,198 / 1,618 B**. `test_memory_music` **`stack_reserve=616`**, `test_save_chain` **691**; `test_music` **gap=1 tick**, **svc_us=104**, underruns/errors **0**; `make fxtest-flight` **12.376 ms max / 8.355 ms mean** over **842** frames, **0** deadline misses and **0** audio underruns/errors. The flight probe is build-only with voyage save disabled so its USB test image fits; the flight update/render/music path is the shipping code. Host **251**, tooling **142**, twelve default Ardens suites plus `test_flight` P; `make gen-check` deterministic. FX payload/image unchanged at **2,075,502 / 2,079,744 B**. No physical speaker/listening, playthrough or Mini hardware check. |
+| 2026-10-28 | 29,598 B | 1,662 B | Startup splashes (`sub-hauler-7px.29`): recover 180 B (cue tables4, shared title reader48, equivalent fractional projection128), spend82 B on two skippable FX screens; 98 B hardware flash free. Full/Mini29598/1662; music-off24922/1458, stream27104/1618; lean/core/min14874/12742/6778 flash. Original Snailware logo and license preserved; prior2075502B FX prefix identical, payload/image2077552/2081792. Host251/149/131/87, tools144, gen-check and14device suites P;52startup/title pixel comparisons, introduction1977ms. Stack614music/689save. Flight842frames max12368us mean8346us, zero16ms misses and zero audio errors/underruns. Details/preview: startup-splashes.md. No GUI/physical playthrough or skip-button injection claimed. |
+| 2026-10-28 | 29,616 B | 1,662 B | Splash hold: the Snailware logo keeps 60 × 16 ms, while the title frame now holds 150 × 16 ms; the real introduction measures **3,417 ms**. Full/Mini **29,616 / 1,662 B** (+18 B flash, no RAM), **80 B** hardware flash free; music-off **24,940 / 1,458 B**, stream **27,122 / 1,618 B**; lean/core/min unchanged at **14,874 / 12,742 / 6,778 B** flash and **1,417 / 1,159 / 1,115 B** static. `test_startup` still compares 52 frames and passes its 3,250–4,000 ms window; `test_startup` and the production-sketch `test_save_chain` use an 8 s suite capture. Host **251**, tooling **144**, `make gen-check` deterministic, all **14** default device suites P. FX payload/image unchanged at **2,077,552 / 2,081,792 B**. No GUI playthrough or skip-button injection claimed. |
 
 Chart performance checkpoint (2026-10-26, `sub-hauler-h89`): paused charts
 compose on entry and at the existing 16-frame sub/destination blink boundaries
@@ -411,14 +440,14 @@ two-tick service spacing. Generation is deterministic; 132 host cases and
 was not measured.
 
 Historical cargo-free checkpoint: static free SRAM was **988 B**. `chart::State` is
-256 B, the sonar fields add 2 B, the mine mask adds 1 B, the damage cooldown
+256 B, the retired sonar fields accounted for 2 B, the mine mask adds 1 B, the damage cooldown
 adds 1 B, the four-particle pool adds 16 B, the run-only shop levels add 3 B,
 the M8 hull class adds 1 B, and the M9 last-delivery byte adds 1 B. The M9
 chart save adds **0 B**: its 260 B block is EEPROM and its adapter is a
 stateless stack object. The cargo-free carve removed the static
 `cargo_screen::State` and its B-hold counter (**98 B**); the final resource pass
 removed another **20 B** and compacted AVR `game::State` to **80 B**. The
-whole-image static total is **1,572 B**. The chart, sonar, mine, current,
+whole-image static total is **1,572 B**. The chart, mine, current,
 damage/particle, shop, title/roster, contract/undock, and reset paths are all
 inside the fixed probe with the explored set owned statically; the probe
 measures an **812 B** reserve and prints `P` under the **600 B** target
@@ -591,39 +620,50 @@ deficit: the full image fits 29,000/1,700 but does **not** restore the approved
 remained story/save/music off at that checkpoint; later `.24` work and the
 current full default supersede those numbers.
 
-All six cues use the existing ADPCM assets and FX offsets. `src/music_logic.hpp`
+All six cues use the existing authored C1 streams and FX offsets; the normal
+game decodes them with the ATMlib2FX compact synth, while
+`MUSIC_BACKEND=stream` keeps the ADPCM comparison build. `src/music_logic.hpp`
 owns deterministic region selection from the generated 32-room table; the
 device reads the 51,200 B `musicRegions` FX plane at most every 30 flight
 frames, and a region must persist 120 flight ticks (2 s) before the cue changes.
 Berths, restored Deep Anchor/service berths, ending, title, chart/pause, wreck
 and save-failure transitions follow `progression.md`; same-cue starts do not
 restart. The chart keeps the current flight cue playing (only the world pauses);
-chart water bursts call the foreground service hook between cart reads. `SH_CART_SERVICE()` calls `streamfx::service()` before cold world and
+chart water bursts call the foreground service hook between cart reads.
+`SH_CART_SERVICE()` calls `atm_fx_compact_service()` before cold world and
 large panel reads, after presentation and on idle frames, never inside the OLED
 transaction or ISR. `text::print` and panel bursts service the ring between
 reads so menu composition stays within the deadline.
 
-`test_music` reports **gap=65 ticks**, **svc_us=132**, **isr_ticks=27**,
-**underruns=0**, **errors=0** while cycling all six cues, world/cart/OLED,
-WORK/ending/title/pause/save panels and idle refills. The exact production
-`updateStation()`→`requestSave()`→`saveVoyageNow()` suite reports
-**`stack_reserve=666`** with `save_chain=1`, `save_underruns=0` and
-`save_errors=0`; the combined `test_memory_music` probe reports **646 B**, and
-the campaign+save no-music probe reports **728 B** against 600 B. Host tests
-pass **178** default and **242** with campaign/save/music; tooling passes
-**135**; `make gen-check` is deterministic. FX payload/image are
-**2,008,674 / 2,012,928 B** under 2 MiB, including the 4,096 B single-slot save
-partition; earlier declaration offsets are unchanged. MUSIC ON/OFF is a one-byte setting at EEPROM **656**, above the
-retired voyage allocation and outside the Arduboy2 prefix (0..15); voyage
-checkpoints are cart pages and never share those bytes. Writes occur only on the
-pause-row toggle, and device audio mute at address 2 is honored without writing
-it. No physical speaker/listening, playthrough or Mini hardware check is
-claimed.
+The synth compiles with `ATM_FX_COMPACT_RING=32` (the largest authored record is
+28 B), `ATM_FX_COMPACT_LOOP=1`, and all native effects enabled. The library's
+Timer3 consumer never reads FX; `src/music_backend.cpp` supplies the
+foreground-only `atm_fx_compact_fetch()` through `FX::readDataBytes()`.
 
-A separate bounded 256 B ring probe (isolated `/tmp` library copy) measured
-**29,072 B / 1,760 B**, **gap=72 / underruns=0**, i.e. **72 B over flash and
-60 B over static**; the extra ring did not reduce the measured gap. No release
-ring, quality or budget change was made.
+`test_music` reports **gap=1 tick**, **svc_us=96**, **underruns=0**,
+**errors=0** while cycling all six cues, world/cart/OLED, WORK/ending/title/
+pause/save panels and idle refills. The exact production
+`updateStation()`→`requestSave()`→`saveVoyageNow()` suite reports
+**`stack_reserve=689`** with `save_chain=1`, `save_underruns=0` and
+`save_errors=0`; the combined `test_memory_music` probe reports **614 B**
+against 600 B after adding the fractional-camera render path. The device suites
+set `SERIAL_BUFFER_SIZE=8` because their USB marker buffer is test-only and not
+part of the production no-USB image. `make fxtest-flight` measures **12.368 ms
+maximum / 8.346 ms mean** over 842 production flight frames with active synth
+music, zero 16 ms misses and zero audio underruns/errors; its build-only image
+disables voyage save to fit the USB test harness while keeping the shipping
+flight update/render/music path. Host tests pass **251**; tooling passes **144**;
+`make gen-check` is deterministic. FX payload/image are **2,077,552 /
+2,081,792 B** under 2 MiB, including the 4,096 B single-slot save partition;
+earlier declaration offsets are unchanged. MUSIC ON/OFF is a one-byte setting
+at EEPROM **656**, above the retired voyage allocation and outside the Arduboy2
+prefix (0..15); voyage checkpoints are cart pages and never share those bytes.
+Writes occur only on the pause-row toggle, and device audio mute at address 2 is
+honored without writing it. No physical speaker/listening, playthrough or Mini
+hardware check is claimed.
+
+Earlier streaming backend and 256 B ring-probe figures remain historical
+checkpoints; the production image now uses the 32 B synth ring.
 
 First-delivery air and map-music checkpoint (2026-10-28, `sub-hauler-7px.20`
 and `.21`): the base tank is **300 units** with passive drain **0.4 units/s**

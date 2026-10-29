@@ -1,11 +1,10 @@
-// Device/emulator integration suite for the streaming music boundary.
+// Device/emulator integration suite for the production ATMlib2FX music
+// boundary.
 //
-// Exercises the sibling ArduboyStreamFX Timer3 ISR/Timer4 carrier, the game
-// music controller, all six cue descriptors, world/cart/OLED frames, idle
+// Exercises the real compact synth Timer3 ISR/Timer4 carrier, the game music
+// controller, all six authored C1 cue streams, world/cart/OLED frames, idle
 // menu refills, chart continuity, pause freeze, nested save/rescue pause
 // tokens, MUSIC ON/OFF persistence and the service-gap/underrun diagnostics.
-
-#define STREAMFX_DIAG 1
 
 #include <Arduboy2.h>
 #include <ArduboyFX.h>
@@ -36,21 +35,27 @@ Arduboy2Base arduboy;
 
 namespace {
 
-constexpr uint16_t kGapLimitTicks = 128; // 16 ms at 8 kHz
+constexpr uint16_t kGapLimitTicks = 8;
 constexpr uint8_t kFramesPerCue = 3;
-constexpr uint16_t kIsrSanityTicks = 100;
 
 static game::State s_state;
 static world::FxTables s_tables;
 static world::TileCache s_cache;
-static const streamfx::Stream s_shortLoop PROGMEM = {audio_harbor_bubbles, 512, 33, 0, 6};
+static uint16_t s_gapMax = 0;
+static uint16_t s_serviceMaxUs = 0;
 
-uint16_t crc16(uint16_t crc, int16_t sample) {
-    crc ^= static_cast<uint16_t>(sample);
-    for (uint8_t bit = 0; bit < 8; ++bit)
-        crc = (crc & 1) ? static_cast<uint16_t>((crc >> 1) ^ 0xA001)
-                        : static_cast<uint16_t>(crc >> 1);
-    return crc;
+uint16_t timedService() {
+    const uint32_t start = micros();
+    music::service();
+    const uint32_t elapsed = micros() - start;
+    if (elapsed > s_serviceMaxUs)
+        s_serviceMaxUs = static_cast<uint16_t>(elapsed);
+    return music::maxGapTicks();
+}
+
+void noteGap(uint16_t gap) {
+    if (gap > s_gapMax)
+        s_gapMax = gap;
 }
 
 void worldFrame(uint8_t frame) {
@@ -61,36 +66,12 @@ void worldFrame(uint8_t frame) {
     input.left = false;
     input.right = (frame & 1) != 0;
     game::stepWorld(s_state, input, s_tables, &s_cache);
-    music::service();
+    noteGap(timedService());
     view::frame(s_state, pilot_view::cameraForState(s_state), s_cache, s_tables);
     hud::draw(s_state);
-    music::service();
+    noteGap(timedService());
     FX::display(CLEAR_BUFFER);
-    music::service();
-}
-
-bool shortLoopCheck() {
-    // The deterministic decoder pass owns the sample consumer: disable the
-    // real Timer3 ISR for this short FX-backed loop, then restore interrupts.
-    const uint8_t sreg = SREG;
-    cli();
-    const bool started = streamfx::start(s_shortLoop);
-    uint16_t first = 0xFFFF;
-    uint16_t second = 0xFFFF;
-    if (started) {
-        for (uint16_t i = 0; i < 1024; ++i) {
-            if ((i % 120) == 0)
-                streamfx::service();
-            const int16_t sample = streamfx::g_player.tick();
-            if (i < 512)
-                first = crc16(first, sample);
-            else
-                second = crc16(second, sample);
-        }
-        streamfx::stop();
-    }
-    SREG = sreg;
-    return started && first == second;
+    noteGap(timedService());
 }
 
 bool eepromPrefixUntouched(const uint8_t *before) {
@@ -123,34 +104,26 @@ void setup() {
     game::resetWorld(s_state);
     world::clearCache(s_cache);
 
-    bool ok = shortLoopCheck();
-    // The direct decoder check runs with interrupts disabled; discard its
-    // wall-clock service sample and measure only the real-ISR playback path.
-    streamfx::diagTicks = 0;
-    streamfx::diagUnderruns = 0;
-    streamfx::diagErrors = 0;
-    streamfx::diagMaxGapTicks = 0;
-    streamfx::diagMaxServiceUs = 0;
-    streamfx::diagMaxIsrTicks = 0;
-    streamfx::clearUnderrun();
-
-    for (uint8_t cue = 0; cue < game_audio::kStreamCount; ++cue) {
+    bool ok = true;
+    for (uint8_t cue = 0; cue < music::backend::kCueCount; ++cue) {
         music::setCue(cue);
-        ok = streamfx::active() && streamfx::streamId() == cue && ok;
+        ok = music::active() && music::currentCue() == cue && ok;
         for (uint8_t frame = 0; frame < kFramesPerCue; ++frame) {
-            music::service();
+            noteGap(timedService());
             delay(6);
-            music::service();
+            noteGap(timedService());
             worldFrame(frame);
-            music::service();
+            // Force the general terrain path (sub-byte X and sub-page Y) so
+            // the music gap also covers its extra 32-byte tail bursts.
+            view::frame(s_state, cave::cameraAtPixel(static_cast<int16_t>(1001 + cue * 7), static_cast<int16_t>(733 + cue * 5)), s_cache, s_tables);
+            noteGap(timedService());
         }
-        ok = !streamfx::error() && !streamfx::underrun() && ok;
+        ok = !music::error() && !music::underrun() && ok;
     }
 
-    music::service();
+    noteGap(timedService());
     FX::display(CLEAR_BUFFER);
-    music::service();
-    const uint16_t gapDisplay = streamfx::diagMaxGapTicks;
+    noteGap(timedService());
 
     // Story/menu panels are large FX bursts while music stays active.
 #if SH_FEATURE_CAMPAIGN
@@ -160,21 +133,14 @@ void setup() {
     s_state.campaign = static_cast<uint8_t>(campaign::kMilestoneFirst | campaign::kMilestonePump | campaign::kMilestoneLift | campaign::kMilestoneBeacon);
     s_state.surveys = campaign::kSurveyMask;
     work_view::draw(s_state, 0);
-    music::service();
-    const uint16_t gapWorklist = streamfx::diagMaxGapTicks;
+    noteGap(timedService());
     FX::display(CLEAR_BUFFER);
-    music::service();
-    const uint16_t gapWorkDisplay = streamfx::diagMaxGapTicks;
-    const uint16_t gapDetail = streamfx::diagMaxGapTicks;
-    music::service();
-    FX::display(CLEAR_BUFFER);
-    music::service();
+    noteGap(timedService());
     for (uint8_t card = 0; card < ending_view::kCardCount; ++card) {
         ending_view::draw(card, s_state);
-        const uint16_t gapCard = streamfx::diagMaxGapTicks; (void)gapCard;
-        music::service();
+        noteGap(timedService());
         FX::display(CLEAR_BUFFER);
-        music::service();
+        noteGap(timedService());
     }
 #endif
 #if SH_FEATURE_SAVE_VOYAGE
@@ -184,47 +150,41 @@ void setup() {
     boot.hasCorrupt = false;
     boot.hasIncompatible = false;
     voyage_view::drawTitle(boot, voyage_view::kTitleContinue, s_state.hullClass, voyage_view::kTitleMenu);
-    const uint16_t gapTitle = streamfx::diagMaxGapTicks; (void)gapTitle;
-    music::service();
+    noteGap(timedService());
     FX::display(CLEAR_BUFFER);
-    music::service();
+    noteGap(timedService());
     voyage_view::drawPauseRescue(1, true);
-    music::service();
+    noteGap(timedService());
     FX::display(CLEAR_BUFFER);
-    music::service();
+    noteGap(timedService());
     voyage_view::drawSaveFailed(1);
-    music::service();
+    noteGap(timedService());
     FX::display(CLEAR_BUFFER);
-    music::service();
+    noteGap(timedService());
 #endif
-
-    const uint16_t gapAfterCues = streamfx::diagMaxGapTicks;
 
     // The chart is a frozen world, not a frozen soundtrack. Compose real chart
     // bursts against the cart while the flight cue stays active; each redraw
     // must service the ring between water reads.
     bool mapContinues = true;
-    uint16_t gapAfterMap = gapAfterCues;
 #if SH_FEATURE_FOG_CHART
     music::setCue(music_logic::kHarbor);
-    const uint8_t mapCue = streamfx::streamId();
+    const uint8_t mapCue = music::currentCue();
     chart::State chartState;
     chart::reset(chartState);
     chart::revealAtPixels(chartState, s_state.x, s_state.y, 3);
     for (uint8_t phase = 0; phase < 4; ++phase) {
         chart_view::draw(Arduboy2Base::sBuffer, chartState, s_state, s_tables, static_cast<uint8_t>(phase * chart_view::kBlinkMask));
-        music::service();
+        noteGap(timedService());
         delay(6);
         FX::display(CLEAR_BUFFER);
-        music::service();
-        mapContinues = mapContinues && !music::paused() && streamfx::active() && streamfx::streamId() == mapCue;
+        noteGap(timedService());
+        mapContinues = mapContinues && !music::paused() && music::active() && music::currentCue() == mapCue;
     }
-    gapAfterMap = streamfx::diagMaxGapTicks;
 #endif
 
     // Pause freezes the cue; a nested save transaction must not resume it.
     music::pause();
-    const uint16_t gapAfterPanels = streamfx::diagMaxGapTicks;
     const bool pausedBefore = music::paused();
     const music_logic::PauseToken token = music::pauseForTransaction();
     music::resumeAfterTransaction(token);
@@ -239,55 +199,53 @@ void setup() {
     music::resumeAfterTransaction(rescueToken);
     const bool rescueCancelPaused = music::paused();
     music::setCue(music_logic::kTidepool);
-    const bool frozenSwitch = music::paused() && streamfx::streamId() == music_logic::kTidepool;
+    const bool frozenSwitch = music::paused() && music::currentCue() == music_logic::kTidepool;
     music::resume();
-    const bool rescueSuccess = streamfx::active() && streamfx::streamId() == music_logic::kTidepool && !streamfx::paused();
+    const bool rescueSuccess = music::active() && music::currentCue() == music_logic::kTidepool && !music::paused();
     music::setCue(music_logic::kTidepool);
 
     // Idle menu refill: no render and no OLED transaction.
     for (uint8_t idle = 0; idle < 8; ++idle) {
-        music::service();
+        noteGap(timedService());
         delay(8);
     }
 
     // Actual backend transitions: same-cue continuity, station->flight
     // hysteresis, pause/resume and MUSIC OFF/ON.
     music::setCue(music_logic::kHarbor);
-    const uint8_t sameBefore = streamfx::streamId();
+    const uint8_t sameBefore = music::currentCue();
     music::setCue(music_logic::kHarbor);
-    const bool sameCue = streamfx::active() && streamfx::streamId() == sameBefore;
+    const bool sameCue = music::active() && music::currentCue() == sameBefore;
     music::beginFlight(s_state);
     s_state.x = 168 * 8 + 4;   // Kelp Cathedral
     s_state.y = 18 * 8 + 4;
     for (uint8_t frame = 0; frame < 130; ++frame)
         music::updateFlight(s_state);
-    const bool flightSwitched = streamfx::streamId() == music_logic::kKelp;
+    const bool flightSwitched = music::currentCue() == music_logic::kKelp;
 
     // Dock override resets the pending flight candidate; undocking must not
     // inherit the old hysteresis count and switch immediately.
     music::overrideCue(music_logic::kTidepool);
-    const bool dockedOverride = streamfx::streamId() == music_logic::kTidepool;
+    const bool dockedOverride = music::currentCue() == music_logic::kTidepool;
     for (uint8_t frame = 0; frame < 120; ++frame)
         music::updateFlight(s_state);
-    const bool dockedHold = streamfx::streamId() == music_logic::kTidepool;
+    const bool dockedHold = music::currentCue() == music_logic::kTidepool;
     music::updateFlight(s_state);
-    const bool undockedSwitchReset = streamfx::streamId() == music_logic::kKelp;
+    const bool undockedSwitchReset = music::currentCue() == music_logic::kKelp;
 
     music::pause();
-    const bool pausedBackend = streamfx::paused();
+    const bool pausedBackend = music::paused();
     music::resume();
-    const bool resumedBackend = !streamfx::paused();
+    const bool resumedBackend = !music::paused();
     const bool enabledBefore = music::enabled();
     music::toggleEnabled();
-    const bool offSilent = EEPROM.read(music::kSettingAddress) == music::kSettingOff && !streamfx::active();
+    const bool offSilent = EEPROM.read(music::kSettingAddress) == music::kSettingOff && !music::active();
     music::setCue(music_logic::kTidepool);
-    const bool offNoStart = !streamfx::active();
+    const bool offNoStart = !music::active();
     music::toggleEnabled();
-    const bool onStarts = music::enabled() && streamfx::active() && streamfx::streamId() == music_logic::kTidepool;
+    const bool onStarts = music::enabled() && music::active() && music::currentCue() == music_logic::kTidepool;
     ok = ok && sameCue && flightSwitched && dockedOverride && dockedHold && undockedSwitchReset && pausedBackend && resumedBackend && rescueCancelPaused && rescueSuccess && offSilent && offNoStart && onStarts && (music::enabled() == enabledBefore);
     ok = ok && mapContinues;
-
-    const uint16_t gapAfterIdle = streamfx::diagMaxGapTicks;
 
     // MUSIC ON/OFF persists outside the voyage slots/system prefix.
     const bool beforeToggle = music::enabled();
@@ -301,32 +259,29 @@ void setup() {
     const uint8_t systemAudio = EEPROM.read(2);
     arduboy.audio.off();
     music::refreshMute();
-    const bool deviceMuted = streamfx::muted();
+    const bool deviceMuted = music::muted() && music::paused() == false;
     arduboy.audio.on();
     music::refreshMute();
-    const bool deviceUnmuted = !streamfx::muted();
+    const bool deviceUnmuted = !music::muted() && music::active();
     const bool systemAudioUntouched = EEPROM.read(2) == systemAudio;
 
     music::setCue(music_logic::kHarbor);
-    music::service();
+    noteGap(timedService());
     music::stop();
 
-    const bool gapOk = streamfx::diagMaxGapTicks <= kGapLimitTicks;
-    const bool isrOk = streamfx::diagMaxIsrTicks <= kIsrSanityTicks;
-    const bool clean = streamfx::diagUnderruns == 0 && streamfx::diagErrors == 0;
+    const bool gapOk = s_gapMax <= kGapLimitTicks;
+    const bool clean = !music::error() && !music::underrun();
     ok = ok && pausedBefore && stillPaused && resumed && frozenSwitch && offPersisted && onPersisted && toggleRestored;
-    ok = ok && deviceMuted && deviceUnmuted && systemAudioUntouched && eepromPrefixUntouched(prefix) && gapOk && isrOk && clean;
+    ok = ok && deviceMuted && deviceUnmuted && systemAudioUntouched && eepromPrefixUntouched(prefix) && gapOk && clean;
 
     Serial.print(F("music gap="));
-    Serial.print(streamfx::diagMaxGapTicks);
+    Serial.print(s_gapMax);
     Serial.print(F(" svc_us="));
-    Serial.print(streamfx::diagMaxServiceUs);
-    Serial.print(F(" isr_ticks="));
-    Serial.print(streamfx::diagMaxIsrTicks);
+    Serial.print(s_serviceMaxUs);
     Serial.print(F(" underruns="));
-    Serial.print(streamfx::diagUnderruns);
+    Serial.print(music::underrun() ? 1 : 0);
     Serial.print(F(" errors="));
-    Serial.println(streamfx::diagErrors);
+    Serial.println(music::error() ? 1 : 0);
     Serial.print(F(" ok="));
     Serial.print(ok ? 1 : 0);
     Serial.print(F(" same="));
@@ -349,26 +304,8 @@ void setup() {
     Serial.print(deviceMuted && deviceUnmuted && systemAudioUntouched ? 1 : 0);
     Serial.print(F(" prefix="));
     Serial.print(eepromPrefixUntouched(prefix) ? 1 : 0);
-    Serial.print(F(" stages="));
-    Serial.print(gapDisplay);
-    Serial.print('/');
-    Serial.print(gapWorklist);
-    Serial.print('/');
-    Serial.print(gapWorkDisplay);
-    Serial.print('/');
-    Serial.print(gapDetail);
-    Serial.print('/');
-    Serial.print(gapAfterCues);
-    Serial.print('/');
-    Serial.print(gapAfterMap);
-    Serial.print('/');
-    Serial.print(gapAfterPanels);
-    Serial.print('/');
-    Serial.print(gapAfterIdle);
     Serial.print(F(" gapok="));
     Serial.print(gapOk ? 1 : 0);
-    Serial.print(F(" isrok="));
-    Serial.print(isrOk ? 1 : 0);
     Serial.print(F(" clean="));
     Serial.println(clean ? 1 : 0);
     Serial.println(ok ? 'P' : 'F');

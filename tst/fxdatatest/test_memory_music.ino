@@ -3,8 +3,8 @@
 // static exactly as in the shipped sketch; paint the free stack, run six cues,
 // world/cart/OLED frames and every story panel, then report the reserve.
 
-#ifndef STREAMFX_DIAG
-#define STREAMFX_DIAG 0
+#ifndef ATM_FX_COMPACT_DIAG
+#define ATM_FX_COMPACT_DIAG 0
 #endif
 
 #include <Arduboy2.h>
@@ -129,8 +129,8 @@ uint16_t measureReserve() {
     s_state.docked = -1;
     s_state.x = 600;
     s_state.y = 300;
-    s_state.cameraX = 600;
-    s_state.cameraY = 300;
+    s_state.cameraXQ4 = game::cameraPixelToQ4(600);
+    s_state.cameraYQ4 = game::cameraPixelToQ4(300);
     world::clearCache(s_cache);
     music::setCue(music_logic::kHarbor);
 
@@ -162,7 +162,7 @@ uint16_t measureReserve() {
         *p = static_cast<char>(kPattern);
     SREG = sreg;
 
-    for (uint8_t cue = 0; cue < game_audio::kStreamCount; ++cue) {
+    for (uint8_t cue = 0; cue < music::backend::kCueCount; ++cue) {
         music::setCue(cue);
         for (uint8_t frame = 0; frame < 3; ++frame) {
             worldFrame(frame);
@@ -202,8 +202,8 @@ uint16_t measureReserve() {
         music::service();
         delay(4);
     }
-#if STREAMFX_DIAG
-    s_audioAfterSaveOk = streamfx::diagUnderruns == 0 && streamfx::diagErrors == 0;
+#if ATM_FX_COMPACT_DIAG
+    s_audioAfterSaveOk = !music::underrun() && !music::error();
 #else
     s_audioAfterSaveOk = true;
 #endif
@@ -241,11 +241,11 @@ void setup() {
     Serial.println(s_saveChainOk ? 1 : 0);
     Serial.print(F("audio_after_save="));
     Serial.println(s_audioAfterSaveOk ? 1 : 0);
-#if STREAMFX_DIAG
+#if ATM_FX_COMPACT_DIAG
     Serial.print(F("save_underruns="));
-    Serial.println(streamfx::diagUnderruns);
+    Serial.println(music::underrun() ? 1 : 0);
     Serial.print(F("save_errors="));
-    Serial.println(streamfx::diagErrors);
+    Serial.println(music::error() ? 1 : 0);
 #endif
     Serial.println(reserve >= kReserveTarget && s_saveChainOk && s_audioAfterSaveOk ? 'P' : 'F');
 }

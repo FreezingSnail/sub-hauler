@@ -15,9 +15,8 @@
 
 // Pilot view: pure screen mapping and the 26x8 baked silhouettes.
 //
-// The cave renderer is tile-aligned, so the camera is derived by flooring the
-// pilot's whole-pixel camera offset to its containing tile. The sub is then
-// drawn at world position minus the visible tile origin; collision semantics
+// The sub is drawn at world position minus the camera's whole-pixel origin, so
+// it slides with the terrain at single-pixel granularity. Collision semantics
 // still use game::State.x/y and the 26x8 hull in pilot.hpp.
 //
 // Every hull class draws inside the same 26x8 footprint, so collision, damage
@@ -30,19 +29,30 @@
 // buffer and inspect exact pixels. Device code passes Arduboy2Base::sBuffer.
 namespace pilot_view {
 
+// Project the fractional boat-minus-camera position, then round once. Using the
+// integer boat pixel and the rounded camera independently would alternate a
+// steady hull between adjacent screen pixels when their fractional parts move
+// together. Terrain and integer-world overlays still use the same rounded
+// camera pixel origin. Integer pixels can be added after rounding the small
+// fractional difference, avoiding a 32-bit shift on the AVR.
 inline int16_t screenX(const game::State &state, const cave::Camera &camera) {
-    return static_cast<int16_t>(state.x - camera.tileX * world::TILE_PIXELS);
+    const int16_t roundedFraction = (static_cast<int16_t>(state.xFrac >> 8) - camera.fracX + 8) >> 4;
+    return static_cast<int16_t>(state.x - cave::pixelOriginX(camera) + roundedFraction);
 }
 
 inline int16_t screenY(const game::State &state, const cave::Camera &camera) {
-    return static_cast<int16_t>(state.y - camera.tileY * world::TILE_PIXELS);
+    const int16_t roundedFraction = (static_cast<int16_t>(state.yFrac >> 8) - camera.fracY + 8) >> 4;
+    return static_cast<int16_t>(state.y - cave::pixelOriginY(camera) + roundedFraction);
 }
 
-// The cave renderer only has tile granularity; floor the integer camera pixel
-// to the tile that owns it. cameraAtTile applies the same display clamp as the
-// cave window, so both view layers always agree.
+// Round the Q4 follow origin once for every layer. The transient Camera also
+// carries the signed residual so the hull can be projected before rounding;
+// cameraAtPixel still applies the display clamp.
 inline cave::Camera cameraForState(const game::State &state) {
-    return cave::cameraAtTile(world::tileFromPixel(state.cameraX), world::tileFromPixel(state.cameraY));
+    cave::Camera camera = cave::cameraAtPixel(game::cameraPixelX(state), game::cameraPixelY(state));
+    camera.fracX = game::cameraResidualXQ4(state);
+    camera.fracY = game::cameraResidualYQ4(state);
+    return camera;
 }
 
 inline bool visible(int16_t left, int16_t top) {

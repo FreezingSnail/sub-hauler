@@ -126,12 +126,12 @@ inline void menuRow(uint8_t y, uint24_t label, bool selected) {
 // confirmation modes use their own sheets; replace embeds the status line.
 inline void drawTitle(const voyage_flow::BootStatus &status, uint8_t selected, uint8_t hullClass, TitleMode mode) {
     if (mode == kTitleConfirmReplace) {
-        Blit::draw(0, 0, 128, 64, title_replace + 2, status.state, Blit::OVERWRITE);
+        panel_view::draw(title_replace, status.state, 64);
         return;
     }
     const uint8_t hull = static_cast<uint8_t>(roster::sanitize(static_cast<roster::HullClass>(hullClass)));
     const uint16_t frame = static_cast<uint16_t>(status.state * 9u + hull * 3u + selected);
-    Blit::draw(0, 0, 128, 64, title_menu + 2, frame, Blit::OVERWRITE);
+    panel_view::draw(title_menu, frame, 64);
 }
 #else
 inline void drawTitle(const voyage_flow::BootStatus &status, uint8_t selected, uint8_t hullClass, TitleMode mode) {

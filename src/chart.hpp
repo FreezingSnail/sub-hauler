@@ -23,7 +23,7 @@ constexpr uint8_t kCellPixels = static_cast<uint8_t>(world::CHART_CELL_TILES * w
 constexpr int16_t kInvalidCell = -1;
 
 // A reveal every half second of flight is cheap and keeps the trail dense
-// enough to navigate. Sonar owns larger reveal radii later.
+// enough to navigate.
 constexpr uint8_t kMoveRevealIntervalTicks = 30;
 constexpr uint8_t kMoveRevealRadius = 1;
 constexpr uint8_t kSpawnRevealRadius = 1;

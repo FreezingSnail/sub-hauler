@@ -29,8 +29,8 @@ void place(game::State &state, int16_t x, int16_t y) {
 
 bool hullVisible(const game::State &state) {
     const cave::Camera camera = pilot_view::cameraForState(state);
-    const int16_t left = static_cast<int16_t>(state.x - camera.tileX * world::TILE_PIXELS - game::kHullHalfW);
-    const int16_t top = static_cast<int16_t>(state.y - camera.tileY * world::TILE_PIXELS - game::kHullHalfH);
+    const int16_t left = static_cast<int16_t>(pilot_view::screenX(state, camera) - game::kHullHalfW);
+    const int16_t top = static_cast<int16_t>(pilot_view::screenY(state, camera) - game::kHullHalfH);
     return pilot_view::visible(left, top);
 }
 
@@ -46,72 +46,108 @@ void setup() {
 
     // Spawn/Continue framing: zero velocity snaps to the centred target.
     game::resetWorld(state);
-    ok = (state.vxQ8 == 0 && state.vyQ8 == 0 && game::cameraLookAheadQ8(state.vxQ8) == 0 && game::cameraLookAheadQ8(state.vyQ8) == 0) && ok;
-    ok = (game::cameraLookAheadQ8(1) == 0 && game::cameraLookAheadQ8(-1) == 0 && game::cameraLookAheadQ8(511) == 0 && game::cameraLookAheadQ8(-511) == 0 &&
-          game::cameraLookAheadQ8(512) == 1 && game::cameraLookAheadQ8(-512) == -1) &&
+    ok = (state.vxQ8 == 0 && state.vyQ8 == 0 && game::cameraLookAheadQ4(state.vxQ8) == 0 && game::cameraLookAheadQ4(state.vyQ8) == 0) && ok;
+    ok = (game::cameraLookAheadQ4(1) == 0 && game::cameraLookAheadQ4(-1) == 0 && game::cameraLookAheadQ4(31) == 0 && game::cameraLookAheadQ4(-31) == 0 &&
+          game::cameraLookAheadQ4(32) == 1 && game::cameraLookAheadQ4(-32) == -1 &&
+          game::cameraLookAheadQ4(511) == 15 && game::cameraLookAheadQ4(-511) == -15 &&
+          game::cameraLookAheadQ4(512) == 16 && game::cameraLookAheadQ4(-512) == -16) &&
          ok;
-    ok = (state.cameraX == game::cameraTargetX(state) && state.cameraY == game::cameraTargetY(state)) && ok;
-    ok = (state.cameraX == state.x - game::kCameraScreenX && state.cameraY == state.y - game::kCameraScreenY) && ok;
+    ok = (state.cameraXQ4 == game::cameraTargetXQ4(state) && state.cameraYQ4 == game::cameraTargetYQ4(state)) && ok;
+    ok = (game::cameraPixelX(state) == state.x - game::kCameraScreenX && game::cameraPixelY(state) == state.y - game::kCameraScreenY) && ok;
 
     // Forward/right+down travel leads by half a pixel per px/s.
     place(state, 500, 300);
-    ok = (state.cameraX == 456 && state.cameraY == 268) && ok;
+    ok = (game::cameraPixelX(state) == 456 && game::cameraPixelY(state) == 268) && ok;
     state.vxQ8 = game::kMaxVxBaseQ8;
     state.vyQ8 = game::kMaxVyQ8;
-    ok = (game::cameraLookAheadQ8(state.vxQ8) == 15 && game::cameraLookAheadQ8(state.vyQ8) == 10) && ok;
-    ok = (game::cameraTargetX(state) == 471 && game::cameraTargetY(state) == 278) && ok;
-    for (uint8_t i = 0; i < 100; ++i)
+    ok = (game::cameraLookAheadQ4(state.vxQ8) == game::cameraPixelToQ4(15) && game::cameraLookAheadQ4(state.vyQ8) == game::cameraPixelToQ4(10)) && ok;
+    ok = (game::cameraTargetXQ4(state) == game::cameraPixelToQ4(471) && game::cameraTargetYQ4(state) == game::cameraPixelToQ4(278)) && ok;
+    for (uint16_t i = 0; i < 100; ++i)
         game::updateCamera(state);
-    ok = (state.cameraX == 471 && state.cameraY == 278 && hullVisible(state)) && ok;
+    ok = (state.cameraXQ4 == game::cameraPixelToQ4(471) && state.cameraYQ4 == game::cameraPixelToQ4(278) && hullVisible(state)) && ok;
 
-    // Reversal flips the lead; the first update is a quarter step, not a snap.
+    // Reversal flips the lead; the first correction is bounded, not a snap.
     state.vxQ8 = static_cast<int16_t>(-game::kMaxVxBaseQ8);
     state.vyQ8 = static_cast<int16_t>(-game::kMaxVyQ8);
-    ok = (game::cameraTargetX(state) == 441 && game::cameraTargetY(state) == 258) && ok;
+    ok = (game::cameraTargetXQ4(state) == game::cameraPixelToQ4(441) && game::cameraTargetYQ4(state) == game::cameraPixelToQ4(258)) && ok;
+    const uint16_t aheadX = state.cameraXQ4;
     game::updateCamera(state);
-    ok = (state.cameraX == 464 && state.cameraY == 273) && ok;
-    ok = (state.cameraX > 441 && state.cameraX < 471 && state.cameraY > 258 && state.cameraY < 278) && ok;
-    for (uint8_t i = 0; i < 100; ++i)
+    ok = (state.cameraXQ4 == static_cast<uint16_t>(aheadX - game::kCameraMaxStepQ4)) && ok;
+    ok = (state.cameraXQ4 > game::cameraPixelToQ4(441) && state.cameraXQ4 < aheadX) && ok;
+    for (uint16_t i = 0; i < 100; ++i)
         game::updateCamera(state);
-    ok = (state.cameraX == 441 && state.cameraY == 258 && hullVisible(state)) && ok;
+    ok = (state.cameraXQ4 == game::cameraPixelToQ4(441) && state.cameraYQ4 == game::cameraPixelToQ4(258) && hullVisible(state)) && ok;
 
     // Stopping decays the target back to centred framing without overshoot.
     state.vxQ8 = game::kMaxVxBaseQ8;
     state.vyQ8 = game::kMaxVyQ8;
-    for (uint8_t i = 0; i < 100; ++i)
+    for (uint16_t i = 0; i < 100; ++i)
         game::updateCamera(state);
     state.vxQ8 = 0;
     state.vyQ8 = 0;
-    ok = (game::cameraTargetX(state) == 456 && game::cameraTargetY(state) == 268) && ok;
+    ok = (game::cameraTargetXQ4(state) == game::cameraPixelToQ4(456) && game::cameraTargetYQ4(state) == game::cameraPixelToQ4(268)) && ok;
     game::updateCamera(state);
-    ok = (state.cameraX == 468 && state.cameraY == 276) && ok;
-    for (uint8_t i = 0; i < 100; ++i) {
+    ok = (state.cameraXQ4 == static_cast<uint16_t>(game::cameraPixelToQ4(471) - game::kCameraMaxStepQ4)) && ok;
+    for (uint16_t i = 0; i < 100; ++i) {
         game::updateCamera(state);
-        ok = (state.cameraX >= 456 && state.cameraY >= 268) && ok;
+        ok = (state.cameraXQ4 >= game::cameraPixelToQ4(456) && state.cameraYQ4 >= game::cameraPixelToQ4(268)) && ok;
     }
-    ok = (state.cameraX == 456 && state.cameraY == 268) && ok;
+    ok = (state.cameraXQ4 == game::cameraPixelToQ4(456) && state.cameraYQ4 == game::cameraPixelToQ4(268)) && ok;
 
     // Right/bottom edge: the target clamps and the hull stays visible.
     place(state, 2500, 1250);
-    state.cameraX = 0;
-    state.cameraY = 0;
+    state.cameraXQ4 = 0;
+    state.cameraYQ4 = 0;
     state.vxQ8 = game::kMaxVxBaseQ8;
     state.vyQ8 = game::kMaxVyQ8;
-    ok = (game::cameraTargetX(state) == game::kCameraMaxX && game::cameraTargetY(state) == game::kCameraMaxY) && ok;
-    for (uint8_t i = 0; i < 200; ++i)
+    ok = (game::cameraTargetXQ4(state) == game::kCameraMaxXQ4 && game::cameraTargetYQ4(state) == game::kCameraMaxYQ4) && ok;
+    for (uint16_t i = 0; i < 1400; ++i)
         game::updateCamera(state);
-    ok = (state.cameraX == game::kCameraMaxX && state.cameraY == game::kCameraMaxY && hullVisible(state)) && ok;
+    ok = (state.cameraXQ4 == game::kCameraMaxXQ4 && state.cameraYQ4 == game::kCameraMaxYQ4 && hullVisible(state)) && ok;
 
     // Left/top edge: the target clamps at zero and the hull stays visible.
     place(state, 50, 30);
-    state.cameraX = game::kCameraMaxX;
-    state.cameraY = game::kCameraMaxY;
+    state.cameraXQ4 = game::kCameraMaxXQ4;
+    state.cameraYQ4 = game::kCameraMaxYQ4;
     state.vxQ8 = static_cast<int16_t>(-game::kMaxVxBaseQ8);
     state.vyQ8 = static_cast<int16_t>(-game::kMaxVyQ8);
-    ok = (game::cameraTargetX(state) == 0 && game::cameraTargetY(state) == 0) && ok;
-    for (uint8_t i = 0; i < 200; ++i)
+    ok = (game::cameraTargetXQ4(state) == 0 && game::cameraTargetYQ4(state) == 0) && ok;
+    for (uint16_t i = 0; i < 1400; ++i)
         game::updateCamera(state);
-    ok = (state.cameraX == 0 && state.cameraY == 0 && hullVisible(state)) && ok;
+    ok = (state.cameraXQ4 == 0 && state.cameraYQ4 == 0 && hullVisible(state)) && ok;
+
+    // Real AVR temporal trace: top speed keeps the fractional hull stable and
+    // the terrain origin moves 0 or 1 px per tick, never backward.
+    game::resetWorld(state);
+    state.x = 500;
+    state.y = 300;
+    state.vxQ8 = game::kMaxVxBaseQ8;
+    game::snapCamera(state);
+    for (uint8_t i = 0; i < 60; ++i) {
+        game::advanceAxis(state.x, state.xFrac, state.vxQ8);
+        game::updateCamera(state);
+    }
+    const int16_t steadyHull = pilot_view::screenX(state, pilot_view::cameraForState(state));
+    int16_t previousCamera = game::cameraPixelX(state);
+    ok = (steadyHull == 31) && ok;
+    for (uint8_t i = 0; i < 120; ++i) {
+        game::advanceAxis(state.x, state.xFrac, state.vxQ8);
+        game::updateCamera(state);
+        const int16_t camera = game::cameraPixelX(state);
+        ok = (camera == previousCamera || camera == static_cast<int16_t>(previousCamera + 1)) && ok;
+        ok = (pilot_view::screenX(state, pilot_view::cameraForState(state)) == steadyHull) && ok;
+        previousCamera = camera;
+    }
+
+    // Offscreen/negative projection and Q4 residual boundaries.
+    state.x = 10;
+    state.xFrac = 2048;
+    state.cameraXQ4 = game::cameraPixelToQ4(100);
+    ok = (pilot_view::screenX(state, pilot_view::cameraForState(state)) == -89) && ok;
+    state.cameraXQ4 = game::cameraPixelToQ4(2047) + 8;
+    ok = (game::cameraPixelX(state) == 2048 && game::cameraResidualXQ4(state) == -8) && ok;
+    state.cameraXQ4 = game::kCameraMaxXQ4;
+    ok = (game::cameraPixelX(state) == game::kCameraMaxX && game::cameraResidualXQ4(state) == 0) && ok;
 
     Serial.println(ok ? F("P") : F("F"));
 }

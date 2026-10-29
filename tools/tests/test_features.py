@@ -28,7 +28,6 @@ class ProfileValuesTest(unittest.TestCase):
                 "STATIONS": 1,
                 "JOBS": 1,
                 "FOG_CHART": 1,
-                "SONAR": 1,
                 "MINES": 1,
                 "CURRENTS": 1,
                 "SHOP": 1,
@@ -50,7 +49,6 @@ class ProfileValuesTest(unittest.TestCase):
                 "STATIONS": 1,
                 "JOBS": 1,
                 "FOG_CHART": 1,
-                "SONAR": 1,
                 "MINES": 0,
                 "CURRENTS": 0,
                 "SHOP": 0,
@@ -72,7 +70,6 @@ class ProfileValuesTest(unittest.TestCase):
                 "STATIONS": 1,
                 "JOBS": 1,
                 "FOG_CHART": 0,
-                "SONAR": 0,
                 "MINES": 0,
                 "CURRENTS": 0,
                 "SHOP": 0,
@@ -94,7 +91,6 @@ class ProfileValuesTest(unittest.TestCase):
                 "STATIONS": 0,
                 "JOBS": 0,
                 "FOG_CHART": 0,
-                "SONAR": 0,
                 "MINES": 0,
                 "CURRENTS": 0,
                 "SHOP": 0,
@@ -130,7 +126,6 @@ class DependencyTest(unittest.TestCase):
     def test_dependencies_are_reported_with_header_names(self):
         cases = [
             ("JOBS", "STATIONS"),
-            ("SONAR", "FOG_CHART"),
             ("SAVE_CHART", "FOG_CHART"),
             ("SHOP", "STATIONS"),
             ("EXPLORATION", "JOBS"),
@@ -168,8 +163,8 @@ class DependencyTest(unittest.TestCase):
 
     def test_missing_flag_is_rejected(self):
         values = features.profile_values("lean")
-        del values["SONAR"]
-        with self.assertRaisesRegex(features.FeatureError, "missing feature 'SONAR'"):
+        del values["MINES"]
+        with self.assertRaisesRegex(features.FeatureError, "missing feature 'MINES'"):
             features.validate_features(values)
 
     def test_non_binary_flag_is_rejected(self):
@@ -213,7 +208,6 @@ class FlagOutputTest(unittest.TestCase):
                 "-DSH_FEATURE_STATIONS=1",
                 "-DSH_FEATURE_JOBS=1",
                 "-DSH_FEATURE_FOG_CHART=1",
-                "-DSH_FEATURE_SONAR=1",
                 "-DSH_FEATURE_MINES=1",
                 "-DSH_FEATURE_CURRENTS=1",
                 "-DSH_FEATURE_SHOP=1",
@@ -234,7 +228,7 @@ class FlagOutputTest(unittest.TestCase):
         )
         self.assertIn("profile: lean", report)
         self.assertIn(
-            "active (7): STATIONS JOBS FOG_CHART SONAR HULL_DAMAGE MULTI_HULL EXPLORATION",
+            "active (6): STATIONS JOBS FOG_CHART HULL_DAMAGE MULTI_HULL EXPLORATION",
             report,
         )
         self.assertIn(
@@ -245,7 +239,7 @@ class FlagOutputTest(unittest.TestCase):
         report = features.feature_report("min", features.profile_values("min"))
         self.assertIn("active (0): (none)", report)
         self.assertIn(
-            "inactive (15): STATIONS JOBS FOG_CHART SONAR "
+            "inactive (14): STATIONS JOBS FOG_CHART "
             "MINES CURRENTS SHOP HULL_DAMAGE PARTICLES MULTI_HULL SAVE_CHART EXPLORATION "
             "CAMPAIGN SAVE_VOYAGE MUSIC",
             report,

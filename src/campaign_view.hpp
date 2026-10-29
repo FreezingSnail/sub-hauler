@@ -32,8 +32,8 @@ inline bool restored(const game::State &state, uint8_t milestone) {
 }
 
 inline void drawSurveyRings(uint8_t *buffer, const game::State &state, const cave::Camera &camera) {
-    const int16_t ox = camera.tileX * world::TILE_PIXELS;
-    const int16_t oy = camera.tileY * world::TILE_PIXELS;
+    const int16_t ox = cave::pixelOriginX(camera);
+    const int16_t oy = cave::pixelOriginY(camera);
     for (uint8_t i = 0; i < world::surveyCount(); ++i) {
         world::Survey survey;
         if (!world::surveyInfo(i, survey))

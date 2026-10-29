@@ -154,6 +154,30 @@ inline void ChartSuite(TestRunner &runner) {
         test.assertTrue(chart::isExplored(state, 30, 21), "the next cadence reveals again");
         runner.add(test);
     }
+
+    {
+        Test test("passive chart reveal remains after sonar retirement");
+        chart::State state;
+        chart::reset(state);
+        game::State gameState;
+        game::resetWorld(gameState);
+        chart::revealInitial(state, gameState);
+        const uint16_t before = [&state] {
+            uint16_t count = 0;
+            for (uint16_t i = 0; i < world::CHART_BYTES; ++i) {
+                for (uint8_t bit = 0; bit < 8; ++bit)
+                    count = static_cast<uint16_t>(count + ((state.explored[i] >> bit) & 1u));
+            }
+            return count;
+        }();
+        gameState.x = 1000;
+        gameState.y = 800;
+        gameState.ticks = 30;
+        chart::revealOnStep(state, gameState);
+        test.assertTrue(before > 0, "spawn reveal populated the chart");
+        test.assertTrue(chart::isExplored(state, 25, 20), "flight-cadence reveal still works without sonar");
+        runner.add(test);
+    }
 }
 
 #endif   // SH_FEATURE_FOG_CHART
