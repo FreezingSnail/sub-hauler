@@ -52,7 +52,7 @@ inline void StationSuite(TestRunner &runner) {
     using namespace station_test;
 
     {
-        Test test("nearest dock uses the generated 42 px settlement ring");
+        Test test("nearest dock uses the gantry capture radius");
         for (uint8_t id = 0; id < world::settlementCount(); ++id) {
             world::Settlement settlement;
             test.assertTrue(world::settlementInfo(id, settlement), "settlement metadata loads");
@@ -108,9 +108,12 @@ inline void StationSuite(TestRunner &runner) {
         world::Settlement settlement;
         test.assertTrue(anySettlement(settlement), "settlement metadata loads");
 
+        const int16_t approachX = static_cast<int16_t>(settlement.pixel_x + 5);
+        const int16_t approachY = static_cast<int16_t>(settlement.pixel_y - 3);
+
         game::State state;
         game::reset(state);
-        place(state, settlement.pixel_x, settlement.pixel_y);
+        place(state, approachX, approachY);
         state.cargo = 2;
         state.air = 3;
         state.ballast = 100;
@@ -119,6 +122,8 @@ inline void StationSuite(TestRunner &runner) {
         state.ballastCarry = 59;
         state.airBlowCarry = 59;
         state.airDrainTicks = 99;
+        const uint16_t approachCameraX = state.cameraXQ4;
+        const uint16_t approachCameraY = state.cameraYQ4;
 #if SH_FEATURE_HULL_DAMAGE
         state.hull = 1;
 #endif
@@ -133,14 +138,14 @@ inline void StationSuite(TestRunner &runner) {
         test.assertEqual(state.ballastCarry, 0, "ballast carry is cleared");
         test.assertEqual(state.airBlowCarry, 0, "air-blow carry is cleared");
         test.assertEqual(state.airDrainTicks, 0, "air drain counter is cleared");
-        test.assertEqual(state.x, settlement.pixel_x, "position snaps to the dock pixel x");
-        test.assertEqual(state.y, settlement.pixel_y, "position snaps to the dock pixel y");
-        test.assertEqual(state.xFrac, 0, "x remainder is zero");
-        test.assertEqual(state.yFrac, 0, "y remainder is zero");
+        test.assertEqual(state.x, approachX, "docking preserves the approach x");
+        test.assertEqual(state.y, approachY, "docking preserves the approach y");
+        test.assertEqual(state.xFrac, 1234, "docking preserves the x remainder");
+        test.assertEqual(state.yFrac, 2345, "docking preserves the y remainder");
+        test.assertEqual(state.cameraXQ4, approachCameraX, "docking leaves the camera x in place");
+        test.assertEqual(state.cameraYQ4, approachCameraY, "docking leaves the camera y in place");
         test.assertEqual(state.vxQ8, 0, "vx is zero");
         test.assertEqual(state.vyQ8, 0, "vy is zero");
-        test.assertEqual(state.cameraX, game::cameraTargetX(state), "camera snap x");
-        test.assertEqual(state.cameraY, game::cameraTargetY(state), "camera snap y");
         runner.add(test);
     }
 
@@ -150,9 +155,12 @@ inline void StationSuite(TestRunner &runner) {
             world::Settlement settlement;
             test.assertTrue(world::settlementInfo(id, settlement), "settlement metadata loads");
 
+            const int16_t approachX = static_cast<int16_t>(settlement.pixel_x + 4);
+            const int16_t approachY = static_cast<int16_t>(settlement.pixel_y + 2);
+
             game::State state;
             game::reset(state);
-            place(state, settlement.pixel_x, settlement.pixel_y);
+            place(state, approachX, approachY);
 
             test.assertTrue(station::dock(state), "dock succeeds");
             test.assertEqual(state.docked, static_cast<int8_t>(id), "docked id matches the settlement");
@@ -165,8 +173,8 @@ inline void StationSuite(TestRunner &runner) {
             test.assertEqual(state.vyQ8, 0, "undock zeroes vy");
             test.assertEqual(state.xFrac, 0, "undock clears x remainder");
             test.assertEqual(state.yFrac, 0, "undock clears y remainder");
-            test.assertEqual(state.x, settlement.pixel_x, "undock keeps the berth x");
-            test.assertEqual(state.y, settlement.pixel_y, "undock keeps the berth y");
+            test.assertEqual(state.x, approachX, "undock keeps the approach x");
+            test.assertEqual(state.y, approachY, "undock keeps the approach y");
             test.assertTrue(!station::undock(state), "second undock is a no-op");
 
             // An idle frame immediately after undock must not snap straight
@@ -218,7 +226,7 @@ inline void StationSuite(TestRunner &runner) {
             Fixture fake;
             game::State state;
             game::reset(state);
-            place(state, static_cast<int16_t>(settlement.pixel_x - 20), settlement.pixel_y);
+            place(state, static_cast<int16_t>(settlement.pixel_x - 8), settlement.pixel_y);
             state.vxQ8 = 10 * game::kQ8One;
 
             test.assertTrue(station::stepFlight(state, idle(), fake), "slow step inside the ring docks");
@@ -235,14 +243,14 @@ inline void StationSuite(TestRunner &runner) {
         Fixture fake;
         game::State state;
         game::reset(state);
-        place(state, static_cast<int16_t>(settlement.pixel_x - 60), settlement.pixel_y);
+        place(state, static_cast<int16_t>(settlement.pixel_x - station::kDockRadius - 6), settlement.pixel_y);
         state.vxQ8 = game::topSpeedQ8For(0);
 
         bool dockedWhileFast = false;
-        for (int i = 0; i < 120; ++i)
+        for (int i = 0; i < 20; ++i)
             dockedWhileFast = station::stepFlight(state, right(), fake) || dockedWhileFast;
-        test.assertTrue(!dockedWhileFast, "a fast boat passes through the ring without docking");
-        test.assertEqual(state.docked, static_cast<int8_t>(-1), "still in free flight after the pass");
+        test.assertTrue(!dockedWhileFast, "a fast boat crosses the ring without docking");
+        test.assertEqual(state.docked, static_cast<int8_t>(-1), "still in free flight after the crossing");
 
         bool dockedAfterRelease = false;
         for (int i = 0; i < 60 && !dockedAfterRelease; ++i)
