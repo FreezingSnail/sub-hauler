@@ -108,13 +108,17 @@ inline bool accept(game::State &state, const Row &row) {
 #if defined(__AVR__)
 
 // Branches, not a switch: the story labels would emit a RAM-resident CSWTCH
-// table. A survey row shares its thread label with the later cargo row.
+// table. Survey rows use their own labels and never load cargo.
 inline uint24_t missionLabel(uint8_t mission) {
     if (mission == campaign::kFirst)
         return txt_first;
-    if (mission == campaign::kPumpSurvey || mission == campaign::kPump)
+    if (mission == campaign::kPumpSurvey)
+        return txt_pump_survey;
+    if (mission == campaign::kPump)
         return txt_pump;
-    if (mission == campaign::kLiftSurvey || mission == campaign::kLift)
+    if (mission == campaign::kLiftSurvey)
+        return txt_lift_survey;
+    if (mission == campaign::kLift)
         return txt_lift;
     if (mission == campaign::kBeacon)
         return txt_beacon;

@@ -49,9 +49,9 @@ facts, so a player can record them before the campaign asks for them.
 | ID | Purpose and action | Becomes available | Completion and reward |
 | --- | --- | --- | --- |
 | FIRST | **Keep the grow rooms alive.** Carry filter supplies from Tidewall to Benthos. | New voyage; the board initially selects this offer but does not auto-accept. | Dock at Benthos loaded: 145 credits, first lamps illuminate, both repair requests become available. |
-| PUMP_SURVEY | **Find the pump fault.** Inspect the marked pump in Pump Refuge. | Survey ring exists from the start; Benthos gives its clue after FIRST. | Slow dwell records a cracked impeller; Benthos board identifies Cormorant as the source of its replacement. No cash reward. |
+| PUMP_SURVEY | **Find the pump fault.** Inspect the marked pump in Pump Refuge. | Survey ring exists from the start; after FIRST, Benthos lists the survey as a non-cargo WORK quest. | Slow dwell records a cracked impeller; Benthos board identifies Cormorant as the source of its replacement. No cash reward. |
 | PUMP | **Bring water back.** Carry a replacement impeller from Cormorant to Benthos. | FIRST and PUMP_SURVEY; collect at Cormorant. | 85 credits; Benthos pump restored, grow-room service lights illuminate, Pump Refuge becomes a service berth. |
-| LIFT_SURVEY | **Trace the broken lift.** Inspect the cable housing at Freight Yard. | Survey ring exists from the start; Cormorant gives its clue after FIRST. | Slow dwell records a ruined cable; Cormorant board identifies Benthos as the source of replacement fiber. No cash reward. |
+| LIFT_SURVEY | **Trace the broken lift.** Inspect the cable housing at Freight Yard. | Survey ring exists from the start; after FIRST, Cormorant lists the survey as a non-cargo WORK quest. | Slow dwell records a ruined cable; Cormorant board identifies Benthos as the source of replacement fiber. No cash reward. |
 | LIFT | **Move freight again.** Carry cable reels from Benthos to Cormorant. | FIRST and LIFT_SURVEY; collect at Benthos. | 85 credits; Cormorant lift restored, workshop lights and crane signal change, Lower Gantry becomes a service berth. |
 | BEACON | **Light Deep Anchor.** Carry the assembled beacon core from Cormorant to Deep Anchor. | PUMP and LIFT complete, pressure seal owned. | 155 credits; Deep Anchor beacon and inhabited capsule lights illuminate. Save the restoration before showing its celebration. |
 | HOME | **Bring the first reply home.** Carry Deep Anchor's network dispatch to Tidewall. | BEACON complete; explicitly accept at Deep Anchor. | 120 credits; Tidewall signal lights complete the network. Save completion before the ending. |
@@ -104,8 +104,9 @@ The optional lens is never necessary. If a survey was already recorded, its
 request immediately shows the supply objective rather than demanding a repeat.
 After FIRST, each unrecorded survey target also blinks as the same X used by an
 active delivery, its in-world ring blinks, and a moving pilot inside the wider
-approach radius sees the stop-to-survey notice. Recording the fact removes all
-three prompts.
+approach radius sees the stop-to-survey notice. The clue berth also lists the
+survey as a non-cargo WORK quest; selecting it opens the chart instead of
+loading cargo. Recording the fact removes all four prompts.
 
 ## Restoration changes the next expedition
 
@@ -155,12 +156,13 @@ dispatch or prevent a player from exploring empty.
 The station board replaces both the redundant SERVICE row and the old freight
 offer rows with a single WORK access. Current top-level rows are `WORK [SHOP]
 UNDOCK`; automatic service already happens on docking. WORK opens the one board
-used for all restoration and optional freight. Eligible story restoration rows
-are listed first in stable mission order, and the one repeatable freight row
-sits beneath them. A accepts the selected row directly, auto-loading the four
-cargo units; B returns to the station board. There is no detail page. B undocks
-only on the top-level station board. Builds without SHOP omit that row.
-Service-only berths use a smaller board.
+used for all restoration and optional freight. All seven story beats have a
+WORK row: eligible story missions are listed first in stable mission order, and
+the one repeatable freight row sits beneath them. Survey rows are non-cargo
+leads; A opens the chart with its blinking survey target instead of loading the
+hold. Cargo rows auto-load the four units. B returns to the station board.
+There is no detail page. B undocks only on the top-level station board. Builds
+without SHOP omit that row. Service-only berths use a smaller board.
 
 The active-job board selects UNDOCK initially. ABANDON requires its own
 confirmation and is never the initial selection after docking or Continue.
@@ -174,10 +176,10 @@ line). The shipped WORK page lists selectable rows directly; for example:
 
 ```text
 BENTHOS WORK
+STORY PUMP SURVEY
 STORY LIFT 85
 CARGO CORMORANT 85
-CHECK PUMP REFUGE
-A ACCEPT     B BACK
+A CHART  B BACK
 ```
 
 Clues identify an already known place or a nearby landmark rather than reveal

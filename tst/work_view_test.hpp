@@ -79,6 +79,38 @@ inline void WorkViewSuite(TestRunner &runner) {
     }
 
     {
+        Test test("every story beat has a WORK row and survey rows never load cargo");
+        game::State state;
+        game::reset(state);
+        state.campaign = campaign::kMilestoneFirst;   // surveys still unrecorded
+        test.assertTrue(dockAt(state, campaign::kBenthos), "Benthos docks");
+        test.assertEqual(work_view::rowCount(state), 2, "pump survey plus freight");
+        const work_view::Row pumpSurvey = work_view::rowAt(state, 0);
+        test.assertEqual(pumpSurvey.kind, work_view::kRowStory, "survey is a story row");
+        test.assertEqual(pumpSurvey.mission, campaign::kPumpSurvey, "pump survey row");
+        test.assertTrue(!campaign::isCargoMission(pumpSurvey.mission), "survey does not load cargo");
+        test.assertTrue(!work_view::accept(state, pumpSurvey), "survey row does not accept a cargo job");
+        test.assertEqual(state.activeJob.kind, game::kJobKindNone, "survey row leaves the hold free");
+
+        test.assertTrue(dockAt(state, campaign::kCormorant), "Cormorant docks");
+        test.assertEqual(work_view::rowCount(state), 2, "lift survey plus freight");
+        test.assertEqual(work_view::rowAt(state, 0).mission, campaign::kLiftSurvey, "lift survey row");
+
+        test.assertTrue(campaign::recordSurvey(state, campaign::kPumpSurveyId), "pump survey recorded");
+        test.assertTrue(dockAt(state, campaign::kCormorant), "Cormorant docks after pump survey");
+        test.assertEqual(work_view::rowCount(state), 3, "PUMP, LIFT_SURVEY and freight");
+        test.assertEqual(work_view::rowAt(state, 0).mission, campaign::kPump, "PUMP cargo comes first");
+        test.assertEqual(work_view::rowAt(state, 1).mission, campaign::kLiftSurvey, "lift survey second");
+        test.assertEqual(kindAt(state, 2), work_view::kRowFreight, "freight last");
+
+        test.assertTrue(campaign::recordSurvey(state, campaign::kLiftSurveyId), "lift survey recorded");
+        test.assertTrue(dockAt(state, campaign::kBenthos), "Benthos docks after lift survey");
+        test.assertEqual(work_view::rowCount(state), 2, "LIFT plus freight");
+        test.assertEqual(work_view::rowAt(state, 0).mission, campaign::kLift, "LIFT cargo replaces the survey lead");
+        runner.add(test);
+    }
+
+    {
         Test test("completed branches leave the remaining story and VIEW ENDING above freight");
         game::State state;
         game::reset(state);
