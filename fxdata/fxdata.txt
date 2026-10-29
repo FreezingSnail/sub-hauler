@@ -264,9 +264,11 @@ include "SplashSprites.txt"
 // existing ending thanks panel, whose dimensions and address are unchanged.
 include "StorySprites.txt"
 
-// Every story beat now has a WORK quest row. Survey rows are non-cargo leads
-// and reuse their thread label; the chart hint appends after every shipped
-// symbol so earlier FX offsets remain flash ABI.
+// Every story beat now has a WORK quest row. Survey rows are non-cargo leads;
+// their labels and the chart hint append after every shipped symbol so earlier
+// FX offsets remain flash ABI.
+string txt_pump_survey = 'PUMP SURVEY'
+string txt_lift_survey = 'LIFT SURVEY'
 string txt_survey_chart_hint = 'A CHART  B BACK'
 
 // Fresh voyage checkpoints (sub-hauler-7px.24). This marker is not an asset

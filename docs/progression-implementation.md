@@ -293,9 +293,9 @@ Mission IDs (`kMissionNone = 0xFF`):
 | ID | Name | Route | Reward | Completion |
 | ---: | --- | --- | ---: | --- |
 | 0 | FIRST | Tidewall → Benthos | 145 | milestone FIRST |
-| 1 | PUMP_SURVEY | Pump Refuge survey | 0 | survey PUMP |
+| 1 | PUMP_SURVEY | Benthos → Pump Refuge survey | 0 | survey PUMP |
 | 2 | PUMP | Cormorant → Benthos | 85 | milestone PUMP |
-| 3 | LIFT_SURVEY | Freight Yard survey | 0 | survey LIFT |
+| 3 | LIFT_SURVEY | Cormorant → Freight Yard survey | 0 | survey LIFT |
 | 4 | LIFT | Benthos → Cormorant | 85 | milestone LIFT |
 | 5 | BEACON | Cormorant → Deep Anchor | 155 | milestone BEACON |
 | 6 | HOME | Deep Anchor → Tidewall | 120 | milestone HOME |
@@ -333,6 +333,10 @@ Mission eligibility:
 
 - FIRST is available at Tidewall from voyage creation; the board selects it but
   does not auto-accept.
+- PUMP_SURVEY requires FIRST; the ring exists from voyage start, and Benthos
+  lists it as a non-cargo WORK row. A opens the chart; the field dwell records.
+- LIFT_SURVEY requires FIRST; the ring exists from voyage start, and Cormorant
+  lists it as a non-cargo WORK row. A opens the chart; the field dwell records.
 - PUMP requires FIRST and PUMP_SURVEY; source Cormorant.
 - LIFT requires FIRST and LIFT_SURVEY; source Benthos.
 - BEACON requires PUMP, LIFT and the pressure seal; source Cormorant.
@@ -567,7 +571,9 @@ Implemented in this slice:
   pump clues; the cutter and seal rumours remain useful text-only hints. After
   FIRST, an unrecorded survey blinks on the chart, its in-world ring blinks,
   and a wider ±48 px proximity radius raises the stop-to-survey notice while
-  the boat is still moving. Recording the fact clears all three.
+  the boat is still moving. The clue berth also lists the survey as a
+  non-cargo WORK row; A opens the chart instead of loading cargo. Recording the
+  fact clears all four prompts.
 - WORK replaces the redundant SERVICE row and the old freight rows. One board
   lists eligible restoration jobs first and the repeatable freight row beneath;
   A accepts directly and auto-loads. Active-job boards keep UNDOCK as the

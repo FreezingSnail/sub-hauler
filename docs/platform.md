@@ -41,9 +41,9 @@ are superseded by this decision.
 
 Current fixed build (2026-10-29): one configuration always links the ATMlib2FX
 compact synth (`ATM_FX_COMPACT_LOOP=1`, `ATM_FX_COMPACT_RING=32`) over the six
-authored C1 streams. The whole image is **29,662 B flash / 1,660 B static RAM**
-(`.text/.data/.bss` **29,650 / 12 / 1,648 B**), using 34 B of the 29,696 B
-hardware flash limit and leaving 40 B static headroom / 900 B static free SRAM.
+authored C1 streams. The whole image is **28,184 B flash / 1,656 B static RAM**
+(`.text/.data/.bss` **28,172 / 12 / 1,644 B**), leaving 1,512 B free under the
+29,696 B hardware flash limit and 44 B static headroom / 904 B static free SRAM.
 The 29,000 B planning line remains advisory and is not claimed. Build outputs
 are `build/arduino` / `dist/fx` and `build/arduino-mini` / `dist/mini`.
 Feature-profile, development, runtime-USB, streaming-backend and EEPROM

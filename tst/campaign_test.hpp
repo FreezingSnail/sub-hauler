@@ -492,6 +492,28 @@ inline void CampaignSuite(TestRunner &runner) {
     }
 
     {
+        Test test("survey missions are WORK rows at their clue berths after FIRST");
+        game::State state;
+        game::reset(state);
+        state.campaign = campaign::kMilestoneFirst;
+        test.assertEqual(campaign::workMissionAt(state, campaign::kBenthos, 0), campaign::kPumpSurvey, "pump survey quest at Benthos");
+        test.assertEqual(campaign::workMissionAt(state, campaign::kCormorant, 0), campaign::kLiftSurvey, "lift survey quest at Cormorant");
+        test.assertTrue(!campaign::isCargoMission(campaign::kPumpSurvey), "pump survey is not cargo");
+        test.assertTrue(!campaign::isCargoMission(campaign::kLiftSurvey), "lift survey is not cargo");
+        test.assertTrue(!campaign::canAccept(state, campaign::kPumpSurvey), "survey quest cannot load cargo");
+
+        test.assertTrue(campaign::recordSurvey(state, campaign::kPumpSurveyId), "pump survey recorded");
+        test.assertEqual(campaign::workMissionAt(state, campaign::kCormorant, 0), campaign::kPump, "PUMP cargo row appears");
+        test.assertEqual(campaign::workMissionAt(state, campaign::kCormorant, 1), campaign::kLiftSurvey, "lift survey remains a row");
+        test.assertEqual(campaign::workMissionAt(state, campaign::kBenthos, 0), campaign::kMissionNone, "Benthos pump survey row is gone");
+
+        test.assertTrue(campaign::recordSurvey(state, campaign::kLiftSurveyId), "lift survey recorded");
+        test.assertEqual(campaign::workMissionAt(state, campaign::kBenthos, 0), campaign::kLift, "LIFT cargo row appears");
+        test.assertEqual(campaign::workMissionAt(state, campaign::kCormorant, 1), campaign::kMissionNone, "lift survey row is gone");
+        runner.add(test);
+    }
+
+    {
         Test test("WORK rows expose both repair branches, beacon, explicit HOME and VIEW ENDING");
         game::State state;
         game::reset(state);

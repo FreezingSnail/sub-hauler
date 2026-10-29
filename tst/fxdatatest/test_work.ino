@@ -66,11 +66,22 @@ void setup() {
     // later state mutation.
     work_view::draw(state, 0);
 
-    // At Cormorant before the repairs, PUMP is the story row and freight is
-    // directly beneath it.
+    // At Cormorant after FIRST, the lift survey is a non-cargo WORK quest;
+    // accepting it must not load the hold. Recording both surveys then exposes
+    // the PUMP cargo row directly above freight.
     berth = campaign::kCormorant;
     ok = dockAt(state, berth) && ok;
     state.campaign = campaign::kMilestoneFirst;
+    state.surveys = 0;
+    ok = (work_view::rowCount(state) == 2) && ok;
+    ok = (work_view::rowAt(state, 0).kind == work_view::kRowStory) && ok;
+    ok = (work_view::rowAt(state, 0).mission == campaign::kLiftSurvey) && ok;
+    ok = (work_view::rowAt(state, 1).kind == work_view::kRowFreight) && ok;
+    work_view::draw(state, 0);
+    ok = !work_view::accept(state, work_view::rowAt(state, 0)) && ok;
+    ok = (state.activeJob.kind == game::kJobKindNone) && ok;
+    ok = (state.cargo == 0) && ok;
+
     state.surveys = campaign::kSurveyMask;
     ok = (work_view::rowCount(state) == 2) && ok;
     ok = (work_view::rowAt(state, 0).kind == work_view::kRowStory) && ok;
