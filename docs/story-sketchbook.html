@@ -7,59 +7,141 @@
 <style>
 *{box-sizing:border-box}body{margin:0;background:#f3f2ee;color:#272725;font:16px/1.45 system-ui,sans-serif}main{max-width:1120px;margin:auto;padding:24px}h1{font-size:25px;margin:0 0 5px}h2{font-size:19px;margin:0}p{margin:5px 0 14px}.muted{color:#686863}button,input,textarea{font:inherit}button{cursor:pointer;border:1px solid #aaa9a2;background:#fff;color:inherit;padding:7px 12px;border-radius:3px}button:hover{background:#e8e7e1}button[aria-pressed=true]{background:#272725;color:white;border-color:#272725}button:focus-visible,input:focus-visible{outline:3px solid #91856b;outline-offset:3px}.controls,.shots{display:flex;gap:7px;flex-wrap:wrap}.player{max-width:920px;margin:0 auto 30px}.stage{aspect-ratio:2/1;background:white;border:1px solid #aaa9a2}.stage canvas,.thumb canvas{display:block;width:100%;height:100%}.player-label{display:flex;justify-content:space-between;gap:15px;align-items:baseline;margin:10px 0 6px}.controls{align-items:center;justify-content:space-between;margin:10px 0}.shots{margin-left:auto}.copy{display:block;font-size:13px;color:#686863;margin:12px 0 3px}.copy textarea{display:block;width:100%;padding:8px;border:1px solid #c4c2b9;background:#fff;color:#272725}.strip{border-top:1px solid #c6c4bb;padding:22px 0}.strip p{font-size:14px}.cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.thumb{padding:0;text-align:left;border:1px solid #aaa9a2;background:white;overflow:hidden}.thumb[aria-pressed=true]{background:white;color:#272725;outline:3px solid #272725;outline-offset:2px}.thumb-art{display:block;aspect-ratio:2/1}.thumb-label{display:block;padding:9px 10px;font-size:14px}.thumb small{display:block;color:#686863;font-size:12px;margin-top:2px}.key{font-size:13px;color:#686863;margin:0}.count{font-size:13px;color:#686863}@media(max-width:650px){main{padding:15px}.cards{grid-template-columns:1fr}.player-label{display:block}.controls{gap:10px}.shots{margin-left:0}h1{font-size:22px}}
 .copy[hidden]{display:none}canvas{image-rendering:pixelated;image-rendering:crisp-edges}.copy textarea{resize:vertical;min-height:110px;font-family:monospace}.native-view canvas{display:block;width:128px;height:64px}.native-view{margin:10px 0}.render-note{font-size:12px;color:#686863}
+.native-gallery{display:flex;gap:14px;flex-wrap:wrap;margin:12px 0 24px}.native-card{width:150px;padding:10px;text-align:left}.native-card .native-art,.native-card .native-art canvas{display:block;width:128px;height:64px;min-width:128px;max-width:128px;min-height:64px;max-height:64px}.native-card small{display:block;font-size:12px;margin-top:7px}.native-card[aria-pressed=true]{background:#e6e5de;color:#272725;outline:2px solid #272725}
+.controls[hidden]{display:none}
 </style>
 </head>
 <body>
 <main>
 <h1>Sub-hauler: story beats</h1>
+<p class="render-note">All scenes take place underwater; loading bays are enclosed moon pools. Every image has four poses: select an image, then Play or Step frame. Playback starts paused; text cards stay static.</p>
 <section aria-labelledby="campaign-beats-heading">
 <h2 id="campaign-beats-heading">The full campaign</h2>
 <ol>
 <li><strong><a href="#first-delivery">First delivery — keep the grow rooms alive.</a></strong> Carry filter supplies from Tidewall to Benthos. The first lamps come on, and Benthos asks for help restoring the pump and freight lift.</li>
-<li><strong>Pump survey — find the fault.</strong> Inspect the pump at Pump Refuge. Its impeller is cracked; a replacement is available at Cormorant.</li>
-<li><strong>Pump delivery — bring water back.</strong> Carry the replacement impeller from Cormorant to Benthos. Water returns to the grow rooms, and Pump Refuge becomes a working service berth.</li>
-<li><strong>Lift survey — trace the breakdown.</strong> Inspect the cable housing at Freight Yard. The lift needs replacement cable from Benthos.</li>
-<li><strong>Lift delivery — move freight again.</strong> Carry cable reels from Benthos to Cormorant. The lift and workshops return to work, and Lower Gantry becomes a service berth.</li>
-<li><strong>Beacon delivery — reconnect Deep Anchor.</strong> Once the pump and lift are restored and the sub has a pressure seal, carry the assembled beacon core from Cormorant to Deep Anchor. Its beacon and inhabited capsule lights come on.</li>
-<li><strong>Homecoming — bring the first reply home.</strong> Carry Deep Anchor’s network dispatch to Tidewall. Tidewall’s signal lights complete the network; the voyage ends with a homecoming and the option to keep exploring.</li>
+<li><strong><a href="#pump-survey">Pump survey — find the fault.</a></strong> Inspect the pump at Pump Refuge. Its impeller is cracked; a replacement is available at Cormorant.</li>
+<li><strong><a href="#pump-delivery">Pump delivery — bring water back.</a></strong> Carry the replacement impeller from Cormorant to Benthos. Water returns to the grow rooms, and Pump Refuge becomes a working service berth.</li>
+<li><strong><a href="#lift-survey">Lift survey — trace the breakdown.</a></strong> Inspect the cable housing at Freight Yard. The lift needs replacement cable from Benthos.</li>
+<li><strong><a href="#lift-delivery">Lift delivery — move freight again.</a></strong> Carry cable reels from Benthos to Cormorant. The lift and workshops return to work, and Lower Gantry becomes a service berth.</li>
+<li><strong><a href="#beacon-delivery">Beacon delivery — reconnect Deep Anchor.</a></strong> Once the pump and lift are restored and the sub has a pressure seal, carry the assembled beacon core from Cormorant to Deep Anchor. Its beacon and inhabited capsule lights come on.</li>
+<li><strong><a href="#homecoming">Homecoming — bring the dispatch home.</a></strong> Carry Deep Anchor’s network dispatch to Tidewall. Tidewall’s signal lights complete the network; the voyage ends with a homecoming and the option to keep exploring.</li>
 </ol>
-<p class="muted">The pump and lift branches can be completed in either order. Their surveys can be recorded early. These are the existing campaign objectives; each can eventually have a short sequence of story cards.</p>
+<p class="muted">The pump and lift branches can be completed in either order. Their surveys can be recorded early. All seven existing campaign objectives now have image and story card sequences below.</p>
 </section>
 <section id="first-delivery" aria-labelledby="first-delivery-heading">
 <h2 id="first-delivery-heading">1. First delivery — image and story cards</h2>
 <p><a href="story-art-references.html">Visual reference shortlist — screenshots, sources and what to study</a></p>
 <p><strong>What this sequence needs to communicate:</strong> the sub arrives at Benthos; we see the grow tanks the filters help sustain; Benthos asks for help restoring the pump and freight lift.</p>
-<p class="muted">Six native 128×64 cards: arriving sub → story text → grow tanks → story text → repair request → story text. Images use the approved compositions, now in opaque black-and-white dither; story copy has its own screen.</p>
+<p class="muted">Six cards at native 128×64: arriving sub → story text → grow tanks → story text → repair request → story text. Clearer silhouettes, simpler roots and quieter surfaces preserve the depth while making the small images easier to read. Story copy stays on its own screen. <a href="assets/first-beat-clarity-v6/prompt-set.json">Exact clarity edit prompts and native renderer</a>.</p>
+<p class="render-note">All image cards: select an image and press Play, or Step frame. Four poses at3.3fps; starts paused. Text cards stay still. <a href="assets/first-beat-animation/animation.json">Motion masks and renderer</a>.</p>
+<section aria-label="All six cards at native size"><h2>1× · 128×64 cards</h2><p class="render-note">Actual CSS pixel size. Select a card to enlarge it below.</p><div id="native-gallery" class="native-gallery"></div></section>
 <section class="player" aria-label="Enlarged storyboard player">
+<p class="render-note">Native 128×64 card · enlarged with nearest-neighbor pixels</p>
 <div id="stage" class="stage"></div>
+<div id="animation-controls" class="controls" hidden><button id="animation-play" type="button" disabled>Play</button><button id="animation-step" type="button" disabled>Step frame</button><button id="animation-restart" type="button" disabled>Restart</button><span id="animation-position" class="render-note">Frame1/4 ·3.3fps ·loading poses</span></div>
+<details id="comparison-review"><summary>Compare previous version</summary><img id="previous-art" alt="Previous native version of this image" width="128" height="64" style="display:block;width:100%;height:auto;image-rendering:pixelated"><p id="comparison-note" class="render-note"></p></details>
+<details id="source-review"><summary>Source illustration · composition detail</summary><figure style="margin:10px 0"><img id="source-art" alt="" style="display:block;width:100%;height:auto"><figcaption class="render-note">Edited source · 1774×887. Fine detail does not all fit the native card. <a id="source-link">Open source</a></figcaption></figure><p class="render-note">Native comparison at4× · previous left, clearer version right</p><img id="clarity-comparison" alt="Previous and clearer native cards enlarged four times" style="display:block;width:100%;height:auto;image-rendering:pixelated"></details>
 <div class="player-label"><h2 id="shot-title"></h2><span class="count" id="position"></span></div>
 <p id="shot-intent"></p>
 <div class="controls"><button type="button" id="prev">← Previous</button><button type="button" id="next">Next →</button><div class="shots" id="shots" aria-label="Choose a shot"></div></div>
 <p class="key">← / → or Space to step through all six cards. Select any thumbnail or card button to jump.</p>
-<details class="native-view"><summary>Native 128×64 view</summary><div id="native"></div></details>
+<div class="native-view"><p class="render-note">Selected card · 1× · 128×64</p><div id="native"></div></div>
 <label class="copy" id="copy-editor" hidden>Edit this story text (edits stay in this open page)
 <textarea id="copy" aria-label="Story text draft" rows="4" spellcheck="false"></textarea><span id="copy-status" class="render-note"></span></label>
 </section>
 <div id="storyboards"></div>
 </section>
-<p class="muted">Local card preview only — the game artwork, FX image and runtime remain unchanged.</p>
+<section id="pump-survey" aria-labelledby="pump-survey-heading" class="strip">
+<h2 id="pump-survey-heading">2. Pump survey — find the fault</h2>
+<p>Hold position beside the inactive pump at Pump Refuge. Inspection reveals a cracked impeller; Benthos points you to Cormorant for its replacement.</p>
+<p class="muted">Four cards: approach → story text → cracked impeller → story text. This is a survey, before the repair delivery. Pump Refuge is still inactive.</p>
+<section aria-label="All four pump survey cards at native size"><h2>1× · 128×64 cards</h2><p class="render-note">Actual CSS pixel size. Select a card to enlarge it below.</p><div id="pump-native-gallery" class="native-gallery"></div></section>
+<section class="player" aria-label="Pump survey storyboard player">
+<p class="render-note">Native 128×64 card · enlarged with nearest-neighbor pixels</p><div id="pump-stage" class="stage"></div>
+<div id="pump-animation-controls" class="controls" hidden><button id="pump-animation-play" type="button" disabled>Play</button><button id="pump-animation-step" type="button" disabled>Step frame</button><button id="pump-animation-restart" type="button" disabled>Restart</button><span id="pump-animation-position" class="render-note">Frame1/4 ·3.3fps ·loading poses</span></div>
+<details id="pump-source-review"><summary>Source illustration · composition detail</summary><figure style="margin:10px 0"><img id="pump-source-art" alt="" style="display:block;width:100%;height:auto"><figcaption class="render-note">Source illustration. Fine detail does not all fit the native card. <a id="pump-source-link">Open source</a></figcaption></figure></details>
+<div class="player-label"><h2 id="pump-shot-title"></h2><span class="count" id="pump-position"></span></div><p id="pump-shot-intent"></p>
+<div class="controls"><button type="button" id="pump-prev">← Previous</button><button type="button" id="pump-next">Next →</button><div class="shots" id="pump-shots" aria-label="Choose a pump survey card"></div></div>
+<p class="key">← / → or Space controls the last selected beat. Select a card or use the campaign links to change beats.</p>
+<div class="native-view"><p class="render-note">Selected card · 1× · 128×64</p><div id="pump-native"></div></div>
+<label class="copy" id="pump-copy-editor" hidden>Edit this story text (edits stay in this open page)<textarea id="pump-copy" aria-label="Pump survey story text draft" rows="5" spellcheck="false"></textarea><span id="pump-copy-status" class="render-note"></span></label>
+</section><div id="pump-storyboards"></div>
+<p class="render-note"><a href="assets/pump-survey/prompt-set.json">Initial pump-survey prompts and native renderer</a> · <a href="assets/pump-survey/approach-internal-v2.json">Clean exterior deck correction</a>.</p>
+</section>
+<section id="pump-delivery" aria-labelledby="pump-delivery-heading" class="strip">
+<h2 id="pump-delivery-heading">3. Pump delivery — bring water back</h2><p>At Cormorant, collect the replacement impeller for Benthos. Delivering it restores the pump and grow-room service lights; Pump Refuge opens as a service berth.</p><p class="muted">Four cards: replacement cargo → story text → returning water → story text. The replacement travels from Cormorant to Benthos.</p>
+<section aria-label="All four 3. Pump delivery cards at native size"><h2>1× · 128×64 cards</h2><p class="render-note">Actual CSS pixel size. Select a card to enlarge it below.</p><div id="delivery-native-gallery" class="native-gallery"></div></section>
+<section class="player" aria-label="3. Pump delivery — bring water back storyboard player"><p class="render-note">Native 128×64 card · enlarged with nearest-neighbor pixels</p><div id="delivery-stage" class="stage"></div>
+<div id="delivery-animation-controls" class="controls" hidden><button id="delivery-animation-play" type="button" disabled>Play</button><button id="delivery-animation-step" type="button" disabled>Step frame</button><button id="delivery-animation-restart" type="button" disabled>Restart</button><span id="delivery-animation-position" class="render-note">Frame1/4 ·3.3fps ·loading poses</span></div>
+<details id="delivery-comparison-review"><summary>Compare previous version</summary><img id="delivery-previous-art" alt="Previous native version of this image" width="128" height="64" style="display:block;width:100%;height:auto;image-rendering:pixelated"><p id="delivery-comparison-note" class="render-note"></p></details>
+<details id="delivery-source-review"><summary>Source illustration · composition detail</summary><figure style="margin:10px 0"><img id="delivery-source-art" alt="" style="display:block;width:100%;height:auto"><figcaption class="render-note">Source illustration. Fine detail does not all fit the native card. <a id="delivery-source-link">Open source</a></figcaption></figure></details>
+<div class="player-label"><h2 id="delivery-shot-title"></h2><span class="count" id="delivery-position"></span></div><p id="delivery-shot-intent"></p>
+<div class="controls"><button type="button" id="delivery-prev">← Previous</button><button type="button" id="delivery-next">Next →</button><div class="shots" id="delivery-shots" aria-label="Choose a card"></div></div>
+<p class="key">← / → or Space controls the last selected beat. Select a card or use the campaign links to change beats.</p>
+<div class="native-view"><p class="render-note">Selected card · 1× · 128×64</p><div id="delivery-native"></div></div>
+<label class="copy" id="delivery-copy-editor" hidden>Edit this story text (edits stay in this open page)<textarea id="delivery-copy" aria-label="3. Pump delivery — bring water back story text draft" rows="5" spellcheck="false"></textarea><span id="delivery-copy-status" class="render-note"></span></label>
+</section><div id="delivery-storyboards"></div><p class="render-note"><a href="assets/pump-delivery/prompt-set.json">Initial prompts and native renderer</a> · <a href="assets/pump-delivery/refinement-clear-sub-v2.json">Submarine clarity refinement</a> · <a href="assets/pump-delivery/loading-impeller-balanced-v4.json">Impeller shading and simpler station</a>.</p></section>
+<section id="lift-survey" aria-labelledby="lift-survey-heading" class="strip">
+<h2 id="lift-survey-heading">4. Lift survey — trace the breakdown</h2><p>Hold position beside the inactive lift at Freight Yard. The cable housing reveals a ruined cable; Cormorant points you to Benthos for replacement fiber.</p><p class="muted">Four cards: inactive freight lift → story text → ruined cable → story text. This is a survey; the lift and Lower Gantry service berth are still inactive.</p>
+<section aria-label="All four 4. Lift survey cards at native size"><h2>1× · 128×64 cards</h2><p class="render-note">Actual CSS pixel size. Select a card to enlarge it below.</p><div id="lift-native-gallery" class="native-gallery"></div></section>
+<section class="player" aria-label="4. Lift survey — trace the breakdown storyboard player"><p class="render-note">Native 128×64 card · enlarged with nearest-neighbor pixels</p><div id="lift-stage" class="stage"></div>
+<div id="lift-animation-controls" class="controls" hidden><button id="lift-animation-play" type="button" disabled>Play</button><button id="lift-animation-step" type="button" disabled>Step frame</button><button id="lift-animation-restart" type="button" disabled>Restart</button><span id="lift-animation-position" class="render-note">Frame1/4 ·3.3fps ·loading poses</span></div>
+<details id="lift-comparison-review"><summary>Compare previous version</summary><img id="lift-previous-art" alt="Previous native version of this image" width="128" height="64" style="display:block;width:100%;height:auto;image-rendering:pixelated"><p id="lift-comparison-note" class="render-note"></p></details>
+<details id="lift-source-review"><summary>Source illustration · composition detail</summary><figure style="margin:10px 0"><img id="lift-source-art" alt="" style="display:block;width:100%;height:auto"><figcaption class="render-note">Source illustration. Fine detail does not all fit the native card. <a id="lift-source-link">Open source</a></figcaption></figure></details>
+<div class="player-label"><h2 id="lift-shot-title"></h2><span class="count" id="lift-position"></span></div><p id="lift-shot-intent"></p>
+<div class="controls"><button type="button" id="lift-prev">← Previous</button><button type="button" id="lift-next">Next →</button><div class="shots" id="lift-shots" aria-label="Choose a card"></div></div>
+<p class="key">← / → or Space controls the last selected beat. Select a card or use the campaign links to change beats.</p>
+<div class="native-view"><p class="render-note">Selected card · 1× · 128×64</p><div id="lift-native"></div></div>
+<label class="copy" id="lift-copy-editor" hidden>Edit this story text (edits stay in this open page)<textarea id="lift-copy" aria-label="4. Lift survey — trace the breakdown story text draft" rows="5" spellcheck="false"></textarea><span id="lift-copy-status" class="render-note"></span></label>
+</section><div id="lift-storyboards"></div><p class="render-note"><a href="assets/lift-survey/prompt-set.json">Initial prompts and native renderer</a> · <a href="assets/lift-survey/refinement-clear-sub-v2.json">Submarine clarity refinement</a> · <a href="assets/lift-survey/freight-yard-balanced-v3.json">Freight Yard shading and simpler station</a>.</p></section>
+<section id="lift-delivery" aria-labelledby="lift-delivery-heading" class="strip">
+<h2 id="lift-delivery-heading">5. Lift delivery — move freight again</h2><p>At Benthos, load replacement cable reels into the internal hold for Cormorant. Restoring its lift brings workshop lights and the crane signal back; Lower Gantry opens as a service berth.</p><p class="muted">Four cards: cable loading → story text → working freight lift → story text. Cargo travels from Benthos to Cormorant.</p>
+<section aria-label="All four 5. Lift delivery cards at native size"><h2>1× · 128×64 cards</h2><p class="render-note">Actual CSS pixel size. Select a card to enlarge it below.</p><div id="lift-delivery-native-gallery" class="native-gallery"></div></section>
+<section class="player" aria-label="5. Lift delivery — move freight again storyboard player"><p class="render-note">Native 128×64 card · enlarged with nearest-neighbor pixels</p><div id="lift-delivery-stage" class="stage"></div>
+<div id="lift-delivery-animation-controls" class="controls" hidden><button id="lift-delivery-animation-play" type="button" disabled>Play</button><button id="lift-delivery-animation-step" type="button" disabled>Step frame</button><button id="lift-delivery-animation-restart" type="button" disabled>Restart</button><span id="lift-delivery-animation-position" class="render-note">Frame1/4 ·3.3fps ·loading poses</span></div>
+<details id="lift-delivery-source-review"><summary>Source illustration · composition detail</summary><figure style="margin:10px 0"><img id="lift-delivery-source-art" alt="" style="display:block;width:100%;height:auto"><figcaption class="render-note">Source illustration. Fine detail does not all fit the native card. <a id="lift-delivery-source-link">Open source</a></figcaption></figure></details>
+<div class="player-label"><h2 id="lift-delivery-shot-title"></h2><span class="count" id="lift-delivery-position"></span></div><p id="lift-delivery-shot-intent"></p>
+<div class="controls"><button type="button" id="lift-delivery-prev">← Previous</button><button type="button" id="lift-delivery-next">Next →</button><div class="shots" id="lift-delivery-shots" aria-label="Choose a card"></div></div>
+<p class="key">← / → or Space controls the last selected beat. Select a card or use the campaign links to change beats.</p>
+<div class="native-view"><p class="render-note">Selected card · 1× · 128×64</p><div id="lift-delivery-native"></div></div>
+<label class="copy" id="lift-delivery-copy-editor" hidden>Edit this story text (edits stay in this open page)<textarea id="lift-delivery-copy" aria-label="5. Lift delivery — move freight again story text draft" rows="5" spellcheck="false"></textarea><span id="lift-delivery-copy-status" class="render-note"></span></label>
+</section><div id="lift-delivery-storyboards"></div><p class="render-note"><a href="assets/lift-delivery/prompt-set.json">Exact prompts and native renderer</a>.</p></section>
+<section id="beacon-delivery" aria-labelledby="beacon-delivery-heading" class="strip">
+<h2 id="beacon-delivery-heading">6. Beacon delivery — reconnect Deep Anchor</h2><p>With the pump and lift restored and the pressure seal fitted, carry the assembled beacon core inside the hull from Cormorant to Deep Anchor. Its beacon and capsule windows come on.</p><p class="muted">Four cards: descent to Deep Anchor → story text → beacon lights → story text. The core travels inside the sub, with a clean exterior deck.</p>
+<section aria-label="All four 6. Beacon delivery cards at native size"><h2>1× · 128×64 cards</h2><p class="render-note">Actual CSS pixel size. Select a card to enlarge it below.</p><div id="beacon-native-gallery" class="native-gallery"></div></section>
+<section class="player" aria-label="6. Beacon delivery — reconnect Deep Anchor storyboard player"><p class="render-note">Native 128×64 card · enlarged with nearest-neighbor pixels</p><div id="beacon-stage" class="stage"></div>
+<div id="beacon-animation-controls" class="controls" hidden><button id="beacon-animation-play" type="button" disabled>Play</button><button id="beacon-animation-step" type="button" disabled>Step frame</button><button id="beacon-animation-restart" type="button" disabled>Restart</button><span id="beacon-animation-position" class="render-note">Frame1/4 ·3.3fps ·loading poses</span></div>
+<details id="beacon-source-review"><summary>Source illustration · composition detail</summary><figure style="margin:10px 0"><img id="beacon-source-art" alt="" style="display:block;width:100%;height:auto"><figcaption class="render-note">Source illustration. Fine detail does not all fit the native card. <a id="beacon-source-link">Open source</a></figcaption></figure></details>
+<div class="player-label"><h2 id="beacon-shot-title"></h2><span class="count" id="beacon-position"></span></div><p id="beacon-shot-intent"></p>
+<div class="controls"><button type="button" id="beacon-prev">← Previous</button><button type="button" id="beacon-next">Next →</button><div class="shots" id="beacon-shots" aria-label="Choose a card"></div></div>
+<p class="key">← / → or Space controls the last selected beat. Select a card or use the campaign links to change beats.</p>
+<div class="native-view"><p class="render-note">Selected card · 1× · 128×64</p><div id="beacon-native"></div></div>
+<label class="copy" id="beacon-copy-editor" hidden>Edit this story text (edits stay in this open page)<textarea id="beacon-copy" aria-label="6. Beacon delivery — reconnect Deep Anchor story text draft" rows="5" spellcheck="false"></textarea><span id="beacon-copy-status" class="render-note"></span></label>
+</section><div id="beacon-storyboards"></div><p class="render-note"><a href="assets/beacon-delivery/prompt-set.json">Exact prompts and native renderer</a>.</p></section>
+<section id="homecoming" aria-labelledby="homecoming-heading" class="strip">
+<h2 id="homecoming-heading">7. Homecoming — bring the dispatch home</h2><p>After Deep Anchor’s beacon comes on, accept its formal network dispatch and carry it inside the hull to Tidewall. The familiar home berth and signal lights complete the network; you can keep exploring.</p><p class="muted">Four cards: the homeward approach → story text → Tidewall’s welcome → story text. The dispatch is a new return job, after the beacon delivery.</p>
+<section aria-label="All four 7. Homecoming cards at native size"><h2>1× · 128×64 cards</h2><p class="render-note">Actual CSS pixel size. Select a card to enlarge it below.</p><div id="home-native-gallery" class="native-gallery"></div></section>
+<section class="player" aria-label="7. Homecoming — bring the dispatch home storyboard player"><p class="render-note">Native 128×64 card · enlarged with nearest-neighbor pixels</p><div id="home-stage" class="stage"></div>
+<div id="home-animation-controls" class="controls" hidden><button id="home-animation-play" type="button" disabled>Play</button><button id="home-animation-step" type="button" disabled>Step frame</button><button id="home-animation-restart" type="button" disabled>Restart</button><span id="home-animation-position" class="render-note">Frame1/4 ·3.3fps ·loading poses</span></div>
+<details id="home-source-review"><summary>Source illustration · composition detail</summary><figure style="margin:10px 0"><img id="home-source-art" alt="" style="display:block;width:100%;height:auto"><figcaption class="render-note">Source illustration. Fine detail does not all fit the native card. <a id="home-source-link">Open source</a></figcaption></figure></details>
+<div class="player-label"><h2 id="home-shot-title"></h2><span class="count" id="home-position"></span></div><p id="home-shot-intent"></p>
+<div class="controls"><button type="button" id="home-prev">← Previous</button><button type="button" id="home-next">Next →</button><div class="shots" id="home-shots" aria-label="Choose a card"></div></div>
+<p class="key">← / → or Space controls the last selected beat. Select a card or use the campaign links to change beats.</p>
+<div class="native-view"><p class="render-note">Selected card · 1× · 128×64</p><div id="home-native"></div></div>
+<label class="copy" id="home-copy-editor" hidden>Edit this story text (edits stay in this open page)<textarea id="home-copy" aria-label="7. Homecoming — bring the dispatch home story text draft" rows="5" spellcheck="false"></textarea><span id="home-copy-status" class="render-note"></span></label>
+</section><div id="home-storyboards"></div><p class="render-note"><a href="assets/homecoming/prompt-set.json">Exact prompts and native renderer</a>.</p></section>
+<p class="muted">Local card preview only — the game artwork, FX image and runtime remain unchanged. Sources were made with the built-in image generation tool; <a href="assets/first-beat-depth/prompt-set-v2.json">exact source edit prompts</a>. The arrival refinement used the same image tool (<a href="assets/first-beat-depth/arrival-internal-v5.json">exact edit prompt and renderer</a>). Native balancing uses those source images, with patterns only within 40 luminance levels of each card’s threshold. <a href="assets/first-beat-depth/render-balanced-v3.json">Exact renderer and measurements</a>.</p>
 <noscript>This local sketchbook needs JavaScript and Canvas to render its local cards and navigate between them.</noscript>
 </main>
+<script src="assets/first-beat-animation/frames.js"></script>
+<script src="assets/first-beat-animation/playback.js"></script>
 <script>
 'use strict';
-// Shared rough actors, not reused finished assets. All coordinates are drawing units.
-const ink='#30312e', gray='#aeb1ae', pale='#dedfda', paper='#f4f3ed';
-const group=(x,y,s,body,extra='')=>`<g transform="translate(${x} ${y}) scale(${s})" ${extra}>${body}</g>`;
-function sub(x,y,s=1){return group(x,y,s,`<path d="M9 7L-10-4L-7 19L-13 39L10 33" fill="${gray}"/><path d="M8 0C-11 0-14 39 10 43L110 43C142 39 145 4 114 0Z" fill="${pale}"/><path d="M42 0L46-19L73-19L79 1" fill="${gray}"/><path d="M54-20L54-31L66-31M-17 3L-17 34M-20 18L-9 18"/><rect x="51" y="-14" width="15" height="9" rx="2" fill="${ink}"/>${[28,62,96].map(cx=>`<circle cx="${cx}" cy="20" r="8" fill="${gray}"/><path d="M${cx-4} 16L${cx+3} 16" stroke="white"/>`).join('')}<path d="M12 35L112 35M18 47L108 47" stroke="#6e736e"/>`);}
-function crate(x,y,s=1){return group(x,y,s,`<path d="M0 4L12-3L58-3L46 4Z" fill="${pale}"/><path d="M46 4L58-3L58 33L46 40Z" fill="${gray}"/><rect x="0" y="4" width="46" height="36" fill="${paper}"/><path d="M7 8L7 35M14 8L14 35M22 8L22 35M30 8L30 35M38 8L38 35M0 11L46 11M0 31L46 31"/><path d="M13 0L31 0" stroke-width="4"/>`);}
-function lamp(x,y,on=true){return group(x,y,1,`<path d="M0-20L0 0L-18 14L18 14Z" fill="${on?'#fff':gray}"/>${on?'<path d="M-25 24L-34 40M0 26L0 45M25 24L34 40" stroke="#8b8e85"/>':''}`);}
-function windowFrame(x,y,w,h,fill='#c6cdcb'){return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="8" fill="${fill}"/><rect x="${x+6}" y="${y+6}" width="${w-12}" height="${h-12}" rx="5" fill="none" stroke="#858b85"/><path d="M${x+w/2} ${y}V${y+h}" stroke="#868d87"/>`;}
-function svg(body){return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 256" role="img" aria-label="Rough story composition"><rect width="512" height="256" fill="${paper}"/><g stroke="${ink}" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">${body}</g></svg>`;}
-function tank(x,y,w=126,h=135){return group(x,y,1,`<rect x="0" y="8" width="${w}" height="${h}" rx="12" fill="${paper}"/><path d="M5 73Q${w/2} 85 ${w-5} 73V${h-4}Q${w/2} ${h+15} 5 ${h-4}Z" fill="#c3ceca"/><ellipse cx="${w/2}" cy="8" rx="${w/2}" ry="12" fill="${pale}"/><path d="M6 74Q${w/2} 87 ${w-6} 74M13 24V58M${w-12} 28V106" stroke="#8d9e96"/><path d="M${w/2} 13V77L${w/2-17} 112M${w/2} 56L${w/2+21} 103M${w/2-4} 77L${w/2-31} 93M${w/2+7} 89L${w/2+29} 118M${w/2-14} 105L${w/2-22} 121" stroke="#788a7d"/><path d="M${w/2} 7V-32M${w/2} -6Q${w/2-37} -37 ${w/2-29} -40Q${w/2-6} -44 ${w/2} -6M${w/2} -16Q${w/2+12} -55 ${w/2+35} -46Q${w/2+36} -28 ${w/2} -16" fill="${gray}"/><path d="M${w/2-13} 4H${w/2+13}" stroke-width="5"/>`);}
+// Source illustrations and independently inspectable native one-bit previews.
 const images=[
- {title:'1 · The sub arrives',intent:'Wide. The incoming submarine reaches Benthos with filter supplies; the lit berth and waiting cargo establish the delivery.',copy:'The sub arrives at Benthos.',art:()=>svg(`<path d="M0 0H512V256H0Z" fill="#c6cdcb" stroke="none"/><path d="M313 50H512V191H313Z" fill="${pale}"/><path d="M321 58L512 58M333 50V181M421 51V181" stroke="#969d95"/>${windowFrame(350,75,58,42,'#eeeeda')}${windowFrame(440,75,58,42,'#eeeeda')}<path d="M258 178H512V194H258Z" fill="${gray}"/><path d="M294 193L285 256M455 194L461 256"/>${sub(44,153,1.25)}${crate(268,141,.85)}<path d="M321 174Q337 155 354 172Q342 186 328 174Q336 165 345 171M358 174L384 174M365 167L388 167" stroke="#747e75"/><path d="M203 196L258 184M25 228L120 228M169 229L241 229" stroke="#8b9691"/>`)},
- {title:'2 · The grow tanks',intent:'Inside. Large grow tanks show plants above, roots and water below, with lamps and filter equipment sustaining the room.',copy:'The filter supplies help keep the grow rooms alive.',art:()=>svg(`<path d="M0 231H512M34 0V230M398 0V231" stroke="#aeb4aa"/>${lamp(145,19,true)}${lamp(321,19,true)}${tank(67,85,131,128)}${tank(246,86,125,127)}<rect x="421" y="103" width="58" height="97" rx="8" fill="${pale}"/><rect x="433" y="115" width="32" height="66" rx="3" fill="${paper}"/><path d="M440 120V176M449 120V176M458 120V176M421 127H391V166H370M421 186H405V223H127V215"/><path d="M396 157L391 166L386 157M225 218L214 223L225 228" stroke="#7d8c80"/><circle cx="449" cy="193" r="3" fill="${ink}"/>`)},
- {title:'3 · Benthos asks for repairs',intent:'A practical maintenance board shows two needs: a damaged pump impeller and a freight lift with failed cable. The next work is clear.',copy:'Benthos asks for help restoring the pump and freight lift.',art:()=>svg(`<rect x="12" y="10" width="488" height="207" rx="5" fill="${gray}"/><path d="M27 26H239V201H27Z" fill="${paper}"/><path d="M272 27H482V202H272Z" fill="${paper}"/><circle cx="43" cy="35" r="3" fill="${ink}"/><circle cx="468" cy="36" r="3" fill="${ink}"/><text x="54" y="57" font-family="sans-serif" font-size="15" fill="${ink}" stroke="none">PUMP</text><text x="294" y="57" font-family="sans-serif" font-size="15" fill="${ink}" stroke="none">FREIGHT LIFT</text><circle cx="130" cy="122" r="48" fill="${pale}"/><circle cx="130" cy="122" r="12" fill="${gray}"/><path d="M126 110Q92 80 106 82Q141 76 141 112M141 124Q178 107 175 126Q165 157 141 133M125 133Q120 170 105 153Q89 129 116 122" fill="${gray}"/><path d="M147 89L138 97L147 103L140 111" stroke-width="3"/><path d="M176 147L205 171M195 163L209 164L211 180"/><path d="M308 180V76H451V180M316 83H444M375 84V108M375 123V139M371 107L365 114M375 108L379 116M371 123L367 117M378 123L383 118"/><path d="M375 139L350 150M375 139L402 150"/>${crate(350,146,.9)}<path d="M0 218H512V256H0Z" fill="${pale}"/><path d="M189 239L231 218L239 224L200 247Z" fill="${gray}"/><path d="M230 219L231 209L243 205L239 216L247 220L257 212L255 226L242 230" fill="${gray}"/><path d="M292 241Q302 220 318 239Q307 253 297 240Q306 229 313 239"/>`)}
+ {title:'1 · The sub arrives',intent:'A clear light-sided sub approaches Benthos with its supplies inside the hull; the quieter dock recedes behind a near bollard.',copy:'The sub arrives at Benthos.',art:'arrival',native:'assets/story-underwater-v7/arrival-native.png',source:'assets/story-underwater-v7/arrival.png',previous:'assets/first-beat-clarity-v6/arrival-native.png',previousNote:'Previous approach · current scene is fully submerged.',comparison:'assets/first-beat-animation/all-beats-v3/arrival-before-after-4x.png'},
+ {title:'2 · The grow tanks',intent:'Broad leaf clusters, simple roots and clear waterlines make the planted tanks readable against a quieter room.',copy:'The filter supplies help keep the grow rooms alive.',art:'grow-tanks',native:'assets/first-beat-clarity-v6/grow-tanks-native.png',source:'assets/first-beat-clarity-v6/grow-tanks.png',previous:'assets/first-beat-depth/grow-tanks-balanced-v3-native.png',previousNote:'Before the clarity pass · compare roots, tank volume and floor.',comparison:'assets/first-beat-clarity-v6/grow-tanks-before-after-4x.png'},
+ {title:'3 · Benthos asks for repairs',intent:'The thick pump housing, curved barrel and separate lift opening establish two practical repair needs.',copy:'Benthos asks for help restoring the pump and freight lift.',art:'repair-bay',native:'assets/first-beat-clarity-v6/repair-bay-native.png',source:'assets/first-beat-clarity-v6/repair-bay.png',previous:'assets/first-beat-depth/repair-bay-balanced-v3-native.png',previousNote:'Before the clarity pass · compare housing, bench and lift opening.',comparison:'assets/first-beat-clarity-v6/repair-bay-before-after-4x.png'}
 ];
 // Existing 5x7 font column bytes copied read-only from tools/gen_font.py.
 const glyphs={" ":[0,0,0,0,0],"-":[8,8,8,8,8],"/":[32,16,8,4,2],"0":[62,81,73,69,62],"1":[0,66,127,64,0],"2":[114,73,73,73,70],"3":[33,65,73,77,51],"4":[24,20,18,127,16],"5":[39,69,69,69,57],"6":[60,74,73,73,49],"7":[65,33,17,9,7],"8":[54,73,73,73,54],"9":[70,73,73,41,30],":":[0,0,20,0,0],"A":[124,18,17,18,124],"B":[127,73,73,73,54],"C":[62,65,65,65,34],"D":[127,65,65,65,62],"E":[127,73,73,73,65],"F":[127,9,9,9,1],"G":[62,65,65,81,115],"H":[127,8,8,8,127],"I":[0,65,127,65,0],"J":[32,64,65,63,1],"K":[127,8,20,34,65],"L":[127,64,64,64,64],"M":[127,2,28,2,127],"N":[127,4,8,16,127],"O":[62,65,65,65,62],"P":[127,9,9,9,6],"Q":[62,65,81,33,94],"R":[127,9,25,41,70],"S":[38,73,73,73,50],"T":[3,1,127,1,3],"U":[63,64,64,64,63],"V":[31,32,64,32,31],"W":[63,64,56,64,63],"X":[99,20,8,20,99],"Y":[3,4,120,4,3],"Z":[97,89,73,77,67],".":[0,96,96,0,0],",":[0,80,48,0,0]};
@@ -72,31 +154,11 @@ const frames=images.flatMap((image,index)=>[
  {...image,kind:'image',title:`${index*2+1} · Image — ${image.title.replace(/^\d+ · /,'')}`},
  {kind:'text',title:`${index*2+2} · Story text`,intent:image.copy,copy:storyText[index]}
 ]);
+const storyAnimation=globalThis.StoryAnimation;
 const imageCache=new Map();
-function imagePixels(frame){
- if(imageCache.has(frame.art))return imageCache.get(frame.art);
- const promise=new Promise((resolve,reject)=>{
-  const picture=new Image();
-  picture.onload=()=>{
-   try{
-    const scratch=document.createElement('canvas');scratch.width=128;scratch.height=64;
-    const ctx=scratch.getContext('2d',{willReadFrequently:true});ctx.fillStyle='#fff';ctx.fillRect(0,0,128,64);ctx.drawImage(picture,0,0,128,64);
-    const pixels=ctx.getImageData(0,0,128,64),matrix=[[0,8,2,10],[12,4,14,6],[3,11,1,9],[15,7,13,5]];
-    for(let y=0;y<64;y++)for(let x=0;x<128;x++){
-     const i=(y*128+x)*4,gray=.2126*pixels.data[i]+.7152*pixels.data[i+1]+.0722*pixels.data[i+2];
-     // Reverse the paper sketch into dark space and luminous native linework.
-     const light=Math.max(0,Math.min(255,(255-gray-40)*255/150));
-     const bit=light>(matrix[y%4][x%4]+.5)*255/16?255:0;
-     pixels.data[i]=pixels.data[i+1]=pixels.data[i+2]=bit;pixels.data[i+3]=255;
-    }
-    resolve(pixels);
-   }catch(error){reject(error);}
-  };
-  picture.onerror=()=>reject(new Error('The local SVG could not be rendered.'));
-  const source=frame.art().replaceAll('#dedfda','#aeb9b0').replaceAll('#c3ceca','#8da397');
-  picture.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(source);
- });
- imageCache.set(frame.art,promise);return promise;
+function imageAsset(frame){
+ const url=frame.native||'assets/first-beat-depth/'+frame.art+(frame.art==='arrival'?'-refined-v4-native.png':'-balanced-v3-native.png');
+ if(!imageCache.has(url))imageCache.set(url,new Promise((resolve,reject)=>{const image=new Image();image.onload=()=>resolve(image);image.onerror=()=>reject(new Error('Native illustration could not be loaded.'));image.src=url;}));return imageCache.get(url);
 }
 function textLines(copy){
  const rows=[];
@@ -126,46 +188,114 @@ function textPixels(frame){
  });return pixels;
 }
 function mountCard(container,frame){
- const canvas=document.createElement('canvas');canvas.width=128;canvas.height=64;canvas.setAttribute('role','img');canvas.setAttribute('aria-label',frame.kind==='text'?frame.copy:frame.title);container.replaceChildren(canvas);
- const ctx=canvas.getContext('2d');ctx.imageSmoothingEnabled=false;ctx.fillStyle='#000';ctx.fillRect(0,0,128,64);
- if(frame.kind==='text')ctx.putImageData(textPixels(frame),0,0);
- else imagePixels(frame).then(pixels=>ctx.putImageData(pixels,0,0)).catch(error=>{container.textContent=error.message;});
+ const token=(container.cardToken||0)+1;container.cardToken=token;
+ let canvas=container.firstElementChild;
+ if(!canvas||canvas.tagName!=='CANVAS'){canvas=document.createElement('canvas');canvas.width=128;canvas.height=64;canvas.setAttribute('role','img');container.replaceChildren(canvas);const initial=canvas.getContext('2d');initial.fillStyle='#000';initial.fillRect(0,0,128,64);}
+ const ctx=canvas.getContext('2d');ctx.imageSmoothingEnabled=false;
+ const label=frame.kind==='text'?frame.copy:frame.title;
+ if(frame.kind==='text'){ctx.putImageData(textPixels(frame),0,0);canvas.setAttribute('aria-label',label);}
+ else imageAsset(frame).then(image=>{if(container.cardToken!==token||container.firstElementChild!==canvas)return;ctx.drawImage(image,0,0,128,64);canvas.setAttribute('aria-label',label);}).catch(error=>{if(container.cardToken===token)container.textContent=error.message;});
 }
-let current=0;
-const storyboards=document.querySelector('#storyboards');
-const section=document.createElement('section');section.className='strip';
-const heading=document.createElement('h2');heading.textContent='The six cards · image / text';section.append(heading);
-const cards=document.createElement('div');cards.className='cards';
-frames.forEach((frame,index)=>{
- const thumb=document.createElement('button');thumb.type='button';thumb.className='thumb';thumb.dataset.index=index;thumb.setAttribute('aria-label','Enlarge '+frame.title);
- const art=document.createElement('span');art.className='thumb-art';thumb.append(art);mountCard(art,frame);
- const label=document.createElement('span');label.className='thumb-label';label.textContent=frame.title;thumb.append(label);
- thumb.addEventListener('click',()=>show(index));cards.append(thumb);
- const button=document.createElement('button');button.type='button';button.textContent=`${index+1} ${frame.kind==='image'?'Image':'Text'}`;button.addEventListener('click',()=>show(index));document.querySelector('#shots').append(button);
-});
-section.append(cards);storyboards.append(section);
-function show(index){
- current=((index%frames.length)+frames.length)%frames.length;const frame=frames[current];
- mountCard(document.querySelector('#stage'),frame);mountCard(document.querySelector('#native'),frame);
- document.querySelector('#shot-title').textContent=frame.title;
- document.querySelector('#shot-intent').textContent=frame.intent;
- document.querySelector('#position').textContent=`${current+1} / ${frames.length} · 128×64`;
- document.querySelector('#copy-editor').hidden=frame.kind!=='text';
- document.querySelector('#copy').value=frame.kind==='text'?frame.copy:'';
- document.querySelector('#copy-status').textContent=frame.kind==='text'&&textLines(frame.copy).length>6?'Only the first six rows fit. Shorten this copy.':'20 columns per row; copy wraps automatically.';
- [...document.querySelector('#shots').children].forEach((b,i)=>b.setAttribute('aria-pressed',String(i===current)));
- document.querySelectorAll('.thumb').forEach(b=>b.setAttribute('aria-pressed',String(Number(b.dataset.index)===current)));
+const pumpFrames=[
+ {kind:'image',title:'1 · Image — Pump Refuge',intent:'The empty-deck work sub holds position beside the inactive pump. Its lights pick out the intake in the dark cavern.',art:'pump-approach',native:'assets/pump-survey/approach-internal-v2-native.png',source:'assets/pump-survey/approach-internal-v2.png'},
+ {kind:'text',title:'2 · Story text',intent:'Hold position for the pump survey.',copy:'AT PUMP REFUGE,\nYOU HOLD POSITION\nBESIDE THE PUMP.'},
+ {kind:'image',title:'3 · Image — The cracked impeller',intent:'A broad fracture and displaced vane segment reveal the pump fault inside its thick housing.',art:'pump-cracked-impeller',native:'assets/pump-survey/cracked-impeller-native.png',source:'assets/pump-survey/cracked-impeller.png'},
+ {kind:'text',title:'4 · Story text',intent:'Benthos identifies Cormorant as the replacement source.',copy:'THE IMPELLER\nIS CRACKED.\nBENTHOS POINTS YOU\nTO CORMORANT FOR\nA REPLACEMENT.'}
+];
+const deliveryFrames=[
+ {kind:'image',title:'1 · Image — A new impeller',intent:'A dock-side impeller waits beside the open internal cargo hatch; slight hull shading and a quiet loading berth keep the shapes clear.',art:'delivery-loading',native:'assets/pump-delivery/loading-impeller-balanced-v4-native.png',source:'assets/pump-delivery/loading-impeller-balanced-v4.png',previous:'assets/pump-delivery/loading-impeller-internal-v3-native.png',previousNote:'Previous impeller loading · current version adds slight hull shading and simplifies the station.'},
+ {kind:'text',title:'2 · Story text',intent:'Collect the replacement at Cormorant for delivery to Benthos.',copy:'AT CORMORANT,\nYOU LOAD A NEW\nIMPELLER FOR BENTHOS.'},
+ {kind:'image',title:'3 · Image — Water returns',intent:'Connected pipes bring water back to the planted tanks under the newly lit grow-room lamps.',art:'delivery-water',native:'assets/pump-delivery/water-restored-native.png',source:'assets/pump-delivery/water-restored.png'},
+ {kind:'text',title:'4 · Story text',intent:'The pump is restored; Pump Refuge becomes a service berth.',copy:'WATER FLOWS AGAIN.\nGROW ROOM LIGHTS\nCOME ON.\nPUMP REFUGE OPENS\nAS A SERVICE BERTH.'}
+];
+const liftFrames=[
+ {kind:'image',title:'1 · Image — Freight Yard',intent:'The clean-deck sub has a restrained curved shade band; the inactive lift stands against a simpler, quieter station backdrop.',art:'lift-yard',native:'assets/lift-survey/freight-yard-balanced-v3-native.png',source:'assets/lift-survey/freight-yard-balanced-v3.png',previous:'assets/lift-survey/freight-yard-clear-sub-v2-native.png',previousNote:'Previous Freight Yard · current version adds slight hull shading and simplifies the station.'},
+ {kind:'text',title:'2 · Story text',intent:'Hold position for the lift survey.',copy:'AT FREIGHT YARD,\nYOU HOLD POSITION\nBESIDE THE LIFT.'},
+ {kind:'image',title:'3 · Image — The ruined cable',intent:'Separated frayed cable ends reveal the fault inside the thick lift housing.',art:'lift-cable',native:'assets/lift-survey/ruined-cable-clear-sub-v3-native.png',source:'assets/lift-survey/ruined-cable-clear-sub-v3.png',previous:'assets/lift-survey/ruined-cable-native.png',previousNote:'Previous submarine shading · current hull uses stronger solid shapes.'},
+ {kind:'text',title:'4 · Story text',intent:'Cormorant identifies Benthos as the replacement fiber source.',copy:'THE CABLE IS RUINED.\nCORMORANT POINTS YOU\nTO BENTHOS FOR\nREPLACEMENT FIBER.'}
+];
+const liftDeliveryFrames=[
+ {kind:'image',title:'1 · Image — Cable for Cormorant',intent:'Hatch-sized cable reels wait on a Benthos dock cradle beside the sub’s internal cargo hold.',art:'lift-delivery-cable',native:'assets/story-underwater-support-v7/loading-cable-native.png',source:'assets/story-underwater-support-v7/loading-cable.png'},
+ {kind:'text',title:'2 · Story text',intent:'Load cable reels at Benthos for delivery to Cormorant.',copy:'AT BENTHOS,\nYOU LOAD CABLE REELS\nFOR CORMORANT.'},
+ {kind:'image',title:'3 · Image — Freight moves again',intent:'A taut working cable lifts the crate; workshop windows and the crane signal are lit.',art:'lift-delivery-working',native:'assets/story-underwater-support-v7/lift-restored-native.png',source:'assets/story-underwater-support-v7/lift-restored.png'},
+ {kind:'text',title:'4 · Story text',intent:'Cormorant’s lift and workshops return; Lower Gantry opens as a service berth.',copy:'FREIGHT MOVES AGAIN.\nWORKSHOP LIGHTS\nCOME ON.\nLOWER GANTRY OPENS\nAS A SERVICE BERTH.'}
+];
+const beaconFrames=[
+ {kind:'image',title:'1 · Image — Down to Deep Anchor',intent:'The pressure-sealed sub descends with the beacon core inside its hull toward the dark capsules of Deep Anchor.',art:'beacon-descent',native:'assets/beacon-delivery/descent-native.png',source:'assets/beacon-delivery/descent.png'},
+ {kind:'text',title:'2 · Story text',intent:'After the pump and lift repairs, carry the core from Cormorant with a pressure seal fitted.',copy:'PUMP AND LIFT FIXED.\nPRESSURE SEAL READY.\nYOU CARRY THE CORE\nFROM CORMORANT\nTO DEEP ANCHOR.'},
+ {kind:'image',title:'3 · Image — Deep Anchor answers',intent:'The beacon lens and inhabited capsule windows light the deep-water outpost.',art:'beacon-lit',native:'assets/beacon-delivery/beacon-lit-native.png',source:'assets/beacon-delivery/beacon-lit.png'},
+ {kind:'text',title:'4 · Story text',intent:'Deep Anchor’s beacon and capsule lights return.',copy:'DEEP ANCHOR LIGHTS\nITS BEACON.\nTHE CAPSULE WINDOWS\nGLOW IN THE DARK.'}
+];
+const homeFrames=[
+ {kind:'image',title:'1 · Image — The way home',intent:'The sub approaches Tidewall’s seabed habitat with Deep Anchor’s formal network dispatch inside its hull.',art:'home-return',native:'assets/story-underwater-v7/home-return-native.png',source:'assets/story-underwater-v7/home-return.png'},
+ {kind:'text',title:'2 · Story text',intent:'Accept Deep Anchor’s network dispatch and carry it home to Tidewall.',copy:'DEEP ANCHOR SENDS\nA NETWORK DISPATCH.\nYOU CARRY IT HOME\nTO TIDEWALL.'},
+ {kind:'image',title:'3 · Image — Tidewall welcomes you',intent:'A mooring line secures the familiar hull beside Tidewall’s lit, anchored seabed habitat.',art:'home-lights',native:'assets/story-underwater-v7/home-lights-native.png',source:'assets/story-underwater-v7/home-lights.png'},
+ {kind:'text',title:'4 · Story text',intent:'The network is complete; the voyage can continue with more exploration.',copy:'TIDEWALL ANSWERS.\nTHEY KNOW YOUR HULL.\nTHE NETWORK IS LIT.\nYOU CAN KEEP\nEXPLORING.'}
+];
+let activeController;
+function setActiveController(next){if(activeController&&activeController!==next)activeController.pauseAnimation();activeController=next;}
+function createController(root,deck,prefix=''){
+ let current=0;
+ deck.forEach(frame=>{if(frame.kind==='image')frame.animation=storyAnimation.scenes[frame.art];});
+ const q=name=>root.querySelector('#'+prefix+name);
+ const controller={step:delta=>show(current+delta),activate:()=>setActiveController(controller),pauseAnimation:()=>{if(playback)playback.pause();}};
+ let playback=null,animationReady=false;
+ const animated=deck.some(frame=>frame.animation);
+ function renderPose(state){const frame=deck[current];if(!frame||frame.kind!=='image'||!frame.animation||frame.art!==state.key)return;const pose={...frame,native:frame.animation[state.phase]};mountCard(q('stage'),pose);mountCard(q('native'),pose);mountCard(root.querySelector('.thumb[data-index="'+current+'"] .thumb-art'),pose);mountCard(root.querySelector('.native-card[data-index="'+current+'"] .native-art'),pose);}
+ function animationState(state){if(!animated)return;q('animation-play').textContent=state.playing?'Pause':'Play';q('animation-position').textContent='Frame '+(state.phase+1)+' / '+(state.count||4)+' ·3.3fps'+(animationReady?'':' ·loading poses');for(const name of ['animation-play','animation-step','animation-restart'])q(name).disabled=!animationReady||!state.key;}
+ if(animated){playback=StoryPlayback.createPlayback({period:storyAnimation.period,onFrame:renderPose,onState:animationState});q('animation-play').addEventListener('click',()=>{controller.activate();if(playback.state().playing)playback.pause();else if(animationReady&&!document.hidden)playback.play();});q('animation-step').addEventListener('click',()=>{controller.activate();if(animationReady)playback.step();});q('animation-restart').addEventListener('click',()=>{controller.activate();playback.restart();});Promise.all(deck.filter(f=>f.animation).flatMap(f=>f.animation.map(native=>imageAsset({...f,native})))).then(()=>{animationReady=true;animationState(playback.state());}).catch(error=>{q('animation-position').textContent=error.message;});}
+ const choose=index=>{controller.activate();show(index);};
+ root.addEventListener('pointerdown',controller.activate);root.addEventListener('focusin',controller.activate);
+ const strip=document.createElement('section');strip.className='strip';
+ const heading=document.createElement('h2');heading.textContent='The '+deck.length+' cards · image / text';strip.append(heading);
+ const cards=document.createElement('div');cards.className='cards';
+ deck.forEach((frame,index)=>{
+  const actual=document.createElement('button');actual.type='button';actual.className='native-card';actual.dataset.index=index;actual.setAttribute('aria-label','Enlarge '+frame.title);
+  const actualArt=document.createElement('span');actualArt.className='native-art';actual.append(actualArt);mountCard(actualArt,frame);
+  const actualLabel=document.createElement('small');actualLabel.textContent=frame.title;actual.append(actualLabel);actual.addEventListener('click',()=>choose(index));q('native-gallery').append(actual);
+  const thumb=document.createElement('button');thumb.type='button';thumb.className='thumb';thumb.dataset.index=index;thumb.setAttribute('aria-label','Enlarge '+frame.title);
+  const art=document.createElement('span');art.className='thumb-art';thumb.append(art);mountCard(art,frame);
+  const label=document.createElement('span');label.className='thumb-label';label.textContent=frame.title;thumb.append(label);thumb.addEventListener('click',()=>choose(index));cards.append(thumb);
+  const button=document.createElement('button');button.type='button';button.textContent=(index+1)+' '+(frame.kind==='image'?'Image':'Text');button.addEventListener('click',()=>choose(index));q('shots').append(button);
+ });strip.append(cards);q('storyboards').append(strip);
+ function status(frame){q('copy-status').textContent=frame.kind==='text'&&textLines(frame.copy).length>6?'Only the first six rows fit. Shorten this copy.':'20 columns per row; copy wraps automatically.';}
+ function show(index){
+  const previous=deck[current];if(playback){playback.pause();if(previous.kind==='image'){mountCard(root.querySelector('.thumb[data-index="'+current+'"] .thumb-art'),previous);mountCard(root.querySelector('.native-card[data-index="'+current+'"] .native-art'),previous);}}
+  current=((index%deck.length)+deck.length)%deck.length;const frame=deck[current];
+  mountCard(q('stage'),frame);mountCard(q('native'),frame);q('source-review').hidden=frame.kind!=='image';
+  if(playback){q('animation-controls').hidden=!frame.animation;playback.select(frame.animation?frame.art:null,frame.animation?frame.animation.length:0);}
+  const comparison=q('comparison-review');if(comparison)comparison.hidden=frame.kind!=='image'||(prefix!==''&&!frame.previous);
+  if(frame.kind==='image'){
+   const path=frame.source||'assets/first-beat-depth/'+frame.art+(frame.art==='arrival'?'-refined-v4.png':'-dither-v2.png');q('source-art').src=path;q('source-art').alt=frame.intent;q('source-link').href=path;if(prefix===''&&frame.comparison)q('clarity-comparison').src=frame.comparison;
+   if(comparison&&!comparison.hidden){q('previous-art').src=frame.previous||'assets/first-beat-depth/'+frame.art+(frame.art==='arrival'?'-balanced-v3-native.png':'-dither-v2-native.png');q('comparison-note').textContent=frame.previousNote||(frame.art==='arrival'?'Previous submarine · balanced v3 shading.':'Heavier dithering · previous 128×64 version.');}
+  }
+  q('shot-title').textContent=frame.title;q('shot-intent').textContent=frame.intent;q('position').textContent=(current+1)+' / '+deck.length+' · 128×64';
+  q('copy-editor').hidden=frame.kind!=='text';q('copy').value=frame.kind==='text'?frame.copy:'';status(frame);
+  [...q('shots').children].forEach((b,i)=>b.setAttribute('aria-pressed',String(i===current)));
+  root.querySelectorAll('.thumb,.native-card').forEach(b=>b.setAttribute('aria-pressed',String(Number(b.dataset.index)===current)));
+ }
+ q('prev').addEventListener('click',()=>choose(current-1));q('next').addEventListener('click',()=>choose(current+1));
+ q('copy').addEventListener('input',event=>{
+  const frame=deck[current];if(frame.kind!=='text')return;frame.copy=event.target.value;
+  mountCard(q('stage'),frame);mountCard(q('native'),frame);
+  mountCard(root.querySelector('.thumb[data-index="'+current+'"] .thumb-art'),frame);
+  mountCard(root.querySelector('.native-card[data-index="'+current+'"] .native-art'),frame);status(frame);
+ });show(0);return controller;
 }
-document.querySelector('#prev').addEventListener('click',()=>show(current-1));
-document.querySelector('#next').addEventListener('click',()=>show(current+1));
-document.querySelector('#copy').addEventListener('input',event=>{
- const frame=frames[current];if(frame.kind!=='text')return;frame.copy=event.target.value;
- mountCard(document.querySelector('#stage'),frame);mountCard(document.querySelector('#native'),frame);
- mountCard(document.querySelector(`.thumb[data-index="${current}"] .thumb-art`),frame);
- document.querySelector('#copy-status').textContent=textLines(frame.copy).length>6?'Only the first six rows fit. Shorten this copy.':'20 columns per row; copy wraps automatically.';
-});
-document.addEventListener('keydown',event=>{if(event.target.matches('input,textarea,[contenteditable]'))return;if(['ArrowRight','ArrowLeft',' '].includes(event.key)){event.preventDefault();show(current+(event.key==='ArrowLeft'?-1:1));}});
-show(0);
+const firstController=createController(document.querySelector('#first-delivery'),frames);
+const pumpController=createController(document.querySelector('#pump-survey'),pumpFrames,'pump-');
+const deliveryController=createController(document.querySelector('#pump-delivery'),deliveryFrames,'delivery-');
+const liftController=createController(document.querySelector('#lift-survey'),liftFrames,'lift-');
+const liftDeliveryController=createController(document.querySelector('#lift-delivery'),liftDeliveryFrames,'lift-delivery-');
+const beaconController=createController(document.querySelector('#beacon-delivery'),beaconFrames,'beacon-');
+const homeController=createController(document.querySelector('#homecoming'),homeFrames,'home-');
+const controllerRegistry={'#first-delivery':firstController,'#pump-survey':pumpController,'#pump-delivery':deliveryController,'#lift-survey':liftController,'#lift-delivery':liftDeliveryController,'#beacon-delivery':beaconController,'#homecoming':homeController};
+function activateHash(){setActiveController(controllerRegistry[location.hash]||firstController);}
+window.addEventListener('hashchange',activateHash);
+document.querySelectorAll(Object.keys(controllerRegistry).map(hash=>'a[href="'+hash+'"]').join(',')).forEach(link=>link.addEventListener('click',()=>{setActiveController(controllerRegistry[link.hash]);}));
+document.addEventListener('keydown',event=>{if(event.target.matches('input,textarea,[contenteditable]'))return;if(event.key===' '&&event.target.matches('button'))return;if(['ArrowRight','ArrowLeft',' '].includes(event.key)){event.preventDefault();activeController.step(event.key==='ArrowLeft'?-1:1);}});
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&activeController)activeController.pauseAnimation();});
+activateHash();
 </script>
 </body>
 </html>

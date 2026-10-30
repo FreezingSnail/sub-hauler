@@ -110,9 +110,28 @@ void setup() {
     story_view::draw(pumpCard);
     ok = (story_view::cardForNewMilestone(state.campaign, state.campaign) == story_view::kCardNone) && ok;
 
-    // All four appended panels stream through the shared opaque renderer.
-    for (uint8_t card = story_view::kCardFirst; card <= story_view::kCardBeacon; ++card)
-        story_view::draw(card);
+    // Survey decks are selected by their own recorded bit and never repeat.
+    ok = (story_view::cardForNewSurvey(0, campaign::kSurveyPump) == story_view::kCardPumpSurvey) && ok;
+    ok = (story_view::cardForNewSurvey(campaign::kSurveyPump, campaign::kSurveyPump) == story_view::kCardNone) && ok;
+
+    // Stream every pose through the compressed deck reader: seven alternating
+    // decks, sixty animated image poses and fifteen static text cards.
+    uint8_t deckCards = 0;
+    uint8_t deckFrames = 0;
+    for (uint8_t beat = story_view::kCardFirst; beat <= story_view::kCardCount; ++beat) {
+        const uint8_t count = story_view::cardCount(beat);
+        deckCards = static_cast<uint8_t>(deckCards + count);
+        for (uint8_t card = 0; card < count; ++card) {
+            const bool image = story_view::isImageCard(story_view::globalCard(beat, card));
+            const uint8_t phases = image ? 4 : 1;
+            for (uint8_t phase = 0; phase < phases; ++phase) {
+                story_view::draw(beat, card, phase);
+                ++deckFrames;
+            }
+        }
+    }
+    ok = (deckCards == STORY_BEAT_CARDS) && ok;
+    ok = (deckFrames == STORY_BEAT_FRAMES) && ok;
 
     // Old timed kind values are no longer valid state.
     state.activeJob.kind = 3;

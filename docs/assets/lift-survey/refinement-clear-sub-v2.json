@@ -1,0 +1,54 @@
+{
+  "mode": "built-in image_gen edit",
+  "prompts": [
+    {
+      "beat": "lift-survey",
+      "name": "freight-yard",
+      "prompt": "Edit this exact illustration. Preserve the exact scene, camera, framing, object positions and sizes, background geometry, lighting of surroundings, cargo/parts/cable gap. Change ONLY the visibility and simplification of the SUBMARINE. Make its rounded silhouette much stronger at128x64: broad clean solid WHITE hull top and upper side against black water, solid clean dark belly, a bright uninterrupted lower rim separating hull from water if necessary. Distinct compact conning tower, three clear black portholes with thin clean white outer rings, crisp simple fins and propeller. Remove MOST stipple, rivets and small marks from the sub body; retain just one SMALL broad curved shade patch near its underside. Bold readable volumetric forms, not a flat outlined icon. Do not lighten or add dither to backgrounds or other objects. Keep all non-submarine artwork unchanged. No people, lettering, UI or extra subjects. The left-midground submarine needs to stand out clearly against deep water. Keep its two floodlight beams, inactive lift, crate, gantry and all foreground rails exactly unchanged."
+    },
+    {
+      "beat": "lift-survey",
+      "name": "ruined-cable",
+      "prompt": "Edit this exact illustration. Preserve the exact scene, camera, framing, object positions and sizes, background geometry, lighting of surroundings, cargo/parts/cable gap. Change ONLY the visibility and simplification of the SUBMARINE. Make its rounded silhouette much stronger at128x64: broad clean solid WHITE hull top and upper side against black water, solid clean dark belly, a bright uninterrupted lower rim separating hull from water if necessary. Distinct compact conning tower, three clear black portholes with thin clean white outer rings, crisp simple fins and propeller. Remove MOST stipple, rivets and small marks from the sub body; retain just one SMALL broad curved shade patch near its underside. Bold readable volumetric forms, not a flat outlined icon. Do not lighten or add dither to backgrounds or other objects. Keep all non-submarine artwork unchanged. No people, lettering, UI or extra subjects. The SMALL background submarine at upper right needs the strongest simplification: a clean white capsule-like rounded hull silhouette, tiny solid black portholes, distinct white tower and simple tail. Preserve its current size/position. Keep the large parted cable, frayed ends, black gap, sheave and housing entirely unchanged and focal."
+    },
+    {
+      "name": "remove-extra-submarine",
+      "prompt": "Remove ONLY the extra tiny submarine floating in the upper-right background of this exact image (the small toy-like second sub above the main submarine). Replace that tiny extra sub with the same solid black background. Keep the ONE main large submarine, its clean white hull, portholes, floodlight, exact position and geometry entirely unchanged. Keep the broken cable/frayed ends/large gap/sheave/housing/background otherwise pixel-for-pixel as close as possible. There must be exactly ONE submarine in the finished scene. No new objects, text, UI or people."
+    },
+    {
+      "name": "freight-deck-verification",
+      "prompt": "Refine ONLY the submarine's exterior deck in this exact Freight Yard image. Remove ANY raised rectangular cargo boxes, crates, luggage, packs or cargo-like lumps anywhere atop the hull, especially aft/left of the conning tower. Cargo is INTERNAL. The exterior top must be a smooth clean rounded hull line, with only the compact conning tower/periscope and existing forward floodlights; any cargo hatch is FLUSH with hull, not a raised box. Preserve the clean broad solid WHITE hull/top, crisp three black portholes, dark belly, continuous bright lower rim, rounded bow, simple tail fins and propeller. Preserve exact submarine size/position and every gantry, crate on lift platform, beam, rock, floodlight beam and background feature. No other changes, no extra subjects/submarines, no text/UI/people or added texture. The ONLY cargo crate belongs on the LIFT PLATFORM, never atop the submarine."
+    }
+  ],
+  "selectionNote": "Earlier sources retained. Current loading uses internal hold; current submarines use strong solid shapes. Intermediate extra-sub artifact is not displayed.",
+  "nativeRendering": {
+    "method": "Balanced v3 unchanged; integer source-cell RGB area average, threshold96 exterior/127.5 cable interior, +/-40 middle-tone window,2x2 ordered25/50/75%. No local ROI modification needed: source hulls now have solid light masses.",
+    "rendererRuntime": "Node.js built-ins; run from repository root",
+    "rendererCode": "{\nconst fs=require('fs'),z=require('zlib');function crc(b){let c=0xffffffff;for(const n of b){c^=n;for(let j=0;j<8;j++)c=(c>>>1)^((c&1)?0xedb88320:0);}return (c^0xffffffff)>>>0;}function chunk(t,b){let n=Buffer.alloc(4),tail=Buffer.alloc(4);n.writeUInt32BE(b.length);const body=Buffer.concat([Buffer.from(t),b]);tail.writeUInt32BE(crc(body));return Buffer.concat([n,body,tail]);}\nfor(const name of [\"freight-yard\"]){const base=\"docs/assets/lift-survey/\"+name,png=fs.readFileSync(base+'-clear-sub-v2.png');let w,h,ch,bufs=[];for(let p=8;p<png.length;){let n=png.readUInt32BE(p),t=png.toString('ascii',p+4,p+8),b=png.subarray(p+8,p+8+n);if(t==='IHDR'){w=b.readUInt32BE(0);h=b.readUInt32BE(4);ch=b[9]===2?3:b[9]===6?4:0;if(b[8]!==8||!ch)throw Error('Unsupported PNG');}if(t==='IDAT')bufs.push(b);p+=n+12;}const raw=z.inflateSync(Buffer.concat(bufs)),pix=Buffer.alloc(w*h*ch),stride=w*ch;let p=0;for(let y=0;y<h;y++){let f=raw[p++];for(let x=0;x<stride;x++){let a=x>=ch?pix[y*stride+x-ch]:0,b=y?pix[(y-1)*stride+x]:0,c=y&&x>=ch?pix[(y-1)*stride+x-ch]:0,v=raw[p++];if(f===1)v+=a;if(f===2)v+=b;if(f===3)v+=Math.floor((a+b)/2);if(f===4){let q=a+b-c,pa=Math.abs(q-a),pb=Math.abs(q-b),pc=Math.abs(q-c);v+=pa<=pb&&pa<=pc?a:pb<=pc?b:c;}pix[y*stride+x]=v&255;}}const out=Buffer.alloc(129*64);let white=0,previousDither=0,balancedDither=0;for(let y=0;y<64;y++){out[y*129]=0;for(let x=0;x<128;x++){let sum=0,count=0;for(let yy=Math.floor(y*h/64);yy<Math.floor((y+1)*h/64);yy++)for(let xx=Math.floor(x*w/128);xx<Math.floor((x+1)*w/128);xx++){let i=(yy*w+xx)*ch;sum+=(pix[i]+pix[i+1]+pix[i+2])/3;count++;}const lum=sum/count;const threshold=\"freight-yard\"===name?96:127.5,lo=threshold-40,hi=threshold+40;if(lum>32&&lum<224)previousDither++;const middle=lum>lo&&lum<hi;if(middle)balancedDither++;const level=!middle?(lum>=threshold?4:0):lum<threshold-13?1:lum<threshold+13?2:3;const order=[[0,2],[3,1]];let v=level>order[y%2][x%2]?255:0;out[y*129+1+x]=v;white+=v===255;}}let hdr=Buffer.alloc(13);hdr.writeUInt32BE(128);hdr.writeUInt32BE(64,4);hdr[8]=8;hdr[9]=0;fs.writeFileSync(base+'-clear-sub-v2-native.png',Buffer.concat([Buffer.from([137,80,78,71,13,10,26,10]),chunk('IHDR',hdr),chunk('IDAT',z.deflateSync(out)),chunk('IEND',Buffer.alloc(0))]));console.log(JSON.stringify({name,width:128,height:64,white,black:8192-white,previousDither,balancedDither,reductionPercent:+(100*(1-balancedDither/previousDither)).toFixed(1)}));}\n\n}\n{\nconst fs=require('fs'),z=require('zlib');function crc(b){let c=0xffffffff;for(const n of b){c^=n;for(let j=0;j<8;j++)c=(c>>>1)^((c&1)?0xedb88320:0);}return (c^0xffffffff)>>>0;}function chunk(t,b){let n=Buffer.alloc(4),tail=Buffer.alloc(4);n.writeUInt32BE(b.length);const body=Buffer.concat([Buffer.from(t),b]);tail.writeUInt32BE(crc(body));return Buffer.concat([n,body,tail]);}\nfor(const name of [\"ruined-cable\"]){const base=\"docs/assets/lift-survey/\"+name,png=fs.readFileSync(base+'-clear-sub-v3.png');let w,h,ch,bufs=[];for(let p=8;p<png.length;){let n=png.readUInt32BE(p),t=png.toString('ascii',p+4,p+8),b=png.subarray(p+8,p+8+n);if(t==='IHDR'){w=b.readUInt32BE(0);h=b.readUInt32BE(4);ch=b[9]===2?3:b[9]===6?4:0;if(b[8]!==8||!ch)throw Error('Unsupported PNG');}if(t==='IDAT')bufs.push(b);p+=n+12;}const raw=z.inflateSync(Buffer.concat(bufs)),pix=Buffer.alloc(w*h*ch),stride=w*ch;let p=0;for(let y=0;y<h;y++){let f=raw[p++];for(let x=0;x<stride;x++){let a=x>=ch?pix[y*stride+x-ch]:0,b=y?pix[(y-1)*stride+x]:0,c=y&&x>=ch?pix[(y-1)*stride+x-ch]:0,v=raw[p++];if(f===1)v+=a;if(f===2)v+=b;if(f===3)v+=Math.floor((a+b)/2);if(f===4){let q=a+b-c,pa=Math.abs(q-a),pb=Math.abs(q-b),pc=Math.abs(q-c);v+=pa<=pb&&pa<=pc?a:pb<=pc?b:c;}pix[y*stride+x]=v&255;}}const out=Buffer.alloc(129*64);let white=0,previousDither=0,balancedDither=0;for(let y=0;y<64;y++){out[y*129]=0;for(let x=0;x<128;x++){let sum=0,count=0;for(let yy=Math.floor(y*h/64);yy<Math.floor((y+1)*h/64);yy++)for(let xx=Math.floor(x*w/128);xx<Math.floor((x+1)*w/128);xx++){let i=(yy*w+xx)*ch;sum+=(pix[i]+pix[i+1]+pix[i+2])/3;count++;}const lum=sum/count;const threshold=\"freight-yard\"===name?96:127.5,lo=threshold-40,hi=threshold+40;if(lum>32&&lum<224)previousDither++;const middle=lum>lo&&lum<hi;if(middle)balancedDither++;const level=!middle?(lum>=threshold?4:0):lum<threshold-13?1:lum<threshold+13?2:3;const order=[[0,2],[3,1]];let v=level>order[y%2][x%2]?255:0;out[y*129+1+x]=v;white+=v===255;}}let hdr=Buffer.alloc(13);hdr.writeUInt32BE(128);hdr.writeUInt32BE(64,4);hdr[8]=8;hdr[9]=0;fs.writeFileSync(base+'-clear-sub-v3-native.png',Buffer.concat([Buffer.from([137,80,78,71,13,10,26,10]),chunk('IHDR',hdr),chunk('IDAT',z.deflateSync(out)),chunk('IEND',Buffer.alloc(0))]));console.log(JSON.stringify({name,width:128,height:64,white,black:8192-white,previousDither,balancedDither,reductionPercent:+(100*(1-balancedDither/previousDither)).toFixed(1)}));}\n\n}"
+  },
+  "selectedFiles": [
+    "docs/assets/lift-survey/freight-yard-clear-sub-v2.png",
+    "docs/assets/lift-survey/freight-yard-clear-sub-v2-native.png",
+    "docs/assets/lift-survey/ruined-cable-clear-sub-v3.png",
+    "docs/assets/lift-survey/ruined-cable-clear-sub-v3-native.png"
+  ],
+  "editChain": [
+    {
+      "input": "freight-yard.png",
+      "output": "freight-yard-clear-sub-v2.png",
+      "prompt": "freight-yard"
+    },
+    {
+      "input": "ruined-cable.png",
+      "output": "ruined-cable-clear-sub-v2.png",
+      "prompt": "ruined-cable",
+      "status": "intermediate with unintended extra submarine; not selected"
+    },
+    {
+      "input": "ruined-cable-clear-sub-v2.png",
+      "output": "ruined-cable-clear-sub-v3.png",
+      "prompt": "remove-extra-submarine"
+    }
+  ],
+  "discardedOutput": "Redundant freight-deck-verification generation offered no needed improvement; kept approved freight-yard-clear-sub-v2."
+}
