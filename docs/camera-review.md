@@ -55,13 +55,12 @@ the camera checkpoint, FX payload/image were **2,010,726 / 2,014,976 B**;
 earlier asset offsets and the 4 KiB save section remain intact. Current totals
 are in [startup-splashes.md](startup-splashes.md).
 
-Verification at the camera checkpoint: deterministic generation (including the
-new HUD artifacts), host **260/161/131/87** for full/lean/core/min, developer
-host **265**, tooling **137**, all **12** default device suites, extended flight
-probe, min-profile render suite, full size and Mini build. Current recorded
-counts are **251/149/131/87**, tooling **144** and **14** default device suites
-after sonar removal, menu baking and the splashes. GUI playthrough remains
-unverified.
+Verification at the camera checkpoint (2026-10-28, retired profile builds):
+deterministic generation, host **260/161/131/87** for full/lean/core/min,
+developer host **265**, tooling **137**, all **12** default device suites,
+extended flight probe, min-profile render suite, full size and Mini build.
+Those profile counts are historical; current fixed-build totals live in
+[platform.md](platform.md). GUI playthrough remains unverified.
 
 ## Evidence
 
@@ -159,14 +158,14 @@ device `test_render` suite now runs the actual AVR helper for all 256 isolated
 source bytes in each position for all seven shifts plus mixed patterns before
 its timing cases. `make test` reports **254 passed, 0 failed**.
 
-Resource gates on the full profile: shipping image **27,878 B flash / 1,619 B
-static RAM**, down **60 B flash** and unchanged static from the 27,938 / 1,619 B
-baseline. That is 1,122 B under the 29,000 B planning ceiling and 81 B static
-headroom. `test_save_chain` remains **666 B** stack reserve; the combined
-`test_memory_music` reserve is **634 B**, above the 600 B target with the extra
-probe globals. `make gen-check` is deterministic, `make test-tools` passes 135,
-all **12** default Ardens suites pass, and `make mini PROFILE=full` repeats
-27,878 / 1,619 B.
+Resource gates at the camera checkpoint (retired profile build): shipping image
+**27,878 B flash / 1,619 B static RAM**, down **60 B flash** and unchanged
+static from the 27,938 / 1,619 B baseline. That is 1,122 B under the 29,000 B
+planning ceiling and 81 B static headroom. `test_save_chain` remains **666 B**
+stack reserve; the combined `test_memory_music` reserve is **634 B**, above the
+600 B target with the extra probe globals. `make gen-check` is deterministic,
+`make test-tools` passes 135, all **12** default Ardens suites pass, and the
+Mini build repeats 27,878 / 1,619 B.
 
 These are instrumented device-suite figures: the suite is compiled with
 `--optimize-for-debug`, `STREAMFX_DIAG=1`, and guarded `SH_FLIGHT_PROBE`

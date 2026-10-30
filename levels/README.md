@@ -134,16 +134,8 @@ See [progression.md](../docs/progression.md). `layout_version` is
 now 3, so the optional standalone chart save rejects the preceding terrain's
 chart. The JSON schema version and SHL2 object encoding remain version 2.
 
-`full`, `lean` and `core` enable `EXPLORATION`; `min` remains a flight/cave
-profile with all equipment barriers absent and no exploration state.
-
-## Developer inspection
-
-Run `make dev` for noclip movement through the encoded world. D-pad moves,
-A speeds up and B opens the fully revealed chart. Equipment barriers, coves
-and finds retain their appearances, and inspection does not collect them.
-Developer flight ignores docking and resource limits. Use `make run`
-for ordinary gameplay; builds are isolated by mode.
+Exploration is always enabled in the fixed build; there are no feature
+profiles or developer noclip mode.
 
 ## Validation and preview
 

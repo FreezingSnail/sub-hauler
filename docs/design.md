@@ -7,7 +7,7 @@ fixed pilot art into FX and compacted the generated world metadata and AVR run
 state. The browser sandbox is retired (available in git history); the shipped
 device path is the cargo-free contract loop described below.
 
-Current implementation note (2026-10-28): the `full` profile also ships the
+Current implementation note (2026-10-28): the fixed build also ships the
 seven-objective campaign and ending, schema 6 single-slot cart checkpoints,
 ATMlib2FX synth music and the boot introduction. Sonar is retired; campaign and
 freight work are untimed.
@@ -24,7 +24,7 @@ caverns with 31 solid pillars, shelves, wall teeth and wreck ribs. Freight
 allowances follow authored route lengths; optional shortcuts save travel time.
 See [the level contract](../levels/README.md) for encoding, controls and limits.
 The older baked-world measurements below are historical. Campaign/ending,
-persistent cart voyage saves and gameplay music now ship in the `full` profile;
+persistent cart voyage saves and gameplay music now ship in the fixed build;
 the [progression design](progression.md) records the accepted direction.
 
 ## Direction
@@ -86,7 +86,7 @@ to reach a packing screen.
 The M5–M8 packing flow was implemented and then removed in `sub-hauler-gl1.1`:
 selection, suspended movement, support, lift blocking, rotation, undo, the
 `A+B` commit, hold-B exit timer, and per-class arrangement loading. The design
-and measurements remain in `docs/roadmap.md` as history. Do not reintroduce or
+and measurements remain in `docs/archive/roadmap.md` as history. Do not reintroduce or
 optimize those paths without a new user decision and a measured budget.
 
 ## Random shape generation (browser reference only)

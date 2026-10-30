@@ -27,6 +27,7 @@ make gen-check            # regeneration must be byte-identical
 make gen-audio            # archival reference PCM/ADPCM evidence only
 make test                 # host C++ tests
 make test-tools           # Python tooling tests
+make docs-check           # local doc links + active selector guard
 make build | mini         # FX (dist/fx) / Mini (dist/mini) firmware
 make size                 # whole-image flash/RAM report
 make fxtest               # 14 device suites via Ardens (P/F markers)
@@ -36,8 +37,8 @@ make run                  # Ardens with ELF + FX image
 ```
 
 Full gate before a commit: `make gen-check`, `make test`, `make test-tools`,
-`make fxtest`, `make fxtest-save-chain`, `make fxtest-save-runtime-page`,
-`make fxtest-flight`, `make size`, `make mini`.
+`make docs-check`, `make fxtest`, `make fxtest-save-chain`,
+`make fxtest-save-runtime-page`, `make fxtest-flight`, `make size`, `make mini`.
 
 ## Platform invariants
 

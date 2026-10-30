@@ -5,5 +5,9 @@ dist/
 *.hex
 *.eep
 *.elf
+*.dSYM/
 __pycache__/
 tools/tests/__pycache__/
+compile_commands.json
+.cache/
+.clangd

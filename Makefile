@@ -1,4 +1,4 @@
-.PHONY: help full gen gen-check gen-audio build mini size size-line run debug test test-tools fxtest fxtest-flight fxtest-build fxtest-run clean format music-viewer music-viewer-build render-world
+.PHONY: help full gen gen-check gen-audio build mini size size-line run debug test test-tools docs-check fxtest fxtest-flight fxtest-build fxtest-run clean format music-viewer music-viewer-build render-world
 
 # ----------------------------------------------------------------------------
 # Project
@@ -292,7 +292,12 @@ test:
 	./$(TEST_OUT)
 
 test-tools:
+	@test -f build/audio-reference/sh_harbor_bubbles.pcm || $(MAKE) --no-print-directory gen-audio
 	python3 -m unittest discover -s tools/tests -p 'test_*.py' -v
+
+docs-check:
+	python3 tools/check_docs.py
+	node --test tools/tests/story_animation.test.cjs
 
 # ----------------------------------------------------------------------------
 # Device tests (Ardens serial capture)
@@ -376,6 +381,7 @@ fxtest-run:
 # ----------------------------------------------------------------------------
 clean:
 	rm -rf build dist $(BUILD_DIR) $(DIST_DIR)
+	find tools tst -type d -name __pycache__ -prune -exec rm -rf {} +
 
 format:
 	@find src tst -type f \( -name '*.hpp' -o -name '*.cpp' -o -name '*.ino' \) \
@@ -397,6 +403,7 @@ help:
 		'  make music-viewer audition the underwater tracks in the ATMlib2FX jukebox' \
 		'  make test       host C++ tests (g++, no device required)' \
 		'  make test-tools Python tooling unittest suite' \
+		'  make docs-check local links, active selectors and story-preview tests' \
 		'  make fxtest     compile and run device suites through Ardens' \
 		'  make fxtest-save-chain  exact production save-chain stack/audio probe' \
 		'  make fxtest-flight  complete-flight timing/coverage probe with active music' \
