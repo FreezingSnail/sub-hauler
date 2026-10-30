@@ -41,8 +41,8 @@ streams. The paired whole-image result is **25,000 B / 1,458 B** music-off and
 hardware limit and 38 B under the static ceiling. The synth was selected as the
 shipping backend; the streaming comparison and music-off variant are retired.
 
-Verification at the menu checkpoint: host **251/149/131/87** for
-full/lean/core/min and **256** DEV; **142** tool tests; deterministic
+Verification at the menu checkpoint (2026-10-28, retired profile builds): host
+**251/149/131/87** for full/lean/core/min and **256** DEV; **142** tool tests; deterministic
 generation including all new artifacts; **13/13** standard device suites. The
 new device menu suite compares **69**
 complete frames against independent live-font composition, including all

@@ -6,7 +6,7 @@ hardware and resource facts live in `docs/platform.md`.
 
 ## Inner loop vs full gate
 
-- Host: `make test`; tooling: `make test-tools`.
+- Host: `make test`; tooling: `make test-tools`; docs: `make docs-check`.
 - One device suite while iterating: `make fxtest FXTEST_ONLY=test_boot`.
 - Full device gate: `make fxtest` compiles the 14 default fixed-build suites
   and requires an exact bare `P` marker from each. It excludes the longer
@@ -15,7 +15,7 @@ hardware and resource facts live in `docs/platform.md`.
   explicit targets. If `ARDENS` is unset or not executable, the run reports
   SKIPPED; an Ardens without `captureserial` is BLOCKED, never a pass.
 - Full gate before a commit: `make gen-check`, `make test`, `make test-tools`,
-  `make fxtest`, `make fxtest-save-chain`,
+  `make docs-check`, `make fxtest`, `make fxtest-save-chain`,
   `make fxtest-save-runtime-page`, `make fxtest-flight`, `make size`,
   `make mini`.
 - Camera/render changes additionally require `make fxtest-flight`: this longer

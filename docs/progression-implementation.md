@@ -159,11 +159,9 @@ One byte, fixed for schema 6:
 | 6 | `SH_FEATURE_EXPLORATION` |
 | 7 | reserved, 0 |
 
-A slot whose signature differs from the running build is **incompatible**, not
-corrupt. Cross-profile loading is rejected until an explicit migration exists.
-This means full↔lean and full↔core saves do not interchange; the UI must say so
-before offering NEW VOYAGE. `SH_FEATURE_MUSIC` is not in the signature because
-music has no saved field.
+The fixed build always writes `0x69`. A slot whose signature differs is
+**incompatible**, not corrupt, and the title must say so before offering NEW
+VOYAGE. `MUSIC` is not in the signature because music has no saved field.
 
 Chart presence is derived from bit 0, not stored separately. Expected payload
 length is `33 + (bit0 ? 256 : 0)`.
@@ -471,7 +469,7 @@ projection is isolated-probe arithmetic, not a whole-game measurement; LTO can
 move it either way.
 
 Historical consequences of that admission probe (superseded by the measured
-production synth fit; the full profile now ships music):
+production synth fit; the fixed build now ships music):
 
 - The probe implied full MUSIC should default to **0** until a measured
   combined image passed the 1,700 B static ceiling and the 600 B stack target.

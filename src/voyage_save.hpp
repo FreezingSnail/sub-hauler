@@ -97,7 +97,7 @@ constexpr uint8_t kSignatureExploration = 1u << 6;
 
 constexpr uint8_t kProfileSignature =
     kSignatureFogChart | kSignatureShop | kSignatureMultiHull | kSignatureExploration;
-static_assert(kProfileSignature == 0x69, "schema 6 full profile signature is frozen");
+static_assert(kProfileSignature == 0x69, "schema 6 fixed-build signature is frozen");
 
 // Result vocabulary shared by the storage transaction and the title
 // integration. A missing slot is not a corrupt save; the title needs to tell

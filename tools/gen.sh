@@ -30,8 +30,5 @@ python3 tools/gen_music.py
 python3 tools/fxdata-build.py fxdata/fxdata.txt
 cp fxdata/fxdata.h src/fxdata.h
 python3 tools/gen_music_viewer.py
-python3 tools/gen_story_style_spikes.py
-python3 tools/gen_story_recomposed.py
-python3 tools/gen_story_fullbleed.py
 
 echo "gen: fxdata/fxdata.bin + src/fxdata.h regenerated"

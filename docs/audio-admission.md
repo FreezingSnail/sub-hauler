@@ -174,4 +174,5 @@ Post-admission append: `sub-hauler-7px.12` adds the title loader strings after
 the six sampled streams. The streams, descriptors, player state and FX offsets
 are unchanged; the current payload/image are **1,876,927 / 1,876,992 B**, still
 under the 2 MiB cap. The loader's firmware cost is tracked separately in
-`story-resource-design.md`; it does not change the player allocation.
+[`archive/story-resource-design.md`](archive/story-resource-design.md); it does
+not change the player allocation.

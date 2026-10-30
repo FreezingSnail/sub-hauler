@@ -12,7 +12,7 @@ gameplay sonar is retired, and mines and hull strength are removed. The seven
 objectives, both service berths and the homecoming ending ship. Sections below
 retain the accepted design reasoning; where implementation details changed,
 current behavior is stated inline and remaining proposal/history is labelled. It refines the campaign, ending, saving
-and music sections of [the exploration proposal](campaign-exploration.md). The
+and music sections of [the exploration proposal](archive/campaign-exploration.md). The
 existing map and equipment remain the foundation; hardware and resource limits
 stay in [platform.md](platform.md).
 
@@ -325,9 +325,9 @@ or new-game-plus system in this first campaign.
 
 The fixed build links the **ATMlib2FX compact synth**
 (`ATM_FX_COMPACT_RING=32`, streaming loops, all native effects) over the six
-authored C1 streams; `MUSIC_BACKEND=stream` keeps the earlier ArduboyStreamFX
-ADPCM comparison build. The sampled-audio work in
-[`story-resource-design.md`](story-resource-design.md) and
+authored C1 streams; the earlier ArduboyStreamFX ADPCM comparison build is
+historical and no longer selectable. The sampled-audio work in
+[`story-resource-design.md`](archive/story-resource-design.md) and
 [`audio-admission.md`](audio-admission.md) is an admission/comparison track, not
 the shipping decoder. The six score sources and cue behavior below remain
 authoritative; dated measurements are in [platform.md](platform.md).
