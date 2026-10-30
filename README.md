@@ -15,7 +15,7 @@ model live in [`docs/design.md`](docs/design.md). The device-port sequence and
 compile-time feature-flag plan live in
 [`docs/roadmap.md`](docs/roadmap.md).
 
-## Status — 2026-10-29 (fixed build)
+## Status — 2026-10-30 (fixed build)
 
 The device loads the authored map from [`levels/exploration.json`](levels/exploration.json):
 32 rooms, 42 passages, nine equipment gates and seven hidden cove rewards.
@@ -38,24 +38,26 @@ feature, development, backend or USB build variants. The shipped matrix is:
 
 | Image | Flash | Static RAM |
 | --- | ---: | ---: |
-| FX fixed build | 28,168 B | 1,656 B |
-| Mini fixed build | 28,168 B | 1,656 B |
+| FX fixed build | 28,848 B | 1,660 B |
+| Mini fixed build | 28,848 B | 1,660 B |
 
-The image leaves 1,528 B under the 29,696 B hardware flash limit and 44 B of
+The image leaves 848 B under the 29,696 B hardware flash limit and 40 B of
 static headroom under the 1,700 B ceiling. AVR `game::State` is 90 B. Measured
-stack reserves are **696 B** for the exact production save chain and **643 B**
+stack reserves are **696 B** for the exact production save chain and **626 B**
 for the combined music probe, both above the 600 B target. The fixed native
-suite passes **230** host tests and **116** tooling tests; all **14** default
-device suites print `P`, the separate `test_memory` probe prints `P`, and the
-flight probe covers **842** complete frames at **11.692 ms maximum**, zero 16 ms
-misses, **gap=1 tick**, and zero audio underruns/errors. `make gen-check` is
-deterministic.
+suite passes **234** host tests and **122** tooling tests; all **14** default
+device suites print `P`, and the flight probe covers **842** complete frames at
+**11.768 ms maximum**, zero 16 ms misses, **gap=1 tick**, and zero audio
+underruns/errors. `make gen-check` is deterministic.
 
-Four one-shot restoration cards plus a revised ending thanks card add five
-illustrated human-scale beats at FIRST, PUMP, LIFT, BEACON and HOME. See
-[story flourishes](docs/story-flourishes.md) for exact text, triggers, replay
-semantics and the [native](docs/assets/story-flourishes-preview.png) and
-[4×](docs/assets/story-flourishes-preview-4x.png) previews.
+All seven campaign beats now show finalized animated decks: fifteen 128×64
+scenes with four poses at 3.3 fps alternate with baked story-text cards. FIRST
+has three image/text pairs; the other six beats have two. Survey decks play
+when the in-world dwell records the fact. HOME is the first part of the ending
+and resumes after a reload until the ending-presented flag is committed. See
+[story beats](docs/story-beats.md) for text, triggers and replay semantics.
+The older static restoration cards remain appended in the cart as historical
+flash ABI but are no longer drawn.
 
 [Level encoding and behavior](levels/README.md) documents the packed 1-bit
 collision/chart planes and little-endian object records.
@@ -63,7 +65,7 @@ collision/chart planes and little-endian object records.
 map geometry. The pre-terrain 41,572-byte payload remains an identical prefix
 and the native terrain section remains 409,600 B; later music, menu, splash,
 story and save sections make the current payload/image
-**2,035,454 / 2,039,552 B**.
+**2,082,151 / 2,086,400 B**.
 
 Normal startup shows Snailware followed by the Sub-hauler splash, then the
 title menu. The logo holds for about 1 s and the title splash for about 2.4 s.

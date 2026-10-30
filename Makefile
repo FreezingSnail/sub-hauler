@@ -68,6 +68,8 @@ MUSIC_SOURCES := music/catalog.json $(wildcard music/*/song.json)
 ADPCM_BINS    := $(addprefix fxdata/music/adpcm/,harbor_bubbles.bin kelp_drift.bin sonar_lullaby.bin abyssal_glass.bin tidepool_waltz.bin bubblejet_run.bin)
 REGION_OUTPUTS := src/generated/music_regions.hpp fxdata/tables/music-regions.bin
 MUSIC_OUTPUTS := $(addprefix fxdata/music/sh_,harbor_bubbles.bin kelp_drift.bin sonar_lullaby.bin abyssal_glass.bin tidepool_waltz.bin bubblejet_run.bin) fxdata/music/manifest.json
+STORY_BEAT_INPUTS := tools/gen_story_beats.py docs/story-sketchbook.html docs/assets/first-beat-animation/frames.js $(wildcard docs/assets/first-beat-animation/all-beats-v3/*-[0-3].png)
+STORY_BEAT_OUTPUTS := fxdata/tables/story-beats.bin src/generated/story_beats.hpp
 FX_INPUTS     := $(IMAGES) fxdata/fxdata.txt tools/gen.sh tools/gen_sprites.py \
                  tools/gen_hud.py images/hud/*.png \
                  tools/gen_menu.py src/station_view.hpp src/shop_view.hpp src/shop.hpp images/menu/*.png \
@@ -75,6 +77,7 @@ FX_INPUTS     := $(IMAGES) fxdata/fxdata.txt tools/gen.sh tools/gen_sprites.py \
                  tools/gen_panels.py images/panels/*.png images/campaign/*.png images/pause/*.png \
                  images/story/*.png docs/assets/story-flourishes-preview.png \
                  docs/assets/story-flourishes-preview-4x.png \
+                 $(STORY_BEAT_INPUTS) $(STORY_BEAT_OUTPUTS) \
                  src/campaign.hpp src/generated/level.hpp \
                  tools/gen_music_regions.py levels/exploration.json $(REGION_OUTPUTS) \
                  tools/gen_font.py tools/gen_pilot.py tools/gen_world.py \
@@ -106,6 +109,8 @@ gen-check:
 	@cp images/pause/*.png $(BUILD_DIR)/gen-check/pause/
 	@mkdir -p $(BUILD_DIR)/gen-check/story
 	@cp images/story/*.png $(BUILD_DIR)/gen-check/story/
+	@mkdir -p $(BUILD_DIR)/gen-check/story-beats
+	@cp $(STORY_BEAT_OUTPUTS) $(BUILD_DIR)/gen-check/story-beats/
 	@cp docs/assets/story-flourishes-preview.png $(BUILD_DIR)/gen-check/story-preview.png
 	@cp docs/assets/story-flourishes-preview-4x.png $(BUILD_DIR)/gen-check/story-preview-4x.png
 	@mkdir -p $(BUILD_DIR)/gen-check/music
@@ -208,6 +213,8 @@ gen-check:
 	done
 	@cmp -s docs/assets/story-flourishes-preview.png $(BUILD_DIR)/gen-check/story-preview.png || { echo "gen-check: story preview changed" >&2; exit 1; }
 	@cmp -s docs/assets/story-flourishes-preview-4x.png $(BUILD_DIR)/gen-check/story-preview-4x.png || { echo "gen-check: story 4x preview changed" >&2; exit 1; }
+	@cmp -s fxdata/tables/story-beats.bin $(BUILD_DIR)/gen-check/story-beats/story-beats.bin || { echo "gen-check: story beat blob changed" >&2; exit 1; }
+	@cmp -s src/generated/story_beats.hpp $(BUILD_DIR)/gen-check/story-beats/story_beats.hpp || { echo "gen-check: story beat header changed" >&2; exit 1; }
 	@echo "gen-check: generated artifacts are deterministic"
 
 # Generation is a prerequisite of the firmware build, so a missing or stale

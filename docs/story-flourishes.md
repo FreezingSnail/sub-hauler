@@ -1,5 +1,9 @@
 # Story flourishes — 2026-10-29
 
+> Historical: superseded by the finalized seven-beat animated decks in
+> [story-beats.md](story-beats.md) (2026-10-30). The four static cards and the
+> ending thanks card remain in the cart as flash ABI but are no longer drawn.
+
 Five brief restoration beats make the existing campaign milestones feel human.
 They add presentation only: no new missions, tools, choices, save fields or
 build switches. Four are one-shot dock cards; homecoming uses the existing

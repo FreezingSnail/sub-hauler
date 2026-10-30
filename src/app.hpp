@@ -82,9 +82,17 @@ union UiAux {
 };
 static UiAux s_uiAux = {0};
 
-// New restoration beat awaiting its card. bss zero is kCardNone; the bit is
-// set only by the dock transition and cleared by the card's advance edge.
+// New restoration beat awaiting its deck. bss zero is kCardNone; the byte is
+// set only by a dock/survey transition and cleared when the deck finishes.
 static uint8_t s_pendingStory;
+
+// Story deck progress. The card/phase/ticks are transient; a reload never
+// resumes a non-HOME deck because the milestone is already committed. HOME is
+// part of the ending path and is resumable while the ending flag is clear.
+static uint8_t s_storyCard;
+static uint8_t s_storyTicks;
+static uint8_t s_storyPhase;
+static uint8_t s_storyReturnPilot;
 
 // Save integration state. Writes are synchronous transitions; while the save
 // failure frame is showing the world is frozen and departure input is ignored.
@@ -181,6 +189,10 @@ static void resetRun() {
     chart::reset(s_chart);
     chart::revealInitial(s_chart, s_state);
     s_pendingStory = story_view::kCardNone;
+    s_storyCard = 0;
+    s_storyTicks = 0;
+    s_storyPhase = 0;
+    s_storyReturnPilot = 0;
 }
 
 
@@ -222,40 +234,92 @@ static bool requestSave(SaveResume resume) {
 }
 
 // HOME is paid and committed by the normal dock checkpoint before any card is
-// shown. The ending-presented flag is separate: cards can be replayed from
-// Tidewall WORK, and a reload with HOME complete but ending still zero resumes
-// the cards without paying again.
-static void drawEnding() {
-    ending_view::draw(s_uiAux.endingCard, s_state);
-}
-
-// A restoration card is shown after the successful dock checkpoint and before
-// the station board. A or B advances; no save is needed because the milestone
-// is already committed and the card is not persistent story state.
-static void beginStory() {
-    s_screen = Screen::Story;
-    story_view::draw(s_pendingStory);
-}
-
-static void updateStory() {
-    if (!justChord(A_BUTTON | B_BUTTON)) {
-        s_present = false;
-        return;
-    }
-    s_pendingStory = story_view::kCardNone;
-    showStation();
-}
-
+// shown. The ending-presented flag is separate: a reload with HOME complete but
+// ending still zero resumes the HOME deck and ending cards without paying
+// again; Tidewall WORK replays the three ending cards after the flag commits.
 static bool endingPending() {
     return s_state.ending == 0 && campaign::missionCompleted(s_state, campaign::kHome);
 }
 
-static void beginEnding() {
+static void drawEnding() {
+    ending_view::draw(s_uiAux.endingCard, s_state);
+}
+
+static void beginEndingCards() {
     music::overrideCue(music_logic::kTidepool);
     music::resume();
     s_uiAux.endingCard = 0;
     s_screen = Screen::Ending;
     drawEnding();
+}
+
+static void drawStory() {
+    const uint8_t phase = static_cast<uint8_t>((s_storyTicks / STORY_BEAT_FRAME_TICKS) & 3);
+    story_view::draw(s_pendingStory, s_storyCard, phase);
+}
+
+// A deck is shown after the successful dock checkpoint, or immediately after
+// an in-world survey dwell. A or B advances one card; no save is needed because
+// any milestone is already committed and the deck is not persistent state.
+static void beginStory() {
+    s_storyCard = 0;
+    s_storyTicks = 0;
+    s_storyPhase = 0;
+    s_screen = Screen::Story;
+    drawStory();
+}
+
+static void finishStory() {
+    s_pendingStory = story_view::kCardNone;
+    if (endingPending()) {
+        beginEndingCards();
+        return;
+    }
+    if (s_storyReturnPilot) {
+        s_storyReturnPilot = 0;
+        showPilot();
+        return;
+    }
+    showStation();
+}
+
+static void updateStory() {
+    if (!justChord(A_BUTTON | B_BUTTON)) {
+        if (story_view::isImageCard(story_view::globalCard(s_pendingStory, s_storyCard))) {
+            ++s_storyTicks;
+            if (s_storyTicks >= STORY_BEAT_CYCLE_TICKS)
+                s_storyTicks = 0;
+            const uint8_t phase = static_cast<uint8_t>((s_storyTicks / STORY_BEAT_FRAME_TICKS) & 3);
+            if (phase != s_storyPhase) {
+                s_storyPhase = phase;
+                drawStory();
+                return;
+            }
+        }
+        s_present = false;
+        return;
+    }
+    const uint8_t next = static_cast<uint8_t>(s_storyCard + 1);
+    if (next >= story_view::cardCount(s_pendingStory)) {
+        finishStory();
+        return;
+    }
+    s_storyCard = next;
+    s_storyTicks = 0;
+    s_storyPhase = 0;
+    drawStory();
+}
+
+static void beginEnding() {
+    if (endingPending()) {
+        // The finalized HOME deck is the first part of the ending. It resumes
+        // after a reload until markEndingPresented() commits the flag.
+        s_pendingStory = story_view::kCardHome;
+        s_storyReturnPilot = 0;
+        beginStory();
+        return;
+    }
+    beginEndingCards();
 }
 
 static void finishEnding() {
@@ -582,7 +646,9 @@ static void updateFlight() {
     const game::Input input{static_cast<bool>(held & UP_BUTTON), static_cast<bool>(held & DOWN_BUTTON), static_cast<bool>(held & LEFT_BUTTON), static_cast<bool>(held & RIGHT_BUTTON)};
 
     const uint8_t beforeCampaign = s_state.campaign;
+    const uint8_t beforeSurveys = s_state.surveys;
     const bool docked = station::stepFlight(s_state, input, s_tables, &s_cache);
+    const uint8_t surveyCard = story_view::cardForNewSurvey(beforeSurveys, s_state.surveys);
     // Coarse reveal rides flight ticks, including the step that docked.
     chart::revealOnStep(s_chart, s_state);
     if (docked) {
@@ -591,6 +657,9 @@ static void updateFlight() {
         // fails, the pending card resumes only after RETRY succeeds or the
         // player explicitly continues unsaved.
         s_pendingStory = story_view::cardForNewMilestone(beforeCampaign, s_state.campaign);
+        s_storyReturnPilot = 0;
+        if (s_pendingStory == story_view::kCardNone)
+            s_pendingStory = surveyCard;
         // Delivery/repair/service are resolved inside the dock step. Commit
         // that complete post-delivery checkpoint before any board celebration
         // or further input. A failed write stays frozen on the save prompt.
@@ -605,6 +674,16 @@ static void updateFlight() {
             return;
         }
         showStation();
+        return;
+    }
+
+    // A survey dwell records a fact in the field. Present its deck immediately
+    // and return to the frozen pilot frame; the survey remains an unsaved find
+    // like any other field discovery.
+    if (surveyCard != story_view::kCardNone) {
+        s_pendingStory = surveyCard;
+        s_storyReturnPilot = 1;
+        beginStory();
         return;
     }
 

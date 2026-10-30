@@ -1,0 +1,50 @@
+{
+  "tool": "built-in image_gen.imagegen",
+  "date": "2026-10-30",
+  "scope": "Non-shipping graphic story candidates only. Prior art untouched. Cargo is internal.",
+  "assets": [
+    {
+      "name": "arrival",
+      "reference": "docs/assets/first-beat-clarity-v6/arrival.png",
+      "prompt": "Use case: illustration-story / precise-object-edit. Redesign this reference story card as unmistakably FULLY SUBMERGED deep ocean exterior, wide 2:1 black and white Arduboy narrative illustration later reduced to 128x64. FIRST arrival at Benthos with filter supplies carried INSIDE hull. Preserve reference submarine identity: large coherent white rounded cigar hull, three black circular side portholes, small conning tower, dark curved belly, rear ducted propeller. Full curved underside visible with open black water below; submarine hovering midwater left foreground traveling toward a quiet small seabed settlement at right background. Replace ALL harbor, surface, quay and water reflections with anchored rounded pressure habitat modules and sealed circular docking collar on seafloor rock, simple pipe connections and two sparse submerged lamps. Clearly show habitat legs anchored on uneven rocky seabed BELOW the hovering sub, a few rising bubbles near propeller and very sparse suspended particles. No horizontal water surface anywhere; every part of frame underwater, no sky, no ripples, no floating reflections, no air, no open buildings, no exposed deck boxes or cargo. Sharp black and white graphic style, solid large white hull, black belly, sparse selective ordered stipple only along hull curvature and curved pressure modules; quiet low-contrast station, clear foreground/middle/background depth. No people, figures, text, UI, borders. Limit background detail for 128x64 readability.",
+      "generationProvenance": "Generated images are saved to /Users/connorfranc/.codex/generated_images/01a18cfa-f2dc-76a1-8b29-915f6cae998f as /Users/connorfranc/.codex/generated_images/01a18cfa-f2dc-76a1-8b29-915f6cae998f/exec-7ca7b7a8-47e0-4425-8e58-9b17e6ec67d1.png by default.\nIf you need to use a generated image at another path, copy it and leave the original in place unless the user explicitly asks you to delete it.\nThe generated image is already displayed to the user. There is no need to render it in the final response as a Markdown image or file link.",
+      "source": "arrival.png",
+      "native": "arrival-native.png",
+      "preview": "arrival-native-4x.png"
+    },
+    {
+      "name": "home-return",
+      "reference": "docs/assets/homecoming/return-home.png",
+      "prompt": "Use case: illustration-story / precise-object-edit. Redesign reference as FULLY SUBMERGED HOME return to Tidewall carrying formal network dispatch safely INSIDE hull. Wide 2:1 monochrome story card for reduction to 128x64. Preserve large white cigar submarine with three BLACK side portholes, dark curved underside, small tower, rear ducted propeller. Distinct composition: submarine centered and smaller than arrival, viewed rear left three-quarter angle entering deep rocky channel diagonally toward right background Tidewall pressure habitat. Full rounded hull and curved belly clearly visible floating in black water with open water below. Tidewall is a closed cylindrical pressure module anchored high on sturdy legs on right seabed ledge, circular sealed docking collar, one lit round window and a single submerged approach lamp. Foreground framing uses dark rock left and right with simple white rim highlights; seabed descends into black under sub. Two narrow headlight cones aim toward docking collar. Sparse bubbles trailing upward left and only a few particles. ALL underwater no water surface, no sky, no harbor, no quay, no reflections, no open-air buildings. Solid clean white sub upper hull remains dominant, sparse small stipple bands on curved lower hull only, mostly black quiet low-detail settlement background. Sharp black and white 1-bit graphic style matching reference; no grayscale washes. No people, text, UI, external cargo boxes, loose packages, borders.",
+      "generationProvenance": "Generated images are saved to /Users/connorfranc/.codex/generated_images/01a18cfa-f2dc-76a1-8b29-915f6cae998f as /Users/connorfranc/.codex/generated_images/01a18cfa-f2dc-76a1-8b29-915f6cae998f/exec-415af037-6890-4b64-88b0-3f6b7f0fbf62.png by default.\nIf you need to use a generated image at another path, copy it and leave the original in place unless the user explicitly asks you to delete it.\nThe generated image is already displayed to the user. There is no need to render it in the final response as a Markdown image or file link.",
+      "source": "home-return.png",
+      "native": "home-return-native.png",
+      "preview": "home-return-native-4x.png"
+    },
+    {
+      "name": "home-lights",
+      "reference": "docs/assets/homecoming/home-lights.png",
+      "prompt": "Use case: illustration-story / precise-object-edit. Redesign this HOME welcoming lights reference as an unmistakably FULLY SUBMERGED seabed settlement. Wide 2:1 black and white narrative illustration, must read when reduced to 128x64. Keep familiar large coherent white cigar submarine, THREE BLACK circular side portholes, dark curved belly, small tower, ducted rear propeller. Distinct close composition: submarine foreground left spanning just over half image width, full complete curved underside visible hovering above rocky seabed, settled calmly beside Tidewall. At right background a welcoming group of THREE SMALL SEALED PRESSURE HABITAT MODULES anchored on seafloor legs with enclosed connecting tubes, lit round windows and two submerged signal lamps. Settlement lights glow as simple clean WHITE windows in quiet dark buildings; no bright solid building facades. Short mooring cable leads from nose to low SEABED anchor, never surface bollard. Sparse rising bubbles above tail, a handful of suspended particles. Black water fills whole scene including clear space below sub. No waterline, no ripples, no surface reflections, no sky, no open-air windows or doors, no quay, no air, no deck cargo boxes, all cargo internal. Preserve sharp monochrome 1-bit graphic style, large white untextured upper hull and black belly, sparse small ordered stipple only on curved hull transition and curved modules. Quiet simplified station background and simple dark seabed rim. No text, UI, people, figures, borders.",
+      "generationProvenance": "Generated images are saved to /Users/connorfranc/.codex/generated_images/01a18cfa-f2dc-76a1-8b29-915f6cae998f as /Users/connorfranc/.codex/generated_images/01a18cfa-f2dc-76a1-8b29-915f6cae998f/exec-a75a495e-425f-4041-93f7-87e70a651cda.png by default.\nIf you need to use a generated image at another path, copy it and leave the original in place unless the user explicitly asks you to delete it.\nThe generated image is already displayed to the user. There is no need to render it in the final response as a Markdown image or file link.",
+      "source": "home-lights.png",
+      "native": "home-lights-native.png",
+      "preview": "home-lights-native-4x.png"
+    }
+  ],
+  "conversion": "render-native.cjs adapted from first-beat-clarity-v6. Area-averaged luminance with ordered 2x2 band dither. Arrival unchanged: threshold 96 and +/-40 band. HOME regional thresholds: pressure habitat 60, ship 90, other/background 120, +/-35 dither band. Ship luminance 75% block mean plus 25% block peak to preserve thin curved underside and porthole rims; no source image change. Return ship x30..67 y17..42, habitat x87..127 y10..39. Lights ship x2..76 y10..49, habitat x73..127 y21..41. 4x nearest-neighbor. Native values only 0 or 255. Readability prioritized over dither reduction.",
+  "nativeReview": {
+    "arrival": {
+      "white": 1610,
+      "black": 6582
+    },
+    "home-return": {
+      "white": 987,
+      "black": 7205
+    },
+    "home-lights": {
+      "white": 1857,
+      "black": 6335
+    },
+    "review": "Inspected 4x native previews: HOME pressure-module volumes, legs, connecting tubes and curved hull undersides retained; water remains black."
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "refinement": {
+    "tool": "built-in image_gen",
+    "source": "loading-cable-initial.png",
+    "generatedSource": "/Users/connorfranc/.codex/generated_images/01a18cfb-45c2-7c53-b518-0d31a4908781/exec-4f25daf9-95b6-49e5-98b3-560c69f9c85a.png",
+    "prompt": "Use case: precise-object-edit. Attached target is already correct in setting/composition. Make ONE clarity edit for native 128x64 binary downsampling: cable reel must have bold readable alternating wraps as FIVE wide bright white curved vertical bands separated by FIVE equally wide SOLID BLACK grooves between two distinct bright white flange rims. Large simple central hub and 4 thick spokes, no microtexture on reel. Keep cradle and distinct reel silhouette. Crucially extend solid white hull around all three solid black portholes so each porthole has a broad white border below as well as above: move lower hull black shading lower by about one porthole radius. Simplify textures globally. Keep enclosed pressure-bay ceiling/walls, bounded moon pool, single reel on dock cradle beside upright lid/internal hold, submarine silhouette and all main placement unchanged. No people, text, cargo deck or UI. Pure black/white 2:1 illustration, very bold forms."
+  },
+  "conversion": "Area average128x64; defaultthreshold127.5 with40-level halfband ordered dither; cable hull detail region x61..109 y29..44 threshold93 halfband65. Exact4x nearest preview. No painted pixel replacement."
+}

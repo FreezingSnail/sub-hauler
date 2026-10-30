@@ -19,6 +19,7 @@
 #include "src/generated/menu_sprites.hpp"
 #include "src/generated/splash_sprites.hpp"
 #include "src/generated/story_sprites.hpp"
+#include "src/generated/story_beats.hpp"
 #include "src/generated/exploration.hpp"
 
 // First byte of fxdata/tables/world.bin: tile row 0 is inside the sealed
@@ -124,7 +125,9 @@ static_assert(story_beacon == startup + spriteBytes(STARTUP_WIDTH, STARTUP_HEIGH
 static_assert(story_first == story_beacon + spriteBytes(STORY_BEACON_WIDTH, STORY_BEACON_HEIGHT, STORY_BEACON_FRAMES, STORY_BEACON_MASKED), "first delivery follows the beacon card");
 static_assert(story_lift == story_first + spriteBytes(STORY_FIRST_WIDTH, STORY_FIRST_HEIGHT, STORY_FIRST_FRAMES, STORY_FIRST_MASKED), "lift follows the first delivery card");
 static_assert(story_pump == story_lift + spriteBytes(STORY_LIFT_WIDTH, STORY_LIFT_HEIGHT, STORY_LIFT_FRAMES, STORY_LIFT_MASKED), "pump follows the lift card");
-static_assert(FX_DATA_BYTES == txt_survey_chart_hint + sizeof("A CHART  B BACK"), "FX image ends after the chart hint");
+static_assert(storyBeats == txt_survey_chart_hint + sizeof("A CHART  B BACK"), "story decks append after the chart hint");
+static_assert(FX_DATA_BYTES == storyBeats + STORY_BEAT_BYTES, "FX image ends after the story deck blob");
+static_assert(STORY_BEAT_CARDS == 30 && STORY_BEAT_IMAGES == 15 && STORY_BEAT_FRAMES == 75, "seven finalized decks");
 static_assert(FX_SAVE_BYTES == 4096, "save partition is one 4 KiB erase block");
 static_assert(FX_SAVE_PAGE == 0xFFF0, "save partition is the last 16 cart pages");
 static_assert((FX_DATA_BYTES + 255) / 256 + FX_SAVE_BYTES / 256 + FX_DATA_PAGE == 65536, "data and save partitions tile the cart image");
