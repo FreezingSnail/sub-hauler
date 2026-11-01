@@ -19,7 +19,7 @@ constexpr uint8_t kCardNetwork = 0;
 constexpr uint8_t kCardThanks = 1;
 constexpr uint8_t kCardStats = 2;
 constexpr uint8_t kCardCount = 3;
-constexpr uint8_t kCoveCount = 8;
+constexpr uint8_t kCoveCount = exploration_data::PICKUP_COUNT;
 
 static_assert(kCardStats + 1 == kCardCount, "three ending cards are frozen");
 
@@ -83,8 +83,9 @@ inline void hint(uint24_t label) {
 }
 
 inline void drawStats(const game::State &state) {
-    // The static card (title, divider, labels, /8 and hint) is baked; the saved
-    // time, cove count and delivered jobs overlay their fixed slots.
+    // The static card (title, divider, labels, equipment-cove denominator and
+    // hint) is baked; the saved time, cove count and delivered jobs overlay
+    // their fixed slots.
     panel_view::draw(panel_ending_stats);
     text::normal();
 

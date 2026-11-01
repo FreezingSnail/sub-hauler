@@ -36,12 +36,14 @@ class AuthoredLevelTest(unittest.TestCase):
 
     def test_records_are_little_endian_and_match_the_collision_mirror(self):
         blob=gen_level.object_bytes(self.level)
-        self.assertEqual(blob[:8],b'SHL2'+bytes((9,7,7,6)))
-        self.assertEqual(len(blob),113)
+        self.assertEqual(blob[:8],b'SHL2'+bytes((9,4,7,6)))
+        self.assertEqual(len(blob),91)
         for i,g in enumerate(self.level.gates):
             self.assertEqual(struct.unpack_from('<HHBBB',blob,8+i*7),(g.x,g.y,g.w,g.h,g.required))
         for i,p in enumerate(self.level.pickups):
-            self.assertEqual(struct.unpack_from('<HHBB',blob,8+9*7+i*6),(p.x,p.y,p.kind,p.amount))
+            self.assertEqual(struct.unpack_from('<HHB',blob,8+9*7+i*5),(p.x,p.y,p.kind))
+        self.assertFalse(hasattr(self.level.pickups[0],'amount'))
+        self.assertEqual([p.kind for p in self.level.pickups],[1,3,2,6])
         header=(ROOT/'src/generated/exploration.hpp').read_text()
         array=re.search(r'DATA\[OBJECT_BYTES\].*?= \{([^}]+)',header).group(1)
         self.assertEqual(bytes(map(int,array.split(','))),blob)
@@ -231,7 +233,7 @@ class AuthoredLevelTest(unittest.TestCase):
         for i,route in enumerate(self.source['routes']):
             if not route.get('obstacles'):continue
             rooms={r['id']:r for r in self.source['rooms']}
-            spine=gen_level.organic_spine(route,rooms[route['from']]['position'],rooms[route['to']]['position'],self.source['terrain']['seed']+i*43)
+            spine=gen_level.organic_spine(route,rooms[route['from']]['position'],rooms[route['to']]['position'],self.source['terrain']['seed']+gen_level.route_phase(route,i)*43)
             for rock in route['obstacles']:
                 x,y=gen_level.on_spine(spine,rock['at'])
                 self.assertEqual(after[round(y)*320+round(x)],1,rock['id']+' blocks the direct passage')
@@ -240,7 +242,7 @@ class AuthoredLevelTest(unittest.TestCase):
         rooms={r['id']:r for r in self.source['rooms']}
         bent=0
         for i,route in enumerate(self.source['routes']):
-            spine=gen_level.organic_spine(route,rooms[route['from']]['position'],rooms[route['to']]['position'],self.source['terrain']['seed']+i*43)
+            spine=gen_level.organic_spine(route,rooms[route['from']]['position'],rooms[route['to']]['position'],self.source['terrain']['seed']+gen_level.route_phase(route,i)*43)
             length=sum(math.dist(a,b) for a,b in zip(spine,spine[1:]))
             if length>math.dist(spine[0],spine[-1])*1.12:bent+=1
         self.assertGreaterEqual(bent,25,"the map must not regress to straight graph pipes")
@@ -251,32 +253,22 @@ class AuthoredLevelTest(unittest.TestCase):
         self.assertIn('LAYOUT_VERSION    = 3',(ROOT/'src/generated/level.hpp').read_text())
         self.assertEqual(gen_level.object_bytes(self.level)[:4],b'SHL2')
 
-    def test_freight_allowances_cover_winding_routes_without_optional_shortcuts(self):
-        deadlines=gen_level.freight_deadlines(self.level)
-        old=gen_world.build_route_economy(self.level.world)[1]
-        for origin in range(4):
-            for destination in range(4):
-                i=origin*4+destination
-                self.assertEqual(deadlines[i],deadlines[destination*4+origin])
-                if origin!=destination:
-                    self.assertGreater(deadlines[i],old[i])
-                    self.assertLess(deadlines[i],65535)
-        header=(ROOT/'src/generated/level.hpp').read_text()
-        rows=re.search(r'ROUTE_DEADLINE\[ROUTE_COUNT\].*?= \{([^}]+)',header,re.S).group(1)
-        self.assertEqual(tuple(map(int,re.findall(r'\d+',rows))),deadlines)
-        detour=copy.deepcopy(self.level)
-        for route in detour.source['routes']:
-            if 'thruster' in route.get('requires',[]):route['via']=[[30,30],[290,130]]
-        self.assertEqual(gen_level.freight_deadlines(detour),deadlines,'optional jet shortcuts are not assumed by contract timers')
+    def test_generated_headers_contain_no_route_economy(self):
+        for name in ('level.hpp','world.hpp'):
+            header=(ROOT/'src/generated'/name).read_text()
+            for token in ('ROUTE_REWARD','ROUTE_DEADLINE','routeEconomy','ROUTE_COUNT','ROUTE_CRATES'):
+                self.assertNotIn(token,header,name)
+        self.assertFalse(hasattr(gen_world,'build_route_economy'))
+        self.assertFalse(hasattr(gen_level,'freight_deadlines'))
 
     def test_invalid_schema_duplicate_rooms_and_unknown_routes_are_rejected(self):
-        for corruption in ('version','duplicate','unknown','capability','reward'):
+        for corruption in ('version','duplicate','unknown','capability','credits'):
             bad=copy.deepcopy(self.source)
             if corruption=='version':bad['version']=1
             elif corruption=='duplicate':bad['rooms'][1]['id']=bad['rooms'][0]['id']
             elif corruption=='unknown':bad['routes'][0]['to']='unknown'
             elif corruption=='capability':bad['routes'][0]['requires']=['bogus']
-            else:next(r for r in bad['rooms'] if 'pickup' in r)['pickup']['amount']=256
+            else:next(r for r in bad['rooms'] if 'pickup' in r)['pickup']['kind']='credits'
             with self.subTest(corruption=corruption),self.assertRaises(ValueError):
                 gen_level.build(bad)
 

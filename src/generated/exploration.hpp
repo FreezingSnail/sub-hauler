@@ -9,9 +9,9 @@
 #endif
 namespace exploration_data {
 constexpr uint8_t CUTTER = 1, SEAL = 2, THRUSTER = 4, LENS = 8;
-constexpr uint8_t GATE_COUNT = 9, PICKUP_COUNT = 7;
-constexpr uint16_t OBJECT_BYTES = 113;
-constexpr uint8_t GATE_STRIDE = 7, PICKUP_STRIDE = 6, HEADER_BYTES = 8;
+constexpr uint8_t GATE_COUNT = 9, PICKUP_COUNT = 4;
+constexpr uint16_t OBJECT_BYTES = 91;
+constexpr uint8_t GATE_STRIDE = 7, PICKUP_STRIDE = 5, HEADER_BYTES = 8;
 constexpr int16_t PRESSURE_Y = 880;
 constexpr uint8_t GATE_N_BR = 0;
 constexpr uint8_t GATE_Z_CW = 1;
@@ -23,12 +23,9 @@ constexpr uint8_t GATE_E_V = 6;
 constexpr uint8_t GATE_N_C = 7;
 constexpr uint8_t GATE_Q_J = 8;
 constexpr uint8_t PICKUP_W = 0;
-constexpr uint8_t PICKUP_TC = 1;
-constexpr uint8_t PICKUP_BR = 2;
-constexpr uint8_t PICKUP_BC = 3;
-constexpr uint8_t PICKUP_CW = 4;
-constexpr uint8_t PICKUP_DL = 5;
-constexpr uint8_t PICKUP_DC = 6;
+constexpr uint8_t PICKUP_BR = 1;
+constexpr uint8_t PICKUP_CW = 2;
+constexpr uint8_t PICKUP_DL = 3;
 constexpr int16_t ROOM_T_X = 304;
 constexpr int16_t ROOM_T_Y = 192;
 constexpr int16_t ROOM_L_X = 624;
@@ -135,7 +132,7 @@ constexpr int16_t ROCK_I_J_ROCK_X = 1362, ROCK_I_J_ROCK_Y = 1082;
 constexpr int16_t ROCK_F_K_ROCK_X = 1183, ROCK_F_K_ROCK_Y = 260;
 // Byte-identical PROGMEM mirror of explorationObjects, avoiding cart transactions
 // inside collision. No object array or map copy is allocated in SRAM.
-const uint8_t DATA[OBJECT_BYTES] EXPLORATION_FLASH = {83, 72, 76, 50, 9, 7, 7, 6, 36, 6, 16, 0, 8, 96, 1, 231, 4, 144, 2, 8, 96, 1, 64, 9, 92, 2, 96, 8, 1, 27, 5, 108, 3, 96, 8, 2, 173, 3, 47, 4, 96, 8, 4, 60, 7, 14, 4, 8, 96, 4, 188, 4, 90, 1, 8, 96, 1, 208, 6, 251, 1, 96, 8, 4, 130, 2, 64, 3, 8, 96, 6, 136, 0, 8, 1, 1, 1, 0, 4, 64, 0, 4, 40, 200, 5, 48, 0, 3, 1, 120, 9, 32, 1, 4, 90, 152, 4, 176, 2, 2, 1, 176, 0, 88, 4, 6, 1, 200, 7, 168, 4, 4, 150};
+const uint8_t DATA[OBJECT_BYTES] EXPLORATION_FLASH = {83, 72, 76, 50, 9, 4, 7, 6, 36, 6, 16, 0, 8, 96, 1, 231, 4, 144, 2, 8, 96, 1, 64, 9, 92, 2, 96, 8, 1, 27, 5, 108, 3, 96, 8, 2, 173, 3, 47, 4, 96, 8, 4, 60, 7, 14, 4, 8, 96, 4, 188, 4, 90, 1, 8, 96, 1, 208, 6, 251, 1, 96, 8, 4, 130, 2, 64, 3, 8, 96, 6, 136, 0, 8, 1, 1, 200, 5, 48, 0, 3, 152, 4, 176, 2, 2, 176, 0, 88, 4, 6};
 inline uint8_t byteAt(uint16_t offset) {
 #if defined(__AVR__)
     return pgm_read_byte(DATA + offset);
@@ -147,7 +144,7 @@ inline int16_t wordAt(uint16_t offset) {
     return static_cast<int16_t>(byteAt(offset) | (static_cast<uint16_t>(byteAt(offset+1)) << 8));
 }
 struct Gate { int16_t x,y; uint8_t w,h,required; };
-struct Pickup { int16_t x,y; uint8_t kind,amount; };
+struct Pickup { int16_t x,y; uint8_t kind; };
 inline Gate gate(uint8_t id) {
     const uint16_t p=HEADER_BYTES+static_cast<uint16_t>(id)*GATE_STRIDE;
     Gate g={wordAt(p),wordAt(p+2),byteAt(p+4),byteAt(p+5),byteAt(p+6)};
@@ -155,7 +152,7 @@ inline Gate gate(uint8_t id) {
 }
 inline Pickup pickup(uint8_t id) {
     const uint16_t p=HEADER_BYTES+GATE_COUNT*GATE_STRIDE+static_cast<uint16_t>(id)*PICKUP_STRIDE;
-    Pickup item={wordAt(p),wordAt(p+2),byteAt(p+4),byteAt(p+5)};
+    Pickup item={wordAt(p),wordAt(p+2),byteAt(p+4)};
     return item;
 }
 } // namespace exploration_data

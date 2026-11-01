@@ -25,13 +25,15 @@ inline void EndingViewSuite(TestRunner &runner) {
 
     {
         Test test("ending stats derive from saved masks, counters and voyage clock");
+        test.assertEqual(ending_view::kCoveCount, exploration_data::PICKUP_COUNT, "cove count is generated");
+        test.assertEqual(ending_view::kCoveCount, 4, "four equipment coves");
         game::State state;
         game::reset(state);
         test.assertEqual(ending_view::coveCount(state), 0, "no coves discovered");
-        state.pickups = 0x5A;
-        test.assertEqual(ending_view::coveCount(state), 4, "four of eight coves");
+        state.pickups = 0x05;
+        test.assertEqual(ending_view::coveCount(state), 2, "two of four coves");
         state.pickups = 0xFF;
-        test.assertEqual(ending_view::coveCount(state), 8, "all eight coves");
+        test.assertEqual(ending_view::coveCount(state), 4, "retired pickup bits are clamped to four coves");
         state.delivered = 5;
         test.assertEqual(state.delivered, 5, "delivered jobs stay available to the stats card");
         state.voyageTicks = 0;

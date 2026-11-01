@@ -28,9 +28,10 @@ static bool sample(bool revealed, uint8_t phase) {
     if (revealed)
         memset(fog.explored, 0xFF, sizeof(fog.explored));
     state.activeJob.to = 2;
-    state.activeJob.kind = game::kJobKindOrdinary;
-    state.activeJob.mission = game::kMissionNone;
-    state.activeJob.from = 0;
+    state.activeJob.kind = game::kJobKindCampaign;
+    state.activeJob.mission = campaign::kPump;
+    state.activeJob.from = campaign::kCormorant;
+    state.activeJob.crates = game::kJobCrates;
     state.seenGates = 0x1FF;
     chart_view::draw(Arduboy2Base::sBuffer, fog, state, tables, phase);
     const uint16_t expected = checksum();

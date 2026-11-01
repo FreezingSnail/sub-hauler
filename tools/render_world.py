@@ -133,15 +133,15 @@ def export(input_path: Path, output: Path) -> None:
         draw.text((cx, cy - 9), tag, font=f_small, fill="white", anchor="ma")
 
     names = {1: "SALVAGE CUTTER", 2: "PRESSURE SEAL", 3: "CURRENT THRUSTER",
-             4: "CREDITS", 5: "HULL CAPACITY +1", 6: "SURVEY LENS"}
+             6: "SURVEY LENS"}
     subtitle = {1: "opens grates", 2: "opens deep water", 3: "opens opposing jets",
-                4: "one-time cache", 5: "permanent within the run", 6: "larger sonar reveal"}
+                6: "larger sonar reveal"}
     for i in range(pickup_count):
-        offset = 8 + gate_count * 7 + i * 6
-        x, y, kind, amount = struct.unpack_from("<HHBB", objects, offset)
-        title = f"{amount} CREDITS" if kind == 4 else names[kind]
+        offset = 8 + gate_count * 7 + i * 5
+        x, y, kind = struct.unpack_from("<HHB", objects, offset)
+        title = names[kind]
         side = "right" if x < 350 else "left"
-        label(x, y, title, subtitle[kind], "#8c5c0c" if kind == 4 else "#175c61", side, offset_y=-45 if kind == 6 else 0)
+        label(x, y, title, subtitle[kind], "#175c61", side, offset_y=-45 if kind == 6 else 0)
 
     pressure_y = source["pressure_y"] * source["tile_pixels"] + header
     for x in range(0, native.width, 24):

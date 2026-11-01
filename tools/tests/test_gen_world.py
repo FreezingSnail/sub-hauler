@@ -164,35 +164,6 @@ class GenWorldTest(unittest.TestCase):
         self.assertEqual(paths[0][0].stat().st_size, 6400)
         self.assertEqual(paths[0][1].stat().st_size, 256)
 
-    def test_route_economy_matches_offer_rules(self):
-        rewards, deadlines = gen_world.build_route_economy(self.world)
-        self.assertEqual(
-            rewards,
-            (
-                0, 115, 180, 140,
-                115, 0, 125, 110,
-                180, 125, 0, 125,
-                140, 110, 125, 0,
-            ),
-        )
-        self.assertEqual(
-            deadlines,
-            (
-                0, 10440, 14760, 11880,
-                10440, 0, 11160, 10140,
-                14760, 11160, 0, 10980,
-                11880, 10140, 10980, 0,
-            ),
-        )
-        count = len(self.world.settlements)
-        for origin in range(count):
-            for destination in range(count):
-                self.assertEqual(rewards[origin * count + destination], rewards[destination * count + origin])
-                self.assertEqual(deadlines[origin * count + destination], deadlines[destination * count + origin])
-        self.assertLessEqual(max(rewards), 255)
-        self.assertLess(max(deadlines), 0xFFFF)
-        self.assertTrue(all(reward % gen_world.ROUTE_REWARD_ROUND == 0 for reward in rewards))
-
     def test_current_direction_compact_codes(self):
         directions = [
             gen_world.Current(0, 0, gen_world.CURRENT_WIDTH_PX, gen_world.CURRENT_HEIGHT_PX,
@@ -229,15 +200,13 @@ class GenWorldTest(unittest.TestCase):
         self.assertIn("struct CurrentMeta", header)
         self.assertIn("CURRENT_WIDTH_PX", header)
         self.assertIn("CURRENT_DIR_YNEG", header)
-        self.assertIn("ROUTE_REWARD[ROUTE_COUNT] PROGMEM", header)
-        self.assertIn("ROUTE_DEADLINE[ROUTE_COUNT] PROGMEM", header)
         self.assertIn("constexpr Settlement SETTLEMENTS", header)
         self.assertIn("constexpr Current CURRENTS", header)
         self.assertIn("inline bool settlementMeta", header)
         self.assertIn("inline bool currentMeta", header)
-        self.assertIn("inline bool routeEconomy", header)
-        self.assertIn("ROUTE_REWARD_MAX", header)
-        self.assertIn("ROUTE_DEADLINE_MAX", header)
+        for token in ("ROUTE_REWARD", "ROUTE_DEADLINE", "routeEconomy", "ROUTE_COUNT"):
+            self.assertNotIn(token, header)
+        self.assertFalse(hasattr(gen_world, "build_route_economy"))
 
         # AVR metadata is position-only: the guarded branch must not reference
         # settlement name literals, which would otherwise land in .rodata and

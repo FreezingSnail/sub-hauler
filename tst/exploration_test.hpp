@@ -180,15 +180,13 @@ inline void ExplorationSuite(TestRunner &runner) {
         runner.add(t);
     }
     {
-        Test t("a credit cove claim is inert after the economy strip");
+        Test t("all four authored coves are equipment and no credit kind remains");
+        t.assertEqual(data::PICKUP_COUNT, 4, "four equipment coves");
+        for (uint8_t i = 0; i < data::PICKUP_COUNT; ++i) {
+            const auto p = data::pickup(i);
+            t.assertTrue(p.kind == 1 || p.kind == 2 || p.kind == 3 || p.kind == 6, "cove kind is equipment");
+        }
         game::State s;
-        game::resetWorld(s);
-        s.tools = data::CUTTER;
-        const auto purse = data::pickup(data::PICKUP_DC);
-        place(s, purse.x, purse.y);
-        dwell(s);
-        t.assertEqual(s.pickups & static_cast<uint8_t>(1u << data::PICKUP_DC), static_cast<uint8_t>(1u << data::PICKUP_DC), "the cove is recorded");
-        t.assertEqual(s.tools, data::CUTTER, "a credit cove equips no tool");
         game::resetWorld(s);
         t.assertEqual(s.tools, 0, "restart resets run-local equipment");
         t.assertEqual(s.pickups, 0, "restart resets run-local claims");

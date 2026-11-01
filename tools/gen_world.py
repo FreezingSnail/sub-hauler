@@ -59,23 +59,6 @@ BORDER_TILES = 2
 SETTLEMENT_CLEAR_TILES = 6
 DOCK_CLEARANCE_PX = 42
 
-# Contract economy recipe. These are the shipping floor/round rules that were
-# previously evaluated at runtime in src/jobs.hpp:
-#   distance = isqrt(dx*dx + dy*dy) // tile            (tiles, floored)
-#   reward   = round((20 + crates*10 + 0.5*distance) / 5) * 5
-#   deadline = (80 + 0.55*distance + 8*crates) * 60    (flight ticks, seconds floored)
-CONTRACT_CRATES = 4
-STEP_HZ = 60
-ROUTE_REWARD_BASE = 20
-ROUTE_REWARD_PER_CRATE = 10
-ROUTE_REWARD_ROUND = 5
-ROUTE_REWARD_DISTANCE_DIVISOR = 2
-ROUTE_DEADLINE_BASE_SECONDS = 80
-ROUTE_DEADLINE_PERCENT_PER_TILE = 55
-ROUTE_DEADLINE_PERCENT_SCALE = 100
-ROUTE_DEADLINE_SECONDS_PER_CRATE = 8
-ROUTE_DEADLINE_MAX_TICKS = 0xFFFF
-
 # Current zones are metadata-only (no FX table). Each zone is a small
 # rectangle inside one non-settlement chamber; the 16 px/s^2 Q8.8 acceleration
 # drives the boat along one axis at a time. They are placed on chamber centres
@@ -432,49 +415,6 @@ def unpack_chart(data: bytes) -> bytes:
     return bytes(chart)
 
 
-def build_route_economy(world: World) -> tuple[tuple[int, ...], tuple[int, ...]]:
-    """Bake every ordered settlement pair with the shipping offer formulas.
-
-    Diagonal entries are unused (a destination never equals its origin) and are
-    emitted as zero. All other pairs keep the historical floor/round rules
-    exactly, including the 0xFFFF deadline saturation.
-    """
-    rewards: list[int] = []
-    deadlines: list[int] = []
-    for origin in world.settlements:
-        for destination in world.settlements:
-            if origin.id == destination.id:
-                rewards.append(0)
-                deadlines.append(0)
-                continue
-
-            dx = destination.pixel_x - origin.pixel_x
-            dy = destination.pixel_y - origin.pixel_y
-            distance_pixels = math.isqrt(dx * dx + dy * dy)
-            distance_tiles = distance_pixels // TILE_PIXELS
-
-            base = (
-                ROUTE_REWARD_BASE
-                + CONTRACT_CRATES * ROUTE_REWARD_PER_CRATE
-                + distance_tiles // ROUTE_REWARD_DISTANCE_DIVISOR
-            )
-            reward = (
-                (base + ROUTE_REWARD_ROUND // 2) // ROUTE_REWARD_ROUND
-            ) * ROUTE_REWARD_ROUND
-
-            seconds = (
-                ROUTE_DEADLINE_BASE_SECONDS
-                + (distance_tiles * ROUTE_DEADLINE_PERCENT_PER_TILE)
-                // ROUTE_DEADLINE_PERCENT_SCALE
-                + CONTRACT_CRATES * ROUTE_DEADLINE_SECONDS_PER_CRATE
-            )
-            ticks = min(seconds * STEP_HZ, ROUTE_DEADLINE_MAX_TICKS)
-
-            rewards.append(reward)
-            deadlines.append(ticks)
-    return tuple(rewards), tuple(deadlines)
-
-
 def _open_components(grid: bytearray) -> int:
     seen = bytearray(len(grid))
     components = 0
@@ -574,25 +514,6 @@ def validate_world(world: World) -> None:
                         f"tile ({tx}, {ty})"
                     )
 
-    # Baked route economy must stay inside its storage contract and remain a
-    # symmetric ordered-pair table with unused diagonal zeroes.
-    rewards, deadlines = build_route_economy(world)
-    count = len(world.settlements)
-    if any(reward > 255 for reward in rewards):
-        raise ValueError("route reward exceeds the uint8 storage bound")
-    if any(deadline > ROUTE_DEADLINE_MAX_TICKS for deadline in deadlines):
-        raise ValueError("route deadline exceeds the uint16 storage bound")
-    for origin in range(count):
-        if rewards[origin * count + origin] != 0 or deadlines[origin * count + origin] != 0:
-            raise ValueError("unused diagonal route is not zero")
-        for destination in range(count):
-            forward = origin * count + destination
-            reverse = destination * count + origin
-            if rewards[forward] != rewards[reverse] or deadlines[forward] != deadlines[reverse]:
-                raise ValueError(
-                    f"route economy is not symmetric for ({origin}, {destination})"
-                )
-
     # Current zones are metadata-only rectangles. Every tile they overlap must
     # be open water, and the zone must stay outside every settlement dock ring
     # (the spawn is settlement 0, so this also protects the spawn footprint).
@@ -662,22 +583,7 @@ def _cpp_bool(value: bool) -> str:
     return "true" if value else "false"
 
 
-def _format_route_rows(values: tuple[int, ...], count: int) -> str:
-    return "\n".join(
-        "    " + ", ".join(str(values[row * count + col]) for col in range(count)) + ","
-        for row in range(count)
-    )
-
-
-def render_header(world: World, route_deadlines=None, service_berths=None, surveys=None) -> str:
-    route_rewards, legacy_deadlines = build_route_economy(world)
-    if route_deadlines is None:
-        route_deadlines = legacy_deadlines
-    route_count = len(world.settlements) * len(world.settlements)
-    route_reward_rows = _format_route_rows(route_rewards, len(world.settlements))
-    route_deadline_rows = _format_route_rows(route_deadlines, len(world.settlements))
-    route_reward_max = max(route_rewards)
-    route_deadline_max = max(route_deadlines)
+def render_header(world: World, service_berths=None, surveys=None) -> str:
     service_berths = tuple(service_berths or ())
     surveys = tuple(surveys or ())
     berth_count = max([len(world.settlements)] + [b.id + 1 for b in service_berths])
@@ -919,11 +825,6 @@ constexpr uint8_t  CHART_CELL_TILES  = {CHART_CELL_TILES};
 constexpr uint8_t  CHART_ROW_BYTES   = {CHART_ROW_BYTES};
 constexpr uint16_t CHART_BYTES       = {CHART_BYTES};
 constexpr uint8_t  SETTLEMENT_COUNT  = {len(world.settlements)};
-constexpr uint8_t  ROUTE_COUNT       = static_cast<uint8_t>(SETTLEMENT_COUNT * SETTLEMENT_COUNT);
-constexpr uint8_t  ROUTE_CRATES      = {CONTRACT_CRATES};
-constexpr uint16_t ROUTE_STEP_HZ     = {STEP_HZ};
-constexpr uint8_t  ROUTE_REWARD_MAX  = {route_reward_max};
-constexpr uint16_t ROUTE_DEADLINE_MAX = {route_deadline_max};
 constexpr uint8_t  CURRENT_COUNT     = {len(world.currents)};
 constexpr uint8_t  BERTH_COUNT       = {berth_count};
 constexpr uint8_t  SERVICE_BERTH_COUNT = {len(service_berths)};
@@ -992,26 +893,6 @@ const CurrentMeta CURRENT_META[CURRENT_COUNT] PROGMEM = {{
 {current_meta}
 }};
 
-// Baked contract economy: one row per origin, one column per destination.
-// Diagonal entries are unused. Host and device consume these arrays through
-// routeEconomy(), so no offer path recomputes distance, reward or deadline.
-const uint8_t ROUTE_REWARD[ROUTE_COUNT] PROGMEM = {{
-{route_reward_rows}
-}};
-
-const uint16_t ROUTE_DEADLINE[ROUTE_COUNT] PROGMEM = {{
-{route_deadline_rows}
-}};
-
-inline bool routeEconomy(uint8_t from, uint8_t to, uint8_t &reward, uint16_t &deadline) {{
-    if (from >= SETTLEMENT_COUNT || to >= SETTLEMENT_COUNT)
-        return false;
-    const uint8_t index = static_cast<uint8_t>(from * SETTLEMENT_COUNT + to);
-    reward = pgm_read_byte(&ROUTE_REWARD[index]);
-    deadline = static_cast<uint16_t>(pgm_read_word(&ROUTE_DEADLINE[index]));
-    return true;
-}}
-
 inline bool settlementMeta(uint8_t id, Settlement &out) {{
     if (id >= SETTLEMENT_COUNT)
         return false;
@@ -1050,25 +931,6 @@ constexpr Settlement SETTLEMENTS[SETTLEMENT_COUNT] = {{
 constexpr Current CURRENTS[CURRENT_COUNT] = {{
 {currents}
 }};
-
-// Host mirror of the device route economy. The values and accessor contract
-// are generated once; only the storage differs (constexpr vs PROGMEM).
-constexpr uint8_t ROUTE_REWARD[ROUTE_COUNT] = {{
-{route_reward_rows}
-}};
-
-constexpr uint16_t ROUTE_DEADLINE[ROUTE_COUNT] = {{
-{route_deadline_rows}
-}};
-
-inline bool routeEconomy(uint8_t from, uint8_t to, uint8_t &reward, uint16_t &deadline) {{
-    if (from >= SETTLEMENT_COUNT || to >= SETTLEMENT_COUNT)
-        return false;
-    const uint8_t index = static_cast<uint8_t>(from * SETTLEMENT_COUNT + to);
-    reward = ROUTE_REWARD[index];
-    deadline = ROUTE_DEADLINE[index];
-    return true;
-}}
 
 inline bool settlementMeta(uint8_t id, Settlement &out) {{
     if (id >= SETTLEMENT_COUNT)
