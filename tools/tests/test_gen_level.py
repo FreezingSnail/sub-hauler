@@ -36,7 +36,7 @@ class AuthoredLevelTest(unittest.TestCase):
 
     def test_records_are_little_endian_and_match_the_collision_mirror(self):
         blob=gen_level.object_bytes(self.level)
-        self.assertEqual(blob[:8],b'SHL2'+bytes((9,4,7,6)))
+        self.assertEqual(blob[:8],b'SHL2'+bytes((9,4,7,5)))
         self.assertEqual(len(blob),91)
         for i,g in enumerate(self.level.gates):
             self.assertEqual(struct.unpack_from('<HHBBB',blob,8+i*7),(g.x,g.y,g.w,g.h,g.required))

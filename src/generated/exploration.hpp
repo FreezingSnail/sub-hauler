@@ -132,7 +132,7 @@ constexpr int16_t ROCK_I_J_ROCK_X = 1362, ROCK_I_J_ROCK_Y = 1082;
 constexpr int16_t ROCK_F_K_ROCK_X = 1183, ROCK_F_K_ROCK_Y = 260;
 // Byte-identical PROGMEM mirror of explorationObjects, avoiding cart transactions
 // inside collision. No object array or map copy is allocated in SRAM.
-const uint8_t DATA[OBJECT_BYTES] EXPLORATION_FLASH = {83, 72, 76, 50, 9, 4, 7, 6, 36, 6, 16, 0, 8, 96, 1, 231, 4, 144, 2, 8, 96, 1, 64, 9, 92, 2, 96, 8, 1, 27, 5, 108, 3, 96, 8, 2, 173, 3, 47, 4, 96, 8, 4, 60, 7, 14, 4, 8, 96, 4, 188, 4, 90, 1, 8, 96, 1, 208, 6, 251, 1, 96, 8, 4, 130, 2, 64, 3, 8, 96, 6, 136, 0, 8, 1, 1, 200, 5, 48, 0, 3, 152, 4, 176, 2, 2, 176, 0, 88, 4, 6};
+const uint8_t DATA[OBJECT_BYTES] EXPLORATION_FLASH = {83, 72, 76, 50, 9, 4, 7, 5, 36, 6, 16, 0, 8, 96, 1, 231, 4, 144, 2, 8, 96, 1, 64, 9, 92, 2, 96, 8, 1, 27, 5, 108, 3, 96, 8, 2, 173, 3, 47, 4, 96, 8, 4, 60, 7, 14, 4, 8, 96, 4, 188, 4, 90, 1, 8, 96, 1, 208, 6, 251, 1, 96, 8, 4, 130, 2, 64, 3, 8, 96, 6, 136, 0, 8, 1, 1, 200, 5, 48, 0, 3, 152, 4, 176, 2, 2, 176, 0, 88, 4, 6};
 inline uint8_t byteAt(uint16_t offset) {
 #if defined(__AVR__)
     return pgm_read_byte(DATA + offset);

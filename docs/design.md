@@ -7,21 +7,22 @@ fixed pilot art into FX and compacted the generated world metadata and AVR run
 state. The browser sandbox is retired (available in git history); the shipped
 device path is the cargo-free contract loop described below.
 
-Current implementation note (2026-10-28): the fixed build also ships the
-seven-objective campaign and ending, schema 6 single-slot cart checkpoints,
-ATMlib2FX synth music and the boot introduction. Sonar is retired; campaign and
-freight work are untimed.
+Current implementation note (2026-11-01): the fixed build ships the
+seven-objective campaign and ending, schema 7 single-slot cart checkpoints,
+ATMlib2FX synth music and the boot introduction. Sonar is retired. The shop,
+currency, job payouts, repeatable freight offers and credit caches were removed;
+campaign deliveries are intrinsic restoration work and all work is untimed.
 
 ## Active exploration map — 2026-10-25
 
 The device now loads the authored `levels/exploration.json` world, with
-32 rooms, 42 passages, nine equipment gates and seven cove rewards. The high
+32 rooms, 42 passages, nine equipment gates and four equipment coves. The high
 pressure region is lowest. `make gen` appends its collision/chart/object
 sections and writes the active `src/generated/level.hpp`; legacy seed-4242
 sections and `src/generated/world.hpp` stay unchanged for ABI compatibility.
 The active terrain uses winding, variable-width passages and asymmetric
-caverns with 31 solid pillars, shelves, wall teeth and wreck ribs. Freight
-allowances follow authored route lengths; optional shortcuts save travel time.
+caverns with 31 solid pillars, shelves, wall teeth and wreck ribs. Work is
+untimed and unpaid; optional shortcuts save travel time only.
 See [the level contract](../levels/README.md) for encoding, controls and limits.
 The older baked-world measurements below are historical. Campaign/ending,
 persistent cart voyage saves and gameplay music now ship in the fixed build;
@@ -65,21 +66,21 @@ flight or station code reads that bank.
 
 1. Dock (auto-dock within 14 px of a settlement gantry at or below the dock
    speed; the hull stops in place instead of snapping to the gantry centre).
-2. Open `WORK`, select a story restoration row or the one repeatable freight
-   row, and press `A`. Acceptance fills the hold with the contract's four
-   coarse cargo units, neutralizes trim, and keeps the boat docked. `ABANDON`
-   has its own confirmation; there is no detail step.
+2. Open `WORK`, select an eligible story restoration row or survey lead, and
+   press `A`. Acceptance fills the hold with the mission's four coarse cargo
+   units, neutralizes trim, and keeps the boat docked. Survey rows open the
+   chart instead. `ABANDON` has its own confirmation; there is no detail step.
 3. Confirm the active board's `UNDOCK` row with `A`, or press `B`, to start
    travel. Docking latch and flight pause are unchanged.
-4. Deliver at the destination station for credits. Campaign and freight work
-   are untimed, and a loaded arrival pays exactly once; wrong-berth stops keep
-   the job and load. `ABANDON` clears the hold and contract while docked.
+4. Deliver at the destination station. Work is untimed and unpaid, and a loaded
+   arrival resolves exactly once; wrong-berth stops keep the job and load.
+   `ABANDON` clears the hold and contract while docked.
 
-The top-level station board is `WORK [SHOP] UNDOCK`; while carrying a job it is
-`[summary] ABANDON WORK [SHOP] UNDOCK`. `WORK` opens the single board with
-eligible story rows first and the freight row beneath. There is no separate
-offer list, no `LOAD CARGO` row, no job timer or late-failure state, and no way
-to reach a packing screen.
+The top-level station board is `WORK / UNDOCK`; while carrying a job it is
+`summary / ABANDON / WORK / UNDOCK`, and a service-only berth shows `UNDOCK`
+alone. `WORK` opens the single board with eligible story rows only. There is no
+shop row, no separate offer list, no `LOAD CARGO` row, no job timer or
+late-failure state, and no way to reach a packing screen.
 
 ### Historical: packing prototype (removed)
 
@@ -146,16 +147,16 @@ Rules for future work:
 ## Device text and fixed art — historical 2026-10-24 snapshot
 
 The following records the initial cargo-free text/art pass. Current station
-and shop presentation uses baked FX menus; see
-[menu-flash-design.md](menu-flash-design.md). Current cart and firmware totals
-are in [platform.md](platform.md).
+presentation is drawn natively; the baked shop frames remain archival cart ABI
+and are never drawn. See [menu-flash-design.md](menu-flash-design.md). Current
+cart and firmware totals are in [platform.md](platform.md).
 
 All device text uses the external 6x8 FX font; `src/text.hpp` owns
 `FX::setFont`/`drawString`/`drawNumber` and switches to `dcmInvert` for selected
 menu rows. Strings are deduplicated in `fxdata/fxdata.txt`. The firmware uses
 `Arduboy2Base`, so the inherited `Print`/built-in-font path is not instantiated
 and the old font symbols are absent from the ELF. The external font keeps the
-same 6x8 cell and layout constants, so station/shop rows stay at 7 px pitch and
+same 6x8 cell and layout constants, so station rows stay at 7 px pitch and
 128x64 clipping is unchanged.
 
 MINNOW/HAULER/LEVIATHAN are generated 26x8 plus-mask sheets: right/left facing
@@ -209,9 +210,8 @@ costs off SRAM: an odr-used namespace-scope `constexpr` array is copied into
 SRAM by the AVR startup code, and name pointers would drag their string
 literals along with it. `Settlement::name` is therefore null on device. The
 compact AVR metadata total is **88 B of program flash** (down from 148 B) with
-no RAM or cart-read change. The route economy is generated as compact reward
-and deadline tables; it no longer requires diagnostic counters or a job clock
-in `game::State`.
+no RAM or cart-read change. No route reward or deadline table is generated: the
+fixed rules add no diagnostic counters or job clock to `game::State`.
 
 ### Cave view and visible window (M1.4)
 
@@ -258,19 +258,19 @@ checkpoint records build/static evidence only.
 From `docs/platform.md`:
 
 - 128×64 SSD1306, 1,024 B framebuffer.
-- 2,560 B SRAM; **900 B** static free in the current full image.
-- 29,696 B flash; current full image **29,604 B flash / 1,660 B static RAM**
-  (92 B flash free, 40 B static headroom under the 1,700 B planning ceiling;
-  combined music probe **652 B** and production save chain **690 B** against a
+- 2,560 B SRAM; **914 B** static free in the current full image.
+- 29,696 B flash; current full image **27,230 B flash / 1,646 B static RAM**
+  (2,466 B flash free, 54 B static headroom under the 1,700 B planning ceiling;
+  combined music probe **660 B** and production save chain **702 B** against a
   600 B target).
-- AVR `game::State` is **97 B**; the compact generated metadata is 88 B PROGMEM; the 128 B cave atlas
+- AVR `game::State` is **90 B**; the compact generated metadata is 88 B PROGMEM; the 128 B cave atlas
   stays in fast program flash.
 - No floats, no heap in device code, no cart reads during display.
 
 The retained `cargoBank` lives in external FX flash, so it does not consume
 program flash or static SRAM. It is shipped for ABI stability only; the
 cargo-free station/job/undock path is the device path. Measure every future
-change with `make size` and `make size-matrix`; do not assume the remaining
+change with `make size`; do not assume the remaining
 headroom survives another feature.
 
 ## Browser reference (retired)
@@ -289,7 +289,6 @@ bank is an ABI artifact, not a runtime plan.
 ## Open questions
 
 - How exactly coarse cargo units map to mass/neutral trim for future balance.
-- Whether bonus crates ever affect payout, capacity, or only fill.
 - Jobs currently require a full four-unit hold so acceptance has a clear
   pass/fail. Revisit partial-hold jobs and their effect on top speed, air, and
   routes.

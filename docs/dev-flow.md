@@ -80,10 +80,11 @@ input. See
 - The OLED and cart share SPI. Cart reads happen in update/render, never during
   an OLED transaction. The canonical display contract is in `docs/platform.md`.
 - Static menu screens compose once per input edge and skip the OLED
-  transaction while idle. The station/shop board uses a 7 px row pitch, so the
+  transaction while idle. The native station board uses a 7 px row pitch, so the
   selection bar is a raw `fillRect` and the glyphs draw with background
   disabled (bg == fg); the Arduboy font cell is 8 px plus 1 px line spacing and
-  an opaque background would paint through the next row.
+  an opaque background would paint through the next row. The generated
+  station/shop frames stay archival cart ABI only; no screen selects them.
 - Greyscale is not a shipping path: normal builds are native 1-bit, and
   `FRAME(x)` is the logical frame (`x`). `Blit::draw` reads headerless
   page-major plus-mask bytes.
@@ -101,7 +102,7 @@ input. See
   and the title offers a clean New Voyage. Music is paused around the
   synchronous erase/page transaction; no read or write belongs in the per-frame
   path.
-- The standalone EEPROM chart writer is retired; schema 6 voyage checkpoints
+- The standalone EEPROM chart writer is retired; schema 7 voyage checkpoints
   are the only save path.
 - `make fxtest-save-chain` runs the exact production
   `updateStation()`→`requestSave()`→`saveVoyageNow()` path with the real sketch

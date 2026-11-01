@@ -405,7 +405,7 @@ def validate_surveys(level):
 
 
 def object_bytes(level: Level) -> bytes:
-    data = b'SHL2'+bytes((len(level.gates),len(level.pickups),7,6))
+    data = b'SHL2'+bytes((len(level.gates),len(level.pickups),7,5))
     for g in level.gates:
         data+=struct.pack('<HHBBB',g.x,g.y,g.w,g.h,g.required)
     for p in level.pickups:

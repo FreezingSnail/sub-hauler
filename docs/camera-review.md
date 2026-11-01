@@ -7,21 +7,21 @@ in this environment; acceptance does not imply a commit or physical-device
 validation.
 
 The older dated figures in this camera checkpoint precede sonar removal and menu baking.
-The current fixed-build checkpoint measures **29,604 / 1,660 B** with the
-ATMlib2FX synth and an **11.864 ms** maximum complete-flight frame with the same
+The current fixed-build checkpoint measures **27,230 / 1,646 B** with the
+ATMlib2FX synth and an **11.600 ms** maximum complete-flight frame with the same
 camera behavior.
 
 ## Verified implementation
 
-The shipping FX and Mini images measure **29,604 B flash / 1,660 B static
-SRAM**, 92 B under the hardware flash limit and 40 B under the static planning
-ceiling. The combined music stack probe measures **652 B** reserve; the
-production save-chain probe measures **690 B**, against the 600 B floor.
+The shipping FX and Mini images measure **27,230 B flash / 1,646 B static
+SRAM**, 2,466 B under the hardware flash limit and 54 B under the static planning
+ceiling. The combined music stack probe measures **660 B** reserve; the
+production save-chain probe measures **702 B**, against the 600 B floor.
 
 `make fxtest-flight` measures **842 complete flight frames** with active synth
 music: all eight Y remainders, all six cues, 30 cold and 812 warm frames,
-sustained motion/stop/reversal, camera boundaries, survey notices and credit
-amounts. Maximum work is **11.864 ms** with **zero frames
+sustained motion/stop/reversal, camera boundaries, survey notices and discovery
+messages. Maximum work is **11.600 ms** with **zero frames
 at or above 16 ms**. The 13 ms target passes; the maximum synth service gap is
 **1 tick**, with zero underruns and errors. Diagnostic counters and the probe's
 stack guard pass. These are build-only production-flight measurements
