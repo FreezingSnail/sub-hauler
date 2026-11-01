@@ -82,9 +82,10 @@ def export(input_path: Path, output: Path) -> None:
     export_settlements(native, output)
     source = json.loads((ROOT / "levels/exploration.json").read_text())
     objects = (ROOT / "fxdata/tables/exploration-objects.bin").read_bytes()
-    if objects[:4] != b"SHL2" or objects[6:8] != bytes((7, 6)):
+    if objects[:4] != b"SHL2" or objects[6:8] != bytes((7, 5)):
         raise ValueError("unsupported exploration object records")
     gate_count, pickup_count = objects[4:6]
+    gate_stride, pickup_stride = objects[6:8]
     header, footer = 120, 130
     canvas = Image.new("RGB", (native.width, native.height + header + footer), "#102532")
     canvas.paste(native.convert("RGB"), (0, header))
@@ -137,7 +138,7 @@ def export(input_path: Path, output: Path) -> None:
     subtitle = {1: "opens grates", 2: "opens deep water", 3: "opens opposing jets",
                 6: "larger sonar reveal"}
     for i in range(pickup_count):
-        offset = 8 + gate_count * 7 + i * 5
+        offset = 8 + gate_count * gate_stride + i * pickup_stride
         x, y, kind = struct.unpack_from("<HHB", objects, offset)
         title = names[kind]
         side = "right" if x < 350 else "left"

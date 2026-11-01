@@ -382,9 +382,9 @@
 <text x="110" y="575" text-anchor="middle" font-size="15" font-weight="750" fill="#83d9bd">SALVAGE CUTTER</text>
 <text x="110" y="595" text-anchor="middle" font-size="11" fill="#b5c9ce">Abandoned tender</text>
 </g>
-<g id="room-TC" data-kind="cove"><title>Hidden mooring cove: 40 CREDITS</title><rect x="752.5" y="207" width="195" height="76" rx="24" fill="#143340" stroke="#f4bb67" stroke-width="1.8" stroke-dasharray="5 5"/>
+<g id="room-TC" data-kind="cove"><title>Hidden mooring cove: removed cache</title><rect x="752.5" y="207" width="195" height="76" rx="24" fill="#143340" stroke="#f4bb67" stroke-width="1.8" stroke-dasharray="5 5"/>
 <text x="850" y="228" text-anchor="middle" font-size="10" font-weight="750" letter-spacing="2" fill="#9bb5bd">HIDDEN COVE</text>
-<text x="850" y="250" text-anchor="middle" font-size="15" font-weight="750" fill="#f4bb67">40 CREDITS</text>
+<text x="850" y="250" text-anchor="middle" font-size="15" font-weight="750" fill="#f4bb67">REMOVED COVE</text>
 <text x="850" y="270" text-anchor="middle" font-size="11" fill="#b5c9ce">Hidden mooring cove</text>
 </g>
 <g id="room-BR" data-kind="cove"><title>Old relay compartment: CURRENT THRUSTER</title><rect x="1173.0" y="847" width="214" height="76" rx="24" fill="#143340" stroke="#b1d49b" stroke-width="1.8" stroke-dasharray="5 5"/>
@@ -392,9 +392,9 @@
 <text x="1280" y="890" text-anchor="middle" font-size="15" font-weight="750" fill="#b1d49b">CURRENT THRUSTER</text>
 <text x="1280" y="910" text-anchor="middle" font-size="11" fill="#b5c9ce">Old relay compartment</text>
 </g>
-<g id="room-BC" data-kind="cove"><title>Hidden silt pocket: 90 CREDITS</title><rect x="1792.5" y="532" width="195" height="76" rx="24" fill="#143340" stroke="#f4bb67" stroke-width="1.8" stroke-dasharray="5 5"/>
+<g id="room-BC" data-kind="cove"><title>Hidden silt pocket: removed cache</title><rect x="1792.5" y="532" width="195" height="76" rx="24" fill="#143340" stroke="#f4bb67" stroke-width="1.8" stroke-dasharray="5 5"/>
 <text x="1890" y="553" text-anchor="middle" font-size="10" font-weight="750" letter-spacing="2" fill="#9bb5bd">HIDDEN COVE</text>
-<text x="1890" y="575" text-anchor="middle" font-size="15" font-weight="750" fill="#f4bb67">90 CREDITS</text>
+<text x="1890" y="575" text-anchor="middle" font-size="15" font-weight="750" fill="#f4bb67">REMOVED COVE</text>
 <text x="1890" y="595" text-anchor="middle" font-size="11" fill="#b5c9ce">Hidden silt pocket</text>
 </g>
 <g id="room-CW" data-kind="cove"><title>Sealed workshop: PRESSURE SEAL</title><rect x="1013.0" y="1462" width="214" height="76" rx="24" fill="#143340" stroke="#dfb28b" stroke-width="1.8" stroke-dasharray="5 5"/>
@@ -402,9 +402,9 @@
 <text x="1120" y="1505" text-anchor="middle" font-size="15" font-weight="750" fill="#dfb28b">PRESSURE SEAL</text>
 <text x="1120" y="1525" text-anchor="middle" font-size="11" fill="#b5c9ce">Sealed workshop</text>
 </g>
-<g id="room-CC" data-kind="cove"><title>Hidden wreck compartment: HULL CAPACITY +</title><rect x="1792.5" y="1162" width="195" height="76" rx="24" fill="#143340" stroke="#dfb28b" stroke-width="1.8" stroke-dasharray="5 5"/>
+<g id="room-CC" data-kind="cove"><title>Hidden wreck compartment: removed pod</title><rect x="1792.5" y="1162" width="195" height="76" rx="24" fill="#143340" stroke="#dfb28b" stroke-width="1.8" stroke-dasharray="5 5"/>
 <text x="1890" y="1183" text-anchor="middle" font-size="10" font-weight="750" letter-spacing="2" fill="#9bb5bd">HIDDEN COVE</text>
-<text x="1890" y="1205" text-anchor="middle" font-size="15" font-weight="750" fill="#dfb28b">HULL CAPACITY +</text>
+<text x="1890" y="1205" text-anchor="middle" font-size="15" font-weight="750" fill="#dfb28b">REMOVED POD</text>
 <text x="1890" y="1225" text-anchor="middle" font-size="11" fill="#b5c9ce">Hidden wreck compartment</text>
 </g>
 <g id="room-DL" data-kind="cove"><title>Hidden trench cove: SURVEY LENS</title><rect x="12.5" y="1862" width="195" height="76" rx="24" fill="#143340" stroke="#b5a7e5" stroke-width="1.8" stroke-dasharray="5 5"/>
@@ -412,15 +412,15 @@
 <text x="110" y="1905" text-anchor="middle" font-size="15" font-weight="750" fill="#b5a7e5">SURVEY LENS</text>
 <text x="110" y="1925" text-anchor="middle" font-size="11" fill="#b5c9ce">Hidden trench cove</text>
 </g>
-<g id="room-DC" data-kind="cove"><title>Hidden jet cove: 150 CREDITS</title><rect x="1552.5" y="2162" width="195" height="76" rx="24" fill="#143340" stroke="#f4bb67" stroke-width="1.8" stroke-dasharray="5 5"/>
+<g id="room-DC" data-kind="cove"><title>Hidden jet cove: removed cache</title><rect x="1552.5" y="2162" width="195" height="76" rx="24" fill="#143340" stroke="#f4bb67" stroke-width="1.8" stroke-dasharray="5 5"/>
 <text x="1650" y="2183" text-anchor="middle" font-size="10" font-weight="750" letter-spacing="2" fill="#9bb5bd">HIDDEN COVE</text>
-<text x="1650" y="2205" text-anchor="middle" font-size="15" font-weight="750" fill="#f4bb67">150 CREDITS</text>
+<text x="1650" y="2205" text-anchor="middle" font-size="15" font-weight="750" fill="#f4bb67">REMOVED COVE</text>
 <text x="1650" y="2225" text-anchor="middle" font-size="11" fill="#b5c9ce">Hidden jet cove</text>
 </g>
 <rect x="60" y="2405" width="1880" height="195" rx="20" fill="#112b38" stroke="#35505e"/>
 <text x="90" y="2444" font-size="14" font-weight="750" letter-spacing="2" fill="#dcebe8">EXPLORATION ORDER</text>
 <text x="90" y="2482" font-size="21" font-weight="700" fill="#dfebe6">Find CUTTER → discover SEAL or THRUSTER in either order.</text>
-<text x="90" y="2517" font-size="18" fill="#9bb5bd">Seal opens deep water. Thruster opens jets, treasure and the return shortcut.</text>
+<text x="90" y="2517" font-size="18" fill="#9bb5bd">Seal opens deep water. Thruster opens jets and the return shortcut.</text>
 <text x="90" y="2561" font-size="18" fill="#a3d9c4">Repair the network → deliver the core to Deep Anchor → bring the dispatch home.</text>
 <path d="M1160 2430v140" stroke="#35505e" stroke-width="2"/>
 <path d="M1190 2441h50" stroke="#87b9c5" stroke-width="5" stroke-linecap="round"/>
@@ -431,5 +431,5 @@
 <text x="1260" y="2526" font-size="16" fill="#c5d9dc">Pressure gate · reinforced approach</text>
 <path d="M1190 2561h50" stroke="#6dd8e2" stroke-width="5" stroke-linecap="round"/>
 <text x="1260" y="2566" font-size="16" fill="#c5d9dc">Thruster gate · opposing current</text>
-<text x="60" y="2635" font-size="14" fill="#839faa">DESIGN MAP · All 42 passages are drawn continuously. Hidden rewards shown for review; spatial distances await playtesting.</text>
+<text x="60" y="2635" font-size="14" fill="#839faa">DESIGN MAP · All 42 passages are drawn continuously. Historical cove mix: the three credit coves and capacity pod were removed on 2026-11-01; the four equipment coves remain. Spatial distances await playtesting.</text>
 </svg>

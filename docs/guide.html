@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Sub-hauler FAQ and walkthrough: controls, equipment, campaign objectives, upgrades, and saves.">
+  <meta name="description" content="Sub-hauler FAQ and walkthrough: controls, equipment, campaign objectives, and saves.">
   <meta name="color-scheme" content="light">
   <title>Sub-hauler — FAQ / Walkthrough</title>
   <style>
@@ -65,12 +65,12 @@
   <header>
     <h1>SUB-HAULER</h1>
     <p>FAQ / Walkthrough</p>
-    <p class="meta">Arduboy FX · Fixed build · Updated 2026-10-30</p>
+    <p class="meta">Arduboy FX · Fixed build · Updated 2026-11-01</p>
   </header>
   <nav aria-label="Contents">
     <a href="#start">[01] Quick start</a>
     <a href="#controls">[02] Controls / handling</a>
-    <a href="#berths">[03] Jobs / docking / shop</a>
+    <a href="#berths">[03] Jobs / docking</a>
     <a href="#exploration">[04] Equipment / map</a>
     <a href="#campaign">[05] Walkthrough (spoilers)</a>
     <a href="#route-maps">[05a] Route maps (spoilers)</a>
@@ -102,8 +102,8 @@
             <tr><td>Flight</td><td><kbd>B</kbd></td><td>Open chart. B closes. Travel and air use pause.</td></tr>
             <tr><td>Flight</td><td><kbd>A+B</kbd></td><td>Press together to pause.</td></tr>
             <tr><td>Menus</td><td><kbd>Up / Down</kbd></td><td>Select row.</td></tr>
-            <tr><td>Menus</td><td><kbd>A</kbd></td><td>Confirm / accept / buy.</td></tr>
-            <tr><td>WORK / SHOP</td><td><kbd>B</kbd></td><td>Back to station.</td></tr>
+            <tr><td>Menus</td><td><kbd>A</kbd></td><td>Confirm / accept.</td></tr>
+            <tr><td>WORK</td><td><kbd>B</kbd></td><td>Back to station.</td></tr>
             <tr><td>Station</td><td><kbd>B</kbd></td><td>Undock.</td></tr>
             <tr><td>Pause / prompt</td><td><kbd>B</kbd></td><td>Resume / cancel.</td></tr>
           </tbody>
@@ -118,25 +118,16 @@
     </section>
 
     <section id="berths">
-      <h2>[03] JOBS / DOCKING / SHOP</h2>
+      <h2>[03] JOBS / DOCKING</h2>
       <ul>
         <li>Freight settlements: Tidewall, Benthos, Cormorant, Deep Anchor.</li>
-        <li>Dock automatically by entering the pier’s ring slowly. Air refills free.</li>
-        <li>WORK lists story deliveries, then one repeatable freight job.</li>
+        <li>Dock automatically by entering the pier’s ring slowly. Air refills free from the fixed 300-unit tank.</li>
+        <li>WORK lists only story deliveries and survey leads. There is no shop and no currency.</li>
         <li>One job at a time. A accepts and loads four units; you remain docked.</li>
-        <li>Dock at the destination to deliver. Other berths preserve cargo.</li>
+        <li>Dock at the destination to deliver. Other berths preserve cargo. Deliveries are unpaid restoration work.</li>
         <li>ABANDON needs confirmation. Unfinished story jobs can be accepted again at their source.</li>
-        <li>Pump Refuge and Lower Gantry become service berths after repairs: refill, save. No jobs or shop.</li>
+        <li>Pump Refuge and Lower Gantry become service berths after repairs: refill, save. No jobs.</li>
       </ul>
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th scope="col">Upgrade</th><th scope="col">Price / level</th><th scope="col">Effect / level</th></tr></thead>
-          <tbody>
-            <tr><td>Air tank</td><td>60 credits</td><td>+30 air; refills tank.</td></tr>
-          </tbody>
-        </table>
-      </div>
-      <p>Three levels. 180 credits total.</p>
     </section>
 
     <section id="exploration">
@@ -149,7 +140,6 @@
             <tr><td>Cutter *</td><td>Opens grates. Western cove near Tidewall; old tender clue. <a href="#map-cutter">Map</a></td></tr>
             <tr><td>Pressure seal *</td><td>Opens deep routes. Workshop beyond a cutter grate. <a href="#map-seal">Map</a></td></tr>
             <tr><td>Thruster</td><td>Opens current shortcuts. Optional. <a href="#map-thruster">Map</a></td></tr>
-            <tr><td>Credit caches</td><td>One-time rewards: 40 / 90 / 150 credits.</td></tr>
             <tr><td>Survey lens</td><td>Collectible; currently no gameplay benefit.</td></tr>
           </tbody>
         </table>
@@ -158,7 +148,7 @@
       <details>
         <summary>Full map (spoilers)</summary>
         <a href="assets/exploration-terrain.svg">Open map to zoom</a>
-        <img src="assets/exploration-terrain.svg" width="1280" height="680" alt="Full terrain overview with settlement labels, gates and cove rewards">
+        <img src="assets/exploration-terrain.svg" width="1280" height="680" alt="Full terrain overview with settlement labels, gates and equipment coves">
       </details>
     </section>
 
@@ -176,7 +166,7 @@
           <li><strong>HOME:</strong> accept dispatch at Deep Anchor; deliver to Tidewall for ending. <a href="#map-home">Map</a> / <a href="#map-shortcut">Thruster shortcut</a></li>
         </ol>
         <p>Pump/lift branches work in either order after FIRST. Surveys can be recorded early. Tools, surveys and repairs remain subject to berth saves.</p>
-        <p>After ending: continue exploration/freight; Tidewall WORK → VIEW ENDING replays cards.</p>
+        <p>After ending: continue exploration; Tidewall WORK → VIEW ENDING replays cards.</p>
       </details>
       <div id="route-maps">
         <h3>[05a] ROUTE MAPS</h3>
@@ -404,8 +394,8 @@
     <section id="saves">
       <h2>[06] SAVING / RECOVERY</h2>
       <ul>
-        <li><strong>One slot.</strong> Saves on new voyage, docking, job acceptance/abandonment and successful purchases.</li>
-        <li><strong>CONTINUE:</strong> restores last saved berth, inventory, money, cargo and chart; full air. No midwater saves.</li>
+        <li><strong>One slot.</strong> Saves on new voyage, docking, and job acceptance/abandonment.</li>
+        <li><strong>CONTINUE:</strong> restores last saved berth, equipment, cargo and chart; full air. No midwater saves.</li>
         <li><strong>RESCUE:</strong> A+B → RESCUE → A. Free return to checkpoint; unsaved finds/progress lost.</li>
         <li><strong>SAVE FAILED:</strong> RETRY, or CONTINUE UNSAVED. Unsaved progress is not persistent.</li>
         <li><strong>Power:</strong> let saving finish. Interrupted writes can lose the slot.</li>
@@ -422,7 +412,7 @@
         <dd>Leave the ring fully after undocking, then re-enter slowly.</dd>
         <dt>Story job missing?</dt>
         <dd>Check source station, prerequisites and WORK clue. Deliver or abandon existing cargo first.</dd>
-        <dt>Can I finish without upgrades?</dt>
+        <dt>Can I finish without optional equipment?</dt>
         <dd>Yes. Only cutter and pressure seal are required.</dd>
         <dt>Mute music?</dt>
         <dd>A+B → MUSIC ON/OFF → A. All clues work without sound.</dd>

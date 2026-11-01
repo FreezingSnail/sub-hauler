@@ -14,10 +14,10 @@ Hardware, resource, and toolchain facts are canonical in
 model live in [`docs/design.md`](docs/design.md). The retired device-port sequence and profile history are retained in
 [`docs/archive/roadmap.md`](docs/archive/roadmap.md).
 
-## Status — 2026-10-30 (fixed build)
+## Status — 2026-11-01 (fixed build)
 
 The device loads the authored map from [`levels/exploration.json`](levels/exploration.json):
-32 rooms, 42 passages, nine equipment gates and seven hidden cove rewards.
+32 rooms, 42 passages, nine equipment gates and four equipment coves.
 The high-pressure region is lowest. Recover the cutter near Tidewall, then
 find the pressure seal and optional current thruster to open more routes.
 Hold still near finds or cutter grates for half a second; station rumors and
@@ -30,23 +30,25 @@ native scene pixels. Baked regional scenery, wall-ledge berths and the
 inhabited settlement cutaways are all streamed from the same generated native
 terrain image.
 
-The fixed build enables stations, freight, campaign, exploration, fog chart,
-currents, wall-impact particles, the air-tank shop, hull selection, schema 6 FX
-saves, startup splashes and ATMlib2FX synth music unconditionally. There are no
-feature, development, backend or USB build variants. The shipped matrix is:
+The fixed build enables stations, campaign, exploration, fog chart,
+currents, wall-impact particles, hull selection, schema 7 FX saves, startup
+splashes and ATMlib2FX synth music unconditionally. There is no shop, currency,
+job payout, repeatable freight offer or credit cache: campaign story deliveries
+are intrinsic restoration work. There are no feature, development, backend or
+USB build variants. The shipped matrix is:
 
 | Image | Flash | Static RAM |
 | --- | ---: | ---: |
-| FX fixed build | 28,848 B | 1,660 B |
-| Mini fixed build | 28,848 B | 1,660 B |
+| FX fixed build | 27,230 B | 1,646 B |
+| Mini fixed build | 27,230 B | 1,646 B |
 
-The image leaves 848 B under the 29,696 B hardware flash limit and 40 B of
+The image leaves 2,466 B under the 29,696 B hardware flash limit and 54 B of
 static headroom under the 1,700 B ceiling. AVR `game::State` is 90 B. Measured
-stack reserves are **696 B** for the exact production save chain and **626 B**
+stack reserves are **702 B** for the exact production save chain and **660 B**
 for the combined music probe, both above the 600 B target. The fixed native
-suite passes **234** host tests and **122** tooling tests; all **14** default
+suite passes **215** host tests and **128** tooling tests; all **14** default
 device suites print `P`, and the flight probe covers **842** complete frames at
-**11.768 ms maximum**, zero 16 ms misses, **gap=1 tick**, and zero audio
+**11.600 ms maximum**, zero 16 ms misses, **gap=1 tick**, and zero audio
 underruns/errors. `make gen-check` is deterministic.
 
 All seven campaign beats now show finalized animated decks: fifteen 128×64
@@ -61,22 +63,22 @@ flash ABI but are no longer drawn.
 [Level encoding and behavior](levels/README.md) documents the packed 1-bit
 collision/chart planes and little-endian object records.
 [Actual encoded terrain](docs/assets/exploration-terrain.svg) shows the native
-map geometry. The pre-terrain 41,572-byte payload remains an identical prefix
-and the native terrain section remains 409,600 B; later music, menu, splash,
-story and save sections make the current payload/image
-**2,082,151 / 2,086,400 B**.
+map geometry. A 41,544-byte payload prefix precedes the unchanged 409,600 B
+native terrain section; later music, menu, splash, story and save sections make
+the current payload/image **2,082,129 / 2,086,400 B**.
 
 Normal startup shows Snailware followed by the Sub-hauler splash, then the
 title menu. The logo holds for about 1 s and the title splash for about 2.4 s.
 Press any button to skip; its release is consumed before menu input. See the
 [splash preview and measurements](docs/startup-splashes.md).
 
-Gameplay sonar and its upgrade are removed. Station/shop menus use generated
-FX images with live numeric overlays; the shop has widely spaced rows. The
-single WORK board lists story restoration first and the one repeatable freight
-row beneath. Campaign and freight work are untimed; route rewards follow the
-winding route lengths, and intermediate berth stops resupply without dropping
-the job. See the [menu measurements](docs/menu-flash-design.md) and
+Gameplay sonar and its upgrade are removed, and so are the shop, currency and
+repeatable freight. The station board is drawn natively: `WORK / UNDOCK`
+without a job, `summary / ABANDON / WORK / UNDOCK` while carrying one, and
+`UNDOCK` alone at a service berth. WORK lists only story and survey rows.
+Campaign work is untimed with no payment. The shipped shop/menu frames and text
+remain archival cart ABI and are never drawn. See the
+[menu measurements](docs/menu-flash-design.md) and
 [progression design](docs/progression.md).
 
 The drawing pass streams native terrain directly from FX into the existing
@@ -112,9 +114,10 @@ holding **DOWN**), then start the upload. The bootloader and program-size limit
 are unchanged. Device suites keep USB because their own fixed sketches are
 compiled separately; only the release sketch uses the no-USB entry point.
 
-Schema 6 uses one 4 KiB cart save block. Schema 1/2/3/4/5 records and old EEPROM
-chart bytes are not migrated, and there is no keep-chart prompt. No physical
-loader, uploader, save-write, playthrough or speaker check is claimed.
+Schema 7 uses one 4 KiB cart save block: a 16 B header plus a 24 B scalar
+payload (280 B with the 256 B chart). Schema 6 and earlier records are
+incompatible and are not migrated, and there is no keep-chart prompt. No
+physical loader, uploader, save-write, playthrough or speaker check is claimed.
 
 Historical 2026-10-24 profile measurements are retained in
 [`docs/archive/checkpoint-2026-10-24.md`](docs/archive/checkpoint-2026-10-24.md).
@@ -126,8 +129,8 @@ make gen          # images/fonts -> Sprites/PilotSprites/fxdata.bin + headers
 make gen-check    # regeneration must be byte-identical
 make gen-audio    # archival reference PCM/ADPCM evidence only
 make build        # dist/fx/sub-hauler.ino.hex + .elf
-make test         # host rules tests (230)
-make test-tools   # Python tooling tests (116)
+make test         # host rules tests (215)
+make test-tools   # Python tooling tests (128)
 make fxtest       # 14 device suites through Ardens
 make fxtest-flight # 842-frame complete-flight timing with active music
 make size         # flash/RAM headroom
@@ -218,15 +221,15 @@ SPI handoff after them.
 
 The fixed build calls `FX::begin(FX_DATA_PAGE, FX_SAVE_PAGE)`: `fxdata/fxdata.txt`
 ends with `savesection 4096`, so the generated image carries one 4 KiB cart
-erase block after the unchanged data prefix. A schema 6 voyage checkpoint erases
+erase block after the unchanged data prefix. A schema 7 voyage checkpoint erases
 the block, programs two 256 B pages and sets the commit byte last. A power
 interruption during that erase/write may lose the checkpoint; a torn record is
 rejected and the title offers a clean New Voyage.
 
 Saves happen on berth/delivery transitions with music paused; no voyage byte is
-stored in internal EEPROM. Schema 1/2/3/4 records and old EEPROM chart bytes are
-not migrated, and the standalone chart writer is retired. Keep all save writes
-out of the per-frame path and run `make gen-check` after changing
+stored in internal EEPROM. Schema 6 and earlier records and old EEPROM chart
+bytes are not migrated, and the standalone chart writer is retired. Keep all
+save writes out of the per-frame path and run `make gen-check` after changing
 `savesection`.
 
 ## Layout

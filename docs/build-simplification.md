@@ -7,11 +7,21 @@ separation and switch removal preserved the release size at **29,490 B flash /
 **29,436 B flash / 1,659 B static** with the same generated cart hashes. This document retains the
 design contract and adds measured evidence where the implementation differs.
 
+**Current status, 2026-11-01:** the shop, currency, job payouts, repeatable
+freight offers and credit caches were removed after this design was executed.
+Later sections that discuss a freight offer, shop row or schema-6 save record
+are the 2026-10-29 implementation record, not current configuration; current
+behavior and the schema-7 save contract are in
+[platform.md](platform.md), [progression.md](progression.md) and
+[progression-implementation.md](progression-implementation.md).
+
 ## Intended result
 
-Sub-hauler has one complete game configuration. Stations, freight, campaign,
-exploration, fog chart, hazards, damage, particles, shop, hull selection,
-schema-6 FX saves, startup splashes and ATMlib2FX synth music are unconditional.
+Sub-hauler has one complete game configuration. Stations, campaign,
+exploration, fog chart, hazards, damage, particles, hull selection,
+schema-7 FX saves, startup splashes and ATMlib2FX synth music are unconditional.
+The shop, currency, job payouts, repeatable freight offers and credit caches
+were removed on 2026-11-01.
 The release entry always uses `ARDUBOY_NO_USB`. FX and Mini remain board
 targets for the same game. The player's existing MUSIC setting remains a
 runtime setting.
@@ -46,8 +56,9 @@ not summed symbol sizes. Keep the pure rules/device boundary and the existing
 SPI transaction ownership. Do not combine the framebuffer, chart or live
 simulation storage with UI transients.
 
-Keep schema 6, feature-signature value, scalar/payload layout, CRC and commit
-semantics, validation of untrusted save bytes, deterministic freight boards,
+At that 2026-10-29 baseline the task was to keep schema 6, its
+feature-signature value, scalar/payload layout, CRC and commit
+semantics, validation of untrusted save bytes, the then-current freight boards,
 and all shipped FX declarations and bytes. Internal structs can change while
 explicit serialization preserves the on-cart format. Do not remove generated
 ADPCM assets or their declarations just because the comparison player retires;
@@ -170,7 +181,8 @@ run `make gen-check`, `make test`, `make test-tools`, `make fxtest`,
 Aim for identical release HEX after entry separation and pure guard pruning.
 Any difference needs a concrete explanation and behavior evidence. The
 removal stage must not increase flash/static usage relative to its fresh
-baseline. The generated cart image and schema-6 records stay identical.
+baseline. At that checkpoint the generated cart image and schema-6 records
+stayed identical; the 2026-11-01 economy removal later introduced schema 7.
 
 For each consolidation, run focused permanent native tests and whole-image
 size first. State/save changes also run save/stack probes; renderer or cart

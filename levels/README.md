@@ -1,8 +1,9 @@
 # Authored exploration level
 
 `exploration.json` is the editable source for the active game map. It contains
-32 named rooms, 42 passages, four station IDs, nine equipment gates and seven
-cove rewards. Coordinates/radii are in 8-pixel tiles. `terrain` selects the
+32 named rooms, 42 passages, four station IDs, nine equipment gates and four
+equipment coves (cutter, seal, thruster, survey lens). Coordinates/radii are in
+8-pixel tiles. `terrain` selects the
 deterministic organic carve; room `size`/`lobes` shape asymmetric chambers and
 route `via` points describe winding, variable-width passages. Room `obstacles`
 and route `obstacles` add solid shelves, teeth, ribs and rock islands; route
@@ -17,9 +18,9 @@ requires a clear 26x8 hull and a 48-pixel upward escape column, a nearby rock
 foundation, no obstacles in the approach, and reachability under every applicable
 equipment combination. `DOCK_*` symbols and station metadata drive auto-docking,
 chart markers, hints and spawn; `ROOM_*` still describes the route graph.
-The home boat starts centred at the Tidewall berth. The generated route-timing
-metadata (retained for reference but not read by the untimed job rules) includes
-both trips between room centres and berth approaches.
+The home boat starts centred at the Tidewall berth. The generator emits no route
+reward, deadline or freight-allowance table: delivery work is untimed and
+unpaid.
 
 Run `make gen` after editing. It retains the old seed-4242 sections and appends
 the new level to `fxdata/fxdata.txt`, preserving every earlier FX address.
@@ -29,7 +30,7 @@ the new level to `fxdata/fxdata.txt`, preserving every earlier FX address.
 | --- | --- | ---: |
 | `explorationTiles` | 320x160 collision tiles, one bit per tile, 1 = solid | 6,400 B |
 | `explorationChart` | 64x32 chart cells, one bit per cell, 1 = water | 256 B |
-| `explorationObjects` | `SHL2` header + fixed gate/pickup records | 113 B |
+| `explorationObjects` | `SHL2` header + fixed gate/pickup records | 91 B |
 | `explorationTerrain` | native 2560x1280 terrain image, page-major, 1 = lit | 409,600 B |
 
 Both planes are row-major, with the leftmost tile/cell in the least significant
@@ -60,7 +61,7 @@ seed and named landmark preferences (`room`, `kind`, pixel `offset`).
 `tools/gen_scenery.py` adds region-specific rock markings and hollow background
 motifs during `make gen`: strata/coral/moorings, kelp/pumps, weathered plating and
 wreck machinery, and fractured basalt/crystals/vents. Scenery does not alter
-collision tiles, chart cells, gates or rewards. Artwork stays outside a
+collision tiles, chart cells, gates or pickups. Artwork stays outside a
 30-pixel route-centre corridor, station/spawn footprints and gate/pickup markers;
 dark wall markings stay three pixels inside solid rock. Larger motifs search
 near their authored room for a safe floor location, failing generation if no
@@ -80,25 +81,26 @@ corrosion chips and sparse rivet groups. Seam direction follows the local
 wall-distance gradient; it does not repeat closed panels or central handles.
 
 The object stream begins with eight bytes: ASCII `SHL2`, gate count, pickup
-count, gate stride (7), pickup stride (6). Nine gate records follow, then seven
-pickup records. Multibyte values are **little-endian**:
+count, gate stride (7) and pickup stride (5). Nine gate records follow, then
+four pickup records. Multibyte values are **little-endian**:
 
 - Gate: `u16 x, u16 y, u8 width, u8 height, u8 required_tools`.
-- Pickup: `u16 x, u16 y, u8 kind, u8 amount`.
+- Pickup: `u16 x, u16 y, u8 kind`.
 
 Object coordinates are world pixels. Gates use the rectangle's top-left;
 pickups use their center. Required tool bits are cutter=1, pressure seal=2,
 thruster=4. Combined requirements need every bit. Pickup kinds are cutter=1,
-seal=2, thruster=3, credits=4 and survey lens=6; the lens equips bit8.
-Room, gate and pickup IDs in `src/generated/exploration.hpp` are symbolic
-constants; keep source ordering stable when saved voyages are introduced.
+seal=2, thruster=3 and survey lens=6; the lens equips bit8. There is no credit
+kind and no amount: a pickup is one piece of equipment. Room, gate and pickup
+IDs in `src/generated/exploration.hpp` are symbolic constants; keep source
+ordering stable because saved voyages index them.
 
 `src/generated/level.hpp` provides the active station/current/route metadata.
 The older `src/generated/world.hpp` is retained with the legacy sections; do
 not include both world headers in one translation unit. `world.hpp` selects
 the active header and `world::FxTables` reads the new FX symbols.
 
-The object stream has a byte-identical, 113-byte PROGMEM mirror for collision
+The object stream has a byte-identical, 91-byte PROGMEM mirror for collision
 and rendering. It occupies program flash, not SRAM, and avoids cart reads in
 the inner gate-collision loop. The tile cache stays 23 bytes; no complete map
 or object array is copied into SRAM. Device code uses integer math only.
@@ -107,27 +109,25 @@ or object array is copied into SRAM. Device code uses integer math only.
 
 - The cutter is recoverable from the western cove near Tidewall. Hold the boat
   slow and close to a find for half a second to recover it. Bottom-line hints
-  identify tools and rewards; station rumors guide required discoveries.
+  identify equipment; station rumors guide required discoveries.
 - Cutter grates need a half-second slow operation nearby after finding the
   cutter. Open grates remain open for the run. Pressure/current passages pass
   only with their required equipment; contact blocks movement without damage. Flow marks distinguish current boundaries from grates and bulkheads.
 - The pressure seal and current thruster can be found in either order after
   the cutter. Every entry into the lowest region needs the seal; the return
   shaft additionally needs the thruster. Deep Anchor is the lowest settlement.
-- Three purses pay 40/90/150 credits once each, with saturation protection.
-  The survey lens is still collectible, but gameplay sonar was retired
-  on 2026-10-28, so the lens currently sets its tool bit without changing any
-  reveal radius.
+- Four equipment coves hold the cutter, pressure seal, current thruster and
+  survey lens. The survey lens is still collectible, but gameplay sonar was
+  retired on 2026-10-28, so the lens currently sets its tool bit without
+  changing any reveal radius. There are no credit caches or purses.
 - The chart remembers encountered gates and shows finds only in explored
   cells. Claimed finds and passable gates use smaller markers.
-- Contracts do not offer Deep Anchor before the pressure seal is owned. Freight
-  and campaign work are untimed; the generated deadline column is retained in
-  the legacy route table but is not read by the job rules. Rewards use the
-  authored route economy. Intermediate berth stops refill air while retaining
-  the active job and cargo.
+- Story work is untimed and unpaid. Contracts do not offer Deep Anchor before
+  the pressure seal is owned. Intermediate berth stops refill the fixed 300-unit
+  air tank while retaining the active job and cargo.
 
 The fixed build ships campaign restoration missions, homecoming and a
-persistent schema 6 voyage save. Continue and rescue restore
+persistent schema 7 voyage save. Continue and rescue restore
 the last committed berth, including saved tools, claims and opened grates;
 unsaved expedition gains roll back. A New Voyage resets exploration.
 See [progression.md](../docs/progression.md). `layout_version` is
@@ -146,16 +146,16 @@ own prerequisites. A few cove positions/entrance elbows differ from the design
 schematic to maintain collision clearance at native tile resolution.
 
 [Actual generated terrain](../docs/assets/exploration-terrain.svg) shows the
-encoded grid, gate rectangles and cove reward positions. The larger
-[design schematic](../docs/assets/proposed-exploration-map.svg) documents the
-intended route network and rewards. The generated terrain is authoritative
-for exact collision geometry.
+encoded grid, gate rectangles and equipment cove positions. The larger
+[design schematic](../docs/assets/proposed-exploration-map.svg) records the
+2026-10-25 route-network design; its three credit coves and capacity pod were
+removed on 2026-11-01 and the four equipment coves remain. The generated
+terrain is authoritative for exact collision geometry.
 
 Permanent tooling tests check the packed stream, legacy offsets, physical
-reachability, deterministic curved passages, rock footprints, route allowances
-and corrupt source rejection. Native C++ tests additionally check
-actual gate and rock-pillar collision with cached tiles, movement, dwell and
-one-time rewards. Device suites read the FX objects against their PROGMEM
+reachability, deterministic curved passages, rock footprints and corrupt source
+rejection. Native C++ tests additionally check actual gate and rock-pillar
+collision with cached tiles, movement, dwell and one-time equipment claims. Device suites read the FX objects against their PROGMEM
 mirror and exercise salvage, gate operation and rendering in Ardens.
 
 ## PNG world export

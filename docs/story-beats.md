@@ -67,7 +67,12 @@ and `FX_SAVE_PAGE = 0xFFF0` are unchanged. `make gen` emits both
 - No new save field, EEPROM byte, mission, tool or input chord was added. The
   existing ending-card ordering, clue text and music cues are unchanged.
 
-## Resource and verification record
+## Resource and verification record (2026-10-30 story-deck checkpoint)
+
+Dated numbers from the story-deck change. Current fixed-build totals after the
+2026-11-01 economy removal are **27,230 B flash / 1,646 B static**, 215 host
+tests, 128 tooling tests, save-chain **702 B** and combined music **660 B**; see
+[platform.md](platform.md).
 
 | Item | Value |
 | --- | ---: |

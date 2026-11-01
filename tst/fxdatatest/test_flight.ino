@@ -298,7 +298,7 @@ void noticeCase() {
         s_state.lastDiscovery = exploration::kNone;
         if (!survey) {
             for (uint8_t id = 0; id < exploration_data::PICKUP_COUNT; ++id)
-                if (exploration_data::pickup(id).kind == 4) {
+                if (exploration_data::pickup(id).kind == exploration_data::CUTTER) {
                     s_state.lastDiscovery = id;
                     break;
                 }

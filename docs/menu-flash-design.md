@@ -10,6 +10,14 @@ whole-image result in [platform.md](platform.md).
 The menu/backend measurements below are historical checkpoints. Current totals
 after adding the boot introduction are in [startup-splashes.md](startup-splashes.md).
 
+**Runtime status, 2026-11-01:** the station board is drawn natively from
+`src/station_view.hpp` (`WORK / UNDOCK`, `summary / ABANDON / WORK / UNDOCK`, or
+`UNDOCK` at a service berth). The generated station and shop frames and hint
+rows remain shipped cart ABI only: the shop has no runtime screen, WORK lists
+only story and survey rows, and no draw path selects the baked shop panels or
+credit captions. Generation still reproduces those pixels byte-for-byte so
+flash offsets stay stable.
+
 ## Verified result
 
 | Shipping configuration | Flash | Static RAM |
@@ -25,11 +33,13 @@ Sonar saves 508 B in the streaming image and 488 B music-off. Menu baking
 saves another 514 B streaming / 520 B music-off. Combined savings are
 **1,022 B streaming / 1,008 B music-off**, with 2 B less static RAM.
 
-The selected design uses **30 station frames, 32 complete shop frames and ten
-7-pixel hint rows**. Prices/MAX, levels, names and selection bars are baked;
-live balances, health/capacities and job summaries remain overlays. The shop
-uses 12-pixel row spacing. Existing station information and action order are
-preserved. Hint rendering reuses the existing clipped blitter; this saves
+The selected design used **30 station frames, 32 complete shop frames and ten
+7-pixel hint rows**. Prices/MAX, levels, names and selection bars were baked;
+live balances, health/capacities and job summaries remained overlays. The shop
+used 12-pixel row spacing. Existing station information and action order were
+preserved. Those frames are archival cart ABI today: the runtime board is
+native and selects none of them. Hint rendering reuses the existing clipped
+blitter; this saved
 98 B against the first custom hint-shifter candidate and removes its scratch
 buffer. The cart image is **2,079,744 B**, leaving 17,408 B under 2 MiB; its
 payload is 2,075,502 B. Earlier data offsets remain unchanged.
@@ -69,34 +79,35 @@ Sonar Lullaby is independent of the retired mechanic.
 
 Title selection, pause, save/recovery prompts and ending chrome are already
 baked. At that baseline, station and shop drew individual strings, separators and row
-highlights. WORK also has dynamic composition, but remains a later candidate
-after the primary two menus are measured.
+highlights. WORK also had dynamic composition, but remained a later candidate
+after the primary two menus were measured.
 
-## Compact station backgrounds
+## Compact station backgrounds (historical baking plan)
+
+Planning notes from the 2026-10-28 pass, before the runtime board became native.
+They explain the shipped archival frames; the live station board composes its
+rows directly and never selects these panels.
 
 - Generate full 128x64 backgrounds containing berth names, fixed status/credit
   captions, divider, action labels and selected bars.
 - Four main berths each need three idle and four active selections: 28 frames.
   Two service-only berths need one UNDOCK frame each: 30 frames, about 30 KiB.
-- Active-job summary remains a live destination/reward overlay. Credits, air,
-  capacity and hull values remain live numeric overlays. No Cartesian product
-  of credit/health/job values is baked.
-- Keep current row/action identities and safe initial UNDOCK selection. Keep
+- Active-job summary was to remain a live destination/reward overlay. Credits,
+  air, capacity and hull values remained live numeric overlays. No Cartesian
+  product of credit/health/job values is baked.
+- Keep the row/action identities and safe initial UNDOCK selection. Keep
   hints and their service/short-load/rumor/normal priority. Hint stamps can be
   128x7 at y57, preserving the last action bar at y56.
 - Use a pure frame-index helper for exhaustive host selection/berth contracts.
-  Keep the smaller feature-profile layouts supported rather than displaying
-  disabled SHOP/WORK actions.
+  The smaller feature-profile layouts were retired with the fixed build.
 
-## One-row shop
+## One-row shop (archival cart ABI)
 
-- The shipped shop has AIR TANK only, with 4 air levels x 1 selection = 4
-  frames baking the label, level, price/MAX and selected bar. Hull plates were
-  removed with hull strength on 2026-10-29.
-- Credit and air numbers remain dynamic. Hint variants preserve normal buy,
-  insufficient funds and maximum-level feedback; purchase rules stay pure.
-- Read prices/level limits from the rules during generation to avoid a second
-  manually maintained economy table. Verify generated selector/frame order.
+- The shipped shop art has AIR TANK only, with 4 air levels x 1 selection = 4
+  frames baking the label, level, price/MAX and selected bar. The shop was
+  removed from the runtime on 2026-11-01; these frames and their text remain
+  cart ABI and are never drawn.
+- Hull plates were removed with hull strength on 2026-10-29.
 
 ## Resource and correctness checks
 
