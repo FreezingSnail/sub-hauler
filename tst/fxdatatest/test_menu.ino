@@ -1,11 +1,10 @@
-// Independent live-font reference for the baked station/shop screens. The
-// reference composes labels, prices, values and bars natively; the candidate
-// reads generated panels. Compare complete frames, including clipped hints.
+// Independent live-font reference for the native station board. The reference
+// composes labels, status and bars natively; the candidate is station_view::draw
+// with the same generated hint row. Compare complete frames.
 #include <Arduboy2.h>
 #include <ArduboyFX.h>
 #include "src/common.hpp"
 #include "src/station_view.hpp"
-#include "src/shop_view.hpp"
 
 Arduboy2Base arduboy;
 
@@ -42,9 +41,6 @@ void header(uint24_t title) {
     text::normal();
     text::at(station_view::kNameX, station_view::kHeaderY);
     text::print(title);
-    text::at(station_view::kCreditsX, station_view::kHeaderY);
-    text::print(txt_credits);
-    text::number(state.credits);
     arduboy.drawFastHLine(0, station_view::kDividerY, 128, WHITE);
     station_view::drawStatus(state);
 }
@@ -53,41 +49,22 @@ void stationReference(uint8_t selected) {
     header(station_view::nameFor(state.docked));
     for (uint8_t row = 0; row < station::rowCount(state); ++row) {
         const uint8_t y = station_view::rowY(row);
-        if (row == selected) {
+        const station::RowKind kind = station::rowKind(row, state);
+        if (row == selected && kind != station::kRowJob) {
             arduboy.fillRect(0, y, 128, station_view::kRowInvertH, WHITE);
             text::inverted();
-        } else text::normal();
+        } else {
+            text::normal();
+        }
         text::at(station_view::kRowX, y);
-        station_view::printRow(row, state);
+        if (kind == station::kRowJob)
+            text::print(station_view::nameFor(state.activeJob.to));
+        else
+            text::print(station_view::rowLabel(row, state));
     }
     text::normal();
     text::at(station_view::kHintX, station_view::kHintY);
     text::print(stationHint());
-}
-
-void shopReference(uint8_t selected) {
-    header(txt_shop);
-    for (uint8_t row = 0; row < shop::kItemCount; ++row) {
-        const shop::Item item = static_cast<shop::Item>(row);
-        const uint8_t y = shop_view::panelRowY(row);
-        if (row == selected) {
-            arduboy.fillRect(0, y - shop_view::kPanelInsetY, 128, shop_view::kPanelInvertH, WHITE);
-            text::inverted();
-        } else text::normal();
-        text::at(shop_view::kPanelRowX, y);
-        text::print(shop_view::itemLabel(item));
-        text::at(shop_view::kPanelLevelX, y);
-        text::character('L');
-        const uint8_t level = shop::levelFor(state, item);
-        text::number(level);
-        text::at(shop_view::kPanelPriceX, y);
-        if (level == shop::kMaxLevel) text::print(txt_max);
-        else text::number(shop::priceFor(item));
-    }
-    text::normal();
-    text::at(shop_view::kHintX, shop_view::kHintY);
-    const shop::Result status = shop::canBuy(state, static_cast<shop::Item>(selected));
-    text::print(status == shop::kSoldOut ? txt_max_level : status == shop::kNoCredits ? txt_low_credits : txt_buy_hint);
 }
 
 bool stationCheck(uint8_t row, uint8_t pattern) {
@@ -96,15 +73,6 @@ bool stationCheck(uint8_t row, uint8_t pattern) {
     const uint16_t expected = checksum();
     background(pattern);
     station_view::draw(state, row);
-    return checksum() == expected;
-}
-
-bool shopCheck(uint8_t row, uint8_t pattern) {
-    background(0);
-    shopReference(row);
-    const uint16_t expected = checksum();
-    background(pattern);
-    shop_view::draw(state, row);
     return checksum() == expected;
 }
 } // namespace
@@ -119,16 +87,16 @@ void setup() {
     bool ok = true;
     uint16_t checks = 0;
     game::resetWorld(state);
-    state.credits = 65535;
-    state.airLevel = shop::kMaxLevel;
     state.air = 7;
     state.tools = exploration_data::CUTTER | exploration_data::SEAL | exploration_data::THRUSTER;
     for (uint8_t berth = 0; berth < campaign::kBerthCount; ++berth) {
         state.docked = berth;
         for (uint8_t active = 0; active < 2; ++active) {
-            state.activeJob.kind = active ? game::kJobKindOrdinary : game::kJobKindNone;
-            state.activeJob.to = (berth + 1) % world::SETTLEMENT_COUNT;
-            state.activeJob.reward = 145;
+            state.activeJob.kind = active ? game::kJobKindCampaign : game::kJobKindNone;
+            state.activeJob.mission = active ? campaign::kPump : game::kMissionNone;
+            state.activeJob.from = active ? campaign::kCormorant : game::kJobNone;
+            state.activeJob.to = active ? campaign::kBenthos : game::kJobNone;
+            state.activeJob.crates = active ? game::kJobCrates : 0;
             for (uint8_t row = station::firstSelectable(state); row < station::rowCount(state); ++row) {
                 ok = stationCheck(row, checks & 1 ? 0xFF : 0x55) && ok;
                 ++checks;
@@ -136,6 +104,10 @@ void setup() {
         }
     }
     state.activeJob.kind = game::kJobKindNone;
+    state.activeJob.mission = game::kMissionNone;
+    state.activeJob.from = game::kJobNone;
+    state.activeJob.to = game::kJobNone;
+    state.activeJob.crates = 0;
     state.tools = 0;
     for (uint8_t berth = 0; berth < world::SETTLEMENT_COUNT; ++berth) {
         state.docked = berth;
@@ -148,16 +120,9 @@ void setup() {
     ok = stationCheck(0, 0xFF) && ok;
     ++checks;
     state.lastDelivery = jobs::kDeliveryNone;
-    for (uint8_t air = 0; air <= shop::kMaxLevel; ++air)
-        for (uint8_t row = 0; row < shop::kItemCount; ++row) {
-            state.airLevel = air;
-            state.credits = checks & 1 ? 0 : 65535;
-            ok = shopCheck(row, 0xAA) && ok;
-            ++checks;
-        }
     Serial.print(F("menu pixel cases="));
     Serial.println(checks);
-    ok = checks == 41 && ok;
+    ok = checks == 29 && ok;
     Serial.println(ok ? F("P") : F("F"));
 }
 

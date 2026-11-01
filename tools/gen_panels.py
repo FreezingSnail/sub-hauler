@@ -7,8 +7,8 @@ repeating cursor/string calls. Selection variants bake the inverted row bar too;
 the renderer only picks an image.
 
 Restoration sprites are plus-mask blobs (transparent background) for the survey
-ring, inactive mooring, pump flow and lift cable. Dynamic labels, rewards,
-status and clocks stay native text.
+ring, inactive mooring, pump flow and lift cable. Dynamic labels, status and
+clocks stay native text; campaign deliveries have no reward line.
 
 Panel text is resolved from ``fxdata/fxdata.txt`` so the declarations remain the
 single source of truth. The output is deterministic: fixed specs, fixed glyphs,
@@ -33,11 +33,10 @@ CLEAR = (0, 0, 0, 0)
 STRING_RE = re.compile(r"^string\s+(?P<name>[A-Za-z_][A-Za-z0-9_]*)\s*=\s*'(?P<text>[^']*)'", re.M)
 MISSION_BLOCK_RE = re.compile(r"kMissions\[kMissionCount\]\s*=\s*\{(?P<body>.*?)\};", re.M | re.S)
 MISSION_ENTRY_RE = re.compile(r"\{\s*(?P<from>\w+)\s*,\s*(?P<to>\w+)\s*,\s*true\s*,")
-ROUTE_BLOCK_RE = re.compile(r"constexpr uint8_t ROUTE_REWARD\[ROUTE_COUNT\]\s*=\s*\{(?P<body>.*?)\};", re.M | re.S)
+PICKUP_COUNT_RE = re.compile(r"constexpr\s+uint8_t\s+GATE_COUNT\s*=\s*\d+\s*,\s*PICKUP_COUNT\s*=\s*(\d+)\s*;")
 
-# Cargo missions in kMissions order. The route pair and reward are read from
-# campaign.hpp and generated level.hpp; only the label/purpose symbol names and
-# the generated panel stem stay here.
+# Cargo missions in kMissions order. The route pair is read from campaign.hpp;
+# only the label/purpose symbol names and the generated panel stem stay here.
 MISSIONS = (
     ("kFirst", "first", "txt_first", "txt_first_purpose"),
     ("kPump", "pump", "txt_pump", "txt_pump_purpose"),
@@ -51,7 +50,6 @@ BERTH_NAMES = {
     "kCormorant": "txt_cormorant",
     "kDeepAnchor": "txt_deep_anchor",
 }
-SETTLEMENT_COUNT = 4
 
 # The game font intentionally keeps only the glyphs its text used before the
 # story panels. The standard Arduboy 5x7 question mark is needed by the two
@@ -81,16 +79,13 @@ def load_routes(campaign_path):
     return entries
 
 
-def load_rewards(level_path):
-    """Read the generated host mirror of the route reward economy."""
-    text = Path(level_path).read_text(encoding="utf-8")
-    block = ROUTE_BLOCK_RE.search(text)
-    if not block:
-        raise ValueError("level.hpp: ROUTE_REWARD host mirror not found")
-    values = [int(value) for value in re.findall(r"\d+", block.group("body"))]
-    if len(values) != SETTLEMENT_COUNT * SETTLEMENT_COUNT:
-        raise ValueError("level.hpp: expected {} route rewards, found {}".format(SETTLEMENT_COUNT * SETTLEMENT_COUNT, len(values)))
-    return values
+def load_pickup_count(exploration_path):
+    """Read the generated equipment-cove count for the ending denominator."""
+    text = Path(exploration_path).read_text(encoding="utf-8")
+    match = PICKUP_COUNT_RE.search(text)
+    if not match:
+        raise ValueError("exploration.hpp: PICKUP_COUNT not found")
+    return int(match.group(1))
 
 
 def glyph_columns(char):
@@ -452,11 +447,11 @@ def confirm(strings, title, body, y_body, y_line):
     return image
 
 
-def panels(strings):
+def panels(strings, cove_count):
     rows = [
         ("panel_ending_network_128x64", ending_network(strings)),
         ("panel_ending_thanks_128x64", ending_thanks(strings)),
-        ("panel_ending_stats_128x64", ending_stats(strings)),
+        ("panel_ending_stats_128x64", ending_stats(strings, cove_count)),
         ("panel_save_retry_128x64", prompt(strings, "txt_save_failed", ("txt_retry", "txt_continue_unsaved"), "txt_save_hint", 0)),
         ("panel_save_continue_128x64", prompt(strings, "txt_save_failed", ("txt_retry", "txt_continue_unsaved"), "txt_save_hint", 1)),
         ("panel_pause_resume_128x64", prompt(strings, "txt_paused", ("txt_resume", "txt_rescue"), "txt_pause_hint", 0)),
@@ -533,14 +528,14 @@ HULL_STRINGS = ("txt_minnow", "txt_hauler", "txt_leviathan")
 TITLE_ROWS = ("txt_continue", "txt_new_voyage")
 
 
-def ending_stats(strings):
+def ending_stats(strings, cove_count):
     """Static labels; the saved time, cove and job values overlay natively."""
     image = Image.new("RGBA", SIZE, BG_COLOR)
     draw_text(image, 4, 2, checked_text(strings, "txt_voyage_stats"))
     add_divider(image, 12)
     draw_text(image, 4, 16, checked_text(strings, "txt_time"))
     draw_text(image, 4, 28, checked_text(strings, "txt_coves"))
-    draw_text(image, 46, 28, "/8")
+    draw_text(image, 46, 28, "/{}".format(cove_count))
     draw_text(image, 4, 40, checked_text(strings, "txt_jobs"))
     draw_text(image, 3, 56, checked_text(strings, "txt_a_finish"))
     return image
@@ -627,17 +622,12 @@ def campaign_panels():
     ]
 
 
-def work_detail(strings, routes, rewards, index):
-    """A WORK detail is fully static: label, purpose, reward and A/B hint."""
+def work_detail(strings, index):
+    """A WORK detail is fully static: label, purpose and A/B hint."""
     _enum, _stem, label, purpose = MISSIONS[index]
-    from_name, to_name = routes[index]
-    from_index = list(BERTH_NAMES).index(from_name)
-    to_index = list(BERTH_NAMES).index(to_name)
-    reward = rewards[from_index * SETTLEMENT_COUNT + to_index]
     image = Image.new("RGBA", SIZE, BG_COLOR)
     draw_text(image, 4, 4, checked_text(strings, label))
     draw_text(image, 4, 18, checked_text(strings, purpose))
-    draw_text(image, 4, 30, "{} {}".format(checked_text(strings, "txt_pays"), reward))
     draw_text(image, 3, 56, checked_text(strings, "txt_load_hint"))
     return image
 
@@ -665,18 +655,16 @@ def work_row(text):
     return image
 
 
-def work_panels(strings, routes, rewards):
+def work_panels(strings, routes):
     """Three sheets in kMissions order (then VIEW ENDING for the row sheet)."""
     details = Image.new("RGBA", (128 * 5, 64), BG_COLOR)
     actives = Image.new("RGBA", (128 * 5, 44), BG_COLOR)
     rows = Image.new("RGBA", (128 * 12, 8), BG_COLOR)
     for index, (_enum, _stem, label, _purpose) in enumerate(MISSIONS):
-        details.paste(work_detail(strings, routes, rewards, index), (128 * index, 0))
+        details.paste(work_detail(strings, index), (128 * index, 0))
         actives.paste(work_active(strings, routes, index), (128 * index, 0))
-        from_name, to_name = routes[index]
-        route_reward = rewards[list(BERTH_NAMES).index(from_name) * SETTLEMENT_COUNT + list(BERTH_NAMES).index(to_name)]
-        rows.paste(work_row("{} {}".format(checked_text(strings, label), route_reward)), (128 * index * 2, 0))
-    # VIEW ENDING has no reward and no detail/active page (A opens the cards).
+        rows.paste(work_row(checked_text(strings, label)), (128 * index * 2, 0))
+    # VIEW ENDING has no detail/active page (A opens the cards).
     rows.paste(work_row(checked_text(strings, "txt_view_ending")), (128 * 10, 0))
     return [
         ("work_details_128x64", details),
@@ -708,12 +696,12 @@ def main(argv=None):
     parser.add_argument("--preview", default="docs/assets/story-flourishes-preview.png")
     parser.add_argument("--fxdata", default="fxdata/fxdata.txt")
     parser.add_argument("--campaign-src", default="src/campaign.hpp")
-    parser.add_argument("--level", default="src/generated/level.hpp")
+    parser.add_argument("--exploration", default="src/generated/exploration.hpp")
     args = parser.parse_args(argv)
     strings = load_strings(args.fxdata)
     routes = load_routes(args.campaign_src)
-    rewards = load_rewards(args.level)
-    panel_rows = panels(strings) + work_panels(strings, routes, rewards) + title_panels(strings)
+    cove_count = load_pickup_count(args.exploration)
+    panel_rows = panels(strings, cove_count) + work_panels(strings, routes) + title_panels(strings)
     story_rows = story_panels(strings)
     write_dir(args.panels, panel_rows)
     write_dir(args.campaign, campaign_panels())

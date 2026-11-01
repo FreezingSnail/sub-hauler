@@ -28,17 +28,18 @@ void setup() {
     for (uint8_t tick = 0; tick < exploration::kDwellTicks; ++tick)
         exploration::update(state);
     ok = ok && !exploration::closed(state, exploration_data::GATE_E_V, gate);
-    const auto purse = exploration_data::pickup(exploration_data::PICKUP_TC);
-    state.x = purse.x;
-    state.y = purse.y;
+    const auto lens = exploration_data::pickup(exploration_data::PICKUP_DL);
+    state.x = lens.x;
+    state.y = lens.y;
     for (uint8_t tick = 0; tick < exploration::kDwellTicks * 2; ++tick)
         exploration::update(state);
-    ok = ok && state.credits == purse.amount;
+    ok = ok && (state.tools & exploration_data::LENS);
+    ok = ok && (state.pickups & (1u << exploration_data::PICKUP_DL));
     const auto pressure = exploration_data::gate(exploration_data::GATE_H_J);
     ok = ok && exploration::blockingGate(state, pressure.x + pressure.w / 2, pressure.y + pressure.h / 2) != exploration::kNone;
     state.tools |= exploration_data::SEAL;
     ok = ok && exploration::blockingGate(state, pressure.x + pressure.w / 2, pressure.y + pressure.h / 2) == exploration::kNone;
-    const cave::Camera camera = cave::cameraCenteredAtPixel(purse.x, purse.y);
+    const cave::Camera camera = cave::cameraCenteredAtPixel(lens.x, lens.y);
     exploration_view::draw(Arduboy2Base::sBuffer, state, camera);
     FX::display(CLEAR_BUFFER);
     Serial.println(ok ? F("P") : F("F"));

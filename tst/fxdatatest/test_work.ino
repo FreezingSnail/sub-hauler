@@ -1,7 +1,6 @@
-// Device WORK-board test: the single station access, story-first row order,
-// direct acceptance, an untimed long-style delivery, and the actual native
-// draw path. Host tests cover save invalidation and every route; this suite
-// keeps the device-only text/cart path honest.
+// Device WORK-board test: campaign-only story rows, direct acceptance, an
+// untimed delivery with no payout, and the actual native draw path. This suite
+// keeps the device-only text/cart path honest while host tests cover the rules.
 #include <Arduboy2.h>
 #include <ArduboyFX.h>
 #include "src/fxdata.h"
@@ -32,18 +31,6 @@ static bool dockAt(game::State &state, uint8_t berth) {
     return station::dock(state);
 }
 
-static bool findFreight(const game::State &state, work_view::Row &row) {
-    const uint8_t count = work_view::rowCount(state);
-    for (uint8_t i = 0; i < count; ++i) {
-        const work_view::Row candidate = work_view::rowAt(state, i);
-        if (candidate.kind == work_view::kRowFreight) {
-            row = candidate;
-            return true;
-        }
-    }
-    return false;
-}
-
 void setup() {
     Serial.begin(9600);
     arduboy.begin();
@@ -56,63 +43,68 @@ void setup() {
     game::State state;
     game::resetWorld(state);
 
-    uint8_t berth = 0;
-    ok = dockAt(state, berth) && ok;
-    ok = (state.offerCount == 1) && ok;
-    work_view::Row freight{work_view::kRowNone, 0};
-    ok = findFreight(state, freight) && ok;
-
-    // The board must paint through the real external-font/cart path before any
-    // later state mutation.
+    // Tidewall offers only the FIRST story row. The board paints through the
+    // real external-font/cart path before later state mutation.
+    ok = dockAt(state, campaign::kTidewall) && ok;
+    ok = (work_view::rowCount(state) == 1) && ok;
+    ok = (work_view::rowAt(state, 0).kind == work_view::kRowStory) && ok;
+    ok = (work_view::rowAt(state, 0).mission == campaign::kFirst) && ok;
     work_view::draw(state, 0);
 
-    // At Cormorant after FIRST, the lift survey is a non-cargo WORK quest;
-    // accepting it must not load the hold. Recording both surveys then exposes
-    // the PUMP cargo row directly above freight.
-    berth = campaign::kCormorant;
-    ok = dockAt(state, berth) && ok;
-    state.campaign = campaign::kMilestoneFirst;
-    state.surveys = 0;
-    ok = (work_view::rowCount(state) == 2) && ok;
-    ok = (work_view::rowAt(state, 0).kind == work_view::kRowStory) && ok;
-    ok = (work_view::rowAt(state, 0).mission == campaign::kLiftSurvey) && ok;
-    ok = (work_view::rowAt(state, 1).kind == work_view::kRowFreight) && ok;
-    work_view::draw(state, 0);
-    ok = !work_view::accept(state, work_view::rowAt(state, 0)) && ok;
-    ok = (state.activeJob.kind == game::kJobKindNone) && ok;
-    ok = (state.cargo == 0) && ok;
-
-    state.surveys = campaign::kSurveyMask;
-    ok = (work_view::rowCount(state) == 2) && ok;
-    ok = (work_view::rowAt(state, 0).kind == work_view::kRowStory) && ok;
-    ok = (work_view::rowAt(state, 0).mission == campaign::kPump) && ok;
-    ok = (work_view::rowAt(state, 1).kind == work_view::kRowFreight) && ok;
-    work_view::draw(state, 1);
-
+    // Accepting auto-loads the four cargo units and collapses the row list.
     ok = work_view::accept(state, work_view::rowAt(state, 0)) && ok;
     ok = (state.activeJob.kind == game::kJobKindCampaign) && ok;
     ok = (state.cargo == game::kJobCrates) && ok;
     work_view::draw(state, 0);
     ok = (work_view::rowCount(state) == 0) && ok;
 
-    // Deliver through the real dock hook. The story reward is fixed and the
-    // trip is untimed.
-    const uint16_t creditsBefore = state.credits;
+    // Deliver through the real dock hook. There is no payout or clock.
     const uint8_t campaignBefore = state.campaign;
+    const uint16_t deliveredBefore = state.delivered;
     ok = dockAt(state, campaign::kBenthos) && ok;
-    ok = (state.credits == creditsBefore + campaign::missionReward(campaign::kPump)) && ok;
-    ok = (state.lastDelivery == jobs::kDeliveryPaid) && ok;
+    ok = (state.lastDelivery == jobs::kDeliveryDelivered) && ok;
+    ok = (state.campaign & campaign::kMilestoneFirst) && ok;
+    ok = (state.delivered == deliveredBefore + 1) && ok;
 
-    // The PUMP milestone is a one-shot dock beat. Exercise the real panel
+    // The FIRST milestone is a one-shot dock beat. Exercise the real panel
     // reader; a repeated dock reports no new card.
-    const uint8_t pumpCard = story_view::cardForNewMilestone(campaignBefore, state.campaign);
-    ok = (pumpCard == story_view::kCardPump) && ok;
-    story_view::draw(pumpCard);
+    const uint8_t firstCard = story_view::cardForNewMilestone(campaignBefore, state.campaign);
+    ok = (firstCard == story_view::kCardFirst) && ok;
+    story_view::draw(firstCard);
     ok = (story_view::cardForNewMilestone(state.campaign, state.campaign) == story_view::kCardNone) && ok;
 
     // Survey decks are selected by their own recorded bit and never repeat.
     ok = (story_view::cardForNewSurvey(0, campaign::kSurveyPump) == story_view::kCardPumpSurvey) && ok;
     ok = (story_view::cardForNewSurvey(campaign::kSurveyPump, campaign::kSurveyPump) == story_view::kCardNone) && ok;
+
+    // A recorded pump survey exposes the PUMP story row plus the lift survey.
+    state.surveys = campaign::kSurveyPump;
+    ok = dockAt(state, campaign::kCormorant) && ok;
+    ok = (work_view::rowCount(state) == 2) && ok;
+    ok = (work_view::rowAt(state, 0).mission == campaign::kPump) && ok;
+    ok = (work_view::rowAt(state, 1).mission == campaign::kLiftSurvey) && ok;
+    work_view::draw(state, 0);
+    ok = work_view::accept(state, work_view::rowAt(state, 0)) && ok;
+    ok = (state.cargo == game::kJobCrates) && ok;
+    ok = dockAt(state, campaign::kBenthos) && ok;
+    ok = (state.lastDelivery == jobs::kDeliveryDelivered) && ok;
+    ok = (state.campaign & campaign::kMilestonePump) && ok;
+
+    // Old timed/ordinary job kinds are no longer valid state.
+    state.activeJob.kind = 3;
+    ok = !campaign::activeJobValid(state) && ok;
+    state.activeJob.kind = game::kJobKindNone;
+    state.activeJob.mission = game::kMissionNone;
+    state.activeJob.from = game::kJobNone;
+    state.activeJob.to = game::kJobNone;
+    state.activeJob.crates = 0;
+
+    // Every berth exposes only campaign story rows, never a repeatable job.
+    for (uint8_t berth = 0; berth < world::settlementCount(); ++berth) {
+        ok = dockAt(state, berth) && ok;
+        for (uint8_t row = 0; row < work_view::rowCount(state); ++row)
+            ok = (work_view::rowAt(state, row).kind == work_view::kRowStory) && ok;
+    }
 
     // Stream every pose through the compressed deck reader: seven alternating
     // decks, sixty animated image poses and fifteen static text cards.
@@ -132,34 +124,6 @@ void setup() {
     }
     ok = (deckCards == STORY_BEAT_CARDS) && ok;
     ok = (deckFrames == STORY_BEAT_FRAMES) && ok;
-
-    // Old timed kind values are no longer valid state.
-    state.activeJob.kind = 3;
-    ok = !campaign::activeJobValid(state) && ok;
-    state.activeJob.kind = game::kJobKindNone;
-    state.activeJob.mission = game::kMissionNone;
-    state.activeJob.from = game::kJobNone;
-    state.activeJob.to = game::kJobNone;
-    state.activeJob.crates = 0;
-    state.activeJob.reward = 0;
-
-    // Repeatable freight is still one row beneath the story list and remains
-    // payable after a long flight simulation.
-    ok = findFreight(state, freight) && ok;
-    if (freight.kind == work_view::kRowFreight) {
-        const uint16_t before = state.credits;
-        const uint8_t destination = state.offers[0].to;
-        const uint16_t reward = state.offers[0].reward;
-        ok = work_view::accept(state, freight) && ok;
-        ok = station::undock(state) && ok;
-        for (uint16_t i = 0; i < 3000; ++i)
-            game::step(state, game::Input{false, false, false, false});
-        ok = dockAt(state, destination) && ok;
-        ok = (state.credits == before + reward) && ok;
-        ok = (state.lastDelivery == jobs::kDeliveryPaid) && ok;
-    } else {
-        ok = false;
-    }
 
     work_view::draw(state, 0);
     FX::display(CLEAR_BUFFER);

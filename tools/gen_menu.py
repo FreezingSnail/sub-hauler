@@ -7,9 +7,10 @@ per air level. Credits, air, capacity and the active-job summary stay live
 native text, and the bottom 7-px hint row is a separate generated row so it can
 be redrawn without touching the last action bar.
 
-Layout constants are read from the C++ views and item prices/level limits from
-``src/shop.hpp``; text comes from ``fxdata/fxdata.txt``. The output is
-deterministic: fixed specs, fixed glyphs, and no timestamps.
+The station layout is read from ``src/station_view.hpp``. The retired shop
+frames remain cart ABI, so their frozen layout and price/level constants live
+here instead of in runtime headers; text comes from ``fxdata/fxdata.txt``. The
+output is deterministic: fixed specs, fixed glyphs, and no timestamps.
 """
 
 from __future__ import annotations
@@ -39,7 +40,7 @@ STATION_FRAME_COUNT = MAIN_BERTH_COUNT * 7 + len(SERVICE_BERTHS)
 IDLE_SELECTIONS = (0, 1, 2)
 ACTIVE_SELECTIONS = (1, 2, 3, 4)
 
-# Generated ABI order. The C++ enums in station_view/shop_view must match.
+# Generated ABI order. The C++ enums in station_view must match.
 STATION_HINTS = (
     "txt_service_berth_hint",
     "txt_short_load",
@@ -66,20 +67,25 @@ STATION_CONSTANTS = (
     "kHintX",
     "kHintY",
 )
-SHOP_CONSTANTS = (
-    "kPanelRowX",
-    "kPanelRowY0",
-    "kPanelRowStep",
-    "kPanelInsetY",
-    "kPanelInvertH",
-    "kPanelLevelX",
-    "kPanelPriceX",
-    "kHintX",
-    "kHintY",
-)
+# Frozen archival shop layout. The runtime shop is gone, but these pixels are
+# still baked into the shipped MenuSprites cart section, so the values may not
+# drift. They intentionally live in this generator rather than a runtime header.
+SHOP_LAYOUT = {
+    "kPanelRowX": 4,
+    "kPanelRowY0": 26,
+    "kPanelRowStep": 12,
+    "kPanelInsetY": 2,
+    "kPanelInvertH": 11,
+    "kPanelLevelX": 68,
+    "kPanelPriceX": 94,
+    "kHintX": 3,
+    "kHintY": 57,
+}
+SHOP_PRICES = (60,)
+SHOP_MAX_LEVEL = 3
+SHOP_ITEM_COUNT = 1
 
 CONST_RE = r"constexpr\s+uint8_t\s+{name}\s*=\s*(?P<value>\d+)\s*;"
-ENUM_RE = re.compile(r"enum\s+Item\s*:\s*uint8_t\s*\{(?P<body>.*?)\};", re.S)
 
 
 def load_constants(path, names):
@@ -92,31 +98,6 @@ def load_constants(path, names):
             raise ValueError("{}: constant {} not found".format(path, name))
         values[name] = int(match.group("value"))
     return values
-
-
-def load_shop_rules(path):
-    """Return (prices, max_level, item_count) from the pure shop rules."""
-    text = Path(path).read_text(encoding="utf-8")
-    match = re.search(r"constexpr\s+uint8_t\s+kMaxLevel\s*=\s*(\d+)\s*;", text)
-    if not match:
-        raise ValueError("shop.hpp: kMaxLevel not found")
-    max_level = int(match.group(1))
-    prices = []
-    for name in ("kAirPrice",):
-        match = re.search(r"constexpr\s+uint8_t\s+" + name + r"\s*=\s*(\d+)\s*;", text)
-        if not match:
-            raise ValueError("shop.hpp: {} not found".format(name))
-        prices.append(int(match.group(1)))
-    enum = ENUM_RE.search(text)
-    if not enum:
-        raise ValueError("shop.hpp: Item enum not found")
-    names = re.findall(r"\bk\w+", enum.group("body"))
-    if "kItemCount" not in names:
-        raise ValueError("shop.hpp: Item enum has no kItemCount sentinel")
-    item_count = names.index("kItemCount")
-    if item_count != len(prices):
-        raise ValueError("shop.hpp: Item count does not match the price table")
-    return prices, max_level, item_count
 
 
 def checked(strings, symbol):
@@ -288,8 +269,6 @@ def main(argv=None):
     parser.add_argument("--preview", default="build/menu-preview/menu-contact.png")
     parser.add_argument("--fxdata", default="fxdata/fxdata.txt")
     parser.add_argument("--station-view", default="src/station_view.hpp")
-    parser.add_argument("--shop-view", default="src/shop_view.hpp")
-    parser.add_argument("--shop-rules", default="src/shop.hpp")
     args = parser.parse_args(argv)
 
     strings = load_strings(args.fxdata)
@@ -297,11 +276,10 @@ def main(argv=None):
     # Shop rows add their own vertical layout; header/status positions stay
     # shared with the station board.
     shop_layout = dict(station_layout)
-    shop_layout.update(load_constants(args.shop_view, SHOP_CONSTANTS))
-    prices, max_level, item_count = load_shop_rules(args.shop_rules)
+    shop_layout.update(SHOP_LAYOUT)
 
     station_frames = station_panels(strings, station_layout)
-    shop_frames = shop_panels(strings, shop_layout, prices, max_level, item_count)
+    shop_frames = shop_panels(strings, shop_layout, SHOP_PRICES, SHOP_MAX_LEVEL, SHOP_ITEM_COUNT)
     station_hints = hint_rows(strings, STATION_HINTS, station_layout)
     shop_hints = hint_rows(strings, SHOP_HINTS, shop_layout)
     rows = [

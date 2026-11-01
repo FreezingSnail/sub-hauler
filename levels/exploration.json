@@ -541,8 +541,7 @@
       ],
       "radius": 4,
       "pickup": {
-        "kind": "cutter",
-        "amount": 1
+        "kind": "cutter"
       }
     },
     {
@@ -553,11 +552,7 @@
         128,
         8
       ],
-      "radius": 4,
-      "pickup": {
-        "kind": "credits",
-        "amount": 40
-      }
+      "radius": 4
     },
     {
       "id": "BR",
@@ -569,8 +564,7 @@
       ],
       "radius": 4,
       "pickup": {
-        "kind": "thruster",
-        "amount": 1
+        "kind": "thruster"
       }
     },
     {
@@ -581,11 +575,7 @@
         303,
         36
       ],
-      "radius": 4,
-      "pickup": {
-        "kind": "credits",
-        "amount": 90
-      }
+      "radius": 4
     },
     {
       "id": "CW",
@@ -597,8 +587,7 @@
       ],
       "radius": 4,
       "pickup": {
-        "kind": "seal",
-        "amount": 1
+        "kind": "seal"
       }
     },
     {
@@ -621,8 +610,7 @@
       ],
       "radius": 4,
       "pickup": {
-        "kind": "lens",
-        "amount": 1
+        "kind": "lens"
       }
     },
     {
@@ -633,11 +621,7 @@
         249,
         149
       ],
-      "radius": 4,
-      "pickup": {
-        "kind": "credits",
-        "amount": 150
-      }
+      "radius": 4
     }
   ],
   "routes": [

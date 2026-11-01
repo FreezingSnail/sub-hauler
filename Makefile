@@ -72,13 +72,13 @@ STORY_BEAT_INPUTS := tools/gen_story_beats.py docs/story-sketchbook.html docs/as
 STORY_BEAT_OUTPUTS := fxdata/tables/story-beats.bin src/generated/story_beats.hpp
 FX_INPUTS     := $(IMAGES) fxdata/fxdata.txt tools/gen.sh tools/gen_sprites.py \
                  tools/gen_hud.py images/hud/*.png \
-                 tools/gen_menu.py src/station_view.hpp src/shop_view.hpp src/shop.hpp images/menu/*.png \
+                 tools/gen_menu.py src/station_view.hpp images/menu/*.png \
                  tools/gen_splash.py images/splash/source/snailware_64x64.png images/splash/*.png \
                  tools/gen_panels.py images/panels/*.png images/campaign/*.png images/pause/*.png \
                  images/story/*.png docs/assets/story-flourishes-preview.png \
                  docs/assets/story-flourishes-preview-4x.png \
                  $(STORY_BEAT_INPUTS) $(STORY_BEAT_OUTPUTS) \
-                 src/campaign.hpp src/generated/level.hpp \
+                 src/campaign.hpp src/generated/exploration.hpp \
                  tools/gen_music_regions.py levels/exploration.json $(REGION_OUTPUTS) \
                  tools/gen_font.py tools/gen_pilot.py tools/gen_world.py \
                  tools/gen_cargo.py tools/gen_level.py tools/gen_scenery.py tools/gen_contours.py tools/gen_settlements.py levels/exploration.json $(WORLD_TABLES) $(CARGO_TABLES) \

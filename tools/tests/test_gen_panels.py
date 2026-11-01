@@ -12,9 +12,9 @@ class StoryPanelGenerationTest(unittest.TestCase):
     def setUpClass(cls):
         cls.strings = gen_panels.load_strings(ROOT / "fxdata/fxdata.txt")
         cls.routes = gen_panels.load_routes(ROOT / "src/campaign.hpp")
-        cls.rewards = gen_panels.load_rewards(ROOT / "src/generated/level.hpp")
-        cls.panels = gen_panels.panels(cls.strings)
-        cls.work = gen_panels.work_panels(cls.strings, cls.routes, cls.rewards)
+        cls.coves = gen_panels.load_pickup_count(ROOT / "src/generated/exploration.hpp")
+        cls.panels = gen_panels.panels(cls.strings, cls.coves)
+        cls.work = gen_panels.work_panels(cls.strings, cls.routes)
         cls.titles = gen_panels.title_panels(cls.strings)
         cls.campaign = gen_panels.campaign_panels()
         cls.story = gen_panels.story_panels(cls.strings)
@@ -31,13 +31,7 @@ class StoryPanelGenerationTest(unittest.TestCase):
                 ("kDeepAnchor", "kTidewall"),
             ],
         )
-        earned = []
-        for source, target in self.routes:
-            index = list(gen_panels.BERTH_NAMES).index(source) * gen_panels.SETTLEMENT_COUNT
-            index += list(gen_panels.BERTH_NAMES).index(target)
-            earned.append(self.rewards[index])
-        self.assertEqual(earned, [145, 85, 85, 155, 120])
-        self.assertEqual(sum(earned), 590)
+        self.assertEqual(self.coves, 4)
 
     def test_every_panel_name_is_unique_and_every_row_fits(self):
         names = [name for name, _image in self.panels + self.work + self.titles]
@@ -53,6 +47,16 @@ class StoryPanelGenerationTest(unittest.TestCase):
         self.assertEqual(sheets["work_details_128x64"].size, (128 * 5, 64))
         self.assertEqual(sheets["work_active_128x44"].size, (128 * 5, 44))
         self.assertEqual(sheets["work_rows_128x8"].size, (128 * 12, 8))
+        rows = sheets["work_rows_128x8"]
+        for index, (_enum, _stem, label, _purpose) in enumerate(gen_panels.MISSIONS):
+            expected = gen_panels.work_row(self.strings[label])
+            self.assertEqual(rows.crop((128 * index * 2, 0, 128 * (index * 2 + 2), 8)).tobytes(),
+                             expected.tobytes(), "WORK row {} is label-only".format(label))
+
+    def test_ending_stats_denominator_uses_the_generated_cove_count(self):
+        current = dict(self.panels)["panel_ending_stats_128x64"]
+        other = dict(gen_panels.panels(self.strings, self.coves + 1))["panel_ending_stats_128x64"]
+        self.assertNotEqual(current.tobytes(), other.tobytes())
 
     def test_title_sheets_cover_status_hull_and_selection(self):
         sheets = dict(self.titles)

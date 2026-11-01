@@ -39,8 +39,6 @@
 #include "src/world_fx.hpp"
 #include "src/chart.hpp"
 #include "src/chart_view.hpp"
-#include "src/shop.hpp"
-#include "src/shop_view.hpp"
 #include "src/station.hpp"
 #include "src/station_view.hpp"
 #include "src/particles.hpp"
@@ -58,8 +56,8 @@ extern "C" char __bss_end;
 Arduboy2Base arduboy;
 
 // The full AVR state budget is pinned here at 90 B after the gl1.3/gl1.4
-// compaction and the mine/hull-damage removal: diagnostic counters and the job
-// clock are gone and route reward fields are narrowed.
+// compaction and the economy strip: diagnostic counters, job clocks, offers,
+// rewards and the retired shop fields are gone.
 static_assert(sizeof(game::State) == 90, "full campaign+save run state is 90 bytes on AVR");
 
 // The firmware owns the persistent explored set statically. Keeping the probe's
@@ -71,7 +69,7 @@ chart::State probeChart;
 namespace {
 
 // Re-baselined from 800 B to 600 B on 2026-10-23, after the 258 B persistent
-// chart slice entered the full image. The chart+current+particle+shop+
+// chart slice entered the full image. The chart+current+particle+station+
 // title/roster+contract/undock/reset probe measures the cargo-free reserve;
 // 600 B stays the pass line.
 constexpr uint16_t kReserveTarget = 600;   // bytes of stack reserve required
@@ -154,9 +152,10 @@ __attribute__((noinline)) void runRepresentativePath() {
     state.ticks = chart::kMoveRevealIntervalTicks;
     chart::revealOnStep(probeChart, state);
     state.activeJob.to = 1;
-    state.activeJob.kind = game::kJobKindOrdinary;
-    state.activeJob.mission = game::kMissionNone;
-    state.activeJob.from = 0;
+    state.activeJob.kind = game::kJobKindCampaign;
+    state.activeJob.mission = campaign::kPump;
+    state.activeJob.from = campaign::kCormorant;
+    state.activeJob.crates = game::kJobCrates;
     for (uint8_t frame = 0; frame < 3; ++frame) {
         const uint8_t blink = (frame == 0) ? 0 : chart_view::kBlinkMask;
         chart_view::draw(Arduboy2Base::sBuffer, probeChart, state, tables, blink);
@@ -204,13 +203,19 @@ __attribute__((noinline)) void runRepresentativePath() {
         FX::display(CLEAR_BUFFER);
     }
 
-    // Shop path: dock, buy the air tank through the real transaction, and draw
-    // the one-row board. No cart reads during the display transaction.
+    // Station path: draw the native board in both idle and active shapes. No
+    // cart reads during the display transaction.
     state.docked = 0;
-    state.credits = 500;
-    shop::buy(state, shop::kAir);
-    shop_view::draw(state, shop::kFirstItem);
+    station_view::draw(state, station::initialRow(state));
     FX::display(CLEAR_BUFFER);
+    state.activeJob.kind = game::kJobKindCampaign;
+    state.activeJob.mission = campaign::kPump;
+    state.activeJob.from = campaign::kCormorant;
+    state.activeJob.to = campaign::kBenthos;
+    state.activeJob.crates = game::kJobCrates;
+    station_view::draw(state, station::initialRow(state));
+    FX::display(CLEAR_BUFFER);
+    jobs::clearActive(state);
 
     // Campaign app path: WORK rows at both source shapes, a completed Tidewall
     // board with VIEW ENDING, and all three homecoming cards. This keeps the
@@ -227,7 +232,6 @@ __attribute__((noinline)) void runRepresentativePath() {
     state.activeJob.from = campaign::kCormorant;
     state.activeJob.to = campaign::kBenthos;
     state.activeJob.crates = game::kJobCrates;
-    state.activeJob.reward = campaign::missionReward(campaign::kPump);
     work_view::draw(state, 0);
     FX::display(CLEAR_BUFFER);
     state.activeJob.kind = game::kJobKindNone;
@@ -235,7 +239,6 @@ __attribute__((noinline)) void runRepresentativePath() {
     state.activeJob.from = game::kJobNone;
     state.activeJob.to = game::kJobNone;
     state.activeJob.crates = 0;
-    state.activeJob.reward = 0;
 
     state.docked = static_cast<int8_t>(campaign::kTidewall);
     state.campaign = static_cast<uint8_t>(campaign::kMilestoneFirst | campaign::kMilestonePump | campaign::kMilestoneLift | campaign::kMilestoneBeacon | campaign::kMilestoneHome);
@@ -286,14 +289,12 @@ __attribute__((noinline)) void runRepresentativePath() {
                       ,
                       saveStorage);
 
-    // Contract path: post offers at a real berth, accept (auto-load), draw the
-    // active station board, then undock through the board action and draw the
-    // first pilot frame. This replaces the removed packing screen and keeps
-    // the station/job/auto-load/undock call chain inside the measured window.
-    state.docked = 0;
+    // Contract path: accept the FIRST campaign story at Tidewall (auto-load),
+    // draw the active station board, then undock through the board action and
+    // draw the first pilot frame.
+    state.docked = static_cast<int8_t>(campaign::kTidewall);
     jobs::clearActive(state);
-    if (jobs::refreshOffers(state, 0)) {
-        station::activate(station::kFirstRow, state);
+    if (campaign::accept(state, campaign::kFirst)) {
         station_view::draw(state, station::initialRow(state));
         FX::display(CLEAR_BUFFER);
 

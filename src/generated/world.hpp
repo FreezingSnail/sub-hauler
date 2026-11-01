@@ -44,11 +44,6 @@ constexpr uint8_t  CHART_CELL_TILES  = 5;
 constexpr uint8_t  CHART_ROW_BYTES   = 8;
 constexpr uint16_t CHART_BYTES       = 256;
 constexpr uint8_t  SETTLEMENT_COUNT  = 4;
-constexpr uint8_t  ROUTE_COUNT       = static_cast<uint8_t>(SETTLEMENT_COUNT * SETTLEMENT_COUNT);
-constexpr uint8_t  ROUTE_CRATES      = 4;
-constexpr uint16_t ROUTE_STEP_HZ     = 60;
-constexpr uint8_t  ROUTE_REWARD_MAX  = 180;
-constexpr uint16_t ROUTE_DEADLINE_MAX = 14760;
 constexpr uint8_t  CURRENT_COUNT     = 8;
 constexpr uint8_t  BERTH_COUNT       = 4;
 constexpr uint8_t  SERVICE_BERTH_COUNT = 0;
@@ -127,32 +122,6 @@ const CurrentMeta CURRENT_META[CURRENT_COUNT] PROGMEM = {
     {336, 856, 3},
 };
 
-// Baked contract economy: one row per origin, one column per destination.
-// Diagonal entries are unused. Host and device consume these arrays through
-// routeEconomy(), so no offer path recomputes distance, reward or deadline.
-const uint8_t ROUTE_REWARD[ROUTE_COUNT] PROGMEM = {
-    0, 115, 180, 140,
-    115, 0, 125, 110,
-    180, 125, 0, 125,
-    140, 110, 125, 0,
-};
-
-const uint16_t ROUTE_DEADLINE[ROUTE_COUNT] PROGMEM = {
-    0, 10440, 14760, 11880,
-    10440, 0, 11160, 10140,
-    14760, 11160, 0, 10980,
-    11880, 10140, 10980, 0,
-};
-
-inline bool routeEconomy(uint8_t from, uint8_t to, uint8_t &reward, uint16_t &deadline) {
-    if (from >= SETTLEMENT_COUNT || to >= SETTLEMENT_COUNT)
-        return false;
-    const uint8_t index = static_cast<uint8_t>(from * SETTLEMENT_COUNT + to);
-    reward = pgm_read_byte(&ROUTE_REWARD[index]);
-    deadline = static_cast<uint16_t>(pgm_read_word(&ROUTE_DEADLINE[index]));
-    return true;
-}
-
 inline bool settlementMeta(uint8_t id, Settlement &out) {
     if (id >= SETTLEMENT_COUNT)
         return false;
@@ -201,31 +170,6 @@ constexpr Current CURRENTS[CURRENT_COUNT] = {
     {2320, 1112, 32, 16, -4096, 0},
     {336, 856, 32, 16, 0, -4096},
 };
-
-// Host mirror of the device route economy. The values and accessor contract
-// are generated once; only the storage differs (constexpr vs PROGMEM).
-constexpr uint8_t ROUTE_REWARD[ROUTE_COUNT] = {
-    0, 115, 180, 140,
-    115, 0, 125, 110,
-    180, 125, 0, 125,
-    140, 110, 125, 0,
-};
-
-constexpr uint16_t ROUTE_DEADLINE[ROUTE_COUNT] = {
-    0, 10440, 14760, 11880,
-    10440, 0, 11160, 10140,
-    14760, 11160, 0, 10980,
-    11880, 10140, 10980, 0,
-};
-
-inline bool routeEconomy(uint8_t from, uint8_t to, uint8_t &reward, uint16_t &deadline) {
-    if (from >= SETTLEMENT_COUNT || to >= SETTLEMENT_COUNT)
-        return false;
-    const uint8_t index = static_cast<uint8_t>(from * SETTLEMENT_COUNT + to);
-    reward = ROUTE_REWARD[index];
-    deadline = ROUTE_DEADLINE[index];
-    return true;
-}
 
 inline bool settlementMeta(uint8_t id, Settlement &out) {
     if (id >= SETTLEMENT_COUNT)

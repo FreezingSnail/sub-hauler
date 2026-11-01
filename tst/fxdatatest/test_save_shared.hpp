@@ -68,24 +68,24 @@ static bool runSaveTests(bool runtimePage) {
 
     // Continue restores the berth checkpoint.
     game::reset(s_state);
-    s_state.credits = 0;
+    s_state.voyageTicks = 0;
     ok = ok && loadNow();
     ok = ok && s_state.docked == campaign::kTidewall;
 
     // Repeated cycles on the single slot.
     for (uint8_t i = 0; i < 8; ++i) {
-        s_state.credits = static_cast<uint16_t>(100 + i);
+        s_state.voyageTicks = static_cast<uint32_t>(100 + i);
         ok = ok && saveNow();
         ok = ok && voyage_save::inspect(s_storage).status == voyage_save::kSlotValid;
         ok = ok && loadNow();
-        ok = ok && s_state.credits == static_cast<uint16_t>(100 + i);
+        ok = ok && s_state.voyageTicks == static_cast<uint32_t>(100 + i);
     }
 
     // Interrupted commit: magic and payload present, commit cleared. Never load.
-    const uint16_t beforeCredits = s_state.credits;
+    const uint32_t beforeTicks = s_state.voyageTicks;
     interruptCommit();
     ok = ok && voyage_save::inspect(s_storage).status == voyage_save::kSlotCorrupt;
-    ok = ok && !loadNow() && s_state.credits == beforeCredits;
+    ok = ok && !loadNow() && s_state.voyageTicks == beforeTicks;
 
     // Clean New Voyage recovers from the interrupted commit.
     chart::reset(s_chart);

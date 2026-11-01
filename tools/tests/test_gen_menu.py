@@ -16,23 +16,26 @@ class MenuGenerationTest(unittest.TestCase):
         cls.strings = gen_menu.load_strings(ROOT / "fxdata/fxdata.txt")
         cls.station = gen_menu.load_constants(ROOT / "src/station_view.hpp", gen_menu.STATION_CONSTANTS)
         cls.shop = dict(cls.station)
-        cls.shop.update(gen_menu.load_constants(ROOT / "src/shop_view.hpp", gen_menu.SHOP_CONSTANTS))
+        cls.shop.update(gen_menu.SHOP_LAYOUT)
 
-    def test_rules_exclude_enum_sentinel_and_preserve_economy(self):
-        prices, maximum, items = gen_menu.load_shop_rules(ROOT / "src/shop.hpp")
-        self.assertEqual((prices, maximum, items), ([60], 3, 1))
+    def test_retired_shop_headers_are_gone(self):
+        self.assertFalse((ROOT / "src/shop.hpp").exists())
+        self.assertFalse((ROOT / "src/shop_view.hpp").exists())
+
+    def test_frozen_shop_rules_keep_the_archival_art(self):
+        self.assertEqual((gen_menu.SHOP_PRICES, gen_menu.SHOP_MAX_LEVEL, gen_menu.SHOP_ITEM_COUNT),
+                         ((60,), 3, 1))
 
     def test_notice_selectors_match_generated_hint_order(self):
-        for path, symbols in (("station_view.hpp", gen_menu.STATION_HINTS), ("shop_view.hpp", gen_menu.SHOP_HINTS)):
-            source = (ROOT / "src" / path).read_text()
-            block = re.search(r"enum PanelHint : uint8_t \{(.*?)\};", source, re.S).group(1)
-            names = re.findall(r"\bkPanel\w+", block)
-            self.assertEqual(len(names), len(symbols))
+        source = (ROOT / "src/station_view.hpp").read_text()
+        block = re.search(r"enum PanelHint : uint8_t \{(.*?)\};", source, re.S).group(1)
+        names = re.findall(r"\bkPanel\w+", block)
+        self.assertEqual(len(names), len(gen_menu.STATION_HINTS))
         self.assertEqual(gen_menu.STATION_HINTS[0], "txt_service_berth_hint")
         self.assertEqual(gen_menu.SHOP_HINTS, ("txt_buy_hint", "txt_low_credits", "txt_max_level"))
 
     def test_all_generated_panels_have_the_exact_state_frames(self):
-        prices, maximum, items = gen_menu.load_shop_rules(ROOT / "src/shop.hpp")
+        prices, maximum, items = gen_menu.SHOP_PRICES, gen_menu.SHOP_MAX_LEVEL, gen_menu.SHOP_ITEM_COUNT
         groups = (
             ("station_menu_128x64.png", gen_menu.station_panels(self.strings, self.station), 30),
             ("shop_menu_128x64.png", gen_menu.shop_panels(self.strings, self.shop, prices, maximum, items), 4),
@@ -44,8 +47,8 @@ class MenuGenerationTest(unittest.TestCase):
             for index, expected in enumerate(frames):
                 self.assertEqual(sheet.crop((index * 128, 0, (index + 1) * 128, 64)).tobytes(), expected.tobytes(), (name, index))
 
-    def test_baked_shop_selection_is_roomy_and_price_comes_from_rules(self):
-        prices, maximum, items = gen_menu.load_shop_rules(ROOT / "src/shop.hpp")
+    def test_baked_shop_selection_is_roomy_and_price_is_frozen(self):
+        prices, maximum, items = gen_menu.SHOP_PRICES, gen_menu.SHOP_MAX_LEVEL, gen_menu.SHOP_ITEM_COUNT
         normal = gen_menu.shop_panels(self.strings, self.shop, prices, maximum, items)[0]
         changed = gen_menu.shop_panels(self.strings, self.shop, [61], maximum, items)[0]
         self.assertNotEqual(normal.tobytes(), changed.tobytes())

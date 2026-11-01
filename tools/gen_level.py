@@ -7,7 +7,6 @@ exploration.bin/chart.bin and a versioned little-endian object table.
 from __future__ import annotations
 
 import json
-import heapq
 import math
 import struct
 import re
@@ -24,11 +23,27 @@ import gen_settlements
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / 'levels/exploration.json'
 TOOLS = {'cutter': 1, 'seal': 2, 'thruster': 4, 'lens': 8}
-KINDS = {'cutter': 1, 'seal': 2, 'thruster': 3, 'credits': 4, 'lens': 6}
+KINDS = {'cutter': 1, 'seal': 2, 'thruster': 3, 'lens': 6}
 # Campaign milestone bits are a flash/save ABI even though they live in a
 # generated header, so the names are frozen here.
 MILESTONES = {'first': 1, 'pump': 2, 'lift': 4, 'beacon': 8, 'home': 16}
 SURVEY_IDS = {'pump': 0, 'lift': 1}
+
+# Authored route phases are frozen by endpoint. Removing a retired route from
+# the level must not re-phase every later surviving passage and reshape the
+# whole cave; new routes fall back to their list position.
+ROUTE_PHASE = {
+    'T_L': 0, 'L_F': 1, 'F_E': 2, 'T_M': 3, 'M_Q': 4, 'Q_E': 5, 'L_Q': 6,
+    'M_W': 7, 'K_B': 9, 'B_P': 10, 'P_S': 11, 'S_N': 12, 'N_V': 13,
+    'K_V': 14, 'B_N': 15, 'N_BR': 16, 'R_C': 18, 'C_Y': 19, 'Y_A': 20,
+    'A_U': 21, 'U_Z': 22, 'R_Z': 23, 'C_U': 24, 'Z_CW': 25, 'Y_CC': 26,
+    'H_J': 27, 'J_O': 28, 'O_D': 29, 'D_G': 30, 'G_I': 31, 'I_J': 32,
+    'J_G': 33, 'O_DL': 34, 'F_K': 36, 'E_V': 37, 'S_Y': 38, 'N_C': 39,
+    'U_H': 40, 'Q_J': 41,
+}
+
+def route_phase(route, index):
+    return ROUTE_PHASE.get(route['from'] + '_' + route['to'], index)
 
 @dataclass(frozen=True)
 class Gate:
@@ -45,7 +60,6 @@ class Pickup:
     x: int
     y: int
     kind: int
-    amount: int
 
 @dataclass(frozen=True)
 class ServiceBerth:
@@ -195,9 +209,10 @@ def carve_organic(source, grid, rooms):
         required=route.get('requires',[])
         if len(required)!=len(set(required)) or any(t not in TOOLS or t=='lens' for t in required):raise ValueError('invalid passage tool requirements')
         if route['from'] not in rooms or route['to'] not in rooms:raise ValueError('passage references unknown room')
-        spine=organic_spine(route,rooms[route['from']]['position'],rooms[route['to']]['position'],seed+i*43)
+        phase=route_phase(route,i)
+        spine=organic_spine(route,rooms[route['from']]['position'],rooms[route['to']]['position'],seed+phase*43)
         gate=make_gate(route,spine,source['pressure_y'])
-        carve_organic_route(grid,route,spine,gate,(seed+i*43)*.11)
+        carve_organic_route(grid,route,spine,gate,(seed+phase*43)*.11)
         if gate:gates.append(gate)
         spines.append(spine)
     for obstacle in source.get('obstacles',[]):
@@ -247,14 +262,14 @@ def build(source: dict) -> Level:
         if not (radius+2 <= x < 320-radius-2 and radius+2 <= y < 160-radius-2):raise ValueError('room crosses sealed border')
         if 'pickup' in r:
             item=r['pickup']
-            if item.get('kind') not in KINDS or type(item.get('amount')) is not int or not 0<item['amount']<=255:raise ValueError('invalid pickup kind/amount')
+            if item.get('kind') not in KINDS:raise ValueError('invalid pickup kind')
     if source.get('terrain',{}).get('style')!='organic':
         raise ValueError('unsupported terrain style')
     if type(source.get('layout_version')) is not int or not 1<=source['layout_version']<=255:
         raise ValueError('invalid terrain layout version')
     gates=carve_organic(source,grid,rooms)
     pickups = [Pickup(r['id'],r['position'][0]*8,r['position'][1]*8,
-                      KINDS[r['pickup']['kind']],r['pickup']['amount']) for r in rows if 'pickup' in r]
+                      KINDS[r['pickup']['kind']]) for r in rows if 'pickup' in r]
     if len(gates)>16 or len(pickups)>8:
         raise ValueError('object counts exceed compact progress masks')
     settlements = []
@@ -389,47 +404,12 @@ def validate_surveys(level):
                 raise ValueError('survey marker overlaps a pickup: '+survey.name)
 
 
-def freight_deadlines(level: Level):
-    """Conservative travel budget without optional cutter/jet shortcuts."""
-    source=level.source
-    rooms={r['id']:r for r in source['rooms']}
-    graph={key:[] for key in rooms}
-    tuning=source.get('freight_timing',{})
-    speed=tuning.get('pixels_per_second',7)
-    slack=tuning.get('slack_seconds',45)
-    if type(speed) is not int or speed<=0 or type(slack) is not int or slack<0:
-        raise ValueError('invalid freight time budget')
-    for i,route in enumerate(source['routes']):
-        if any(t in ('cutter','thruster') for t in route.get('requires',[])):continue
-        a,b=route['from'],route['to']
-        spine=organic_spine(route,rooms[a]['position'],rooms[b]['position'],source['terrain']['seed']+i*43)
-        distance=sum(math.dist(p,q)*8 for p,q in zip(spine,spine[1:]))
-        graph[a].append((b,distance));graph[b].append((a,distance))
-    stations=sorted((r for r in source['rooms'] if 'station' in r),key=lambda r:r['station'])
-    table=[]
-    for origin in stations:
-        distances={origin['id']:0.0};queue=[(0.0,origin['id'])]
-        while queue:
-            value,a=heapq.heappop(queue)
-            if value!=distances[a]:continue
-            for b,length in graph[a]:
-                if value+length<distances.get(b,float('inf')):
-                    distances[b]=value+length;heapq.heappush(queue,(value+length,b))
-        for destination in stations:
-            if destination['id']==origin['id']:table.append(0);continue
-            if destination['id'] not in distances:raise ValueError('no freight path without optional shortcuts')
-            approach=sum(math.dist(r['position'],r.get('dock',r['position']))*8 for r in (origin,destination))
-            seconds=math.ceil((distances[destination['id']]+approach)/speed)+slack
-            table.append(min(seconds*old.STEP_HZ,0xFFFE))
-    return tuple(table)
-
-
 def object_bytes(level: Level) -> bytes:
     data = b'SHL2'+bytes((len(level.gates),len(level.pickups),7,6))
     for g in level.gates:
         data+=struct.pack('<HHBBB',g.x,g.y,g.w,g.h,g.required)
     for p in level.pickups:
-        data+=struct.pack('<HHBB',p.x,p.y,p.kind,p.amount)
+        data+=struct.pack('<HHB',p.x,p.y,p.kind)
     return data
 
 
@@ -507,7 +487,8 @@ def obstacle_centers(source):
         centers.append((obstacle['id'],round((ox+dx)*8),round((oy+dy)*8)))
     for i,route in enumerate(source['routes']):
         if not route.get('obstacles'):continue
-        spine=organic_spine(route,rooms[route['from']]['position'],rooms[route['to']]['position'],source['terrain']['seed']+i*43)
+        phase=route_phase(route,i)
+        spine=organic_spine(route,rooms[route['from']]['position'],rooms[route['to']]['position'],source['terrain']['seed']+phase*43)
         for obstacle in route['obstacles']:
             x,y=on_spine(spine,obstacle['at']);dx,dy=obstacle.get('offset',[0,0])
             centers.append((obstacle['id'],round((x+dx)*8),round((y+dy)*8)))
@@ -536,7 +517,7 @@ namespace exploration_data {{
 constexpr uint8_t CUTTER = 1, SEAL = 2, THRUSTER = 4, LENS = 8;
 constexpr uint8_t GATE_COUNT = {len(level.gates)}, PICKUP_COUNT = {len(level.pickups)};
 constexpr uint16_t OBJECT_BYTES = {len(blob)};
-constexpr uint8_t GATE_STRIDE = 7, PICKUP_STRIDE = 6, HEADER_BYTES = 8;
+constexpr uint8_t GATE_STRIDE = 7, PICKUP_STRIDE = 5, HEADER_BYTES = 8;
 constexpr int16_t PRESSURE_Y = {level.source['pressure_y']*8};
 {constants}
 // Byte-identical PROGMEM mirror of explorationObjects, avoiding cart transactions
@@ -553,7 +534,7 @@ inline int16_t wordAt(uint16_t offset) {{
     return static_cast<int16_t>(byteAt(offset) | (static_cast<uint16_t>(byteAt(offset+1)) << 8));
 }}
 struct Gate {{ int16_t x,y; uint8_t w,h,required; }};
-struct Pickup {{ int16_t x,y; uint8_t kind,amount; }};
+struct Pickup {{ int16_t x,y; uint8_t kind; }};
 inline Gate gate(uint8_t id) {{
     const uint16_t p=HEADER_BYTES+static_cast<uint16_t>(id)*GATE_STRIDE;
     Gate g={{wordAt(p),wordAt(p+2),byteAt(p+4),byteAt(p+5),byteAt(p+6)}};
@@ -561,7 +542,7 @@ inline Gate gate(uint8_t id) {{
 }}
 inline Pickup pickup(uint8_t id) {{
     const uint16_t p=HEADER_BYTES+GATE_COUNT*GATE_STRIDE+static_cast<uint16_t>(id)*PICKUP_STRIDE;
-    Pickup item={{wordAt(p),wordAt(p+2),byteAt(p+4),byteAt(p+5)}};
+    Pickup item={{wordAt(p),wordAt(p+2),byteAt(p+4)}};
     return item;
 }}
 }} // namespace exploration_data
@@ -586,7 +567,7 @@ def render_preview(level: Level) -> str:
     parts.append('</g><g font-family="sans-serif" font-size="13" fill="#e5efed">')
     for s in level.world.settlements:
         parts.append(f'<text x="{s.tile_x*4-20}" y="{s.tile_y*4-20}">{escape(s.name)}</text>')
-    parts.append(f'<text x="20" y="670">Actual 320x160 packed tile geometry · gates and {len(level.pickups)} cove rewards · generated by make gen</text></g></svg>')
+    parts.append(f'<text x="20" y="670">Actual 320x160 packed tile geometry · gates and {len(level.pickups)} equipment coves · generated by make gen</text></g></svg>')
     return '\n'.join(parts)+'\n'
 
 
@@ -632,7 +613,7 @@ def base_terrain_bytes(level: Level) -> bytes:
 
 def scenery_spines(level: Level):
     rooms = {r['id']:r for r in level.source['rooms']}
-    return [organic_spine(route,rooms[route['from']]['position'],rooms[route['to']]['position'],level.source['terrain']['seed']+i*43)
+    return [organic_spine(route,rooms[route['from']]['position'],rooms[route['to']]['position'],level.source['terrain']['seed']+route_phase(route,i)*43)
             for i,route in enumerate(level.source['routes'])]
 
 
@@ -653,7 +634,7 @@ def main() -> None:
     (root/'exploration-terrain.bin').write_bytes(terrain)
     (ROOT/'docs/assets/exploration-scenery.json').write_text(json.dumps(scenery,indent=2)+'\n')
     print(f'gen_scenery: {json.dumps(scenery, separators=(",", ":"))}')
-    header=old.render_header(level.world,freight_deadlines(level),level.service_berths,level.surveys).replace('Generated by tools/gen_world.py.','Generated by tools/gen_level.py.').replace('LAYOUT_VERSION    = 1',f'LAYOUT_VERSION    = {level.source.get("layout_version",2)}').replace('world.bin','exploration.bin').replace('world-chart.bin','exploration-chart.bin')
+    header=old.render_header(level.world,service_berths=level.service_berths,surveys=level.surveys).replace('Generated by tools/gen_world.py.','Generated by tools/gen_level.py.').replace('LAYOUT_VERSION    = 1',f'LAYOUT_VERSION    = {level.source.get("layout_version",2)}').replace('world.bin','exploration.bin').replace('world-chart.bin','exploration-chart.bin')
     (ROOT/'src/generated/level.hpp').write_text(header)
     (ROOT/'src/generated/exploration.hpp').write_text(render_objects(level))
     (ROOT/'docs/assets/exploration-terrain.svg').write_text(render_preview(level))
