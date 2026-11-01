@@ -1,7 +1,5 @@
 #pragma once
 
-
-
 #include "../src/game.hpp"
 #include "../src/jobs.hpp"
 #include "../src/work_view.hpp"
@@ -10,9 +8,8 @@
 #include "jobs_test.hpp"
 #include "test.hpp"
 
-// The single WORK board is a pure row model: story restoration first, then the
-// one repeatable freight row. These cases pin the order and the no-active-job
-// gate without needing a display.
+// The single WORK board is a pure row model: story restoration only. These
+// cases pin the order and the no-active-job gate without needing a display.
 namespace work_view_test {
 
 using jobs_test::dockAt;
@@ -32,49 +29,42 @@ inline void WorkViewSuite(TestRunner &runner) {
     using namespace work_view_test;
 
     {
-        Test test("WORK carries exactly one freight row when no story job is eligible");
+        Test test("WORK has no rows when no story job is eligible");
         for (uint8_t berth = 0; berth < world::settlementCount(); ++berth) {
             game::State state;
             game::reset(state);
             test.assertTrue(dockAt(state, berth), "freight berth docks");
-            // Benthos has no cargo source before FIRST; the other berths also
-            // have no eligible restoration job at voyage start except Tidewall.
-            if (berth == campaign::kBenthos) {
-                test.assertEqual(work_view::rowCount(state), 1, "only the freight row exists before FIRST");
-                test.assertEqual(kindAt(state, 0), work_view::kRowFreight, "the freight row is first");
-                test.assertEqual(work_view::rowAt(state, 0).mission, work_view::kNoMission, "freight has no mission id");
+            if (berth == campaign::kBenthos || berth == campaign::kCormorant || berth == campaign::kDeepAnchor) {
+                test.assertEqual(work_view::rowCount(state), 0, "no freight or story row before FIRST");
+                test.assertEqual(kindAt(state, 0), work_view::kRowNone, "no row is exposed");
             }
         }
         runner.add(test);
     }
 
     {
-        Test test("restoration rows are listed before the freight row at every source berth");
+        Test test("restoration rows are listed at every source berth");
         game::State state;
         game::reset(state);
         test.assertTrue(dockAt(state, campaign::kTidewall), "Tidewall docks");
-        test.assertEqual(work_view::rowCount(state), 2, "FIRST and freight");
+        test.assertEqual(work_view::rowCount(state), 1, "FIRST only");
         test.assertEqual(kindAt(state, 0), work_view::kRowStory, "story first");
         test.assertEqual(work_view::rowAt(state, 0).mission, campaign::kFirst, "FIRST story");
-        test.assertEqual(kindAt(state, 1), work_view::kRowFreight, "freight beneath");
 
         firstComplete(state);
         test.assertTrue(dockAt(state, campaign::kBenthos), "Benthos docks");
-        test.assertEqual(work_view::rowCount(state), 2, "LIFT plus freight");
+        test.assertEqual(work_view::rowCount(state), 1, "LIFT only");
         test.assertEqual(work_view::rowAt(state, 0).mission, campaign::kLift, "LIFT is the Benthos story");
-        test.assertEqual(kindAt(state, 1), work_view::kRowFreight, "Benthos freight beneath");
 
         test.assertTrue(dockAt(state, campaign::kCormorant), "Cormorant docks");
-        test.assertEqual(work_view::rowCount(state), 2, "PUMP and freight");
+        test.assertEqual(work_view::rowCount(state), 1, "PUMP only");
         test.assertEqual(work_view::rowAt(state, 0).mission, campaign::kPump, "PUMP is the Cormorant story");
-        test.assertEqual(kindAt(state, 1), work_view::kRowFreight, "freight beneath");
 
         state.campaign |= static_cast<uint8_t>(campaign::kMilestonePump | campaign::kMilestoneLift);
         state.tools = exploration_data::SEAL;
         test.assertTrue(dockAt(state, campaign::kCormorant), "Cormorant docks after both repairs");
-        test.assertEqual(work_view::rowCount(state), 2, "BEACON and freight");
+        test.assertEqual(work_view::rowCount(state), 1, "BEACON only");
         test.assertEqual(work_view::rowAt(state, 0).mission, campaign::kBeacon, "BEACON replaces the repairs");
-        test.assertEqual(kindAt(state, 1), work_view::kRowFreight, "freight beneath BEACON");
         runner.add(test);
     }
 
@@ -84,7 +74,7 @@ inline void WorkViewSuite(TestRunner &runner) {
         game::reset(state);
         state.campaign = campaign::kMilestoneFirst;   // surveys still unrecorded
         test.assertTrue(dockAt(state, campaign::kBenthos), "Benthos docks");
-        test.assertEqual(work_view::rowCount(state), 2, "pump survey plus freight");
+        test.assertEqual(work_view::rowCount(state), 1, "pump survey only");
         const work_view::Row pumpSurvey = work_view::rowAt(state, 0);
         test.assertEqual(pumpSurvey.kind, work_view::kRowStory, "survey is a story row");
         test.assertEqual(pumpSurvey.mission, campaign::kPumpSurvey, "pump survey row");
@@ -93,41 +83,38 @@ inline void WorkViewSuite(TestRunner &runner) {
         test.assertEqual(state.activeJob.kind, game::kJobKindNone, "survey row leaves the hold free");
 
         test.assertTrue(dockAt(state, campaign::kCormorant), "Cormorant docks");
-        test.assertEqual(work_view::rowCount(state), 2, "lift survey plus freight");
+        test.assertEqual(work_view::rowCount(state), 1, "lift survey only");
         test.assertEqual(work_view::rowAt(state, 0).mission, campaign::kLiftSurvey, "lift survey row");
 
         test.assertTrue(campaign::recordSurvey(state, campaign::kPumpSurveyId), "pump survey recorded");
         test.assertTrue(dockAt(state, campaign::kCormorant), "Cormorant docks after pump survey");
-        test.assertEqual(work_view::rowCount(state), 3, "PUMP, LIFT_SURVEY and freight");
+        test.assertEqual(work_view::rowCount(state), 2, "PUMP and LIFT_SURVEY");
         test.assertEqual(work_view::rowAt(state, 0).mission, campaign::kPump, "PUMP cargo comes first");
         test.assertEqual(work_view::rowAt(state, 1).mission, campaign::kLiftSurvey, "lift survey second");
-        test.assertEqual(kindAt(state, 2), work_view::kRowFreight, "freight last");
 
         test.assertTrue(campaign::recordSurvey(state, campaign::kLiftSurveyId), "lift survey recorded");
         test.assertTrue(dockAt(state, campaign::kBenthos), "Benthos docks after lift survey");
-        test.assertEqual(work_view::rowCount(state), 2, "LIFT plus freight");
+        test.assertEqual(work_view::rowCount(state), 1, "LIFT only");
         test.assertEqual(work_view::rowAt(state, 0).mission, campaign::kLift, "LIFT cargo replaces the survey lead");
         runner.add(test);
     }
 
     {
-        Test test("completed branches leave the remaining story and VIEW ENDING above freight");
+        Test test("completed branches leave the remaining story and VIEW ENDING");
         game::State state;
         game::reset(state);
         firstComplete(state);
         state.campaign |= static_cast<uint8_t>(campaign::kMilestonePump | campaign::kMilestoneLift | campaign::kMilestoneBeacon);
         state.tools = exploration_data::SEAL;
         test.assertTrue(dockAt(state, campaign::kDeepAnchor), "Deep Anchor docks");
-        test.assertEqual(work_view::rowCount(state), 2, "HOME plus freight");
+        test.assertEqual(work_view::rowCount(state), 1, "HOME only");
         test.assertEqual(work_view::rowAt(state, 0).mission, campaign::kHome, "HOME is the story row");
-        test.assertEqual(kindAt(state, 1), work_view::kRowFreight, "freight beneath HOME");
 
         state.campaign |= campaign::kMilestoneHome;
         test.assertTrue(dockAt(state, campaign::kTidewall), "Tidewall docks after HOME");
-        test.assertEqual(work_view::rowCount(state), 2, "VIEW ENDING plus freight");
+        test.assertEqual(work_view::rowCount(state), 1, "VIEW ENDING only");
         test.assertEqual(work_view::rowAt(state, 0).kind, work_view::kRowEnding, "VIEW ENDING is a presentation row");
         test.assertEqual(work_view::rowAt(state, 0).mission, campaign::kWorkEnding, "ending id");
-        test.assertEqual(kindAt(state, 1), work_view::kRowFreight, "freight still beneath the ending");
         runner.add(test);
     }
 
@@ -143,4 +130,3 @@ inline void WorkViewSuite(TestRunner &runner) {
         runner.add(test);
     }
 }
-

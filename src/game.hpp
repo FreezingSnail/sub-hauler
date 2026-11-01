@@ -36,9 +36,8 @@ constexpr int16_t kBallastMax = 100;
 constexpr int16_t kNeutralBase = 50;      // ballast at zero cargo
 constexpr int16_t kNeutralPerCargo = 5;   // neutral falls 5 per cargo unit
 
-constexpr int16_t kAirCapacity = 300;      // integer air units at full tank
+constexpr int16_t kAirCapacity = 300;      // fixed integer air units at full tank
 constexpr uint16_t kAirDrainTicks = 150;   // 0.4 units/s -> one unit per 150 ticks
-constexpr int16_t kAirCapacityPerLevel = 30;   // air-tank upgrade step
 
 constexpr uint8_t kBlowCarryStep = 3;       // 3.0 air units/s while blowing
 constexpr uint8_t kBallastCarryStep = 18;   // 18 ballast units/s blow or flood
@@ -94,33 +93,27 @@ struct ParticlePool {
     Particle particle[kParticleCount];
 };
 
-// Contract storage is fixed and integer-only. The WORK board carries one
-// repeatable freight row; accepting it replaces that row until the next dock.
-// Every job is untimed: air and handling are the expedition pressure.
-constexpr uint8_t kJobOffers = 1;
+// Contract storage is fixed and integer-only. Campaign story deliveries are
+// the only contracts: the WORK board lists restoration rows, and accepting one
+// loads the four-unit hold. Every job is untimed: air and handling are the
+// expedition pressure.
 constexpr uint8_t kJobCrates = 4;
 constexpr uint8_t kJobNone = 0xFF;
 
-// Explicit job kind. The save schema records only NONE, ORDINARY or CAMPAIGN;
-// there is no timed job kind. See docs/progression-implementation.md.
+// Explicit job kind. The save schema records only NONE or CAMPAIGN; there is no
+// ordinary freight kind and no timed job kind. See
+// docs/progression-implementation.md.
 constexpr uint8_t kJobKindNone = 0;
-constexpr uint8_t kJobKindOrdinary = 1;
 constexpr uint8_t kJobKindCampaign = 2;
 
 constexpr uint8_t kMissionNone = 0xFF;
 
-struct JobOffer {
-    uint8_t to;      // destination settlement id
-    uint8_t reward;  // credits, a multiple of 5; generated bound-checked
-};
-
 struct ActiveJob {
-    uint8_t kind;        // kJobKindNone / ORDINARY / CAMPAIGN
+    uint8_t kind;        // kJobKindNone / CAMPAIGN
     uint8_t mission;     // campaign mission id or kMissionNone
     uint8_t from;        // origin berth or kJobNone
     uint8_t to;
     uint8_t crates;
-    uint8_t reward;   // promoted when credits are paid
 };
 
 struct State {
@@ -163,35 +156,26 @@ struct State {
     int8_t docked;          // -1 = free flight, else the settlement id
     uint8_t dockCooldown;   // non-zero while the undock ring latch is armed
     ParticlePool particles;   // fixed debris pool, 4 slots
-    uint16_t credits;
     uint8_t lastDelivery;   // jobs::DeliveryResult from the last resolved contract
     // Campaign/voyage scalar state (the storage payload owns the fixed byte
     // order; this struct order is not serialized).
     uint8_t campaign;       // milestone bits FIRST..HOME
     uint8_t surveys;        // recorded survey bits PUMP..LIFT
-    uint8_t visited;        // visited freight-settlement bits
     uint32_t voyageTicks;   // flight ticks, saturating
-    uint16_t delivered;     // paid cargo jobs, saturating
+    uint16_t delivered;     // completed campaign deliveries, saturating
     uint16_t rescues;       // recovery requests, saturating
-    uint16_t boardSeed;     // offer serial origin; schema 1 writes 0
     uint8_t ending;         // ending cards presented
-    uint16_t offerCursor;   // serial before the current station board
-    uint16_t offerSerial;   // working offer generator serial
-    uint8_t offerCount;     // 0..kJobOffers valid entries in offers
-    JobOffer offers[kJobOffers];
     ActiveJob activeJob;
-    // Shop level: one byte, persisted in voyage checkpoints, no extra UI state.
-    uint8_t airLevel;
 };
 
 inline bool hasActiveJob(const State &state) {
     return state.activeJob.kind != kJobKindNone;
 }
 
-// Charge one flight tick to the campaign voyage clock. Job age is no longer
-// part of the simulation: every freight and story job is untimed. Docked/chart
-// frames never call a world step, and the station guard keeps a direct step()
-// call honest too.
+// Charge one flight tick to the campaign voyage clock. Job age is not part of
+// the simulation: every story delivery is untimed. Docked/chart frames never
+// call a world step, and the station guard keeps a direct step() call honest
+// too.
 inline void tickVoyage(State &state) {
     if (state.docked >= 0)
         return;
@@ -266,10 +250,10 @@ inline void setCargo(State &state, int16_t cargo) {
     state.cargo = clampCargo(cargo);
 }
 
-// Tank capacity includes the run-only shop upgrade. The level field is
-// persisted in voyage checkpoints.
+// Fixed 300-unit tank.
 inline int16_t airCapacity(const State &state) {
-    return static_cast<int16_t>(kAirCapacity + kAirCapacityPerLevel * state.airLevel);
+    (void)state;
+    return kAirCapacity;
 }
 
 // ---------------------------------------------------------------------------
@@ -325,9 +309,6 @@ inline void reset(State &state) {
     state.activeJob.kind = kJobKindNone;
     state.activeJob.mission = kMissionNone;
     state.activeJob.from = kJobNone;
-    // Schema 1 starts with boardSeed 0, preserving the historical sequence.
-    state.offerSerial = state.boardSeed;
-    state.offerCursor = state.boardSeed;
 }
 
 // Physics-only half of the fixed step. Callers that own collision use this

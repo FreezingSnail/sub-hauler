@@ -284,13 +284,11 @@ inline void StationSuite(TestRunner &runner) {
         test.assertTrue(anySettlement(settlement), "settlement metadata loads");
 
         test.assertEqual(station::kStationRowCount,
-                         3,
-                         "WORK/SERVICE, SHOP and UNDOCK rows are present");
+                         2,
+                         "WORK and UNDOCK rows are present");
         game::State board;
         game::reset(board);
         test.assertEqual(station::rowKind(station::kFirstRow, board), station::kRowWork, "first row is WORK");
-        test.assertEqual(station::rowKind(station::kShopRow, board), station::kRowShop, "SHOP follows WORK/SERVICE");
-        test.assertEqual(station::shopRow(board), station::kShopRow, "no-job board returns to the SHOP row");
         test.assertEqual(station::rowKind(station::kUndockRow, board), station::kRowUndock, "last row is UNDOCK");
         test.assertEqual(station::selectNext(station::kUndockRow, board), station::kFirstRow, "down wraps to the first row");
         test.assertEqual(station::selectPrevious(station::kFirstRow, board), station::kUndockRow, "up wraps to the last row");
@@ -303,9 +301,6 @@ inline void StationSuite(TestRunner &runner) {
 
         test.assertEqual(station::activate(station::kWorkRow, state), station::kActionWork, "A on WORK opens the work board");
         test.assertEqual(state.docked, static_cast<int8_t>(settlement.id), "opening WORK keeps the boat docked");
-
-        test.assertEqual(station::activate(station::kShopRow, state), station::kActionShop, "A on SHOP opens the shop");
-        test.assertEqual(state.docked, static_cast<int8_t>(settlement.id), "opening the shop keeps the boat docked");
 
         test.assertEqual(station::activate(station::kUndockRow, state), station::kActionUndocked, "A on UNDOCK undocks");
         test.assertEqual(state.docked, static_cast<int8_t>(-1), "undock action clears the docked id");
@@ -323,10 +318,10 @@ inline void StationSuite(TestRunner &runner) {
                         "active board's last row clears the hint");
         test.assertTrue(station_view::kHintY + 7 <= 64, "hint fits inside 64 rows");
         test.assertTrue(station_view::kRowX + 6 * 6 < 128, "row labels fit inside 128 columns");
-        test.assertEqual(station_view::kRowInvertH, 7, "shop board uses a 7 px invert");
-        test.assertEqual(station_view::kRowStep, 7, "shop board rows are 7 px apart");
-        test.assertEqual(station_view::kHintY, 57, "shop board hint starts at 57");
-        test.assertEqual(station::kStationRowCount, 3, "no-job shop board has WORK, SHOP and UNDOCK");
+        test.assertEqual(station_view::kRowInvertH, 7, "station board uses a 7 px invert");
+        test.assertEqual(station_view::kRowStep, 7, "station board rows are 7 px apart");
+        test.assertEqual(station_view::kHintY, 57, "station board hint starts at 57");
+        test.assertEqual(station::kStationRowCount, 2, "no-job board has WORK and UNDOCK");
         runner.add(test);
     }
 }

@@ -10,9 +10,9 @@
 
 // Pure campaign rules: stable mission/survey/berth IDs, prerequisites, repair
 // ordering, one-time completion flags and the bounded active-job invariants.
-// No Arduino headers, heap, float or generated literal indices. The route
-// reward is read from the generated economy; mission IDs and prerequisite
-// order are frozen by docs/progression-implementation.md.
+// No Arduino headers, heap, float or generated literal indices. Mission IDs and
+// prerequisite order are frozen by docs/progression-implementation.md; story
+// deliveries carry no payout.
 namespace campaign {
 
 using game::State;
@@ -131,19 +131,6 @@ inline uint8_t surveyForMission(uint8_t missionId) {
 
 inline bool sealOwned(const State &state) {
     return (state.tools & exploration_data::SEAL) != 0;
-}
-
-// Generated ordered-pair reward. Campaign work pays the ordinary route reward
-// once; surveys pay nothing.
-inline uint8_t missionReward(uint8_t id) {
-    MissionSpec spec;
-    if (!missionInfo(id, spec) || !spec.cargo)
-        return 0;
-    uint8_t reward = 0;
-    uint16_t unusedDeadline = 0;
-    if (!world::routeEconomy(spec.from, spec.to, reward, unusedDeadline))
-        return 0;
-    return reward;
 }
 
 inline bool hasMilestone(uint8_t campaign, uint8_t bit) {
@@ -276,11 +263,6 @@ inline bool freightBerth(uint8_t berth) {
     return berth < world::SETTLEMENT_COUNT;
 }
 
-inline void markVisited(State &state, uint8_t berth) {
-    if (freightBerth(berth))
-        state.visited |= static_cast<uint8_t>(1u << berth);
-}
-
 inline bool markEndingPresented(State &state) {
     if (!hasMilestone(state, kMilestoneHome))
         return false;
@@ -309,9 +291,6 @@ inline bool accept(State &state, uint8_t id) {
         return false;
     MissionSpec spec;
     missionInfo(id, spec);
-    const uint8_t reward = missionReward(id);
-    if (reward == 0)
-        return false;
 
     game::setCargo(state, 0);
     state.activeJob.kind = game::kJobKindCampaign;
@@ -319,7 +298,6 @@ inline bool accept(State &state, uint8_t id) {
     state.activeJob.from = spec.from;
     state.activeJob.to = spec.to;
     state.activeJob.crates = game::kJobCrates;
-    state.activeJob.reward = reward;
     state.lastDelivery = kDeliveryNone;
     game::setCargo(state, game::kJobCrates);
     state.ballast = static_cast<uint8_t>(game::neutralForNormalized(state.cargo));
@@ -345,45 +323,32 @@ inline bool surveysValid(uint8_t mask) {
 
 inline bool activeJobValid(const game::ActiveJob &job, uint8_t campaign, uint8_t surveys, uint8_t tools) {
     if (job.kind == game::kJobKindNone) {
-        return job.mission == kMissionNone && job.from == game::kJobNone && job.to == game::kJobNone && job.crates == 0 && job.reward == 0;
+        return job.mission == kMissionNone && job.from == game::kJobNone && job.to == game::kJobNone && job.crates == 0;
     }
+    if (job.kind != game::kJobKindCampaign)
+        return false;
     if (job.crates != game::kJobCrates || job.to >= world::SETTLEMENT_COUNT)
         return false;
 
-    if (job.kind == game::kJobKindCampaign) {
-        MissionSpec spec;
-        if (!missionInfo(job.mission, spec) || !spec.cargo)
-            return false;
-        return job.from == spec.from && job.to == spec.to && job.reward == missionReward(job.mission) && !missionCompleted(campaign, surveys, job.mission) &&
-               missionPrerequisites(campaign, surveys, tools, job.mission);
-    }
-
-    if (job.kind != game::kJobKindOrdinary)
+    MissionSpec spec;
+    if (!missionInfo(job.mission, spec) || !spec.cargo)
         return false;
-    if (job.mission != kMissionNone || job.from >= world::SETTLEMENT_COUNT || job.from == job.to)
-        return false;
-    uint8_t routeReward = 0;
-    uint16_t ignoredDeadline = 0;
-    if (!world::routeEconomy(job.from, job.to, routeReward, ignoredDeadline))
-        return false;
-    // Exact equality also rejects every malformed reward.
-    return job.reward == routeReward;
+    return job.from == spec.from && job.to == spec.to && !missionCompleted(campaign, surveys, job.mission) &&
+           missionPrerequisites(campaign, surveys, tools, job.mission);
 }
 
 inline bool activeJobValid(const State &state) {
     return activeJobValid(state.activeJob, state.campaign, state.surveys, state.tools);
 }
 
-inline bool checkpointValid(uint8_t campaign, uint8_t surveys, uint8_t visited, uint8_t ending, const game::ActiveJob &job, uint8_t tools) {
-    if ((visited & ~static_cast<uint8_t>((1u << world::SETTLEMENT_COUNT) - 1u)) != 0)
-        return false;
+inline bool checkpointValid(uint8_t campaign, uint8_t surveys, uint8_t ending, const game::ActiveJob &job, uint8_t tools) {
     if (ending > 1 || (ending != 0 && !hasMilestone(campaign, kMilestoneHome)))
         return false;
     return milestonesValid(campaign) && surveysValid(surveys) && activeJobValid(job, campaign, surveys, tools);
 }
 
 inline bool stateValid(const State &state) {
-    return checkpointValid(state.campaign, state.surveys, state.visited, state.ending, state.activeJob, state.tools);
+    return checkpointValid(state.campaign, state.surveys, state.ending, state.activeJob, state.tools);
 }
 
 }   // namespace campaign

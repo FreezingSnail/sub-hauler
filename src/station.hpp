@@ -40,48 +40,36 @@ constexpr int32_t kDockSpeedSq = static_cast<int32_t>(kDockSpeedQ8) * kDockSpeed
 // thrust clear; re-entering after that exit docks normally.
 constexpr uint8_t kUndockCooldown = 1;
 
-// Row extension point for the unified WORK board and the M7 shop. WORK is the
-// single access to both restoration missions and the repeatable freight row, so
-// the no-job board no longer posts separate freight rows:
+// Station board shapes. WORK is the single access to restoration missions, so
+// the no-job board posts no separate freight rows:
 //
-//   no job:       WORK SHOP UNDOCK          (service-only berth: UNDOCK)
-//   active:       [summary] ABANDON WORK SHOP UNDOCK
+//   no job:       WORK UNDOCK          (service-only berth: UNDOCK)
+//   active:       [summary] ABANDON WORK UNDOCK
 //
-// A SHOP=0 build drops the SHOP row. A JOBS=0 build keeps the original SERVICE
-// row. Only selectable rows participate in wrap-around; the summary row is
-// inert. Acceptance auto-loads the contract hold, so there is no LOAD row.
+// Only selectable rows participate in wrap-around; the summary row is inert.
+// Acceptance auto-loads the contract hold, so there is no LOAD row.
 constexpr uint8_t kWorkRow = 0;
-constexpr uint8_t kShopRow = 1;
-constexpr uint8_t kUndockRow = 2;
-constexpr uint8_t kStationRowCount = 3;
+constexpr uint8_t kUndockRow = 1;
+constexpr uint8_t kStationRowCount = 2;
 constexpr uint8_t kFirstRow = 0;
 
 constexpr uint8_t kActiveSummaryRow = 0;
 constexpr uint8_t kAbandonRow = 1;
 constexpr uint8_t kActiveWorkRow = 2;
-constexpr uint8_t kActiveShopRow = 3;
-constexpr uint8_t kActiveUndockRow = 4;
-constexpr uint8_t kActiveRowCount = 5;
+constexpr uint8_t kActiveUndockRow = 3;
+constexpr uint8_t kActiveRowCount = 4;
 
 enum RowKind : uint8_t {
     kRowWork,
-    kRowShop,
-    kRowUndock
-    ,
+    kRowUndock,
     kRowJob,
     kRowAbandon
 };
 
 enum Action : uint8_t {
     kActionNone,
-    kActionServiced,
-    kActionUndocked
-    ,
-    kActionWork
-    ,
-    kActionShop
-    ,
-    kActionAccepted,
+    kActionUndocked,
+    kActionWork,
     kActionAbandoned
 };
 
@@ -111,14 +99,10 @@ inline RowKind rowKind(uint8_t row, const State &state) {
             return kRowAbandon;
         if (row == kActiveWorkRow)
             return kRowWork;
-        if (row == kActiveShopRow)
-            return kRowShop;
         return kRowUndock;
     }
     if (row == kWorkRow)
         return kRowWork;
-    if (row == kShopRow)
-        return kRowShop;
     return kRowUndock;
 }
 
@@ -142,15 +126,6 @@ inline uint8_t firstSelectable(const State &state) {
     if (jobActive(state))
         return kAbandonRow;
     return kFirstRow;
-}
-
-// The SHOP row index depends on the board shape. The sketch uses this when B
-// backs out of the shop, so an active board returns to SHOP rather than the
-// UNDOCK row that shares the no-job index.
-inline uint8_t shopRow(const State &state) {
-    if (jobActive(state))
-        return kActiveShopRow;
-    return kShopRow;
 }
 
 inline uint8_t selectableCount(const State &state) {
@@ -252,12 +227,10 @@ inline bool dock(State &state) {
     state.vyQ8 = 0;
 
     service(state);
-    // Freight berths resolve a contract ending here, then restock offers.
-    // Service-only berths refill and save but never trade.
+    // Freight berths resolve a contract ending here. Service-only berths
+    // refill and save but never trade.
     if (campaign::freightBerth(settlementId))
         jobs::onDock(state, settlementId);
-    else
-        state.offerCount = 0;
     return true;
 }
 
@@ -289,10 +262,8 @@ template <typename Reader> inline bool stepFlight(State &state, const Input &inp
     return dock(state);
 }
 
-// A confirms the selected row. Offer rows accept the contract (auto-loading
-// the four contract units), ABANDON clears the contract, SHOP opens the shop
-// screen (the sketch owns it), SERVICE refills/repairs, and UNDOCK leaves the
-// station.
+// A confirms the selected row. ABANDON clears the contract, WORK opens the
+// restoration board (the sketch owns it), and UNDOCK leaves the station.
 inline Action activate(uint8_t selected, State &state) {
     if (state.docked < 0 || selected >= rowCount(state))
         return kActionNone;
@@ -300,8 +271,6 @@ inline Action activate(uint8_t selected, State &state) {
     switch (rowKind(selected, state)) {
     case kRowWork:
         return kActionWork;
-    case kRowShop:
-        return kActionShop;
     case kRowUndock:
         return undock(state) ? kActionUndocked : kActionNone;
     case kRowAbandon:

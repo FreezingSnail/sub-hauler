@@ -6,7 +6,6 @@
 #include "../src/exploration.hpp"
 #include "../src/exploration_view.hpp"
 #include "../src/pilot.hpp"
-#include "../src/jobs.hpp"
 #include "../src/station.hpp"
 #include "test.hpp"
 #include "world_test.hpp"
@@ -86,22 +85,23 @@ inline void ExplorationSuite(TestRunner &runner) {
         runner.add(t);
     }
     {
-        Test t("exploration salvage requires a slow uninterrupted dwell and pays once");
+        Test t("exploration salvage requires a slow uninterrupted dwell and claims once");
         game::State s;
         game::resetWorld(s);
-        const auto p = data::pickup(data::PICKUP_TC);
+        const auto p = data::pickup(data::PICKUP_W);
         place(s, p.x, p.y);
         dwell(s, exploration::kDwellTicks - 1);
-        t.assertEqual(s.credits, 0, "no instant reward");
+        t.assertEqual(s.pickups, 0, "no instant claim");
         place(s, p.x + 80, p.y);
         dwell(s, 1);
         place(s, p.x, p.y);
         dwell(s, exploration::kDwellTicks - 1);
-        t.assertEqual(s.credits, 0, "leaving resets progress");
+        t.assertEqual(s.pickups, 0, "leaving resets progress");
         dwell(s, 1);
-        t.assertEqual(s.credits, p.amount, "complete dwell pays the purse");
+        t.assertEqual(s.pickups, static_cast<uint8_t>(1u << data::PICKUP_W), "complete dwell claims the cove");
+        t.assertTrue((s.tools & data::CUTTER) != 0, "the claimed cove equips its tool");
         dwell(s);
-        t.assertEqual(s.credits, p.amount, "standing on claimed cove cannot pay twice");
+        t.assertEqual(s.pickups, static_cast<uint8_t>(1u << data::PICKUP_W), "standing on claimed cove cannot claim twice");
         game::resetWorld(s);
         place(s, p.x, p.y);
         s.vxQ8 = exploration::kOperateSpeed + 1;
@@ -180,14 +180,15 @@ inline void ExplorationSuite(TestRunner &runner) {
         runner.add(t);
     }
     {
-        Test t("hidden rewards saturate money");
+        Test t("a credit cove claim is inert after the economy strip");
         game::State s;
         game::resetWorld(s);
-        s.credits = 65530;
+        s.tools = data::CUTTER;
         const auto purse = data::pickup(data::PICKUP_DC);
         place(s, purse.x, purse.y);
         dwell(s);
-        t.assertEqual(s.credits, 65535, "large treasure cannot wrap credits");
+        t.assertEqual(s.pickups & static_cast<uint8_t>(1u << data::PICKUP_DC), static_cast<uint8_t>(1u << data::PICKUP_DC), "the cove is recorded");
+        t.assertEqual(s.tools, data::CUTTER, "a credit cove equips no tool");
         game::resetWorld(s);
         t.assertEqual(s.tools, 0, "restart resets run-local equipment");
         t.assertEqual(s.pickups, 0, "restart resets run-local claims");
@@ -227,27 +228,6 @@ inline void ExplorationSuite(TestRunner &runner) {
         }
         t.assertTrue(above, "upper flank clears the actual hull");
         t.assertTrue(below, "lower flank offers another way around");
-        runner.add(t);
-    }
-    {
-        Test t("freight offers avoid pressure-locked berths until the seal is found");
-        game::State s;
-        game::resetWorld(s);
-        for (uint8_t origin = 0; origin < 3; ++origin) {
-            for (uint8_t board = 0; board < 16; ++board) {
-                jobs::refreshOffers(s, origin);
-                for (uint8_t i = 0; i < s.offerCount; ++i)
-                    t.assertTrue(s.offers[i].to != 3, "starting offers remain reachable");
-            }
-        }
-        s.tools = exploration_data::SEAL;
-        bool offered = false;
-        for (uint8_t board = 0; board < 16; ++board) {
-            jobs::refreshOffers(s, 0);
-            for (uint8_t i = 0; i < s.offerCount; ++i)
-                offered = offered || s.offers[i].to == 3;
-        }
-        t.assertTrue(offered, "seal unlocks delivery offers to the deep station");
         runner.add(t);
     }
     {
