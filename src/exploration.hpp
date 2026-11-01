@@ -54,9 +54,6 @@ inline void claim(State &s, uint8_t id, const data::Pickup &p) {
         s.tools |= data::THRUSTER;
     else if (p.kind == 6)
         s.tools |= data::LENS;
-    else if (p.kind == 4) {
-        s.credits = s.credits > static_cast<uint16_t>(0xFFFFu - p.amount) ? 0xFFFFu : static_cast<uint16_t>(s.credits + p.amount);
-    }
     s.lastDiscovery = id;
     s.discoveryTicks = 180;
 }
@@ -124,9 +121,5 @@ inline void update(State &s) {
         }
         s.openGates |= static_cast<uint16_t>(1u) << (target - data::PICKUP_COUNT);
     }
-}
-// The final berth is available to ordinary contracts only after its seal is found.
-inline bool stationAvailable(const State &s, uint8_t id) {
-    return id != 3 || (s.tools & data::SEAL) != 0;
 }
 }   // namespace exploration

@@ -20,9 +20,8 @@
 // The single WORK board. Pure row rules stay host-testable; the device draw is
 // below the __AVR__ boundary because it uses the external FX font.
 //
-// Story restoration jobs are listed first, in stable mission order. The one
-// repeatable freight row follows them. There are no separate offer rows on the
-// station board, no detail step, no deadline and no clock.
+// Story restoration jobs are listed in stable mission order. There are no
+// offer rows, no detail step, no deadline, no clock and no reward.
 namespace work_view {
 
 constexpr uint8_t kNoMission = 0xFF;
@@ -42,7 +41,6 @@ static_assert(kRowX + 21 * 6 == 128, "the longest CARGO row fills exactly 128 co
 enum RowKind : uint8_t {
     kRowNone,
     kRowStory,
-    kRowFreight,
     kRowEnding,
 };
 
@@ -69,10 +67,7 @@ inline uint8_t storyCount(const game::State &state) {
 inline uint8_t rowCount(const game::State &state) {
     if (jobActive(state))
         return 0;
-    uint8_t count = storyCount(state);
-    if (state.offerCount > 0)
-        ++count;
-    return count;
+    return storyCount(state);
 }
 
 inline Row rowAt(const game::State &state, uint8_t index) {
@@ -84,12 +79,6 @@ inline Row rowAt(const game::State &state, uint8_t index) {
         const uint8_t mission = campaign::workMissionAt(state, static_cast<uint8_t>(state.docked), index);
         row.kind = mission == campaign::kWorkEnding ? kRowEnding : kRowStory;
         row.mission = mission;
-        return row;
-    }
-    index = static_cast<uint8_t>(index - storyCount(state));
-    if (index == 0 && state.offerCount > 0) {
-        row.kind = kRowFreight;
-        row.mission = kNoMission;
     }
     return row;
 }
@@ -98,8 +87,6 @@ inline Row rowAt(const game::State &state, uint8_t index) {
 // the sketch opens the cards itself. Survey story rows are also presentation
 // leads: the sketch opens the chart, and recording still happens in the field.
 inline bool accept(game::State &state, const Row &row) {
-    if (row.kind == kRowFreight)
-        return jobs::accept(state, 0);
     if (row.kind == kRowStory)
         return campaign::accept(state, row.mission);
     return false;
@@ -228,27 +215,6 @@ inline void drawStoryRow(uint8_t y, const Row &row, bool selected) {
     text::print(txt_story);
     text::character(' ');
     text::print(missionLabel(row.mission));
-    const uint8_t reward = campaign::missionReward(row.mission);
-    if (reward != 0) {
-        text::character(' ');
-        text::number(reward);
-    }
-    text::normal();
-}
-
-inline void drawFreightRow(uint8_t y, const game::State &state, bool selected) {
-    if (selected) {
-        arduboy.fillRect(0, y, 128, kRowInvertH, WHITE);
-        text::inverted();
-    } else {
-        text::normal();
-    }
-    text::at(kRowX, y);
-    text::print(txt_cargo);
-    text::character(' ');
-    text::print(station_view::nameFor(state.offers[0].to));
-    text::character(' ');
-    text::number(state.offers[0].reward);
     text::normal();
 }
 
@@ -280,9 +246,7 @@ inline void draw(const game::State &state, uint8_t selected) {
     for (uint8_t index = first; index < count && visible < kRows; ++index, ++visible) {
         const Row row = rowAt(state, index);
         const uint8_t y = static_cast<uint8_t>(kRowY0 + visible * kRowStep);
-        if (row.kind == kRowFreight)
-            drawFreightRow(y, state, index == selected);
-        else if (row.kind == kRowStory || row.kind == kRowEnding)
+        if (row.kind == kRowStory || row.kind == kRowEnding)
             drawStoryRow(y, row, index == selected);
     }
 

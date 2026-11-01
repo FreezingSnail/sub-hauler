@@ -2,11 +2,9 @@
 
 // Native integration tests for checkpoint application (sub-hauler-7px.4).
 // These exercise the same voyage_flow policy the sketch calls: boot
-// classification, Continue restoration, deterministic offers, loaded-freight
-// preservation, rescue commits and failed-write retry. Storage fault injection
-// stays in voyage_save_test's FakeStorage so there is one cart-save fixture.
-
-
+// classification, Continue restoration, loaded campaign contracts, rescue
+// commits and failed-write retry. Storage fault injection stays in
+// voyage_save_test's FakeStorage so there is one cart-save fixture.
 
 #include "../src/campaign.hpp"
 #include "../src/game.hpp"
@@ -23,33 +21,11 @@ using voyage_save_test::Fixture;
 using voyage_save_test::kNoFault;
 using voyage_save_test::setValidPayload;
 
-inline bool sameOffers(const game::State &a, const game::State &b) {
-    if (a.offerCount != b.offerCount || a.offerCursor != b.offerCursor || a.offerSerial != b.offerSerial)
-        return false;
-    for (uint8_t i = 0; i < a.offerCount; ++i) {
-        if (a.offers[i].to != b.offers[i].to || a.offers[i].reward != b.offers[i].reward)
-            return false;
-    }
-    return true;
-}
-
-inline bool makeFreightAtIntermediate(Fixture &fixture) {
+inline bool makeFirstAtIntermediate(Fixture &fixture) {
     fixture.reset();
-    fixture.state.docked = static_cast<int8_t>(campaign::kCormorant);
-    fixture.state.cargo = game::kJobCrates;
-    fixture.state.ballast = static_cast<uint8_t>(game::neutralFor(fixture.state.cargo));
-    fixture.state.offerCursor = 0x0123;
-    fixture.state.offerSerial = 0x0125;
-    uint8_t routeReward = 0;
-    uint16_t unusedDeadline = 0;
-    if (!world::routeEconomy(campaign::kTidewall, campaign::kBenthos, routeReward, unusedDeadline))
+    if (!campaign::accept(fixture.state, campaign::kFirst))
         return false;
-    fixture.state.activeJob.kind = game::kJobKindOrdinary;
-    fixture.state.activeJob.mission = game::kMissionNone;
-    fixture.state.activeJob.from = campaign::kTidewall;
-    fixture.state.activeJob.to = campaign::kBenthos;
-    fixture.state.activeJob.crates = game::kJobCrates;
-    fixture.state.activeJob.reward = routeReward;
+    fixture.state.docked = static_cast<int8_t>(campaign::kCormorant);
     return campaign::activeJobValid(fixture.state);
 }
 
@@ -91,9 +67,9 @@ inline void VoyageFlowSuite(TestRunner &runner) {
     }
 
     {
-        Test test("Continue restores the intermediate berth and loaded freight");
+        Test test("Continue restores the intermediate berth and loaded campaign contract");
         Fixture source;
-        test.assertTrue(makeFreightAtIntermediate(source), "valid loaded checkpoint at Cormorant");
+        test.assertTrue(makeFirstAtIntermediate(source), "valid loaded checkpoint at Cormorant");
         FakeStorage storage(0xFF);
         test.assertEqual(source.save(storage), voyage_save::kSaved, "intermediate checkpoint saves");
 
@@ -107,9 +83,9 @@ inline void VoyageFlowSuite(TestRunner &runner) {
                          voyage_save::kLoaded, "Continue loads");
         test.assertEqual(restored.state.docked, campaign::kCormorant, "intermediate berth restored");
         test.assertEqual(restored.state.cargo, game::kJobCrates, "loaded cargo remains active");
-        test.assertEqual(restored.state.activeJob.kind, game::kJobKindOrdinary, "ordinary kind restored");
-        test.assertEqual(restored.state.activeJob.reward, source.state.activeJob.reward, "freight reward restored");
-        test.assertEqual(restored.state.offerCursor, 0x0123, "saved offer cursor restored");
+        test.assertEqual(restored.state.activeJob.kind, game::kJobKindCampaign, "campaign kind restored");
+        test.assertEqual(restored.state.activeJob.mission, campaign::kFirst, "mission restored");
+        test.assertEqual(restored.state.activeJob.to, campaign::kBenthos, "destination restored");
         test.assertEqual(restored.state.x, game::cameraPixelX(restored.state) + 44, "intermediate berth x feeds the camera");
         test.assertEqual(restored.state.cameraXQ4, game::cameraTargetXQ4(restored.state), "intermediate camera x is snapped");
         test.assertEqual(restored.state.cameraYQ4, game::cameraTargetYQ4(restored.state), "intermediate camera y is snapped");
@@ -120,62 +96,19 @@ inline void VoyageFlowSuite(TestRunner &runner) {
     }
 
     {
-        Test test("restored freight board is deterministic and does not move the saved cursor");
-        Fixture source;
-        source.reset();
-        source.state.docked = static_cast<int8_t>(campaign::kBenthos);
-        source.state.offerCursor = 4242;
-        source.state.offerSerial = 4244;
-        FakeStorage storage(0xFF);
-        test.assertEqual(source.save(storage), voyage_save::kSaved, "no-job berth checkpoint saves");
-
-        Fixture first;
-        first.reset();
-        Fixture second;
-        second.reset();
-        test.assertEqual(voyage_flow::loadCheckpoint(first.state
-                                                     ,
-                                                     first.chart
-                                                     ,
-                                                     storage),
-                         voyage_save::kLoaded, "first Continue");
-        test.assertEqual(voyage_flow::loadCheckpoint(second.state
-                                                     ,
-                                                     second.chart
-                                                     ,
-                                                     storage),
-                         voyage_save::kLoaded, "second Continue");
-        test.assertTrue(sameOffers(first.state, second.state), "same board on every Continue");
-        test.assertEqual(first.state.offerCount, game::kJobOffers, "full offer board regenerated");
-        test.assertEqual(first.state.offerCursor, 4242, "saved cursor is unchanged by regeneration");
-        test.assertEqual(first.state.offerSerial, second.state.offerSerial, "working serial is deterministic");
-        runner.add(test);
-    }
-
-    {
         Test test("free rescue restores the checkpoint, counts once and commits");
         FakeStorage storage(0xFF);
         Fixture source;
         source.reset();
-        source.state.docked = static_cast<int8_t>(campaign::kBenthos);
-        source.state.credits = 95;
-        source.state.cargo = game::kJobCrates;
-        source.state.ballast = static_cast<uint8_t>(game::neutralFor(source.state.cargo));
-        uint8_t routeReward = 0;
-        uint16_t unusedDeadline = 0;
-        test.assertTrue(world::routeEconomy(campaign::kTidewall, campaign::kBenthos, routeReward, unusedDeadline), "route exists");
-        source.state.activeJob.kind = game::kJobKindOrdinary;
-        source.state.activeJob.mission = game::kMissionNone;
-        source.state.activeJob.from = campaign::kTidewall;
-        source.state.activeJob.to = campaign::kBenthos;
-        source.state.activeJob.crates = game::kJobCrates;
-        source.state.activeJob.reward = routeReward;
+        source.state.delivered = 95;
+        test.assertTrue(campaign::accept(source.state, campaign::kFirst), "loaded campaign baseline");
+        source.state.docked = static_cast<int8_t>(campaign::kCormorant);
         source.state.rescues = 0;
         test.assertEqual(source.save(storage), voyage_save::kSaved, "rescue-free checkpoint saves");
 
         Fixture live = source;
         live.state.air = 0;
-        live.state.credits = 999;
+        live.state.delivered = 999;
         live.state.rescues = 0;
         const voyage_flow::Recovery recovery = voyage_flow::recoverCheckpoint(live.state
                                                                               ,
@@ -185,7 +118,7 @@ inline void VoyageFlowSuite(TestRunner &runner) {
         test.assertEqual(recovery.load, voyage_save::kLoaded, "zero-air rescue finds the checkpoint");
         test.assertEqual(recovery.save, voyage_save::kSaved, "rescue counter commits");
         test.assertEqual(live.state.air, game::airCapacity(live.state), "zero air becomes full air");
-        test.assertEqual(live.state.credits, 95, "unsaved credit change rolls back");
+        test.assertEqual(live.state.delivered, 95, "unsaved delivery change rolls back");
         test.assertEqual(live.state.cargo, game::kJobCrates, "cargo survives rescue");
         test.assertEqual(live.state.rescues, 1, "rescue count increments once");
 
@@ -198,7 +131,7 @@ inline void VoyageFlowSuite(TestRunner &runner) {
                                                      storage),
                          voyage_save::kLoaded, "committed rescue reloads");
         test.assertEqual(reloaded.state.rescues, 1, "committed rescue count persists");
-        test.assertEqual(reloaded.state.credits, 95, "rescue does not duplicate payment");
+        test.assertEqual(reloaded.state.delivered, 95, "rescue does not duplicate a delivery");
         runner.add(test);
     }
 
@@ -206,20 +139,16 @@ inline void VoyageFlowSuite(TestRunner &runner) {
         Test test("Continue at Pump Refuge restores the generated berth and loaded cargo");
         world::Berth berth;
         test.assertTrue(world::serviceBerthInfo(0, berth), "generated Pump Refuge berth");
-        uint8_t routeReward = 0;
-        uint16_t unusedDeadline = 0;
-        test.assertTrue(world::routeEconomy(campaign::kTidewall, campaign::kBenthos, routeReward, unusedDeadline), "ordinary route exists");
 
         Fixture source;
         source.reset();
         source.state.docked = static_cast<int8_t>(campaign::kPumpRefuge);
         source.state.campaign = campaign::kMilestonePump;
-        source.state.activeJob.kind = game::kJobKindOrdinary;
-        source.state.activeJob.mission = game::kMissionNone;
+        source.state.activeJob.kind = game::kJobKindCampaign;
+        source.state.activeJob.mission = campaign::kFirst;
         source.state.activeJob.from = campaign::kTidewall;
         source.state.activeJob.to = campaign::kBenthos;
         source.state.activeJob.crates = game::kJobCrates;
-        source.state.activeJob.reward = routeReward;
         source.state.cargo = game::kJobCrates;
         source.state.ballast = static_cast<uint8_t>(game::neutralFor(source.state.cargo));
         test.assertTrue(campaign::activeJobValid(source.state), "service-berth cargo checkpoint is semantically valid");
@@ -240,10 +169,9 @@ inline void VoyageFlowSuite(TestRunner &runner) {
         test.assertEqual(restored.state.cameraXQ4, game::cameraTargetXQ4(restored.state), "service berth camera x is snapped");
         test.assertEqual(restored.state.cameraYQ4, game::cameraTargetYQ4(restored.state), "service berth camera y is snapped");
         test.assertEqual(restored.state.cargo, game::kJobCrates, "loaded cargo survives the service berth");
-        test.assertEqual(restored.state.activeJob.kind, game::kJobKindOrdinary, "active cargo job restored");
+        test.assertEqual(restored.state.activeJob.kind, game::kJobKindCampaign, "campaign job restored");
         test.assertEqual(restored.state.air, game::airCapacity(restored.state), "service berth restores full air");
         test.assertEqual(restored.state.vxQ8, 0, "transient velocity resets");
-        test.assertEqual(restored.state.offerCount, 0, "service berth has no freight board");
         runner.add(test);
     }
 
@@ -251,20 +179,16 @@ inline void VoyageFlowSuite(TestRunner &runner) {
         Test test("Continue at Lower Gantry restores its loaded service checkpoint");
         world::Berth berth;
         test.assertTrue(world::serviceBerthInfo(1, berth), "generated Lower Gantry berth");
-        uint8_t routeReward = 0;
-        uint16_t unusedDeadline = 0;
-        test.assertTrue(world::routeEconomy(campaign::kTidewall, campaign::kBenthos, routeReward, unusedDeadline), "ordinary route exists");
 
         Fixture source;
         source.reset();
         source.state.docked = static_cast<int8_t>(campaign::kLowerGantry);
         source.state.campaign = campaign::kMilestoneLift;
-        source.state.activeJob.kind = game::kJobKindOrdinary;
-        source.state.activeJob.mission = game::kMissionNone;
+        source.state.activeJob.kind = game::kJobKindCampaign;
+        source.state.activeJob.mission = campaign::kFirst;
         source.state.activeJob.from = campaign::kTidewall;
         source.state.activeJob.to = campaign::kBenthos;
         source.state.activeJob.crates = game::kJobCrates;
-        source.state.activeJob.reward = routeReward;
         source.state.cargo = game::kJobCrates;
         source.state.ballast = static_cast<uint8_t>(game::neutralFor(source.state.cargo));
         test.assertTrue(campaign::activeJobValid(source.state), "Lower Gantry cargo checkpoint is semantically valid");
@@ -285,9 +209,8 @@ inline void VoyageFlowSuite(TestRunner &runner) {
         test.assertEqual(restored.state.cameraXQ4, game::cameraTargetXQ4(restored.state), "Lower Gantry camera x is snapped");
         test.assertEqual(restored.state.cameraYQ4, game::cameraTargetYQ4(restored.state), "Lower Gantry camera y is snapped");
         test.assertEqual(restored.state.cargo, game::kJobCrates, "loaded cargo survives the service berth");
-        test.assertEqual(restored.state.activeJob.kind, game::kJobKindOrdinary, "active cargo job restored");
+        test.assertEqual(restored.state.activeJob.kind, game::kJobKindCampaign, "campaign job restored");
         test.assertEqual(restored.state.air, game::airCapacity(restored.state), "service berth restores full air");
-        test.assertEqual(restored.state.offerCount, 0, "Lower Gantry has no freight board");
         runner.add(test);
     }
 
@@ -298,14 +221,12 @@ inline void VoyageFlowSuite(TestRunner &runner) {
         source.state.docked = static_cast<int8_t>(campaign::kTidewall);
         source.state.campaign = static_cast<uint8_t>(campaign::kMilestoneFirst | campaign::kMilestonePump | campaign::kMilestoneLift | campaign::kMilestoneBeacon | campaign::kMilestoneHome);
         source.state.ending = 0;
-        source.state.credits = 590;
         source.state.delivered = 5;
         source.state.activeJob.kind = game::kJobKindNone;
         source.state.activeJob.mission = campaign::kMissionNone;
         source.state.activeJob.from = game::kJobNone;
         source.state.activeJob.to = game::kJobNone;
         source.state.activeJob.crates = 0;
-        source.state.activeJob.reward = 0;
         source.state.cargo = 0;
         test.assertTrue(campaign::stateValid(source.state), "post-HOME checkpoint is valid");
         test.assertEqual(campaign::workMissionAt(source.state, campaign::kTidewall, 0), campaign::kWorkEnding, "VIEW ENDING is available");
@@ -321,11 +242,9 @@ inline void VoyageFlowSuite(TestRunner &runner) {
                                                      storage),
                          voyage_save::kLoaded, "reload between HOME and cards succeeds");
         test.assertEqual(reloaded.state.ending, 0, "cards have not been marked yet");
-        test.assertEqual(reloaded.state.credits, 590, "HOME payment is committed exactly once");
         test.assertEqual(reloaded.state.delivered, 5, "five deliveries are recorded");
         test.assertTrue(campaign::markEndingPresented(reloaded.state), "cards can be marked after reload");
         test.assertEqual(reloaded.state.ending, 1, "ending flag set");
-        test.assertEqual(reloaded.state.credits, 590, "marking the ending pays nothing");
         test.assertEqual(reloaded.save(storage), voyage_save::kSaved, "ending flag commits");
         test.assertEqual(reloaded.save(storage), voyage_save::kSaved, "repeat save remains idempotent");
 
@@ -333,11 +252,11 @@ inline void VoyageFlowSuite(TestRunner &runner) {
         postgame.reset();
         test.assertEqual(postgame.load(storage), voyage_save::kLoaded, "postgame checkpoint loads");
         test.assertEqual(postgame.state.ending, 1, "ending presentation persists");
-        test.assertEqual(postgame.state.credits, 590, "postgame keeps the same credits");
+        test.assertEqual(postgame.state.delivered, 5, "postgame keeps the delivery count");
         test.assertEqual(campaign::workMissionAt(postgame.state, campaign::kTidewall, 0), campaign::kWorkEnding, "ending remains viewable");
-        test.assertEqual(jobs::deliver(postgame.state, campaign::kTidewall), jobs::kDeliveryNone, "postgame docking cannot pay HOME again");
+        test.assertEqual(jobs::deliver(postgame.state, campaign::kTidewall), jobs::kDeliveryNone, "postgame docking cannot complete HOME again");
         test.assertTrue(!campaign::completeMission(postgame.state, campaign::kHome), "HOME cannot complete twice");
-        test.assertEqual(postgame.state.credits, 590, "replay never pays twice");
+        test.assertEqual(postgame.state.delivered, 5, "replay never counts twice");
         test.assertTrue(postgame.state.docked == static_cast<int8_t>(campaign::kTidewall), "postgame continues at Tidewall");
         runner.add(test);
     }
@@ -348,7 +267,7 @@ inline void VoyageFlowSuite(TestRunner &runner) {
         Fixture source;
         source.reset();
         source.state.docked = static_cast<int8_t>(campaign::kBenthos);
-        source.state.credits = 77;
+        source.state.delivered = 77;
         test.assertEqual(source.save(storage), voyage_save::kSaved, "baseline rescue checkpoint");
 
         Fixture live;
@@ -361,7 +280,7 @@ inline void VoyageFlowSuite(TestRunner &runner) {
                                                                             storage);
         test.assertEqual(failed.load, voyage_save::kLoaded, "recovery load still succeeds");
         test.assertEqual(failed.save, voyage_save::kWriteFailed, "failed rescue commit is reported");
-        test.assertEqual(live.state.credits, 77, "restored credits remain live after failed commit");
+        test.assertEqual(live.state.delivered, 77, "restored delivery count remains live after failed commit");
         test.assertEqual(live.state.rescues, 1, "rescue counter remains pending for retry");
 
         storage.failed = false;
@@ -380,7 +299,7 @@ inline void VoyageFlowSuite(TestRunner &runner) {
                                                      ,
                                                      storage),
                          voyage_save::kLoaded, "retried rescue loads");
-        test.assertEqual(reloaded.state.credits, 77, "retry does not alter credits");
+        test.assertEqual(reloaded.state.delivered, 77, "retry does not alter the delivery count");
         test.assertEqual(reloaded.state.rescues, 1, "retry commits the rescue count once");
         runner.add(test);
     }

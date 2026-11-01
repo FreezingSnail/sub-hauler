@@ -43,10 +43,6 @@ constexpr uint8_t kCargoPip = 4;
 
 constexpr uint8_t kHintX = 3;
 constexpr uint8_t kHintY = 56;
-// "CREDITS FOUND" is 13 cells; the old notice path printed one space then the
-// amount, so keep the number at the same exact x.
-constexpr uint8_t kCreditsAmountX = static_cast<uint8_t>(kHintX + 13 * 6 + 6);
-static_assert(kCreditsAmountX == 87, "credits amount keeps its shipped position");
 
 // Opaque HUD plates. The map uses black rock and white water, so each cluster
 // clears its own backing before drawing to keep labels readable over either.
@@ -66,7 +62,8 @@ constexpr uint8_t kHintBackingW = 128;
 constexpr uint8_t kHintBackingH = 9;
 
 #if defined(__AVR__)
-// Notice frame order is generated ABI (gen_hud.NOTICE_STRINGS). One byte
+// Notice frame order is generated ABI (gen_hud.NOTICE_STRINGS), so the retired
+// credits frame keeps its index even though runtime never selects it. One byte
 // selects the 128-byte row; no per-notice 24-bit addresses live in flash.
 enum Notice : uint8_t {
     kNoticeNone = 0,
@@ -140,10 +137,9 @@ inline void draw(const game::State &state) {
     if (state.discoveryTicks) {
         if (state.lastDiscovery == exploration::kNone) {
             notice = kNoticeSurveyRecorded;
-        } else
-        {
+        } else {
             const uint8_t kind = exploration_data::pickup(state.lastDiscovery).kind;
-            notice = kind == 1 ? kNoticeFoundCutter : kind == 2 ? kNoticeFoundSeal : kind == 3 ? kNoticeFoundThruster : kind == 4 ? kNoticeFoundCredits : kNoticeFoundLens;
+            notice = kind == 1 ? kNoticeFoundCutter : kind == 2 ? kNoticeFoundSeal : kind == 3 ? kNoticeFoundThruster : kind == 6 ? kNoticeFoundLens : kNoticeNone;
         }
     } else if (state.contactId != exploration::kNone) {
         if (state.contactId >= exploration::kSurveyBase)
@@ -181,13 +177,6 @@ inline void draw(const game::State &state) {
         // row above it (y55) to preserve the old 9-px plate exactly.
         cave::fillRect(Arduboy2Base::sBuffer, kHintBackingX, kHintBackingY, kHintBackingW, 1, false);
         drawNotice(notice);
-        if (state.discoveryTicks) {
-            if (notice == kNoticeFoundCredits) {
-                const exploration_data::Pickup p = exploration_data::pickup(state.lastDiscovery);
-                text::at(kCreditsAmountX, kHintY);
-                text::number(p.amount);
-            }
-        }
         return;
     }
     // No notice: leave the bottom row untouched so the map shows through.

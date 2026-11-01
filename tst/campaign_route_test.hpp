@@ -218,7 +218,7 @@ inline FlightResult flyFirstDelivery() {
 
     if (state.docked == static_cast<int8_t>(campaign::kBenthos))
         result.docked = true;
-    result.delivered = campaign::missionCompleted(state, campaign::kFirst) && state.credits == campaign::missionReward(campaign::kFirst) && state.cargo == 0;
+    result.delivered = campaign::missionCompleted(state, campaign::kFirst) && state.cargo == 0 && state.delivered == 1;
     result.serviceAir = state.air;
     result.serviceBallast = state.ballast;
     return result;

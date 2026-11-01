@@ -30,8 +30,6 @@
 #include "story_view.hpp"
 #include "ending_view.hpp"
 #include "music.hpp"
-#include "shop.hpp"
-#include "shop_view.hpp"
 #include "chart.hpp"
 #include "chart_view.hpp"
 
@@ -56,21 +54,19 @@ enum class Screen : uint8_t {
     Work,
     Story,
     Ending,
-    Shop,
     Chart,
     SaveFailed,
 };
 
 static Screen s_screen = Screen::Title;
 
-// The station row byte is screen-owned: station/shop use it for row selection.
-// Every station and shop frame restores a valid row before drawing, so there is
-// no extra selection state.
+// The station row byte is screen-owned: the station board uses it for row
+// selection. Every station frame restores a valid row before drawing, so there
+// is no extra selection state.
 static uint8_t s_stationRow = station::kFirstRow;
 
 // Mutually exclusive screen transients share one row byte: only one of WORK,
-// pause and save-failure can be active at a time. The station/shop row stays
-// separate because a failed shop save resumes the same item row.
+// pause and save-failure can be active at a time.
 union UiRow {
     uint8_t work;
     uint8_t pause;
@@ -98,7 +94,6 @@ static uint8_t s_storyReturnPilot;
 // failure frame is showing the world is frozen and departure input is ignored.
 enum SaveResume : uint8_t {
     kSaveResumeStation,
-    kSaveResumeShop,
     kSaveResumePilot,
 };
 
@@ -351,13 +346,6 @@ static void finishSaveResume() {
         if (s_state.docked >= 0)
             station::undock(s_state);
         showPilot();
-        return;
-    case kSaveResumeShop:
-        music::resume();
-        s_screen = Screen::Shop;
-        if (s_stationRow >= shop::kItemCount)
-            s_stationRow = shop::kFirstItem;
-        shop_view::draw(s_state, s_stationRow);
         return;
     default:
         if (endingPending()) {
@@ -728,10 +716,10 @@ static void drawWork() {
     work_view::draw(s_state, s_uiRow.work);
 }
 
-// Single WORK board: eligible restoration rows come first, then the one
-// repeatable freight row. A accepts the selected row directly; the selected
-// job auto-loads its four cargo units and returns to the station board, where
-// UNDOCK/B starts travel. B returns without accepting.
+// Single WORK board: eligible restoration rows only. A accepts the selected
+// story row directly; the selected cargo job auto-loads its four units and
+// returns to the station board, where UNDOCK/B starts travel. B returns without
+// accepting.
 static void updateWork() {
     if (!justChord(UP_BUTTON | DOWN_BUTTON | A_BUTTON | B_BUTTON)) {
         s_present = false;
@@ -839,21 +827,8 @@ static void updateStation() {
             drawWork();
             return;
         }
-        else if (action == station::kActionShop) {
-            // The shop borrows s_stationRow as its 0..2 item selection.
-            s_screen = Screen::Shop;
-            s_stationRow = shop::kFirstItem;
-            shop_view::draw(s_state, s_stationRow);
-            return;
-        }
         else if (action == station::kActionAbandoned) {
-            // The board shape changed: summary -> offers.
-            s_stationRow = station::initialRow(s_state);
-            if (!requestSave(kSaveResumeStation))
-                return;
-        } else if (action == station::kActionAccepted) {
-            // Acceptance auto-loads the contract hold; the boat stays docked
-            // until the player confirms UNDOCK or presses B.
+            // The board shape changed: summary -> WORK/UNDOCK.
             s_stationRow = station::initialRow(s_state);
             if (!requestSave(kSaveResumeStation))
                 return;
@@ -873,37 +848,6 @@ static void updateStation() {
     // A or B undocked this frame: redraw the frozen pilot view without
     // stepping, so the first visible frame after undock is the station berth.
     drawPilot();
-}
-
-// Shop frame: no world step and no cart reads. D-pad selects an item, A buys
-// through the pure transaction, and B backs to the station board. The selected
-// row is the reused station row byte; the shop has no other static state.
-static void updateShop() {
-    if (!justChord(UP_BUTTON | DOWN_BUTTON | A_BUTTON | B_BUTTON)) {
-        s_present = false;
-        return;
-    }
-
-    if (just(UP_BUTTON))
-        s_stationRow = shop::selectPrevious(s_stationRow);
-    if (just(DOWN_BUTTON))
-        s_stationRow = shop::selectNext(s_stationRow);
-
-    if (just(A_BUTTON)) {
-        if (shop::buy(s_state, static_cast<shop::Item>(s_stationRow)) == shop::kBought) {
-            // Only a successful purchase is a save boundary. A failed write
-            // stays frozen on RETRY / CONTINUE UNSAVED.
-            if (!requestSave(kSaveResumeShop))
-                return;
-        }
-    }
-
-    if (just(B_BUTTON)) {
-        showStationBoard(station::shopRow(s_state));
-        return;
-    }
-
-    shop_view::draw(s_state, s_stationRow);
 }
 
 static void applicationBoot() {

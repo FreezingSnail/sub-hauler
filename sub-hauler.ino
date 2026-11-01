@@ -43,9 +43,6 @@ void loop() {
     case Screen::Ending:
         updateEnding();
         break;
-    case Screen::Shop:
-        updateShop();
-        break;
     case Screen::Chart:
         updateChart();
         break;

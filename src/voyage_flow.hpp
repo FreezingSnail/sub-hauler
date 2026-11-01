@@ -17,8 +17,6 @@
 //
 //   * distinguish a blank cart save partition from an incompatible or corrupt
 //     voyage so the title can warn before NEW VOYAGE;
-//   * regenerate the deterministic offer board after a load without moving the
-//     saved cursor;
 //   * increment the rescue counter and commit the recovered berth checkpoint.
 //
 // Pure C++: Storage supplies cart save reads and page/erase commands and the
@@ -60,34 +58,17 @@ template <typename Storage> inline BootStatus inspectBoot(Storage &storage) {
     return status;
 }
 
-// A checkpoint is always at a berth. Freight berths regenerate their two
-// deterministic rows from the saved cursor; service berths (future generated
-// geography) have no freight board. An active job keeps its summary shape.
-inline void prepareBoard(State &state) {
-    if (state.docked < 0) {
-        state.offerCount = 0;
-        return;
-    }
-    if (!game::hasActiveJob(state) && campaign::freightBerth(static_cast<uint8_t>(state.docked)))
-        jobs::refreshOffers(state, static_cast<uint8_t>(state.docked));
-    else
-        state.offerCount = 0;
-}
-
 template <typename Storage>
 inline voyage_save::LoadResult loadCheckpoint(State &state
                                               ,
                                               chart::State &chart
                                               ,
                                               Storage &storage) {
-    const voyage_save::LoadResult result = voyage_save::load(state
-                                                             ,
-                                                             chart
-                                                             ,
-                                                             storage);
-    if (result == voyage_save::kLoaded)
-        prepareBoard(state);
-    return result;
+    return voyage_save::load(state
+                             ,
+                             chart
+                             ,
+                             storage);
 }
 
 template <typename Storage>
@@ -109,16 +90,11 @@ inline voyage_save::SaveResult startNewVoyage(State &state
                                               chart::State &chart
                                               ,
                                               Storage &storage) {
-    const voyage_save::SaveResult result = voyage_save::newVoyage(state
-                                                                  ,
-                                                                  chart
-                                                                  ,
-                                                                  storage);
-    // The board is derived state, not serialized. Generate it even when the
-    // initial write fails so CONTINUE UNSAVED still reaches a valid station
-    // with the same deterministic offers.
-    prepareBoard(state);
-    return result;
+    return voyage_save::newVoyage(state
+                                  ,
+                                  chart
+                                  ,
+                                  storage);
 }
 
 struct Recovery {
@@ -127,10 +103,10 @@ struct Recovery {
 };
 
 // Free rescue recovery: restore the complete newest checkpoint, count the
-// request once, and commit the new counter before the caller resumes. Credits
-// and cargo come from the checkpoint itself, so a rescue never pays twice and
-// never strands a zero-air boat. If the save fails the recovered state remains
-// live and the caller offers RETRY / CONTINUE UNSAVED.
+// request once, and commit the new counter before the caller resumes. Cargo and
+// campaign progress come from the checkpoint itself, so a rescue never pays
+// twice and never strands a zero-air boat. If the save fails the recovered state
+// remains live and the caller offers RETRY / CONTINUE UNSAVED.
 template <typename Storage>
 inline Recovery recoverCheckpoint(State &state
                                   ,

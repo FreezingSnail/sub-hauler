@@ -26,7 +26,6 @@
 #include "voyage_view_test.hpp"
 
 #include "station_test.hpp"
-#include "shop_test.hpp"
 #include "jobs_test.hpp"
 #include "work_view_test.hpp"
 #include "campaign_route_test.hpp"
@@ -61,7 +60,6 @@ int main() {
     VoyageFlowSuite(runner);
     VoyageViewSuite(runner);
     StationSuite(runner);
-    ShopSuite(runner);
     JobsSuite(runner);
     WorkViewSuite(runner);
     CampaignSuite(runner);
