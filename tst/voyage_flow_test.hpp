@@ -83,6 +83,7 @@ inline void VoyageFlowSuite(TestRunner &runner) {
                          voyage_save::kSaved,
                          "new voyage saves");
         test.assertEqual(fresh.state.docked, static_cast<int8_t>(-1), "new voyage starts undocked");
+        test.assertEqual(fresh.state.pendingStory, voyage_save::kPendingStoryNone, "opening deck is never written to the new checkpoint");
         test.assertEqual(fresh.state.x, world::SPAWN_SUB_X, "new voyage spawn x");
         test.assertEqual(fresh.state.y, world::SPAWN_SUB_Y, "new voyage spawn y");
         test.assertEqual(fresh.state.cameraXQ4, game::cameraTargetXQ4(fresh.state), "spawn camera x is snapped");
@@ -109,6 +110,7 @@ inline void VoyageFlowSuite(TestRunner &runner) {
         Fixture restored;
         restored.reset();
         test.assertEqual(restored.load(storage), voyage_save::kLoaded, "Continue loads the new voyage checkpoint");
+        test.assertEqual(restored.state.pendingStory, voyage_save::kPendingStoryNone, "Continue never replays the RAM-only opening deck");
         test.assertEqual(restored.state.docked, campaign::kTidewall, "Continue restores the Tidewall berth");
         test.assertEqual(restored.state.x, home.pixel_x, "Continue restores the berth x");
         test.assertEqual(restored.state.y, home.pixel_y, "Continue restores the berth y");

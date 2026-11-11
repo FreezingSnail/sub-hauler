@@ -22,10 +22,11 @@ Keep dated measurements in the checkpoint table instead of copying them around.
 | Toolchain | arduino-cli 1.2.0; arduboy-homemade:avr 1.4.0; AVR-GCC 7.3.0-atmel3.6.1-arduino7; `-mrelax -mcall-prologues`; LTO |
 | Math | integer/fixed-point only; no `float`/`double` |
 
-Story art checkpoint (2026-11-07, `sub-hauler-4jh`): the DEEP RELAY scene now
-has its own 128×64 illustration in the former shared dispatch row; HOME uses
-the existing cargo-loading art. The source sheet remains 512×1088 with
-seventeen rows. See the dated checkpoint table for current resource figures.
+Story art checkpoint (2026-11-10, story beat wave): the New Voyage opening
+reuses the arrival row, DEEP RELAY acceptance has a unique beacon-console
+illustration, DEEP RELAY result keeps the wreck row, and HOME departure has a
+unique loaded-sub row. The source sheet is 512×1216 with nineteen rows. See the
+dated checkpoint table for current resource figures.
 
 ## Resource budgets
 
@@ -85,12 +86,12 @@ Startup splash measurements and art provenance are in
 [startup-splashes.md](startup-splashes.md). The new FX section appends after
 all shipped menus. `story/scenes.json` is the single editable UTF-8 source for
 scene order, prose and named image rows. `story/art.png` is the canonical
-512×1088 Piskel sheet (seventeen rows of four 128×64 poses); retained pixelgen
-bundles are provenance only. The canonical sources produce sixteen scenes:
-seven result/survey decks, six departures, two joint-restoration variants and
-one additional DEEP RELAY result. Automatic pagination emits forty-one
-cards (twenty image, twenty-one text) and eighty-nine frames from seventeen
-shared animated scenes; consecutive text pages are allowed. The four
+512×1216 Piskel sheet (nineteen rows of four 128×64 poses); retained pixelgen
+bundles are provenance only. The canonical sources produce seventeen scenes:
+seven result/survey decks, six departures, two joint-restoration variants, one
+DEEP RELAY result and the New Voyage opening. Automatic pagination emits
+forty-three cards (twenty-one image, twenty-two text) and ninety-eight frames
+from nineteen shared animated scenes; consecutive text pages are allowed. The
 `story-handoffs-v1` scenes replace the old
 departure placeholders. The exact text, preview, trigger/replay/save contract
 and 57,316 B RLE cart blob are in [story-beats.md](story-beats.md); the blob
@@ -300,6 +301,7 @@ current developer-only `DEBUG=1` image is documented in
 
 | Date | Flash | Static RAM | Toolchain / notes |
 | --- | --- | --- | --- |
+| 2026-11-10 | 29,652 B | 1,665 B | Story beat wave (`sub-hauler-646.6`, `.12`, `.13`, `.15`): New Voyage opening deck (scene 17, RAM-only, skipped by Continue), unique `relay-briefing` and `home-departure` rows; DEEP RELAY result keeps `deep-relay`, HOME result keeps `home-lights`. Sheet **512×1216**, nineteen rows. `.text/.data/.bss` **29,636 / 16 / 1,649 B**; **44 B** hardware flash free. Host **264**, tooling **157**, docs **33** + preview **8**; targeted `test_story` P at **10,752 µs** max over 98 frame CRCs; gen-check deterministic. `make gen`: 17 scenes / 43 cards / 98 frames, story **61,365 B**; FX payload/image **672,205 / 676,352 B**, **1,420,800 B** below 2 MiB with **51 B** alignment padding; `storyBeats=0x095200`, `FX_DATA_PAGE=0xF5AE`, `FX_SAVE_PAGE=0xFFF0` unchanged. No physical playthrough or human art review claimed. |
 | 2026-11-10 | 29,634 B | 1,665 B | Archival ADPCM removal (`sub-hauler-646.18`): the six unused `raw_t audio_*` streams (1,424,640 B) leave the shipping `fxdata.txt` layout as the approved one-time append-only ABI exception; no runtime code referenced them. `.bin` files, manifest, `src/generated/audio.hpp` and `make gen-audio` remain archival and are not compiled into firmware or tests. `.text/.data/.bss` **29,618 / 16 / 1,649 B**; **62 B** hardware flash free. Host **264**, gen-check deterministic, targeted `test_boot` P. FX payload/image **667,863 / 672,000 B**, **1,425,152 B** below 2 MiB with **41 B** data alignment padding; `FX_DATA_PAGE=0xF5BF`, `FX_SAVE_PAGE=0xFFF0` unchanged. Every symbol through `txt_a_finish` keeps its offset; later symbols shift down by 1,424,640 B. No physical playthrough or speaker listening claimed. |
 | 2026-11-09 | 28,702 B | 1,650 B | Thruster tide gates, return-shaft tides, survey-lens relocation, and refreshed story art: all nine tide zones are thruster gates; without the thruster they push downstream and block upstream, and owning the thruster disables force, blocking and flow marks. The two former T thruster gates are now tides: Basalt descent pushes up and Jet approach pushes left. The return-shaft shortcut keeps a seal-only P gate and gains a rightward gate tide and an upward tide above it; Pipe Junction pushes down, Cormorant pushes up. The survey lens moves to the upper-west Trench Cove `(36,78)`, above the pressure line at the end of a long jagged switchback route from Trench Refuge; Trench Refuge→Deep Anchor widens with a 10×7 chamber so the station approach dominates. Guide full map/route maps use the fully rendered native world. `.text/.data/.bss` **28,690 / 12 / 1,638 B**; 994 B hardware flash free, 298 B under the advisory 29,000 B line, 50 B static headroom, 910 B static free. Host **246**, tooling **155**, docs **32** + preview **8**; **15/15** default device suites P; save-chain **703**, combined music **626**; runtime-page P; flight **842** frames, **11,440 µs max**, 0 misses, gap **1**, 0 underruns/errors, `fail_mask=0`; Mini **28,702 / 1,650 B**; gen-check deterministic. `make gen`: 16 scenes / 41 cards / 89 frames, story **57,023 B**; FX payload/image **2,092,503 / 2,096,640 B**, **512 B** below 2 MiB; `FX_SAVE_PAGE=0xFFF0` unchanged. No physical playthrough, human map review or speaker listening claimed. |
 | 2026-11-07 | 28,418 B | 1,649 B | Wall-spanning currents (`sub-hauler-vc6`): all eight zones scan their full flow strip and extend through adjoining side openings to solid walls, then overlap the walls by one tile. Per-zone tile counts retain compact AVR metadata while runtime extents support more than 255 pixels. Guide map regenerated through `make gen`. `.text/.data/.bss` **28,406 / 12 / 1,637 B**, 1,278 B hardware flash free. Host **244**, generator tests **117**, docs **32** + preview **8**; targeted `test_world`, `test_render`, `test_memory_music`, `test_save_chain` pass. Stack reserve **641 B** combined music and **703 B** save-chain. Flight **842** frames, **11,428 µs max**, zero misses, gap **1**, zero audio underruns/errors. `make gen-check` deterministic; FX payload/image **2,092,670 / 2,097,152 B**. |

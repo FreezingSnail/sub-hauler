@@ -22,10 +22,28 @@
       "cormorant-core",
       "beacon-lit",
       "deep-relay",
-      "home-lights"
+      "home-lights",
+      "relay-briefing",
+      "home-departure"
     ]
   },
   "scenes": [
+    {
+      "name": "opening-benthos",
+      "cards": [
+        {
+          "kind": "image",
+          "art": "arrival"
+        },
+        {
+          "kind": "text",
+          "paragraphs": [
+            "Dock at Benthos ahead for work."
+          ]
+        }
+      ],
+      "title": "Opening"
+    },
     {
       "name": "first-departure",
       "cards": [
@@ -263,7 +281,7 @@
       "cards": [
         {
           "kind": "image",
-          "art": "deep-relay"
+          "art": "relay-briefing"
         },
         {
           "kind": "text",
@@ -295,7 +313,7 @@
       "cards": [
         {
           "kind": "image",
-          "art": "delivery-loading"
+          "art": "home-departure"
         },
         {
           "kind": "text",

@@ -55,7 +55,12 @@ inline void StoryViewSuite(TestRunner &runner) {
         test.assertEqual(story_view::kCardCount, 7, "seven beat decks are frozen");
         test.assertEqual(story_view::kHandoffCount, 8, "six cargo departures plus two joint variants");
         test.assertEqual(story_view::kSceneExpedition, 15, "existing relay result keeps its scene id");
-        test.assertEqual(story_view::kSceneMax, 16, "relay briefing appends after all existing scenes");
+        test.assertEqual(story_view::kSceneExpeditionDeparture, 16, "relay briefing appends after all existing scenes");
+        test.assertEqual(story_view::kSceneOpening, 17, "opening deck appends last");
+        test.assertEqual(story_view::kSceneMax, 17, "opening deck is the newest appended scene");
+        test.assertEqual(story_view::cardCount(story_view::kSceneOpening), 2, "opening is one image and one instruction");
+        test.assertTrue(story_view::isImageCard(story_view::kSceneOpening, 0), "opening starts with arrival art");
+        test.assertTrue(!story_view::isImageCard(story_view::kSceneOpening, 1), "opening ends on the Benthos instruction");
         test.assertEqual(story_view::cardCount(story_view::kSceneFirst), 6, "FIRST keeps three image/text pairs");
         test.assertEqual(story_view::cardCount(story_view::kSceneNone), 0, "no scene");
         test.assertEqual(story_view::cardCount(story_view::kSceneMax + 1), 0, "unknown scene");

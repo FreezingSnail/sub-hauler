@@ -32,16 +32,17 @@ class StoryBeatGenerationTest(unittest.TestCase):
 
     def test_narrative_order_is_independent_of_stable_scene_ids(self):
         self.assertEqual(set(scene["name"] for scene in self.scenes), set(name for name, _ in gen.SCENE_ORDER))
-        self.assertEqual(self.scenes[0]["name"], "first-departure")
+        self.assertEqual(self.scenes[0]["name"], "opening-benthos")
+        self.assertEqual(self.scenes[1]["name"], "first-departure")
         self.assertEqual(self.scenes[-1]["name"], "home-result")
         self.assertEqual(self.document["art"]["rows"][0], "tidewall-filters")
         reordered = dict(self.document, scenes=list(reversed(self.scenes)))
         self.assertEqual(gen.build_layout(reordered)["blob"], self.blob)
-        self.assertEqual(len(self.scenes), 16)
-        self.assertEqual(self.layout["image_cards"], 20)
-        self.assertEqual(self.layout["text_cards"], 21)
-        self.assertEqual(self.layout["images"], 17)
-        self.assertEqual(self.frames, 89)
+        self.assertEqual(len(self.scenes), 17)
+        self.assertEqual(self.layout["image_cards"], 21)
+        self.assertEqual(self.layout["text_cards"], 22)
+        self.assertEqual(self.layout["images"], 19)
+        self.assertEqual(self.frames, 98)
 
     def test_card_kinds_come_from_source_not_alternation(self):
         for scene in self.layout["preview_scenes"]:
@@ -238,7 +239,7 @@ class StoryBeatGenerationTest(unittest.TestCase):
         match = re.search(r"globalThis\.StoryData=(\{.*\});", text, re.S)
         self.assertIsNotNone(match)
         data = json.loads(match.group(1))
-        self.assertEqual(len(data["scenes"]), 16)
+        self.assertEqual(len(data["scenes"]), 17)
         self.assertEqual(data["columns"], gen.COLUMNS)
         self.assertEqual(data["rows"], gen.ROWS_PER_CARD)
         self.assertEqual(
@@ -266,7 +267,7 @@ class StoryBeatGenerationTest(unittest.TestCase):
         sheet = Image.open(gen.CARD_SHEET)
         mapping = json.loads(gen.CARD_MAP.read_text())
         self.assertEqual(sheet.size, (gen.WIDTH * 4, gen.HEIGHT * len(self.layout["card_frames"])))
-        self.assertEqual(mapping["cards"][0]["scene"], "first-departure")
+        self.assertEqual(mapping["cards"][0]["scene"], "opening-benthos")
         self.assertEqual(mapping["cards"][-1]["scene"], "home-result")
         self.assertEqual(sorted(e["packed_card"] for e in mapping["cards"]),
                          list(range(len(self.layout["card_frames"]))))
@@ -280,15 +281,16 @@ class StoryBeatGenerationTest(unittest.TestCase):
 
     def test_committed_blob_and_header_are_current(self):
         header = (ROOT / "src/generated/story_beats.hpp").read_text(encoding="utf-8")
-        self.assertIn("STORY_CARD_COUNT = 41", header)
-        self.assertIn("STORY_IMAGE_CARD_COUNT = 20", header)
-        self.assertIn("STORY_TEXT_CARD_COUNT = 21", header)
-        self.assertIn("STORY_IMAGE_COUNT = 17", header)
-        self.assertIn("STORY_FRAME_COUNT = 89", header)
+        self.assertIn("STORY_CARD_COUNT = 43", header)
+        self.assertIn("STORY_IMAGE_CARD_COUNT = 21", header)
+        self.assertIn("STORY_TEXT_CARD_COUNT = 22", header)
+        self.assertIn("STORY_IMAGE_COUNT = 19", header)
+        self.assertIn("STORY_FRAME_COUNT = 98", header)
         self.assertIn("STORY_SCENE_FIRST_RESULT = 1", header)
         self.assertIn("STORY_SCENE_HOME_DEPARTURE = 14", header)
         self.assertIn("STORY_SCENE_EXPEDITION_RESULT = 15", header)
         self.assertIn("STORY_SCENE_EXPEDITION_DEPARTURE = 16", header)
+        self.assertIn("STORY_SCENE_OPENING = 17", header)
 
 
 if __name__ == "__main__":

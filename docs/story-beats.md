@@ -5,7 +5,7 @@ The shipping story has two canonical editing sources:
 - [`story/scenes.json`](../story/scenes.json): scene order, titles, paragraph
   text, image references and sprite-sheet row names.
 - [`story/art.png`](../story/art.png): one opaque black/white artwork sheet,
-  **512×1088 pixels**, with seventeen rows of four 128×64 animation poses.
+  **512×1216 pixels**, with nineteen rows of four 128×64 animation poses.
 
 The [authoring instructions](../story/README.md) describe the JSON format and
 Piskel import/export settings. Pixelgen bundles remain historical provenance;
@@ -43,15 +43,16 @@ as the packed game. Edit JSON for text changes and `story/art.png` for art.
 ## Scene and card shape
 
 Existing scene IDs remain stable; the DEEP RELAY briefing appends as
-ID 16 after the expedition result at ID 15. The JSON scene array and complete
-card overview follow narrative
-order: Tidewall departure, Benthos arrival, pump branch, lift branch, joint
-restoration, beacon and homecoming. Packed storage order is independent of
-the editing order. The two repair branches remain playable in either order.
+ID 16 after the expedition result at ID 15, and the New Voyage opening appends
+as ID 17. The JSON scene array and complete card overview follow narrative
+order: opening, Tidewall departure, Benthos arrival, pump branch, lift branch,
+joint restoration, beacon and homecoming. Packed storage order is independent
+of the editing order. The two repair branches remain playable in either order.
 The scene inventory is:
 
 | Scene | Purpose |
 | --- | --- |
+| Opening | New Voyage instruction to dock at Benthos; reuses the arrival art |
 | FIRST result | Benthos arrival, grow tanks, repair request naming the remote Cormorant Freight Yard lift |
 | PUMP SURVEY | Pump Refuge inspection; direct replacement-impeller collection at Cormorant |
 | PUMP result | Water and grow-room lights return |
@@ -65,23 +66,28 @@ The scene inventory is:
 | Joint restoration, seal missing | Both repairs done; core at Cormorant; seal at West Workshop |
 | Joint restoration, seal held | Both repairs and seal ready; collect the core at Cormorant |
 | BEACON departure | Dive ahead to Deep Anchor; sealed hull, limited signal and physical dispatch |
-| DEEP RELAY departure | Beacon call; lens locates the buried relay, cutter clears rock, seal holds pressure, thruster beats current |
-| DEEP RELAY result | Relay found at the lower-right work site |
-| HOME departure | Physical survey records and return supplies loaded at Deep Anchor for Tidewall |
+| DEEP RELAY departure | Beacon-call briefing: lens locates the buried relay, cutter clears rock, seal holds pressure, thruster beats current |
+| DEEP RELAY result | Relay found at the lower-right work site; keeps the wreck illustration |
+| HOME departure | Physical survey records and return supplies loaded at Deep Anchor for Tidewall; unique loaded-sub art |
 | HOME result | Tidewall welcome and restored network |
 
-The current source produces **41 cards** (20 image, 21 text) and **89 frames**
-from **17 shared images**. The DEEP RELAY departure and result use the new
-relay illustration; HOME departure reuses the cargo-loading art. Text-only
-overflow creates adjacent pages rather than truncation. Shared images are still packed once. The
-four `story-handoffs-v1` scenes replace the old departure placeholders;
-`beacon-descent` and `home-return` are omitted from the active blob, while
-`delivery-loading` and `repair-bay` remain for PUMP pickup and FIRST result.
+The current source produces **43 cards** (21 image, 22 text) and **98 frames**
+from **19 shared images**. The opening scene reuses `arrival`; the DEEP RELAY
+acceptance and HOME departure append the two new rows. DEEP RELAY departure and
+result no longer share an image, and HOME departure no longer reuses the
+PUMP-pickup cargo art. Text-only overflow creates adjacent pages rather than
+truncation. Shared images are still packed once. The `story-handoffs-v1`
+scenes replace the old departure placeholders; `beacon-descent` and
+`home-return` are omitted from the active blob, while `delivery-loading` and
+`repair-bay` remain for PUMP pickup and FIRST result.
 
 ## Runtime and save contract
 
 - A or B advances one card. Image cards animate four poses at 3.3 fps; text
   cards stay still. Consecutive text pages are ordinary cards.
+- New Voyage plays the opening deck after the initial checkpoint and before
+  pilot control. It is RAM-only and skipped by Continue: a cold reload resumes
+  the committed Tidewall berth and does not replay it.
 - Acceptance writes the accepted load, then the departure scene id in the
   one-byte `pendingStory` field, before playback. Continue resumes the pending
   scene; finishing it clears the byte in RAM only. A reload before the next
@@ -193,3 +199,33 @@ unchanged; `storyBeats` moves down to **0x095200** and every symbol through
 **667,863 / 672,000 B**, leaving **1,425,152 B** below 2 MiB, and
 `FX_SAVE_PAGE = 0xFFF0` is unchanged. The `.bin` files and `make gen-audio`
 remain archival evidence only.
+
+## Opening, DEEP RELAY acceptance and HOME departure art — 2026-11-10
+
+`sub-hauler-646.6`, `sub-hauler-646.12`, `sub-hauler-646.13` and
+`sub-hauler-646.15` append the New Voyage opening deck and two story rows.
+
+- The opening scene is stable scene ID 17 and plays after the initial New
+  Voyage checkpoint and before pilot control. A/B advances its arrival image
+  and one Benthos instruction card, then returns to free flight. Continue
+  restores the committed Tidewall berth and never replays it; a reload during
+  the deck skips it, so the opening is at-most-once and never persisted.
+- DEEP RELAY acceptance (ID 16) now uses the appended `relay-briefing` row
+  (beacon console call), while the site result (ID 15) keeps `deep-relay`.
+- HOME departure (ID 14) now uses the appended `home-departure` row (loaded sub
+  leaving Deep Anchor); `delivery-loading` remains PUMP pickup only.
+
+The canonical sheet is **512×1216**, nineteen rows and 76 poses. The source
+produces **17 scenes, 43 cards** (21 image, 22 text) and **98 frames** from
+**19 shared images**. The packed story blob is **61,365 B**; the FX payload is
+**672,205 B** and the padded image is **676,352 B**, leaving **1,420,800 B**
+below 2 MiB. `storyBeats = 0x095200` and `FX_SAVE_PAGE = 0xFFF0` are unchanged.
+
+Fresh checks: `make gen-check` deterministic; host **264/264**, tooling
+**157/157**, docs links/selectors and **8** browser preview tests pass.
+`test_story` decodes all **98** frame CRCs and passes opening playback,
+Continue skip and cold reload with a **10,752 µs** maximum. FX firmware is
+**29,652 / 29,696 B flash** and **1,665 / 2,560 B static**. Both new rows were
+generated with pixelgen, `check`/`replay` matched, and the two rows plus the
+opening deck have native-size previews under `build/worker-story/`. Human art
+review and a physical playthrough are not claimed.

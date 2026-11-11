@@ -59,6 +59,8 @@ SCENE_ORDER = (
     # Appended late optional expedition result; earlier ids stay frozen.
     ("deep-relay-result", "STORY_SCENE_EXPEDITION_RESULT"),
     ("deep-relay-departure", "STORY_SCENE_EXPEDITION_DEPARTURE"),
+    # Appended opening deck; shown once on New Voyage before pilot control.
+    ("opening-benthos", "STORY_SCENE_OPENING"),
 )
 SCENE_IDS = {name: index + 1 for index, (name, _) in enumerate(SCENE_ORDER)}
 
