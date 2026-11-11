@@ -46,9 +46,14 @@ handling; note 18 depends on note 2.
 | 646.3 | `7b6b14a` | All-berth progression bark; −86 B flash via shared selector. |
 | 646.1 | `9f51022` | Tides stay visible/push after the thruster; no upstream block. |
 | 646.10 | `a56fc86` | Air 300 / blow 4 per user decision; first run leaves 18. |
+| 646.11 | `814db43` | Thruster 2x speed both ways + 2x ballast. |
+| 646.7 | `43508c3` | 160 ms music fades on cue/dock/story/pause. |
+| 646.18 | `9fe0526` | Removed 1.42 MB archival ADPCM from shipping cart. |
+| 646.6/12/13/15 | `1b77cc9` | Opening Benthos scene; relay briefing and HOME departure art. |
 
-Integrated baseline after these six commits: **29,608 / 29,696 B flash**,
-**1,665 / 2,560 B static RAM**, **88 B flash free**, host **256/256**.
+Integrated baseline after the wave: **29,652 / 29,696 B flash (44 free)**,
+**1,665 / 2,560 B static RAM**, story blob **61,365 B**, cart
+**672,205 / 676,352 B**, host **264/264**, tooling **157**, `test_story` P.
 
 ## 1. Tides after the thruster
 
@@ -199,8 +204,9 @@ benthos in front of them for work."
 A/B, then return control to the pilot. One work instruction is the target; add
 a control card only if playtesting shows it is needed.
 
-**Filed:** sub-hauler-646.6. Story/scene + spawn-flow feature. Authoring and
-preview do not depend on note 18.
+**Filed:** sub-hauler-646.6. **Done:** committed `1b77cc9`; appended scene
+ID 17 `opening-benthos`, reuses `arrival`, plays once on New Voyage and skips
+on Continue.
 
 ## 6. Fade music at transitions
 
@@ -363,9 +369,8 @@ the wreck art. The wreck/site illustration belongs to the result at the
 lower-right relay site (note 14). This is piece one of the three unique story
 art rows.
 
-**Filed:** sub-hauler-646.12. Coordinated with sub-hauler-646.13 (site result)
-and sub-hauler-646.15 (HOME departure) because all three append rows to the
-same canonical sheet.
+**Filed:** sub-hauler-646.12. **Done:** committed `1b77cc9`; appended
+`relay-briefing` row 17 for DEEP RELAY acceptance.
 
 **Cart dependency:** each new 128×64 row costs roughly 2–3 KB compressed, but
 the cart had only 41 B before the save page. New bead **sub-hauler-646.18**
@@ -387,8 +392,9 @@ rule. The three art rows land after 646.18.
 result row showing the buried relay/wreck state. Append the row to
 `story/art.png` and `art.rows`; never renumber existing rows.
 
-**Filed:** sub-hauler-646.13. Story art + scene mapping, coordinated with
-sub-hauler-646.12 and sub-hauler-646.15.
+**Filed:** sub-hauler-646.13. **Done:** committed `1b77cc9`; result keeps the
+existing `deep-relay` wreck row, while acceptance moved to `relay-briefing`, so
+the site result is now unique.
 
 ## 15. Wrong "REPAIR LIFT FIRST" notice at a survey site
 
@@ -425,8 +431,9 @@ then `make test` and `make fxtest`.
 (survey records/supplies loaded at Deep Anchor) instead of reusing
 `delivery-loading`; keep scene ID 14 stable.
 
-**Filed:** sub-hauler-646.15. Story art + scene mapping, coordinated with
-sub-hauler-646.12 and sub-hauler-646.13.
+**Filed:** sub-hauler-646.15. **Done:** committed `1b77cc9`; appended
+`home-departure` row 18, so HOME departure no longer reuses
+`delivery-loading`.
 
 ## 17. Cut ending voyage stats and the last credit graphic
 
