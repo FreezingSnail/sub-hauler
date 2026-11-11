@@ -12,6 +12,13 @@ import gen_contours
 
 WIDTH, HEIGHT = 2560, 1280
 REGIONS = ('tide', 'kelp', 'works', 'deep')
+# A room may override its region's ambient growths and wall markings with a
+# named texture. The override is scoped to the room's own pocket, so it never
+# re-themes a whole region or another room.
+TEXTURES = REGIONS + ('lens',)
+TEXTURE_RADIUS_TILES = 4
+AMBIENT = {'tide': 'coral', 'kelp': 'kelp', 'works': 'scrap',
+           'deep': 'crystal', 'lens': 'lens-shard'}
 
 
 def protection(level, spines):
@@ -133,6 +140,71 @@ def motif(kind, seed):
         line([(-10, -4), (10, -4)])
         for x, y in ((4, -31), (-2, -37), (6, -44)):
             oval(x, y, 3, 3)
+    elif kind == 'cutter-tender':
+        # Grounded salvage tender with a cutting boom and cutting wheel. Distinct
+        # from the plain 'tender' hull by the raised torch arm.
+        line([(-24, -10), (-17, -2), (14, -2), (23, -9)])
+        line([(-24, -10), (-7, -10)])
+        line([(2, -10), (23, -9)])
+        for x in (-16, -8, 0):
+            line([(x, -3), (x - 3, -9)])
+        box(-22, -20, 10, 10)
+        box(-20, -18, 3, 3)
+        line([(6, -3), (10, -16), (17, -16)])
+        oval(13, -29, 12, 12)
+        line([(19, -29), (19, -23)])
+        line([(14, -26), (20, -26)])
+        line([(5, -11), (9, -15), (8, -20)])
+    elif kind == 'thruster-pod':
+        # Relay compartment stripped to its propulsion pod: pressure bottle,
+        # shroud ring and propeller. No antenna, so it reads unlike 'relay'.
+        line([(-18, 0), (-18, -5), (18, -5), (18, 0)])
+        box(-13, -22, 21, 16)
+        oval(-13, -23, 21, 5)
+        line([(-13, -18), (-20, -18), (-20, -12), (-13, -12)])
+        for x in (-10, -6):
+            line([(x, -9), (x, -6)])
+        oval(8, -25, 15, 15)
+        line([(15, -23), (15, -12)])
+        line([(11, -18), (19, -18)])
+        line([(15, -23), (12, -20)])
+        line([(15, -23), (18, -20)])
+        line([(-8, -5), (-6, -9)])
+        line([(6, -5), (4, -9)])
+    elif kind == 'workshop-lock':
+        # Sealed bulkhead with an arched top and a dogged pressure hatch.
+        line([(-19, 0), (-19, -24), (-15, -30), (15, -30), (19, -24), (19, 0)])
+        oval(-9, -25, 19, 19)
+        line([(0, -22), (0, -9)])
+        line([(-6, -15), (7, -15)])
+        line([(-4, -19), (5, -11)])
+        line([(-4, -11), (5, -19)])
+        for y in (-19, -11):
+            line([(-15, y), (-11, y)])
+            line([(11, y), (15, y)])
+        line([(-22, 0), (-15, 0)])
+        line([(15, 0), (22, 0)])
+    elif kind == 'trench-lens':
+        # Sunken survey-lens array on a wreck tripod. The big ring and focus
+        # ticks match the lens-cave wall texture.
+        line([(-14, 0), (-9, -9)])
+        line([(14, 0), (9, -9)])
+        line([(0, 0), (0, -10)])
+        line([(-6, -1), (6, -1)])
+        oval(-13, -29, 27, 21)
+        oval(-7, -25, 15, 13)
+        line([(-5, -19), (3, -19)])
+        line([(-13, -23), (-21, -26), (-23, -23)])
+        line([(13, -23), (21, -26), (23, -23)])
+        line([(-3, -32), (3, -32)])
+        line([(-1, -34), (1, -34)])
+    elif kind == 'lens-shard':
+        # Low faceted glass shards; the ambient growth inside the lens cave.
+        line([(-11, 0), (-9, -9), (-4, -13), (-2, -4), (-1, 0)])
+        line([(-9, -9), (-6, -4)])
+        line([(1, 0), (3, -7), (7, -10), (9, -3), (10, 0)])
+        line([(3, -7), (6, -4)])
+        line([(4, -14), (6, -13), (7, -11)])
     else:
         raise ValueError(f'unknown scenery motif: {kind}')
     return {(x-ox, y-oy) for y in range(image.height) for x in range(image.width) if image.getpixel((x, y))}
@@ -194,19 +266,33 @@ def decorate(level, base, spines):
     rooms = {r['id']: r for r in level.source['rooms']}
     if any(r['region'] not in REGIONS for r in rooms.values()):
         raise ValueError('unknown scenery region')
+    if any(r.get('texture', r['region']) not in TEXTURES for r in rooms.values()):
+        raise ValueError('unknown room scenery texture')
     seed = config['seed']
     grid = level.world.grid
     solid = gen_contours.solid_image(grid)
     solid_pixels = solid.load()
+    # Rock art stays three pixels inside the curved wall.
+    interior = solid.filter(ImageFilter.MinFilter(7))
+    interior_pixels = interior.load()
     protected = protection(level, spines)
     safe = protected.load()
     white, black = set(), set()
-    stats = {'landmarks': [], 'ambient': dict.fromkeys(REGIONS, 0)}
+    themes = list(REGIONS) + [r['texture'] for r in rooms.values() if 'texture' in r]
+    stats = {'landmarks': [], 'ambient': dict.fromkeys(themes, 0)}
     occupied = Image.new('1', (WIDTH, HEIGHT))
     occupied_draw = ImageDraw.Draw(occupied)
 
     def region(tx, ty):
-        return min(rooms.values(), key=lambda r: (r['position'][0]-tx)**2+(r['position'][1]-ty)**2)['region']
+        room = min(rooms.values(), key=lambda r: (r['position'][0]-tx)**2+(r['position'][1]-ty)**2)
+        texture = room.get('texture')
+        if texture:
+            # Scope an override to the room's own pocket; it never repaints a
+            # neighbouring room or the whole region.
+            reach = room['radius'] + TEXTURE_RADIUS_TILES
+            if (room['position'][0]-tx)**2 + (room['position'][1]-ty)**2 <= reach*reach:
+                return texture
+        return room['region']
     def water(x, y):
         return 8 <= x < WIDTH-8 and 8 <= y < HEIGHT-8 and not solid_pixels[x,y]
     floors = []
@@ -235,26 +321,73 @@ def decorate(level, base, spines):
         occupied_draw.rectangle((min(xs)-3, min(ys)-3, max(xs)+3, max(ys)+3), fill=255)
         return True
 
+    def place_wall(kind, x, y, variant):
+        """Etch a landmark outline into solid rock, three pixels inside the wall."""
+        points = {(x+px, y+py) for px, py in motif(kind, variant)}
+        if any(not (8 <= px < WIDTH-8 and 8 <= py < HEIGHT-8) or safe[px, py] or not interior_pixels[px, py]
+               for px, py in points):
+            return False
+        if any(occupied.getpixel((px, py)) for px, py in points):
+            return False
+        black.update(points)
+        xs, ys = zip(*points)
+        occupied_draw.rectangle((min(xs)-3, min(ys)-3, max(xs)+3, max(ys)+3), fill=255)
+        return True
+
     for i, item in enumerate(config['landmarks']):
         room = rooms[item['room']]
         cx, cy = (v*8 for v in room['position'])
         dx, dy = item.get('offset', [0, 40])
-        candidates = sorted((p for p in floors if p[2] == room['region'] and abs(p[0]-cx) < 100 and abs(p[1]-cy) < 100),
-                            key=lambda p: (p[0]-cx-dx)**2+(p[1]-cy-dy)**2)
-        for x, y, _ in candidates:
-            if place(item['kind'], x, y, seed+i):
-                stats['landmarks'].append({'id': item['id'], 'room': item['room'], 'kind': item['kind'], 'x': x, 'y': y})
+        theme = room.get('texture', room['region'])
+        mount = item.get('mount', 'water')
+        if mount not in ('water', 'wall'):
+            raise ValueError(f'unknown scenery mount: {mount}')
+        if mount == 'wall':
+            # Coves are small dead-end pockets, so their wreck silhouettes are
+            # etched into the surrounding wall rather than dropped into the
+            # protected route corridor.
+            tx, ty = cx+dx, cy+dy
+            candidates = sorted(((x, y) for y in range(ty-56, ty+57, 4)
+                                 for x in range(tx-56, tx+57, 4)),
+                                key=lambda p: (p[0]-tx)**2+(p[1]-ty)**2)
+        else:
+            candidates = sorted(((p[0], p[1]) for p in floors
+                                 if p[2] == theme and abs(p[0]-cx) < 100 and abs(p[1]-cy) < 100),
+                                key=lambda p: (p[0]-cx-dx)**2+(p[1]-cy-dy)**2)
+        for x, y in candidates:
+            placed = place_wall(item['kind'], x, y, seed+i) if mount == 'wall' else place(item['kind'], x, y, seed+i)
+            if placed:
+                stats['landmarks'].append({'id': item['id'], 'room': item['room'], 'kind': item['kind'],
+                                           'mount': mount, 'x': x, 'y': y})
                 break
         else:
             raise ValueError(f'no safe scenery placement for {item["id"]}')
 
-    ambient = {'tide': 'coral', 'kelp': 'kelp', 'works': 'scrap', 'deep': 'crystal'}
+    ambient = AMBIENT
+    # Small texture growths are etched along the pocket wall. Equipment coves
+    # are dead-end pockets whose water floor is protected route corridor, so
+    # the growths use the same dark wall language as the landmark.
+    for room in rooms.values():
+        texture = room.get('texture')
+        if not texture:
+            continue
+        cx, cy = (v*8 for v in room['position'])
+        candidates = sorted(((x, y) for y in range(cy-70, cy+71, 4)
+                             for x in range(cx-70, cx+71, 4)),
+                            key=lambda p: ((p[0]-cx)**2+(p[1]-cy)**2, p[0], p[1]))
+        placed = 0
+        for x, y in candidates:
+            if place_wall(AMBIENT[texture], x, y, seed+placed):
+                stats['ambient'][texture] += 1
+                placed += 1
+                if placed == 4:
+                    break
     for x, y, theme in floors:
         # Choose growths from the stable coarse floor identity, so refining a
         # contour moves their roots instead of reshuffling the whole biome.
         coarse_y = round(y/8)*8+1
         value = (x*71+coarse_y*113+seed) & 0xFFFF
-        if value % (3 if theme == 'kelp' else 5):
+        if value % (3 if theme in ('kelp', 'lens') else 5):
             continue
         if place(ambient[theme], x, y, value):
             stats['ambient'][theme] += 1
@@ -274,7 +407,6 @@ def decorate(level, base, spines):
                 if distance[j] > distance[i]+1:
                     distance[j] = distance[i]+1
                     queue.append(j)
-    interior = solid.filter(ImageFilter.MinFilter(7))
     ink = Image.new('1', (WIDTH,HEIGHT))
     d = ImageDraw.Draw(ink)
     for y in range(24, HEIGHT-24, 24):
@@ -294,12 +426,30 @@ def decorate(level, base, spines):
                 gradient = (int(distance[ty*320+tx+1])-int(distance[ty*320+tx-1]),
                             int(distance[(ty+1)*320+tx])-int(distance[(ty-1)*320+tx]))
                 worn_plating(d,x,y,seed,gradient)
+            elif theme == 'lens':
+                # Concentric lens rings with a facet glint, etched into the
+                # cave wall. Distinct from strata, coral and plating.
+                d.arc((x-11,y-9,x+9,y+11), 205, 335, fill=255)
+                d.arc((x-6,y-4,x+4,y+6), 205, 335, fill=255)
+                d.line([(x-13,y+8), (x-4,y+4), (x+4,y+6), (x+12,y+2)], fill=255)
+                if phase < 3: d.point((x+2,y+1), fill=255)
             else:
                 d.line([(x-10,y-9), (x-3,y-3), (x+1,y+5), (x+11,y+11)], fill=255)
                 d.line([(x-3,y-3), (x+5,y-8), (x+10,y-8)], fill=255)
                 if phase < 3: d.line([(x+1,y+5), (x-7,y+10)], fill=255)
+    # Textured rooms carry one large, coherent wall signature so the pocket
+    # reads as its own place, not just a tinted copy of the region.
+    for room in rooms.values():
+        if room.get('texture') != 'lens':
+            continue
+        cx, cy = (v*8 for v in room['position'])
+        for radius in (40, 50, 60):
+            d.ellipse((cx-radius, cy-radius, cx+radius, cy+radius), outline=255)
+        for dx, dy in ((-26, -44), (26, -44), (-30, 40), (30, 40)):
+            d.line([(cx+dx, cy+dy), (cx+dx*5//4, cy+dy*5//4)], fill=255)
     ink = ImageChops.logical_and(ink, interior.convert('1'))
     ink = ImageChops.logical_and(ink, ImageChops.invert(protected))
+    ink = ImageChops.logical_and(ink, ImageChops.invert(occupied))
     pixels = ink.load()
     for y in range(8, HEIGHT-8):
         for x in range(8, WIDTH-8):
