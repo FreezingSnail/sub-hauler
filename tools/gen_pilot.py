@@ -1,15 +1,18 @@
 #!/usr/bin/env python3
-"""Bake the fixed 26x8 pilot silhouettes into plus-mask FX sprite sheets.
+"""Bake the fixed 26x8 pilot silhouette into plus-mask FX sprite sheets.
 
-Each hull sheet holds four frames in this order: facing right unloaded,
-facing right loaded, facing left unloaded, facing left loaded. The fill list is
-the same ordered rectangle list the old procedural device renderer used, so
-class pixels, facing marks, cargo stripes, and the shared collision footprint
-stay identical. Pixels outside the union of the fills stay transparent; the
-mask therefore clears only the black cut-outs that the procedural path wrote.
+HAULER is the only playable hull, so its sheet is the only generated output.
+It holds four frames in this order: facing right unloaded, facing right loaded,
+facing left unloaded, facing left loaded. The fill list is the same ordered
+rectangle list the old procedural device renderer used, so class pixels, facing
+marks, cargo stripes, and the shared collision footprint stay identical.
+Pixels outside the union of the fills stay transparent; the mask therefore
+clears only the black cut-outs that the procedural path wrote.
 
-``gen_sprites.py`` packs these sheets with ``--shades 2`` into a separate
-include, appended after every shipped FX symbol.
+The retired MINNOW/LEVIATHAN fill lists stay as archival provenance (the audio
+precedent); they are no longer rendered or packed.
+
+``gen_sprites.py`` packs the sheet with ``--shades 2`` into a separate include.
 """
 
 import argparse
@@ -82,6 +85,9 @@ HULLS = {
     "leviathan": (LEVIATHAN, LEVIATHAN_LOADED),
     "minnow": (MINNOW, MINNOW_LOADED),
 }
+# Archived hull data is retained above, but only the playable HAULER sheet is
+# generated. The retired PNGs must not reappear in images/pilot.
+SHIPPED_HULLS = ("hauler",)
 
 
 def render_frame(base, loaded):
@@ -114,7 +120,7 @@ def write_sheets(output_dir):
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     paths = []
-    for name in sorted(HULLS):
+    for name in SHIPPED_HULLS:
         path = output_dir / "{}_26x8.png".format(name)
         render_sheet(name).save(path)
         paths.append(path)

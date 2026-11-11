@@ -61,10 +61,6 @@ void setup() {
     ok = ok && wideCurrent;
     ok = ok && gatedCurrent;
     ok = ok && !world::currentInfo(world::CURRENT_COUNT, current);
-    FX::seekData(explorationObjects);
-    for (uint16_t i = 0; i < exploration_data::OBJECT_BYTES; ++i)
-        ok = (FX::readPendingUInt8() == exploration_data::byteAt(i)) && ok;
-    FX::readEnd();
     Serial.println(ok ? F("P") : F("F"));
 }
 void loop() {

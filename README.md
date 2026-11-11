@@ -202,7 +202,8 @@ Build outputs are `build/arduino` / `dist/fx` for FX and
 - `src/render.hpp` — 1-bit drawing. Add scenes, HUD, and animation here.
 - `sub-hauler.ino` — release entry only (`ARDUBOY_NO_USB`, `setup`, `loop`).
 - `src/app.hpp` — shared hardware init, boot presentation, state and frame operations.
-- `images/<symbol>_<W>x<H>.png` — authored sprites. Add a file, run `make gen`.
+- `images/<section>/<symbol>_<W>x<H>.png` — authored sprites. Add a file in the
+  matching source directory, run `make gen`.
 - `images/pilot/*.png` — generated fixed-hull sheets; edit `tools/gen_pilot.py`,
   not the PNGs.
 - `fxdata/fxdata.txt` — ordered flash layout. Append new `image_t`/`raw_t`/
@@ -212,17 +213,19 @@ Build outputs are `build/arduino` / `dist/fx` for FX and
 
 `tools/gen_sprites.py --shades 2` emits a two-byte `(width, height)` header and
 one page-major plus-mask plane. `Blit::draw` addresses the headerless pixel
-bytes, so the game passes `::hero + 2` and supplies the dimensions explicitly:
+bytes, so the device passes the symbol plus 2 and supplies the dimensions
+explicitly:
 
 ```cpp
-Blit::draw(x, y, HERO_WIDTH, HERO_HEIGHT, ::hero + 2, FRAME(frame),
+Blit::draw(x, y, HAULER_WIDTH, HAULER_HEIGHT, ::hauler + 2, FRAME(frame),
            Blit::PLUSMASK);
 ```
 
-The fixed pilot sheets use the same contract from `fxdata/PilotSprites.txt`
-(`hauler`, `leviathan`, `minnow`; four frames each). UI text uses
-`FX::setFont(font_6x8, dcmWhite)` plus `FX::drawString`/`drawNumber` through
-`src/text.hpp`; selected rows switch to `dcmInvert`.
+The fixed pilot sheet uses the same contract from `fxdata/PilotSprites.txt`
+(`hauler`; four frames). The retired MINNOW/LEVIATHAN sheets are no longer
+generated or packed. UI text uses `FX::setFont(font_6x8, dcmWhite)` plus
+`FX::drawString`/`drawNumber` through `src/text.hpp`; selected rows switch to
+`dcmInvert`.
 
 `Blit` writes into `Arduboy2Base::sBuffer`; it never touches the OLED itself.
 Finish the frame with:

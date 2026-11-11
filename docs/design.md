@@ -48,7 +48,7 @@ The fixed build has one playable hull, HAULER. The title starts NEW VOYAGE
 directly with it; LEFT/RIGHT hull cycling, the B reset action and the LEN
 statistic are retired.
 
-| Class | Hull | Hold (legacy FX) | Status |
+| Class | Hull | Hold (legacy) | Status |
 | --- | ---: | ---: | --- |
 | MINNOW | 64 px | 6×3 hex bay | retired; legacy save id 0 only |
 | HAULER | 94 px | 11×3 split/notched bay | playable |
@@ -62,10 +62,12 @@ The `FLEET` browser reference shows three round hulls, external and cutaway:
 The device draws only the HAULER silhouette from baked FX sprites with
 right/left and unloaded/loaded frames, shared by title and flight; the host
 tests retain the equivalent procedural shape for exact-pixel checks. The
-retired Minnow/Leviathan pilot sheets and the legacy hold dimensions remain in
-the shipped `cargoBank`/FX declarations only to keep flash offsets stable; no
-flight, title or station code references them. Schema-8 saves keep their hull
-byte at the frozen offset, always write HAULER, and normalize an older
+retired Minnow/Leviathan pilot sheets and the legacy hold dimensions are no
+longer packed: `sub-hauler-jxk.1` removed the cart declarations under the
+approved one-time ABI exception. `tools/gen_pilot.py` and `tools/gen_cargo.py`
+retain the historical hull fills/bank as archival provenance only. No flight,
+title or station code references them. Schema-8 saves keep their hull byte at
+the frozen offset, always write HAULER, and normalize an older
 Minnow/Leviathan byte to HAULER on load without dropping voyage progress.
 
 ## Contract loading loop
@@ -122,13 +124,13 @@ generated load has a full arrangement by construction.
 The JS generator uses `Math.random`, `Set`, `Array.sort`, `filter`, object
 arrays, and dynamic allocation. It was never portable as-is.
 
-## Device plan: retained FX arrangement ABI (not loaded at runtime)
+## Archival cargo arrangement generator (not packed)
 
-The shipped `fxdata/fxdata.txt` declaration `raw_t cargoBank` and its 3,648 B
-`fxdata/tables/cargo.bin` stay in place at offset **0x001AC2**, because
-declaration order is flash ABI. `tools/gen_cargo.py` and `make gen-check` still
-reproduce them. The generated `src/generated/cargo.hpp` constants remain
-generator evidence only; no device header includes it after the runtime removal.
+`tools/gen_cargo.py` still reproduces `fxdata/tables/cargo.bin` (3,648 B) and
+`src/generated/cargo.hpp`, but `sub-hauler-jxk.1` retired the `raw_t cargoBank`
+cart declaration under the approved one-time ABI exception. The bank is no
+longer packed or included by any device header or test; it is archival
+provenance alongside the generator. No cart symbol resolves to cargo bytes.
 
 Historical record layout:
 
@@ -144,7 +146,8 @@ struct CargoPieceRecord {
 - Total bank: 3,648 B in external FX flash, zero program flash.
 
 Rules for future work:
-- Append FX declarations only; never reorder or reclaim shipped bytes.
+- Append FX declarations only; reclaiming shipped bytes requires an approved
+  ABI exception (the `sub-hauler-jxk.1` retirement is the one-time precedent).
 - Generate tables with `make gen`; never hand-edit packed tables.
 - Run `make gen-check` to prove reproducibility.
 - Reading this bank again requires a new measured feature decision.
@@ -164,18 +167,18 @@ and the old font symbols are absent from the ELF. The external font keeps the
 same 6x8 cell and layout constants, so station rows stay at 7 px pitch and
 128x64 clipping is unchanged.
 
-The generated 26x8 plus-mask sheets still contain the retired
-MINNOW/HAULER/LEVIATHAN art for FX ABI, but only the HAULER frames are drawn.
-Title and pilot share those frames through `Blit::draw`, preserving mirroring,
-masking, and draw order. `tools/gen_pilot.py` owns the shapes;
+The generated 26x8 plus-mask sheet contains only the playable HAULER art after
+`sub-hauler-jxk.1`; the retired MINNOW/LEVIATHAN fills remain in
+`tools/gen_pilot.py` as archival provenance. Title and pilot share the HAULER
+frames through `Blit::draw`, preserving mirroring, masking, and draw order.
 `tools/gen_sprites.py` packs them into a separate include appended after every
 shipped FX symbol. The multi-hull selector is retired, so only the HAULER
 sprite call is compiled into device code.
 
-Both additions are append-only. The shipped `cargoBank` stays at offset
-**0x001AC2** with unchanged bytes; the FX payload in
-`fxdata/fxdata-data.bin` is **13,012 B**, while the padded flashable
-`fxdata/fxdata.bin` image is **13,056 B**.
+Both additions were append-only at the time. The shipped `cargoBank` and the
+legacy `worldTiles`/`worldChart` tables are no longer packed after
+`sub-hauler-jxk.1`; their generator outputs remain archival. Current cart and
+firmware totals are in [platform.md](platform.md).
 
 ## Baked world pipeline (M1, historical)
 
@@ -273,10 +276,10 @@ From `docs/platform.md`:
   stays in fast program flash.
 - No floats, no heap in device code, no cart reads during display.
 
-The retained `cargoBank` lives in external FX flash, so it does not consume
-program flash or static SRAM. It is shipped for ABI stability only; the
-cargo-free station/job/undock path is the device path. Measure every future
-change with `make size`; do not assume the remaining
+The archival `cargoBank` generator output is no longer packed into external FX
+flash after `sub-hauler-jxk.1`, so it consumes no cart, program-flash or static
+SRAM budget. The cargo-free station/job/undock path is the device path. Measure
+every future change with `make size`; do not assume the remaining
 headroom survives another feature.
 
 ## Browser reference (retired)

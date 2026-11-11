@@ -128,8 +128,6 @@ gen-check:
 	@cp fxdata/fxdata.h $(BUILD_DIR)/gen-check/fxdata.h
 	@cp fxdata/fxdata.bin $(BUILD_DIR)/gen-check/fxdata.bin
 	@cp fxdata/fxdata-save.bin $(BUILD_DIR)/gen-check/fxdata-save.bin
-	@cp fxdata/Sprites.txt $(BUILD_DIR)/gen-check/Sprites.txt
-	@cp src/generated/sprites.hpp $(BUILD_DIR)/gen-check/sprites.hpp
 	@cp fxdata/tables/world.bin $(BUILD_DIR)/gen-check/world.bin
 	@cp fxdata/tables/world-chart.bin $(BUILD_DIR)/gen-check/world-chart.bin
 	@cp src/generated/world.hpp $(BUILD_DIR)/gen-check/world.hpp
@@ -137,8 +135,6 @@ gen-check:
 	@cp src/generated/cargo.hpp $(BUILD_DIR)/gen-check/cargo.hpp
 	@cp fxdata/fonts/font_6x8.png $(BUILD_DIR)/gen-check/font_6x8.png
 	@cp images/pilot/hauler_26x8.png $(BUILD_DIR)/gen-check/hauler_26x8.png
-	@cp images/pilot/leviathan_26x8.png $(BUILD_DIR)/gen-check/leviathan_26x8.png
-	@cp images/pilot/minnow_26x8.png $(BUILD_DIR)/gen-check/minnow_26x8.png
 	@cp fxdata/PilotSprites.txt $(BUILD_DIR)/gen-check/PilotSprites.txt
 	@cp src/generated/pilot_sprites.hpp $(BUILD_DIR)/gen-check/pilot_sprites.hpp
 	@cp fxdata/PanelSprites.txt $(BUILD_DIR)/gen-check/PanelSprites.txt
@@ -167,8 +163,6 @@ gen-check:
 	@cmp -s fxdata/fxdata.h $(BUILD_DIR)/gen-check/fxdata.h || { echo "gen-check: fxdata header changed" >&2; exit 1; }
 	@cmp -s fxdata/fxdata.bin $(BUILD_DIR)/gen-check/fxdata.bin || { echo "gen-check: packed image changed" >&2; exit 1; }
 	@cmp -s fxdata/fxdata-save.bin $(BUILD_DIR)/gen-check/fxdata-save.bin || { echo "gen-check: save partition changed" >&2; exit 1; }
-	@cmp -s fxdata/Sprites.txt $(BUILD_DIR)/gen-check/Sprites.txt || { echo "gen-check: sprite include changed" >&2; exit 1; }
-	@cmp -s src/generated/sprites.hpp $(BUILD_DIR)/gen-check/sprites.hpp || { echo "gen-check: sprite header changed" >&2; exit 1; }
 	@cmp -s fxdata/tables/world.bin $(BUILD_DIR)/gen-check/world.bin || { echo "gen-check: world table changed" >&2; exit 1; }
 	@cmp -s fxdata/tables/world-chart.bin $(BUILD_DIR)/gen-check/world-chart.bin || { echo "gen-check: world chart table changed" >&2; exit 1; }
 	@cmp -s src/generated/world.hpp $(BUILD_DIR)/gen-check/world.hpp || { echo "gen-check: world header changed" >&2; exit 1; }
@@ -176,8 +170,6 @@ gen-check:
 	@cmp -s src/generated/cargo.hpp $(BUILD_DIR)/gen-check/cargo.hpp || { echo "gen-check: cargo header changed" >&2; exit 1; }
 	@cmp -s fxdata/fonts/font_6x8.png $(BUILD_DIR)/gen-check/font_6x8.png || { echo "gen-check: font image changed" >&2; exit 1; }
 	@cmp -s images/pilot/hauler_26x8.png $(BUILD_DIR)/gen-check/hauler_26x8.png || { echo "gen-check: hauler art changed" >&2; exit 1; }
-	@cmp -s images/pilot/leviathan_26x8.png $(BUILD_DIR)/gen-check/leviathan_26x8.png || { echo "gen-check: leviathan art changed" >&2; exit 1; }
-	@cmp -s images/pilot/minnow_26x8.png $(BUILD_DIR)/gen-check/minnow_26x8.png || { echo "gen-check: minnow art changed" >&2; exit 1; }
 	@cmp -s fxdata/PilotSprites.txt $(BUILD_DIR)/gen-check/PilotSprites.txt || { echo "gen-check: pilot sprite include changed" >&2; exit 1; }
 	@cmp -s src/generated/pilot_sprites.hpp $(BUILD_DIR)/gen-check/pilot_sprites.hpp || { echo "gen-check: pilot sprite header changed" >&2; exit 1; }
 	@cmp -s fxdata/PanelSprites.txt $(BUILD_DIR)/gen-check/PanelSprites.txt || { echo "gen-check: panel sprite include changed" >&2; exit 1; }
