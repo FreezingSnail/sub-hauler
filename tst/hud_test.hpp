@@ -7,7 +7,7 @@
 // covered without a display.
 inline void HudSuite(TestRunner &runner) {
     {
-        Test test("survey and cutting dwell select no HOLD STILL prompt");
+        Test test("survey dwell selects no HOLD STILL prompt");
         game::State state;
         game::resetWorld(state);
         state.campaign = campaign::kMilestonePump | campaign::kMilestoneLift;

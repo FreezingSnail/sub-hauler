@@ -88,8 +88,7 @@ static bool hudNoControlsCheck() {
 static bool hudNoticeCheck() {
     static const uint24_t kNoticeText[] = {
         txt_survey_recorded, txt_found_cutter, txt_found_seal, txt_found_thruster,
-        txt_found_credits, txt_found_lens, txt_survey_hint,
-        txt_salvage_hint, txt_cut_hint, txt_need_seal, txt_need_thruster,
+        txt_found_lens, txt_salvage_hint, txt_need_seal, txt_need_thruster,
         txt_need_cutter, txt_repair_pump, txt_repair_lift,
     };
     uint8_t expected[128];

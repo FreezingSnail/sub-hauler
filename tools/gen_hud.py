@@ -1,11 +1,9 @@
 #!/usr/bin/env python3
-"""Bake fixed pilot-HUD rows into opaque FX stamps.
+"""Bake fixed pilot-HUD notice rows into opaque FX stamps.
 
 The cleared framebuffer means HUD pixels must be written every frame. Every
 fixed notice label is baked to remove repeated per-glyph cart/font transactions.
-The retired control row stays in the generated set for cart-ABI compatibility
-but the pilot frame no longer draws it. Dynamic amounts, air fill, tools, cargo
-fills and the ballast notch stay native.
+Dynamic amounts, air fill, tools, cargo fills and the ballast notch stay native.
 
 Glyphs come from the same table as gen_font/gen_panels, so baked pixels match
 the external 6x8 font exactly. Text is read from fxdata.txt, the single
@@ -33,11 +31,8 @@ NOTICE_STRINGS = (
     "txt_found_cutter",
     "txt_found_seal",
     "txt_found_thruster",
-    "txt_found_credits",
     "txt_found_lens",
-    "txt_survey_hint",
     "txt_salvage_hint",
-    "txt_cut_hint",
     "txt_need_seal",
     "txt_need_thruster",
     "txt_need_cutter",
@@ -101,17 +96,12 @@ def main(argv=None):
     parser.add_argument("--fxdata", default="fxdata/fxdata.txt")
     args = parser.parse_args(argv)
     strings = load_strings(args.fxdata)
-    # ABI-only retained stamp, composed at the original shipping positions so a
-    # regeneration stays byte-identical. Nothing reads it at runtime.
-    controls = Image.new("RGBA", ROW, BLACK)
-    draw_text(controls, 3, 0, strings["txt_thrust"])
-    draw_text(controls, 65, 0, strings["txt_trim"])
     sheet = Image.new("RGBA", (ROW[0] * len(NOTICE_STRINGS), ROW[1]), BLACK)
     for index, symbol in enumerate(NOTICE_STRINGS):
         sheet.paste(text_row(strings[symbol]), (ROW[0] * index, 0))
-    rows = [("hud_controls_128x8", controls), ("hud_notices_128x8", sheet)]
+    rows = [("hud_notices_128x8", sheet)]
     write_dir(args.output, rows)
-    print("gen_hud: wrote {} HUD stamps ({} notice frames)".format(len(rows), len(NOTICE_STRINGS)))
+    print("gen_hud: wrote {} HUD stamp ({} notice frames)".format(len(rows), len(NOTICE_STRINGS)))
 
 
 if __name__ == "__main__":

@@ -62,21 +62,18 @@ constexpr uint8_t kHintBackingY = static_cast<uint8_t>(kHintY - 1);
 constexpr uint8_t kHintBackingW = 128;
 constexpr uint8_t kHintBackingH = 9;
 
-// Notice frame order is generated ABI (gen_hud.NOTICE_STRINGS), so the retired
-// credits frame keeps its index even though runtime never selects it. The two
-// HOLD STILL prompt frames also keep their archived indices but are never
-// selected: survey and cutting are automatic nearby dwell actions.
+// Notice frame order is generated ABI (gen_hud.NOTICE_STRINGS), and the
+// generated sheet is contiguous: notice value N selects frame N - 1. The
+// retired credits, survey-hint and cut-hint frames were removed by
+// sub-hauler-jxk.3, so no unused stamp remains between live notices.
 enum Notice : uint8_t {
     kNoticeNone = 0,
     kNoticeSurveyRecorded,
     kNoticeFoundCutter,
     kNoticeFoundSeal,
     kNoticeFoundThruster,
-    kNoticeFoundCredits,
     kNoticeFoundLens,
-    kNoticeSurveyHint,
     kNoticeSalvageHint,
-    kNoticeCutHint,
     kNoticeNeedSeal,
     kNoticeNeedThruster,
     kNoticeNeedCutter,
@@ -102,8 +99,8 @@ inline bool pendingSurveyNear(const game::State &state) {
 }
 
 // Pure notice selection shared by the device HUD and host tests. Discovery
-// notices win over context. Survey/cutting dwell prompts are deliberately not
-// selected; salvage and missing-equipment notices remain actionable.
+// notices win over context. Survey dwell prompts are deliberately not selected;
+// salvage and missing-equipment notices remain actionable.
 inline uint8_t noticeFor(const game::State &state) {
     if (state.discoveryTicks) {
         if (state.lastDiscovery == exploration::kNone)
@@ -146,7 +143,7 @@ inline uint8_t noticeFor(const game::State &state) {
 
 #if defined(__AVR__)
 // One byte selects the 128-byte row; no per-notice 24-bit addresses live in
-// flash.
+// flash. Frames start after the two-byte sprite header, so notice 1 is frame 0.
 inline void drawNotice(uint8_t notice) {
     cartService();
     const uint24_t address = hud_notices + 2 + static_cast<uint24_t>(notice - 1) * 128;
