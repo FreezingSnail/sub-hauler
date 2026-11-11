@@ -54,7 +54,9 @@ device suites print `P`, and the flight probe covers **842** complete frames at
 **11.440 ms maximum**, zero 16 ms misses, **gap=1 tick**, and zero audio
 underruns/errors. `make gen-check` is deterministic. The latest generation
 produces 16 scenes, 41 cards and 89 frames in a **57,023 B** story blob; the
-FX payload/image are **2,092,503 / 2,096,640 B**, leaving 512 B below 2 MiB.
+FX payload/image are **667,863 / 672,000 B**, leaving **1,425,152 B** below
+2 MiB. The six archival ADPCM streams are no longer in the shipping layout;
+their `.bin` files, manifest and descriptors remain archival evidence.
 
 All story prose now comes from one editable UTF-8 source,
 [`story/scenes.json`](story/scenes.json); artwork is edited as one Piskel sheet,
@@ -83,7 +85,10 @@ is the guide’s labeled in-game overview, and the
 [music-region map](docs/assets/exploration-world-music-2026-11-09.png) highlights
 which travel cue plays in each area. A 41,544-byte payload prefix precedes the unchanged 409,600 B
 native terrain section; later music, menu, splash, story and save sections make
-the current payload/image **2,092,503 / 2,096,640 B** (512 B below 2 MiB).
+the current payload/image **667,863 / 672,000 B** (**1,425,152 B** below 2 MiB).
+The six sampled IMA ADPCM streams were removed from the shipping cart
+(`sub-hauler-646.18`); `make gen-audio` and the `fxdata/music/adpcm/` files stay
+as archival evidence and are not compiled into firmware or tests.
 
 Normal startup shows Snailware for about 1 s, then the Sub-hauler game splash.
 The splash waits indefinitely for a fresh button press; a button held to skip
@@ -168,7 +173,8 @@ The editable music scores and viewer catalog live in [`music/`](music/README.md)
 (40 BPM) through Tidepool Waltz (75 BPM, 3/4) to Bubblejet Run (100 BPM), with
 the original Harbor Bubbles, Kelp Drift and Sonar Lullaby loops included. The
 jukebox plays the packed assets; the game decodes the same six cues with the
-ATMlib2FX compact synth.
+ATMlib2FX compact synth. The `make gen-audio` reference ADPCM files are
+archival only and are not part of the shipping `fxdata.txt` layout.
 
 ## Fixed build
 

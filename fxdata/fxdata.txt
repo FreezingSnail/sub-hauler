@@ -205,16 +205,12 @@ string txt_jobs = 'JOBS'
 string txt_a_next = 'A NEXT'
 string txt_a_finish = 'A FINISH'
 
-// Sampled audio admission (sub-hauler-7px.11.2): raw 4-bit IMA ADPCM loops,
-// low nibble first, appended after every shipped symbol. The six streams are
-// 1,424,640 B total; descriptors and initial decoder state live in
-// src/generated/audio.hpp. Fxdata declaration order remains flash ABI.
-raw_t audio_harbor_bubbles = "../fxdata/music/adpcm/harbor_bubbles.bin"
-raw_t audio_kelp_drift = "../fxdata/music/adpcm/kelp_drift.bin"
-raw_t audio_sonar_lullaby = "../fxdata/music/adpcm/sonar_lullaby.bin"
-raw_t audio_abyssal_glass = "../fxdata/music/adpcm/abyssal_glass.bin"
-raw_t audio_tidepool_waltz = "../fxdata/music/adpcm/tidepool_waltz.bin"
-raw_t audio_bubblejet_run = "../fxdata/music/adpcm/bubblejet_run.bin"
+// Sampled audio admission (sub-hauler-7px.11.2) was removed from the shipping
+// layout by sub-hauler-646.18: the six raw 4-bit IMA ADPCM streams (1,424,640 B)
+// were archival evidence only and no runtime code played them. The .bin files,
+// manifest, descriptors in src/generated/audio.hpp and `make gen-audio` remain
+// archival. This is the approved one-time append-only ABI exception; every
+// later symbol shifts down by the removed bytes and FX_SAVE_PAGE stays 0xFFF0.
 
 // Legacy loader strings (sub-hauler-7px.12), retained because declaration
 // order is flash ABI. The title loader row was removed 2026-10-29; the library

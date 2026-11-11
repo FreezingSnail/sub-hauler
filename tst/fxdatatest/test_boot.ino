@@ -14,7 +14,6 @@
 #include "src/generated/world.hpp"
 #include "src/generated/cargo.hpp"
 #include "src/generated/music.hpp"
-#include "src/generated/audio.hpp"
 #include "src/generated/hud_sprites.hpp"
 #include "src/generated/menu_sprites.hpp"
 #include "src/generated/splash_sprites.hpp"
@@ -73,13 +72,7 @@ static_assert(txt_found_cutter == explorationObjects + exploration_data::OBJECT_
 constexpr uint32_t NATIVE_TERRAIN_BYTES = static_cast<uint32_t>(world::PIXELS_X) * world::PIXELS_Y / 8;
 static_assert(explorationTerrain == txt_dev_noclip + sizeof("DEV NOCLIP  A FAST"), "native terrain appends after unchanged labels");
 static_assert(txt_sub_hauler == explorationTerrain + NATIVE_TERRAIN_BYTES, "voyage labels append after native terrain");
-static_assert(audio_harbor_bubbles == txt_a_finish + sizeof("A FINISH"), "sampled audio appends after every shipped symbol");
-static_assert(audio_kelp_drift == audio_harbor_bubbles + audio::kBytes[0], "Kelp Drift follows Harbor Bubbles");
-static_assert(audio_sonar_lullaby == audio_kelp_drift + audio::kBytes[1], "Sonar Lullaby follows Kelp Drift");
-static_assert(audio_abyssal_glass == audio_sonar_lullaby + audio::kBytes[2], "Abyssal Glass follows Sonar Lullaby");
-static_assert(audio_tidepool_waltz == audio_abyssal_glass + audio::kBytes[3], "Tidepool Waltz follows Abyssal Glass");
-static_assert(audio_bubblejet_run == audio_tidepool_waltz + audio::kBytes[4], "Bubblejet Run follows Tidepool Waltz");
-static_assert(txt_loader == audio_bubblejet_run + audio::kBytes[5], "loader label follows the sampled audio streams");
+static_assert(txt_loader == txt_a_finish + sizeof("A FINISH"), "loader label follows the ending labels after the archival ADPCM streams were removed");
 static_assert(txt_roster_load_hint == txt_loader + sizeof("LOADER"), "roster loader hint follows the loader label");
 constexpr uint24_t spriteBytes(uint8_t width, uint8_t height, uint8_t frames, bool masked) {
     return static_cast<uint24_t>(2) + static_cast<uint24_t>(width) * ((height + 7) / 8) * frames * (masked ? 2 : 1);

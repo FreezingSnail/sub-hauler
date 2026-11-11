@@ -138,9 +138,14 @@ class AudioAdpcmTest(unittest.TestCase):
         self.assertLessEqual(payload, 2 * 1024 * 1024)
         self.assertLessEqual(image, 2 * 1024 * 1024)
         header = (ROOT / "src/fxdata.h").read_text()
-        self.assertIn("constexpr uint24_t audio_harbor_bubbles", header)
-        self.assertIn("constexpr uint24_t audio_bubblejet_run", header)
+        # The shipping cart excludes the archival ADPCM streams (646.18).
+        self.assertNotIn("constexpr uint24_t audio_harbor_bubbles", header)
+        self.assertNotIn("constexpr uint24_t audio_bubblejet_run", header)
         self.assertIn(f"constexpr uint24_t FX_DATA_BYTES = {payload};", header)
+        # The descriptor header stays as archival evidence and is not compiled.
+        archival = (ROOT / "src/generated/audio.hpp").read_text()
+        self.assertIn("{ audio_harbor_bubbles, 491520u }", archival)
+        self.assertIn("{ audio_bubblejet_run, 307200u }", archival)
 
 
 if __name__ == "__main__":
