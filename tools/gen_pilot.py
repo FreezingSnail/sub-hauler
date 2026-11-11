@@ -23,27 +23,32 @@ FRAMES = 4
 
 # (x, y, width, height, white) rectangles in local, right-facing coordinates.
 # Order matters where a later fill overwrites an earlier one.
+#
+# The HAULER is the cutscene sub reduced to its 26x8 footprint: a rounded pod
+# hull with a stern fin, a small wheelhouse toward the bow, three dark
+# portholes, and an open cargo hold amidships. Loading fills the hold with
+# white freight framed by two dark stripes, so the empty/loaded cue is the hold
+# itself rather than the old cargo-door bars.
 HAULER = (
-    (10, 0, 12, 2, True),
-    (1, 2, 24, 1, True),
-    (0, 3, 26, 2, True),
-    (1, 5, 24, 1, True),
-    (2, 6, 22, 1, True),
-    (3, 7, 20, 1, True),
-    (3, 3, 20, 1, False),
-    (12, 0, 1, 2, False),
-    (15, 0, 1, 2, False),
-    (18, 0, 1, 2, False),
-    (3, 4, 6, 3, False),
-    (4, 4, 4, 1, True),
-    (4, 6, 4, 1, True),
-    (11, 4, 6, 3, False),
-    (12, 4, 4, 1, True),
-    (12, 6, 4, 1, True),
-    (1, 4, 1, 2, False),
-    (23, 5, 2, 1, False),
+    (14, 0, 4, 1, True),    # wheelhouse top
+    (6, 1, 16, 1, True),    # upper deck shoulders
+    (2, 2, 2, 1, True),     # stern fin, lower step
+    (3, 2, 22, 1, True),    # hull crown
+    (1, 3, 25, 1, True),    # hull upper chine
+    (0, 4, 26, 1, True),    # waist (full footprint width)
+    (0, 5, 26, 1, True),    # lower hull
+    (2, 6, 23, 1, True),    # hull bilge
+    (5, 7, 17, 1, True),    # keel
+    (14, 1, 4, 1, False),   # wheelhouse window band
+    (9, 4, 1, 1, False),    # porthole
+    (12, 4, 1, 1, False),   # porthole
+    (15, 4, 1, 1, False),   # porthole
+    (1, 4, 1, 1, False),    # stern thruster notch
+    (8, 5, 6, 2, False),    # empty cargo hold
 )
-HAULER_LOADED = ((5, 4, 1, 3, True), (13, 4, 1, 3, True))
+# Loaded: fill the hold, then leave two dark cargo stripes so freight reads as
+# stacked crates instead of a flat white patch.
+HAULER_LOADED = ((8, 5, 6, 2, True), (8, 5, 1, 2, False), (13, 5, 1, 2, False))
 
 MINNOW = (
     (15, 1, 6, 1, True),
