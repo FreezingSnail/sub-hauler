@@ -320,7 +320,7 @@ inline void StationSuite(TestRunner &runner) {
         test.assertTrue(station_view::kRowX + 6 * 6 < 128, "row labels fit inside 128 columns");
         test.assertEqual(station_view::kRowInvertH, 7, "station board uses a 7 px invert");
         test.assertEqual(station_view::kRowStep, 7, "station board rows are 7 px apart");
-        test.assertEqual(station_view::kHintY, 57, "station board hint starts at 57");
+        test.assertEqual(station_view::kHintY, 56, "station board bark starts at 56");
         test.assertEqual(station::kStationRowCount, 2, "no-job board has WORK and UNDOCK");
         test.assertEqual(station_view::kBerthIconCount, campaign::kBerthCount, "every berth owns a header silhouette");
         test.assertTrue(station_view::kNameX + station_view::kNameChars * 6 <= station_view::kIconX, "longest berth name clears the icon");

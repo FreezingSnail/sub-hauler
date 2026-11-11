@@ -96,24 +96,25 @@ inline bool accept(game::State &state, const Row &row) {
 // berth, including when the row list is empty: a completed repair must never
 // hide the next survey, source, seal or beacon step. Deep Anchor keeps a
 // beacon-state clue before and after the core delivery.
-enum Clue : uint8_t {
-    kClueNone = 0,
-    kClueFirst,
-    kClueBenthosLamps,
-    kCluePumpSurvey,
-    kCluePumpSource,
-    kClueLiftSurvey,
-    kClueLiftSource,
-    kCluePumpPartReady,
-    kClueLiftRestored,
-    kClueBeaconNeedsSeal,
-    kClueBeaconReady,
-    kClueBeaconPlan,
-    kClueBeaconLit,
-    kClueNetworkOn,
-    kClueDeepRelay,
-    kClueNoWork,
-};
+// The WORK clue and the dock bark are one selector and one enum. Campaign owns
+// the pure choice; these aliases keep the frozen WORK-board tests and callers.
+using Clue = campaign::DockBark;
+constexpr Clue kClueNone = campaign::kDockBarkNone;
+constexpr Clue kClueFirst = campaign::kDockBarkFirst;
+constexpr Clue kClueBenthosLamps = campaign::kDockBarkBenthosLamps;
+constexpr Clue kCluePumpSurvey = campaign::kDockBarkPumpSurvey;
+constexpr Clue kCluePumpSource = campaign::kDockBarkPumpSource;
+constexpr Clue kClueLiftSurvey = campaign::kDockBarkLiftSurvey;
+constexpr Clue kClueLiftSource = campaign::kDockBarkLiftSource;
+constexpr Clue kCluePumpPartReady = campaign::kDockBarkPumpPartReady;
+constexpr Clue kClueLiftRestored = campaign::kDockBarkLiftRestored;
+constexpr Clue kClueBeaconNeedsSeal = campaign::kDockBarkBeaconNeedsSeal;
+constexpr Clue kClueBeaconReady = campaign::kDockBarkBeaconReady;
+constexpr Clue kClueBeaconPlan = campaign::kDockBarkBeaconPlan;
+constexpr Clue kClueBeaconLit = campaign::kDockBarkBeaconLit;
+constexpr Clue kClueNetworkOn = campaign::kDockBarkNetworkOn;
+constexpr Clue kClueDeepRelay = campaign::kDockBarkDeepRelay;
+constexpr Clue kClueNoWork = campaign::kDockBarkNoWork;
 
 enum EquipmentClue : uint8_t {
     kEquipmentNone = 0,
@@ -122,51 +123,7 @@ enum EquipmentClue : uint8_t {
 };
 
 inline Clue clueFor(const game::State &state, uint8_t berth) {
-    if (berth == campaign::kTidewall) {
-        if (campaign::missionCompleted(state, campaign::kHome))
-            return kClueNetworkOn;
-        if (campaign::hasMilestone(state, campaign::kMilestoneFirst))
-            return kClueBenthosLamps;
-        return kClueFirst;
-    }
-    if (berth == campaign::kBenthos) {
-        if (!campaign::hasMilestone(state, campaign::kMilestoneFirst))
-            return kClueNoWork;
-        if (!campaign::surveyRecorded(state, campaign::kPumpSurveyId))
-            return kCluePumpSurvey;
-        if (!campaign::hasMilestone(state, campaign::kMilestonePump))
-            return kCluePumpSource;
-        if (!campaign::surveyRecorded(state, campaign::kLiftSurveyId))
-            return kClueLiftSurvey;
-        if (!campaign::hasMilestone(state, campaign::kMilestoneLift))
-            return kClueLiftSource;
-        return kClueLiftRestored;
-    }
-    if (berth == campaign::kCormorant) {
-        if (!campaign::hasMilestone(state, campaign::kMilestoneFirst))
-            return kClueNoWork;
-        if (!campaign::surveyRecorded(state, campaign::kLiftSurveyId))
-            return kClueLiftSurvey;
-        if (!campaign::surveyRecorded(state, campaign::kPumpSurveyId))
-            return kCluePumpSurvey;
-        if (!campaign::hasMilestone(state, campaign::kMilestonePump))
-            return kCluePumpPartReady;
-        if (!campaign::hasMilestone(state, campaign::kMilestoneLift))
-            return kClueLiftSource;
-        if (!campaign::sealOwned(state))
-            return kClueBeaconNeedsSeal;
-        return kClueBeaconReady;
-    }
-    if (berth == campaign::kDeepAnchor) {
-        if (!campaign::hasMilestone(state, campaign::kMilestoneBeacon))
-            return kClueBeaconPlan;
-        if (!campaign::missionCompleted(state, campaign::kExpedition))
-            return kClueDeepRelay;
-        if (!campaign::missionCompleted(state, campaign::kHome))
-            return kClueBeaconLit;
-        return kClueNetworkOn;
-    }
-    return kClueNone;
+    return campaign::dockBark(state, berth);
 }
 
 inline EquipmentClue equipmentClue(const game::State &state) {
@@ -203,41 +160,11 @@ inline uint24_t missionLabel(uint8_t mission) {
     return 0;
 }
 
-// Branches, not a switch: the clue labels would emit a RAM-resident CSWTCH
-// table. The pure clue order is fixed by docs/progression.md and tested on the
-// host, including the empty-row board case.
+// One PROGMEM dispatch shared with the station bark. The pure clue order is
+// fixed by docs/progression.md and tested on the host, including the empty-row
+// board case.
 inline uint24_t clueLabel(Clue clue) {
-    if (clue == kClueFirst)
-        return txt_first_clue;
-    if (clue == kClueBenthosLamps)
-        return txt_benthos_lamps_on;
-    if (clue == kCluePumpSurvey)
-        return txt_pump_survey_clue;
-    if (clue == kCluePumpSource)
-        return txt_pump_source_clue;
-    if (clue == kClueLiftSurvey)
-        return txt_survey_lift_clue;
-    if (clue == kClueLiftSource)
-        return txt_lift_source_clue;
-    if (clue == kCluePumpPartReady)
-        return txt_pump_part_ready;
-    if (clue == kClueLiftRestored)
-        return txt_lift_restored;
-    if (clue == kClueBeaconNeedsSeal)
-        return txt_beacon_needs_seal;
-    if (clue == kClueBeaconReady)
-        return txt_beacon_ready;
-    if (clue == kClueBeaconPlan)
-        return txt_beacon_clue;
-    if (clue == kClueBeaconLit)
-        return txt_beacon_lit;
-    if (clue == kClueNetworkOn)
-        return txt_network_on;
-    if (clue == kClueDeepRelay)
-        return txt_deep_relay;
-    if (clue == kClueNoWork)
-        return txt_no_work;
-    return 0;
+    return station_view::dockBarkText(clue);
 }
 
 inline uint24_t equipmentLabel(EquipmentClue clue) {

@@ -26,17 +26,6 @@ void background(uint8_t value) {
         Arduboy2Base::sBuffer[i] = value;
 }
 
-uint24_t stationHint() {
-    if (station::serviceBerth(state)) return txt_service_berth_hint;
-    if (jobs::deliveryFailed(state)) return txt_short_load;
-    if (!station::jobActive(state)) {
-        if (!(state.tools & exploration_data::CUTTER)) return txt_cutter_rumor;
-        if (state.docked == 1 && !(state.tools & exploration_data::THRUSTER)) return txt_thruster_rumor;
-        if (state.docked == 2 && !(state.tools & exploration_data::SEAL)) return txt_seal_rumor;
-    }
-    return station::jobActive(state) ? txt_autoload_hint : txt_station_hint;
-}
-
 void header(uint24_t title) {
     text::normal();
     text::at(station_view::kNameX, station_view::kHeaderY);
@@ -71,7 +60,7 @@ void stationReference(uint8_t selected) {
     }
     text::normal();
     text::at(station_view::kHintX, station_view::kHintY);
-    text::print(stationHint());
+    text::print(station_view::dockBarkText(campaign::dockBark(state, static_cast<uint8_t>(state.docked))));
 }
 
 bool stationCheck(uint8_t row, uint8_t pattern) {
