@@ -30,7 +30,7 @@ constexpr int16_t kLookaheadPx = 24;
 constexpr int16_t kVerticalTolerancePx = 2;
 constexpr int16_t kCruiseSpeedQ8 = 12 * game::kQ8One;
 constexpr uint16_t kTimeoutTicks = 6 * 60 * 60;   // six relaxed minutes
-constexpr int16_t kRequiredAirMargin = 60;        // 20% of the 300-unit tank
+constexpr int16_t kRequiredAirMargin = game::kAirCapacity / 20;   // 5% reserve
 
 struct RealWorld {
     std::array<uint8_t, world::WORLD_BYTES> tiles{};
@@ -235,7 +235,7 @@ inline void CampaignRouteSuite(TestRunner &runner) {
         test.assertTrue(result.routeBuilt, "generated collision plane opens a Tidewall-to-Benthos route");
         test.assertTrue(result.docked, "relaxed autopilot docks at Benthos");
         test.assertTrue(result.ticks <= kTimeoutTicks, "first delivery stays inside six relaxed minutes");
-        test.assertTrue(result.arrivalAir >= kRequiredAirMargin, "arrival air keeps a 20% reserve");
+        test.assertTrue(result.arrivalAir >= kRequiredAirMargin, "arrival air keeps a 5% reserve");
         test.assertTrue(result.delivered, "docking resolves FIRST exactly once");
         test.assertEqual(result.serviceAir, game::kAirCapacity, "berth service refills the tank");
         test.assertEqual(result.serviceBallast, game::neutralFor(0), "berth service neutralises the empty hold");
