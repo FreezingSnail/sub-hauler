@@ -60,9 +60,6 @@ inline void hint(uint24_t label) {
     text::print(label);
 }
 
-// panel_ending_stats stays declared in fxdata.h because later FX declarations
-// are appended after it; removing the image would shift flash ABI. No screen
-// selects it now.
 inline void draw(uint8_t card, const game::State &) {
     if (card == kCardThanks)
         panel_view::draw(panel_ending_thanks);

@@ -14,7 +14,6 @@
 #include "roster_test.hpp"
 #include "roster_view_test.hpp"
 #include "test.hpp"
-#include "menu_panel_test.hpp"
 #include "world_test.hpp"
 #include "exploration_test.hpp"
 
@@ -39,7 +38,6 @@
 
 int main() {
     TestRunner runner;
-    MenuPanelSuite(runner);
     audio_reference_test::suite(runner);
     adpcm_test::suite(runner);
     CaveSuite(runner);

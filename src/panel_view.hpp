@@ -3,15 +3,14 @@
 #include <stdint.h>
 
 
-// Shared renderer for generated 128x64 story/menu panels. The panel image
-// already contains every fixed label and the selected-row bar, so one Blit call
+// Shared renderer for generated 128x64 story panels. The panel image already
+// contains every fixed label and the selected-row bar, so one Blit call
 // replaces repeated cursor/string drawing. Device-only: the host tests exercise
 // the pure card/row contracts.
 #if defined(__AVR__)
 
 #include "cart_service.hpp"
 #include "common.hpp"
-#include "generated/menu_sprites.hpp"
 #include "generated/panel_sprites.hpp"
 
 namespace panel_view {
@@ -38,13 +37,6 @@ inline void draw(uint24_t image, uint16_t frame, uint8_t height) {
 
 inline void draw(uint24_t image) {
     draw(image, 0, kHeight);
-}
-
-// The existing clipped blitter handles the seven-row hint and preserves y56.
-// Reuse it instead of keeping another page shifter and scratch buffer.
-inline void drawHint7(uint24_t image, uint16_t frame) {
-    cartService();
-    Blit::draw(0, 57, kWidth, 7, image + 2, frame, Blit::OVERWRITE);
 }
 
 }   // namespace panel_view

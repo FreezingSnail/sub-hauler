@@ -97,18 +97,14 @@ inline void menuRow(uint8_t y, uint24_t label, bool selected) {
     text::print(label);
 }
 
-// Baked title frames: status enum 0..4 x hull 0..2 x selected row 0..1. The
-// hull index is frozen at the HAULER column (1) so the shipped sheet keeps its
-// ABI while the title only ever shows the playable hull. The two confirmation
-// modes use their own sheets; replace embeds the status line.
-constexpr uint8_t kTitleHullFrame = 1;
-
+// Baked title frames: boot state 0..3 x selected row 0..1, HAULER fixed. The
+// replace prompt exists only when a valid save is present, so it is one frame.
 inline void drawTitle(const voyage_flow::BootStatus &status, uint8_t selected, TitleMode mode) {
     if (mode == kTitleConfirmReplace) {
-        panel_view::draw(title_replace, status.state, 64);
+        panel_view::draw(title_replace, 0, 64);
         return;
     }
-    const uint16_t frame = static_cast<uint16_t>(status.state * 6u + kTitleHullFrame * 2u + selected);
+    const uint16_t frame = static_cast<uint16_t>(status.state * 2u + selected);
     panel_view::draw(title_menu, frame, 64);
 }
 

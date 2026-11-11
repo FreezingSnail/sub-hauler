@@ -4,14 +4,10 @@
 
 #include "game.hpp"
 #include "station.hpp"
-#include "jobs.hpp"
-#include "generated/exploration.hpp"
 
-// The generated station menu frames and hint rows remain cart ABI, but the
-// runtime board is native: the shipped frames still carry the retired SHOP row
-// and no longer match the live WORK/UNDOCK and summary/WORK/UNDOCK shapes.
-// Keeping the frame selectors here documents that ABI for the menu tests while
-// the draw path below uses the live row rules.
+// The runtime station board is native: the row rules below own the live
+// WORK/UNDOCK and summary/WORK/UNDOCK shapes. The retired generated menu
+// frames and hint rows are no longer packed (sub-hauler-jxk.2).
 
 #if defined(__AVR__)
 #include "common.hpp"
@@ -33,9 +29,6 @@ namespace station_view {
 
 constexpr uint8_t kNameX = 2;
 constexpr uint8_t kHeaderY = 2;
-// Archival layout: the generated frames still bake the retired credits caption
-// at this column. Runtime text no longer prints a balance.
-constexpr uint8_t kCreditsX = 80;
 constexpr uint8_t kDividerY = 11;
 constexpr uint8_t kStatusX = 2;
 constexpr uint8_t kStatusY = 15;
@@ -47,12 +40,8 @@ constexpr uint8_t kRowStep = 7;
 constexpr uint8_t kRowInsetY = 0;
 constexpr uint8_t kRowInvertH = 7;
 constexpr uint8_t kHintX = 3;
-// The generated 7-px hint row remains archival cart ABI at y=57; the live
-// native bark uses the full 8-px bottom text cell at y=56.
-constexpr uint8_t kHintY = 57;
 constexpr uint8_t kBarkY = 56;
 constexpr uint8_t kHintChars = 20;
-constexpr uint8_t kArchivalOfferChars = 20;   // "DEEP ANCHOR 240"
 
 // Native console chrome. The header keeps the longest berth label
 // ("LOWER GANTRY" / "FREIGHT YARD", 12 cells) clear of a 16x8 berth icon. The
@@ -87,9 +76,7 @@ static_assert(rowY(0) - kRowInsetY >= kStatusY + 7, "rows start below the status
 static_assert(rowY(static_cast<uint8_t>(station::kStationRowCount - 1)) + kRowInvertH <= kBarkY, "last row clears the bark");
 static_assert(rowY(static_cast<uint8_t>(station::kActiveRowCount - 1)) + kRowInvertH <= kBarkY, "active board clears the bark");
 static_assert(kBarkY + 8 <= 64, "bark stays on screen");
-static_assert(kHintY + 7 <= 64, "archival hint row stays on screen");
 static_assert(kHintX + kHintChars * 6 <= 128, "the longest bark fits inside 128 columns");
-static_assert(kRowX + kArchivalOfferChars * 6 <= 128, "archival offer text fits inside 128 columns");
 static_assert(kNameX + kNameChars * 6 <= kIconX, "berth names clear the header icon");
 static_assert(kIconX + kIconW <= 128, "header icon fits inside the display");
 static_assert(kIconY + kIconH <= kDividerY, "header icon stays above the divider");
@@ -97,68 +84,6 @@ static_assert(kTankX + kTankW + kTankNozzleW <= 128, "air gauge and nozzle fit i
 static_assert(kTankY + kTankH <= kRowY0, "air gauge clears the row block");
 static_assert(kSummaryMarkX + kSummaryMarkW <= kRowX, "summary marker leaves the row label clear");
 static_assert(kSelectMarkX + kSelectMarkW <= 128, "selection marker stays inside the display");
-
-// Frame ABI: four main berths with three idle selections and four active
-// selections, then one selected UNDOCK frame for each service berth. The
-// retired row is never selected by the live board; the selector remains so the
-// generated sheet can still be addressed and host-checked.
-constexpr uint8_t kPanelMainBerths = 4;
-constexpr uint8_t kPanelServiceBerths = 2;
-constexpr uint8_t kPanelFramesPerBerth = 3 + 4;
-constexpr uint8_t kPanelFrameCount = kPanelMainBerths * kPanelFramesPerBerth + kPanelServiceBerths;
-
-// Hint order matches tools/gen_menu.STATION_HINTS so one byte selects the
-// generated 128x7 row. The priority is the shipped board contract.
-enum PanelHint : uint8_t {
-    kPanelServiceHint = 0,
-    kPanelShortLoad,
-    kPanelCutterRumor,
-    kPanelThrusterRumor,
-    kPanelSealRumor,
-    kPanelAutoload,
-    kPanelStation,
-};
-
-constexpr bool panelMainBerth(uint8_t berth) {
-    return berth < kPanelMainBerths;
-}
-
-// Archival frame selector: the shipped sheet still has four active selections
-// (summary/retired ABANDON/WORK/UNDOCK). Runtime never selects the retired
-// frame; the live board uses only summary/WORK/UNDOCK.
-constexpr uint8_t kPanelArchivalActiveFirst = 1;
-
-inline bool panelValidFrame(uint8_t berth, bool active, uint8_t selected) {
-    if (panelMainBerth(berth)) {
-        if (active)
-            return selected >= kPanelArchivalActiveFirst && selected <= kPanelArchivalActiveFirst + 2;
-        return selected < station::kStationRowCount;
-    }
-    return berth < kPanelMainBerths + kPanelServiceBerths && !active && selected == 0;
-}
-
-inline uint16_t panelFrame(uint8_t berth, bool active, uint8_t selected) {
-    if (!panelMainBerth(berth))
-        return static_cast<uint16_t>(kPanelMainBerths * kPanelFramesPerBerth + (berth - kPanelMainBerths));
-    const uint16_t base = static_cast<uint16_t>(berth * kPanelFramesPerBerth);
-    return active ? static_cast<uint16_t>(base + 3 + (selected - kPanelArchivalActiveFirst)) : static_cast<uint16_t>(base + selected);
-}
-
-inline uint8_t panelHint(const game::State &state) {
-    if (station::serviceBerth(state))
-        return kPanelServiceHint;
-    if (jobs::deliveryFailed(state))
-        return kPanelShortLoad;
-    if (!station::jobActive(state)) {
-        if (!(state.tools & exploration_data::CUTTER))
-            return kPanelCutterRumor;
-        if (state.docked == 1 && !(state.tools & exploration_data::THRUSTER))
-            return kPanelThrusterRumor;
-        if (state.docked == 2 && !(state.tools & exploration_data::SEAL))
-            return kPanelSealRumor;
-    }
-    return station::jobActive(state) ? kPanelAutoload : kPanelStation;
-}
 
 #if defined(__AVR__)
 

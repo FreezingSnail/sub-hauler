@@ -80,7 +80,6 @@ DOCK_BARK_INPUTS := tools/gen_dock_barks.py src/campaign.hpp src/station_view.hp
 DOCK_BARK_OUTPUTS := docs/assets/dock-barks.js
 FX_INPUTS     := $(IMAGES) fxdata/fxdata.txt tools/gen.sh tools/gen_sprites.py \
                  tools/gen_hud.py images/hud/*.png \
-                 tools/gen_menu.py src/station_view.hpp images/menu/*.png \
                  tools/gen_splash.py images/splash/source/snailware_64x64.png images/splash/*.png \
                  tools/gen_panels.py images/panels/*.png images/campaign/*.png images/pause/*.png \
                  images/story/*.png docs/assets/story-flourishes-preview.png \
@@ -149,10 +148,6 @@ gen-check:
 	@cp images/hud/*.png $(BUILD_DIR)/gen-check/hud/
 	@cp fxdata/HudSprites.txt $(BUILD_DIR)/gen-check/HudSprites.txt
 	@cp src/generated/hud_sprites.hpp $(BUILD_DIR)/gen-check/hud_sprites.hpp
-	@mkdir -p $(BUILD_DIR)/gen-check/menu
-	@cp images/menu/*.png $(BUILD_DIR)/gen-check/menu/
-	@cp fxdata/MenuSprites.txt $(BUILD_DIR)/gen-check/MenuSprites.txt
-	@cp src/generated/menu_sprites.hpp $(BUILD_DIR)/gen-check/menu_sprites.hpp
 	@cp images/splash/startup_128x64.png $(BUILD_DIR)/gen-check/startup_128x64.png
 	@cp fxdata/SplashSprites.txt $(BUILD_DIR)/gen-check/SplashSprites.txt
 	@cp src/generated/splash_sprites.hpp $(BUILD_DIR)/gen-check/splash_sprites.hpp
@@ -182,14 +177,9 @@ gen-check:
 	@cmp -s src/generated/pause_sprites.hpp $(BUILD_DIR)/gen-check/pause_sprites.hpp || { echo "gen-check: pause sprite header changed" >&2; exit 1; }
 	@cmp -s fxdata/HudSprites.txt $(BUILD_DIR)/gen-check/HudSprites.txt || { echo "gen-check: HUD sprites changed" >&2; exit 1; }
 	@cmp -s src/generated/hud_sprites.hpp $(BUILD_DIR)/gen-check/hud_sprites.hpp || { echo "gen-check: HUD header changed" >&2; exit 1; }
-	@cmp -s fxdata/MenuSprites.txt $(BUILD_DIR)/gen-check/MenuSprites.txt || { echo "gen-check: menu sprites changed" >&2; exit 1; }
-	@cmp -s src/generated/menu_sprites.hpp $(BUILD_DIR)/gen-check/menu_sprites.hpp || { echo "gen-check: menu header changed" >&2; exit 1; }
 	@cmp -s images/splash/startup_128x64.png $(BUILD_DIR)/gen-check/startup_128x64.png || { echo "gen-check: startup art changed" >&2; exit 1; }
 	@cmp -s fxdata/SplashSprites.txt $(BUILD_DIR)/gen-check/SplashSprites.txt || { echo "gen-check: startup data changed" >&2; exit 1; }
 	@cmp -s src/generated/splash_sprites.hpp $(BUILD_DIR)/gen-check/splash_sprites.hpp || { echo "gen-check: startup header changed" >&2; exit 1; }
-	@for file in images/menu/*.png; do \
-		cmp -s "$$file" "$(BUILD_DIR)/gen-check/menu/$${file##*/}" || { echo "gen-check: $$file changed" >&2; exit 1; }; \
-	done
 	@for file in images/hud/*.png; do \
 		cmp -s "$$file" "$(BUILD_DIR)/gen-check/hud/$${file##*/}" || { echo "gen-check: $$file changed" >&2; exit 1; }; \
 	done

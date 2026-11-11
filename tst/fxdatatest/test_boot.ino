@@ -13,9 +13,7 @@
 #include "src/generated/world.hpp"
 #include "src/generated/music.hpp"
 #include "src/generated/hud_sprites.hpp"
-#include "src/generated/menu_sprites.hpp"
 #include "src/generated/splash_sprites.hpp"
-#include "src/generated/story_sprites.hpp"
 #include "src/generated/story_beats.hpp"
 
 // First byte of fxdata/tables/exploration.bin: tile row 0 is inside the sealed
@@ -33,7 +31,7 @@ constexpr uint24_t PILOT_SPRITE_BYTES = 2 + 4 * 26 * 2;
 // active level sections and labels follow in declaration order.
 static_assert(font_6x8 == 0, "external font is the first shipped symbol");
 static_assert(txt_paused > font_6x8, "text must follow the font");
-static_assert(hauler == txt_station_hint + sizeof("UP/DN A OK B OUT"),
+static_assert(hauler == txt_undock + sizeof("UNDOCK"),
               "pilot sheet must follow the shipped strings");
 static_assert(sh_harbor_bubbles == hauler + PILOT_SPRITE_BYTES,
               "music must follow the pilot sheet");
@@ -52,29 +50,20 @@ static_assert(explorationTiles == sh_bubblejet_run + music_data::sh_bubblejet_ru
 static_assert(explorationChart == explorationTiles + world::WORLD_BYTES, "active chart follows tiles");
 static_assert(txt_found_cutter == explorationChart + world::CHART_BYTES, "labels follow the active chart; the cart object stream is retired");
 constexpr uint32_t NATIVE_TERRAIN_BYTES = static_cast<uint32_t>(world::PIXELS_X) * world::PIXELS_Y / 8;
-static_assert(explorationTerrain == txt_dev_noclip + sizeof("DEV NOCLIP  A FAST"), "native terrain appends after unchanged labels");
+static_assert(explorationTerrain == txt_seal_rumor + sizeof("SEAL: WEST WORKSHOP"), "native terrain appends after the retained labels");
 static_assert(txt_sub_hauler == explorationTerrain + NATIVE_TERRAIN_BYTES, "voyage labels append after native terrain");
-static_assert(txt_loader == txt_a_finish + sizeof("A FINISH"), "loader label follows the ending labels after the archival ADPCM streams were removed");
-static_assert(txt_roster_load_hint == txt_loader + sizeof("LOADER"), "roster loader hint follows the loader label");
 constexpr uint24_t spriteBytes(uint8_t width, uint8_t height, uint8_t frames, bool masked) {
     return static_cast<uint24_t>(2) + static_cast<uint24_t>(width) * ((height + 7) / 8) * frames * (masked ? 2 : 1);
 }
-static_assert(panel_abandon_confirm == txt_roster_load_hint + sizeof("UP/DN A OK  L/R HULL"), "story panels append after the loader strings");
+static_assert(panel_abandon_confirm == txt_a_next + sizeof("A NEXT"), "story panels append after the retained ending labels");
 static_assert(panel_ending_network == panel_abandon_confirm + spriteBytes(PANEL_ABANDON_CONFIRM_WIDTH, PANEL_ABANDON_CONFIRM_HEIGHT, PANEL_ABANDON_CONFIRM_FRAMES, PANEL_ABANDON_CONFIRM_MASKED), "ending network follows the first prompt");
-static_assert(panel_ending_stats == panel_ending_network + spriteBytes(PANEL_ENDING_NETWORK_WIDTH, PANEL_ENDING_NETWORK_HEIGHT, PANEL_ENDING_NETWORK_FRAMES, PANEL_ENDING_NETWORK_MASKED), "ending stats follow the network card");
-static_assert(panel_ending_thanks == panel_ending_stats + spriteBytes(PANEL_ENDING_STATS_WIDTH, PANEL_ENDING_STATS_HEIGHT, PANEL_ENDING_STATS_FRAMES, PANEL_ENDING_STATS_MASKED), "ending thanks follow the stats card");
-static_assert(panel_pause_rescue == panel_ending_thanks + spriteBytes(PANEL_ENDING_THANKS_WIDTH, PANEL_ENDING_THANKS_HEIGHT, PANEL_ENDING_THANKS_FRAMES, PANEL_ENDING_THANKS_MASKED), "pause panel follows the ending cards");
-static_assert(panel_pause_resume == panel_pause_rescue + spriteBytes(PANEL_PAUSE_RESCUE_WIDTH, PANEL_PAUSE_RESCUE_HEIGHT, PANEL_PAUSE_RESCUE_FRAMES, PANEL_PAUSE_RESCUE_MASKED), "pause selection variants stay adjacent");
-static_assert(panel_rescue_confirm == panel_pause_resume + spriteBytes(PANEL_PAUSE_RESUME_WIDTH, PANEL_PAUSE_RESUME_HEIGHT, PANEL_PAUSE_RESUME_FRAMES, PANEL_PAUSE_RESUME_MASKED), "rescue confirmation follows the pause variants");
+static_assert(panel_ending_thanks == panel_ending_network + spriteBytes(PANEL_ENDING_NETWORK_WIDTH, PANEL_ENDING_NETWORK_HEIGHT, PANEL_ENDING_NETWORK_FRAMES, PANEL_ENDING_NETWORK_MASKED), "ending thanks follow the network card");
+static_assert(panel_rescue_confirm == panel_ending_thanks + spriteBytes(PANEL_ENDING_THANKS_WIDTH, PANEL_ENDING_THANKS_HEIGHT, PANEL_ENDING_THANKS_FRAMES, PANEL_ENDING_THANKS_MASKED), "rescue confirmation follows the ending cards");
 static_assert(panel_save_continue == panel_rescue_confirm + spriteBytes(PANEL_RESCUE_CONFIRM_WIDTH, PANEL_RESCUE_CONFIRM_HEIGHT, PANEL_RESCUE_CONFIRM_FRAMES, PANEL_RESCUE_CONFIRM_MASKED), "save failure variants follow the confirmations");
 static_assert(panel_save_retry == panel_save_continue + spriteBytes(PANEL_SAVE_CONTINUE_WIDTH, PANEL_SAVE_CONTINUE_HEIGHT, PANEL_SAVE_CONTINUE_FRAMES, PANEL_SAVE_CONTINUE_MASKED), "save retry follows save continue");
-static_assert(title_keep == panel_save_retry + spriteBytes(PANEL_SAVE_RETRY_WIDTH, PANEL_SAVE_RETRY_HEIGHT, PANEL_SAVE_RETRY_FRAMES, PANEL_SAVE_RETRY_MASKED), "title keep follows the prompts");
-static_assert(title_menu == title_keep + spriteBytes(TITLE_KEEP_WIDTH, TITLE_KEEP_HEIGHT, TITLE_KEEP_FRAMES, TITLE_KEEP_MASKED), "title menu follows keep chart");
-static_assert(title_replace == title_menu + spriteBytes(TITLE_MENU_WIDTH, TITLE_MENU_HEIGHT, TITLE_MENU_FRAMES, TITLE_MENU_MASKED), "replace confirmation follows the menu sheet");
-static_assert(work_active == title_replace + spriteBytes(TITLE_REPLACE_WIDTH, TITLE_REPLACE_HEIGHT, TITLE_REPLACE_FRAMES, TITLE_REPLACE_MASKED), "work active strip follows the title sheet");
-static_assert(work_details == work_active + spriteBytes(WORK_ACTIVE_WIDTH, WORK_ACTIVE_HEIGHT, WORK_ACTIVE_FRAMES, WORK_ACTIVE_MASKED), "work details follow the active strip");
-static_assert(work_rows == work_details + spriteBytes(WORK_DETAILS_WIDTH, WORK_DETAILS_HEIGHT, WORK_DETAILS_FRAMES, WORK_DETAILS_MASKED), "work rows follow the detail sheet");
-static_assert(lift_cable == work_rows + spriteBytes(WORK_ROWS_WIDTH, WORK_ROWS_HEIGHT, WORK_ROWS_FRAMES, WORK_ROWS_MASKED), "restoration sprites follow the work sheets");
+static_assert(title_menu == panel_save_retry + spriteBytes(PANEL_SAVE_RETRY_WIDTH, PANEL_SAVE_RETRY_HEIGHT, PANEL_SAVE_RETRY_FRAMES, PANEL_SAVE_RETRY_MASKED), "title menu follows the prompts");
+static_assert(title_replace == title_menu + spriteBytes(TITLE_MENU_WIDTH, TITLE_MENU_HEIGHT, TITLE_MENU_FRAMES, TITLE_MENU_MASKED), "replace confirmation follows the compact menu sheet");
+static_assert(lift_cable == title_replace + spriteBytes(TITLE_REPLACE_WIDTH, TITLE_REPLACE_HEIGHT, TITLE_REPLACE_FRAMES, TITLE_REPLACE_MASKED), "restoration sprites follow the title sheet");
 static_assert(mooring == lift_cable + spriteBytes(LIFT_CABLE_WIDTH, LIFT_CABLE_HEIGHT, LIFT_CABLE_FRAMES, LIFT_CABLE_MASKED), "mooring follows the lift cable");
 static_assert(pump_flow == mooring + spriteBytes(MOORING_WIDTH, MOORING_HEIGHT, MOORING_FRAMES, MOORING_MASKED), "pump flow follows the mooring");
 static_assert(survey_ring == pump_flow + spriteBytes(PUMP_FLOW_WIDTH, PUMP_FLOW_HEIGHT, PUMP_FLOW_FRAMES, PUMP_FLOW_MASKED), "survey ring follows the pump flow");
@@ -85,21 +74,14 @@ static_assert(pause_menu == musicRegions + music_regions::kPlaneBytes, "pause me
 static_assert(txt_saved_berth == pause_menu + spriteBytes(PAUSE_MENU_WIDTH, PAUSE_MENU_HEIGHT, PAUSE_MENU_FRAMES, PAUSE_MENU_MASKED), "HUD saved notice follows the pause menu");
 static_assert(txt_unsaved_find == txt_saved_berth + sizeof("SAVED AT BERTH"), "HUD unsaved notice follows saved notice");
 static_assert(txt_story == txt_unsaved_find + sizeof("UNSAVED FIND"), "WORK story label follows the HUD notices");
-static_assert(txt_cargo == txt_story + sizeof("STORY"), "WORK freight label follows the story label");
-static_assert(txt_work_accept_hint == txt_cargo + sizeof("CARGO"), "WORK accept hint follows the freight label");
-static_assert(txt_short_load == txt_work_accept_hint + sizeof("A ACCEPT  B BACK"), "short-load note follows the accept hint");
-static_assert(hud_controls == txt_short_load + sizeof("SHORT LOAD"), "HUD stamps append after every shipped WORK label");
+static_assert(txt_work_accept_hint == txt_story + sizeof("STORY"), "WORK accept hint follows the story label");
+static_assert(hud_controls == txt_work_accept_hint + sizeof("A ACCEPT  B BACK"), "HUD stamps append after every shipped WORK label");
 static_assert(hud_notices == hud_controls + spriteBytes(HUD_CONTROLS_WIDTH, HUD_CONTROLS_HEIGHT, HUD_CONTROLS_FRAMES, HUD_CONTROLS_MASKED), "HUD notices follow the controls");
-static_assert(shop_hints == hud_notices + spriteBytes(HUD_NOTICES_WIDTH, HUD_NOTICES_HEIGHT, HUD_NOTICES_FRAMES, HUD_NOTICES_MASKED), "menus append after shipped HUD stamps");
-static_assert(shop_menu == shop_hints + spriteBytes(SHOP_HINTS_WIDTH, SHOP_HINTS_HEIGHT, SHOP_HINTS_FRAMES, SHOP_HINTS_MASKED), "shop screens follow their hints");
-static_assert(station_hints == shop_menu + spriteBytes(SHOP_MENU_WIDTH, SHOP_MENU_HEIGHT, SHOP_MENU_FRAMES, SHOP_MENU_MASKED), "station hints follow shop screens");
-static_assert(station_menu == station_hints + spriteBytes(STATION_HINTS_WIDTH, STATION_HINTS_HEIGHT, STATION_HINTS_FRAMES, STATION_HINTS_MASKED), "station screens follow their hints");
-static_assert(startup == station_menu + spriteBytes(STATION_MENU_WIDTH, STATION_MENU_HEIGHT, STATION_MENU_FRAMES, STATION_MENU_MASKED), "startup appends after the menu screens");
+static_assert(startup == hud_notices + spriteBytes(HUD_NOTICES_WIDTH, HUD_NOTICES_HEIGHT, HUD_NOTICES_FRAMES, HUD_NOTICES_MASKED), "startup appends after the HUD stamps");
 static_assert(STARTUP_FRAMES == 2 && !STARTUP_MASKED, "two opaque startup frames");
-static_assert(story_beacon == startup + spriteBytes(STARTUP_WIDTH, STARTUP_HEIGHT, STARTUP_FRAMES, STARTUP_MASKED), "restoration cards append after startup");
-static_assert(story_first == story_beacon + spriteBytes(STORY_BEACON_WIDTH, STORY_BEACON_HEIGHT, STORY_BEACON_FRAMES, STORY_BEACON_MASKED), "first delivery follows the beacon card");
-static_assert(story_lift == story_first + spriteBytes(STORY_FIRST_WIDTH, STORY_FIRST_HEIGHT, STORY_FIRST_FRAMES, STORY_FIRST_MASKED), "lift follows the first delivery card");
-static_assert(story_pump == story_lift + spriteBytes(STORY_LIFT_WIDTH, STORY_LIFT_HEIGHT, STORY_LIFT_FRAMES, STORY_LIFT_MASKED), "pump follows the lift card");
+static_assert(txt_pump_survey == startup + spriteBytes(STARTUP_WIDTH, STARTUP_HEIGHT, STARTUP_FRAMES, STARTUP_MASKED), "survey labels append after startup");
+static_assert(txt_lift_survey == txt_pump_survey + sizeof("PUMP SURVEY"), "lift survey follows the pump survey");
+static_assert(txt_survey_chart_hint == txt_lift_survey + sizeof("LIFT SURVEY"), "chart hint follows the survey labels");
 static_assert(storyBeats == txt_survey_chart_hint + sizeof("A CHART  B BACK"), "story decks append after the chart hint");
 static_assert(txt_freight_yard == storyBeats + STORY_BEAT_BYTES, "work-site labels append after the story deck blob");
 static_assert(txt_deep_relay == txt_freight_yard + sizeof("FREIGHT YARD"), "relay label follows the Freight Yard label");

@@ -20,41 +20,21 @@
 image_t font_6x8 = "../fxdata/fonts/font_6x8.png"
 
 // Deduplicated UI labels. Declaration order is flash ABI from this point on.
+// The retired shop, hull and station-menu labels were removed by
+// sub-hauler-jxk.2 under the approved one-time ABI exception. Every later
+// symbol shifts down; append new declarations instead of reordering.
 string txt_paused = 'PAUSED  A/B RESUME'
-string txt_hull_lost = 'HULL LOST  A RESTART'
 string txt_air = 'AIR'
-string txt_cgo = 'CGO'
 string txt_thrust = 'L/R THRUST'
 string txt_trim = 'UP/DN TRIM'
-string txt_minnow = 'MINNOW'
 string txt_hauler = 'HAULER'
-string txt_leviathan = 'LEVIATHAN'
-string txt_len = 'LEN '
-string txt_title_hint = 'D-PAD HULL  A GO'
-string txt_air_tank = 'AIR TANK'
-string txt_hull_plate = 'HULL PLATE'
-string txt_sonar = 'SONAR'
-string txt_item = 'ITEM'
-string txt_shop = 'SHOP'
-string txt_credits = 'CR '
 string txt_air_status = 'AIR '
-string txt_hull_status = 'HULL '
-string txt_max = 'MAX'
-string txt_max_level = 'MAX LEVEL  B BACK'
-string txt_low_credits = 'LOW CREDITS  B BACK'
-string txt_buy_hint = 'A BUY  B BACK'
 string txt_tidewall = 'TIDEWALL'
 string txt_benthos = 'BENTHOS'
 string txt_cormorant = 'CORMORANT'
 string txt_deep_anchor = 'DEEP ANCHOR'
 string txt_station = 'STATION'
-string txt_service = 'SERVICE'
 string txt_undock = 'UNDOCK'
-string txt_abandon = 'ABANDON'
-string txt_offer = 'OFFER'
-string txt_late_short = 'LATE/SHORT'
-string txt_autoload_hint = 'AUTO-LOAD  B OUT'
-string txt_station_hint = 'UP/DN A OK B OUT'
 
 // Fixed pilot artwork (sub-hauler-gl1.6). A separate generated include holds
 // the single shipped HAULER sheet; each sheet is four plus-mask frames:
@@ -84,7 +64,6 @@ string txt_found_cutter = 'CUTTER FOUND'
 string txt_found_seal = 'PRESSURE SEAL FOUND'
 string txt_found_thruster = 'THRUSTER FOUND'
 string txt_found_credits = 'CREDITS FOUND'
-string txt_found_hull = 'HULL CAPACITY +1'
 string txt_found_lens = 'SURVEY LENS FOUND'
 string txt_need_cutter = 'NEED CUTTER'
 string txt_need_seal = 'NEED PRESSURE SEAL'
@@ -92,11 +71,7 @@ string txt_need_thruster = 'NEED THRUSTER'
 string txt_salvage_hint = 'HOLD STILL TO SALVAGE'
 string txt_cut_hint = 'HOLD STILL TO CUT'
 string txt_cutter_rumor = 'CUTTER: WEST COVE'
-string txt_thruster_rumor = 'RELAY: USE CUTTER'
 string txt_seal_rumor = 'SEAL: WEST WORKSHOP'
-
-// Developer flight banner; appended without moving game assets.
-string txt_dev_noclip = 'DEV NOCLIP  A FAST'
 
 // Native terrain panorama: 2560 columns x 160 eight-pixel pages, no header.
 // Static rock only; stations and dynamic overlays compose after streaming.
@@ -112,9 +87,7 @@ string txt_save_ready = 'SAVE READY'
 string txt_no_save = 'NO SAVE'
 string txt_save_corrupt = 'SAVE CORRUPT'
 string txt_save_incompatible = 'SAVE INCOMPATIBLE'
-string txt_save_unreadable = 'SAVE UNREADABLE'
 string txt_replace_voyage = 'REPLACE VOYAGE?'
-string txt_keep_chart = 'KEEP OLD CHART?'
 string txt_yes_no = 'A YES  B NO'
 string txt_save_failed = 'SAVE FAILED'
 string txt_retry = 'RETRY'
@@ -123,8 +96,6 @@ string txt_resume = 'RESUME'
 string txt_rescue = 'RESCUE'
 string txt_back_last_berth = 'BACK TO LAST BERTH?'
 string txt_unsaved_lost = 'UNSAVED FINDS LOST'
-string txt_retry_berth = 'RETRY BERTH'
-string txt_title = 'TITLE'
 string txt_pause_hint = 'UP/DN A OK  B RESUME'
 string txt_save_hint = 'UP/DN A OK'
 string txt_title_save_hint = 'A SELECT          '
@@ -136,24 +107,16 @@ string txt_abandon_job = 'ABANDON JOB?'
 string txt_work = 'WORK'
 string txt_first = 'FIRST'
 string txt_pump = 'PUMP'
-string txt_first_purpose = 'FILTERS FOR BENTHOS'
-string txt_pump_purpose = 'IMPELLER FOR BENTHOS'
-string txt_pays = 'PAYS'
-string txt_work_hint = 'A DETAILS  B BACK'
-string txt_load_hint = 'A LOAD  B BACK'
 string txt_back_hint = 'B BACK'
 string txt_carrying = 'CARRY'
 string txt_deliver_to = 'DELIVER TO'
 string txt_no_work = 'NO WORK YET'
 string txt_pump_refuge = 'PUMP REFUGE'
 string txt_lower_gantry = 'LOWER GANTRY'
-string txt_service_berth_hint = 'SERVICE BERTH  B OUT'
 string txt_benthos_lamps_on = 'BENTHOS LAMPS ON'
 string txt_first_clue = 'FILTERS: TAKE WORK'
 string txt_pump_survey_clue = 'PUMP: PUMP REFUGE'
 string txt_pump_source_clue = 'PART: CORMORANT'
-string txt_pump_restored = 'PUMP RESTORED'
-string txt_survey_pump_clue = 'SURVEY PUMP REFUGE'
 string txt_pump_part_ready = 'PUMP PART READY'
 string txt_beacon_clue = 'BEACON NEEDS PARTS'
 string txt_repair_pump = 'REPAIR PUMP FIRST'
@@ -167,9 +130,6 @@ string txt_lift = 'LIFT'
 string txt_beacon = 'BEACON'
 string txt_home = 'HOME'
 string txt_view_ending = 'VIEW ENDING'
-string txt_lift_purpose = 'CABLE FOR CORMORANT'
-string txt_beacon_purpose = 'CORE FOR ANCHOR'
-string txt_home_purpose = 'DISPATCH TO TIDEWALL'
 string txt_survey_lift_clue = 'SURVEY FREIGHT YARD'
 string txt_lift_clue = 'LIFT: CORMORANT'
 string txt_lift_source_clue = 'CABLE: BENTHOS'
@@ -177,23 +137,12 @@ string txt_lift_restored = 'LIFT RESTORED'
 string txt_beacon_needs_seal = 'BEACON NEEDS SEAL'
 string txt_beacon_ready = 'BEACON CORE READY'
 string txt_beacon_lit = 'TIDEWALL CAN HEAR US'
-string txt_home_ready = 'TAKE REPLY HOME'
 string txt_network_on = 'NETWORK RESTORED'
 
 // Three ending cards. Text only plus a native four-node network diagram.
 string txt_network_lit = 'NETWORK LIT'
 string txt_net_online = 'FOUR STATIONS ONLINE'
-string txt_a_message = 'A MESSAGE'
-string txt_thank_you = 'THANK YOU'
-string txt_thanks_from = 'TIDEWALL BENTHOS'
-string txt_thanks_from2 = 'CORMORANT ANCHOR'
-string txt_keep_exploring = 'KEEP EXPLORING'
-string txt_voyage_stats = 'VOYAGE STATS'
-string txt_time = 'TIME'
-string txt_coves = 'COVES'
-string txt_jobs = 'JOBS'
 string txt_a_next = 'A NEXT'
-string txt_a_finish = 'A FINISH'
 
 // Sampled audio admission (sub-hauler-7px.11.2) was removed from the shipping
 // layout by sub-hauler-646.18: the six raw 4-bit IMA ADPCM streams (1,424,640 B)
@@ -202,16 +151,11 @@ string txt_a_finish = 'A FINISH'
 // archival. This is the approved one-time append-only ABI exception; every
 // later symbol shifts down by the removed bytes and FX_SAVE_PAGE stays 0xFFF0.
 
-// Legacy loader strings (sub-hauler-7px.12), retained because declaration
-// order is flash ABI. The title loader row was removed 2026-10-29; the library
-// DOWN check at power-on remains the bootloader entry.
-string txt_loader = 'LOADER'
-string txt_roster_load_hint = 'UP/DN A OK  L/R HULL'
-
-// Baked static story presentation (sub-hauler-7px.13). Appended after every
-// shipped symbol so all earlier FX offsets remain flash ABI. The ending cards,
+// Baked static story presentation (sub-hauler-7px.13). The ending cards,
 // confirmation prompts and restoration overlays are generated by
 // tools/gen_panels.py; dynamic rewards, status and clocks stay native text.
+// Retired work, pause-variant, stats and title-keep panels were removed by
+// sub-hauler-jxk.2 under the approved one-time ABI exception.
 include "PanelSprites.txt"
 include "CampaignSprites.txt"
 
@@ -232,23 +176,19 @@ string txt_unsaved_find = 'UNSAVED FIND'
 // .27 single WORK board; appended after every shipped symbol so earlier FX
 // offsets remain flash ABI. There is no express label or clock any more.
 string txt_story = 'STORY'
-string txt_cargo = 'CARGO'
 string txt_work_accept_hint = 'A ACCEPT  B BACK'
-string txt_short_load = 'SHORT LOAD'
 
 // Pilot HUD stamps (sub-hauler-7px.22 stage B): fixed AIR/CGO/control labels
 // and air/cargo/ballast outlines baked from the same 6x8 glyph table. Appended
 // after every shipped symbol so earlier FX offsets remain flash ABI.
 include "HudSprites.txt"
-// Station/shop menus append after the shipped HUD section.
-include "MenuSprites.txt"
-// Boot introduction appends after the shipped station/shop menus.
+// Boot introduction appends after the shipped HUD section. The retired
+// station/shop MenuSprites include was removed by sub-hauler-jxk.2.
 include "SplashSprites.txt"
 
-// Four one-shot restoration beats. Appended after every shipped symbol so all
-// earlier FX offsets remain flash ABI. The homecoming beat lives in the
-// existing ending thanks panel, whose dimensions and address are unchanged.
-include "StorySprites.txt"
+// The archival story-card generator still writes StorySprites.txt and
+// images/story, but sub-hauler-jxk.2 stopped packing those four cards. The
+// docs preview remains the reference; no FX symbol is declared for them.
 
 // Every story beat now has a WORK quest row. Survey rows are non-cargo leads;
 // their labels and the chart hint append after every shipped symbol so earlier
