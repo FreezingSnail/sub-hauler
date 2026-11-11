@@ -23,6 +23,7 @@ python3 tools/gen_sprites.py --input images/menu --output fxdata/MenuSprites.txt
 python3 tools/gen_splash.py
 python3 tools/gen_sprites.py --input images/splash --output fxdata/SplashSprites.txt --header src/generated/splash_sprites.hpp --shades 2
 python3 tools/gen_story_beats.py
+python3 tools/gen_dock_barks.py
 python3 tools/gen_cargo.py
 python3 tools/gen_music.py
 # Streaming-audio reference PCM and ADPCM are archival comparison evidence, not

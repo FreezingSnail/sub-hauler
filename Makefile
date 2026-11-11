@@ -76,6 +76,8 @@ REGION_OUTPUTS := src/generated/music_regions.hpp fxdata/tables/music-regions.bi
 MUSIC_OUTPUTS := $(addprefix fxdata/music/sh_,harbor_bubbles.bin kelp_drift.bin sonar_lullaby.bin abyssal_glass.bin tidepool_waltz.bin bubblejet_run.bin) fxdata/music/manifest.json
 STORY_BEAT_INPUTS := tools/gen_story_beats.py story/scenes.json story/art.png
 STORY_BEAT_OUTPUTS := fxdata/tables/story-beats.bin src/generated/story_beats.hpp docs/assets/first-beat-animation/frames.js tst/fxdatatest/story_frame_crc.hpp docs/assets/story-cards.png docs/assets/story-cards.json
+DOCK_BARK_INPUTS := tools/gen_dock_barks.py src/campaign.hpp src/station_view.hpp src/text.hpp fxdata/fxdata.txt
+DOCK_BARK_OUTPUTS := docs/assets/dock-barks.js
 FX_INPUTS     := $(IMAGES) fxdata/fxdata.txt tools/gen.sh tools/gen_sprites.py \
                  tools/gen_hud.py images/hud/*.png \
                  tools/gen_menu.py src/station_view.hpp images/menu/*.png \
@@ -84,6 +86,7 @@ FX_INPUTS     := $(IMAGES) fxdata/fxdata.txt tools/gen.sh tools/gen_sprites.py \
                  images/story/*.png docs/assets/story-flourishes-preview.png \
                  docs/assets/story-flourishes-preview-4x.png \
                  $(STORY_BEAT_INPUTS) $(STORY_BEAT_OUTPUTS) \
+                 $(DOCK_BARK_INPUTS) $(DOCK_BARK_OUTPUTS) \
                  src/campaign.hpp src/generated/exploration.hpp \
                  tools/gen_music_regions.py levels/exploration.json $(REGION_OUTPUTS) \
                  tools/gen_font.py tools/gen_pilot.py tools/gen_world.py \
@@ -117,6 +120,7 @@ gen-check:
 	@cp images/story/*.png $(BUILD_DIR)/gen-check/story/
 	@mkdir -p $(BUILD_DIR)/gen-check/story-beats
 	@cp $(STORY_BEAT_OUTPUTS) $(BUILD_DIR)/gen-check/story-beats/
+	@cp docs/assets/dock-barks.js $(BUILD_DIR)/gen-check/dock-barks.js
 	@cp docs/assets/story-flourishes-preview.png $(BUILD_DIR)/gen-check/story-preview.png
 	@cp docs/assets/story-flourishes-preview-4x.png $(BUILD_DIR)/gen-check/story-preview-4x.png
 	@mkdir -p $(BUILD_DIR)/gen-check/music
@@ -225,6 +229,7 @@ gen-check:
 	@cmp -s tst/fxdatatest/story_frame_crc.hpp $(BUILD_DIR)/gen-check/story-beats/story_frame_crc.hpp || { echo "gen-check: story device CRC reference changed" >&2; exit 1; }
 	@cmp -s docs/assets/story-cards.png $(BUILD_DIR)/gen-check/story-beats/story-cards.png || { echo "gen-check: story card sheet changed" >&2; exit 1; }
 	@cmp -s docs/assets/story-cards.json $(BUILD_DIR)/gen-check/story-beats/story-cards.json || { echo "gen-check: story card map changed" >&2; exit 1; }
+	@cmp -s docs/assets/dock-barks.js $(BUILD_DIR)/gen-check/dock-barks.js || { echo "gen-check: dock bark preview changed" >&2; exit 1; }
 	@echo "gen-check: generated artifacts are deterministic"
 
 # Generation is a prerequisite of the firmware build, so a missing or stale

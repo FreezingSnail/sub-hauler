@@ -9,12 +9,14 @@
 .copy[hidden]{display:none}canvas{image-rendering:pixelated;image-rendering:crisp-edges}.copy textarea{resize:vertical;min-height:110px;font-family:monospace}.native-view canvas{display:block;width:128px;height:64px}.native-view{margin:10px 0}.render-note{font-size:12px;color:#686863}
 .native-gallery{display:flex;gap:14px;flex-wrap:wrap;margin:12px 0 24px}.native-card{width:150px;padding:10px;text-align:left}.native-card .native-art,.native-card .native-art canvas{display:block;width:128px;height:64px;min-width:128px;max-width:128px;min-height:64px;max-height:64px}.native-card small{display:block;font-size:12px;margin-top:7px}.native-card[aria-pressed=true]{background:#e6e5de;color:#272725;outline:2px solid #272725}
 .controls[hidden]{display:none}
+.dock-bark-state{border-top:1px solid #c6c4bb;padding:14px 0 4px}.dock-bark-state h3{font-size:16px;margin:0}.dock-bark-state .native-gallery{margin:8px 0 0}.dock-bark-state .native-card{width:154px}
 </style>
 </head>
 <body>
 <main>
 <h1>Sub-hauler: story beats</h1>
 <p class="render-note">Edit <a href="../story/scenes.json">story text JSON</a> or the <a href="../story/art.png">Piskel artwork sheet</a>, then run <code>make gen</code>. <a href="../story/README.md">Editing instructions</a> · <a href="assets/story-cards.png">Complete card sheet</a> · <a href="assets/story-cards.json">Card row map</a>. Text pages paginate automatically.</p>
+<p class="render-note">Read-only <a href="#dock-barks">dock-bark preview</a> shows every berth's station-board bark at each saved progression checkpoint.</p>
 <p class="render-note">All scenes take place underwater; loading bays are enclosed moon pools. Every image has four poses: select an image, then Play or Step frame. Playback starts paused; text cards stay static.</p>
 <p class="render-note">Original sub artwork restored, with its previous proportions and shading. Gentle motion, the clearer broken cable, moving freight carriage and reel, sweeping beacon, and grow-tank circulation remain. Compare at native size before enlarging.</p>
 <section aria-labelledby="campaign-beats-heading">
@@ -126,14 +128,23 @@
 <p class="muted">Select a handoff below. Each scene has native and enlarged cards, page navigation and pose controls for image cards.</p>
 <div id="handoff-previews"></div>
 </section>
+<section id="dock-barks" aria-labelledby="dock-barks-heading" class="strip">
+<h2 id="dock-barks-heading">9. Dock barks — one line per berth and checkpoint</h2>
+<p>Every station board ends with one progression bark line. The cards below draw the berth name and the bark at the exact native 6×8 text positions from <code>station_view.hpp</code> (<code>x=3</code>, <code>y=56</code>) on a 128×64 black board.</p>
+<p class="muted">This is a read-only preview: the page never writes a canonical file. Each checkpoint is a set of saved campaign and tool facts; <strong>HOME</strong> and <strong>DONE</strong> select the same bark because DONE only adds already-implied optional bits.</p>
+<p class="render-note">Generated from <a href="../src/campaign.hpp">the selector</a> and <a href="../fxdata/fxdata.txt">the shipped FX strings</a>. The bark text is the canonical string, not a copy.</p>
+<div id="dock-bark-previews"></div>
+</section>
 <noscript>This local sketchbook needs JavaScript and Canvas to render its local cards and navigate between them.</noscript>
 </main>
 <script src="assets/first-beat-animation/frames.js"></script>
 <script src="assets/first-beat-animation/playback.js"></script>
+<script src="assets/dock-barks.js"></script>
 <script>
 'use strict';
 const storyData=globalThis.StoryData;
 const storyAnimation=globalThis.StoryAnimation;
+const dockBarkData=globalThis.DockBarks;
 const glyphs=storyData.glyphs;
 const imageCache=new Map();
 function imageAsset(frame){
@@ -252,6 +263,54 @@ function createController(root,deck,prefix=''){
  q('prev').addEventListener('click',()=>choose(current-1));q('next').addEventListener('click',()=>choose(current+1));
  show(0);return controller;
 }
+let dockFontPromise=null;
+function dockFont(){
+ if(!dockBarkData)return Promise.reject(new Error('Dock bark preview data is missing; run make gen.'));
+ if(!dockFontPromise)dockFontPromise=new Promise((resolve,reject)=>{const image=new Image();image.onload=()=>resolve(image);image.onerror=()=>reject(new Error('The generated 6x8 dock font could not be loaded.'));image.src=dockBarkData.font.image;});
+ return dockFontPromise;
+}
+function drawDockText(ctx,font,text,x,y){
+ const width=dockBarkData.font.cellWidth,height=dockBarkData.font.cellHeight;
+ [...String(text)].forEach((char,index)=>ctx.drawImage(font,(char.charCodeAt(0)&255)*width,0,width,height,x+index*width,y,width,height));
+}
+function mountDockBark(container,berth,bark){
+ const token=(container.barkToken||0)+1;container.barkToken=token;
+ let canvas=container.firstElementChild;
+ if(!canvas||canvas.tagName!=='CANVAS'){canvas=document.createElement('canvas');canvas.width=128;canvas.height=64;canvas.setAttribute('role','img');container.replaceChildren(canvas);}
+ const ctx=canvas.getContext('2d');ctx.imageSmoothingEnabled=false;
+ ctx.fillStyle='#000';ctx.fillRect(0,0,128,64);
+ canvas.setAttribute('aria-label',berth.name+' dock bark: '+bark.text);
+ dockFont().then(font=>{
+  if(container.barkToken!==token||container.firstElementChild!==canvas)return;
+  const layout=dockBarkData.layout;
+  ctx.fillStyle='#000';ctx.fillRect(0,0,128,64);
+  drawDockText(ctx,font,berth.name,layout.nameX,layout.headerY);
+  ctx.fillStyle='#fff';ctx.fillRect(0,layout.dividerY,128,1);ctx.fillRect(0,layout.dividerY-2,1,3);ctx.fillRect(127,layout.dividerY-2,1,3);
+  drawDockText(ctx,font,bark.text,layout.hintX,layout.barkY);
+ }).catch(error=>{if(container.barkToken===token)container.textContent=error.message;});
+}
+function mountDockBarks(){
+ const root=document.querySelector('#dock-bark-previews');
+ if(!root)return;
+ if(!dockBarkData){root.textContent='Dock bark preview data is missing; run make gen.';return;}
+ const key=el('p','render-note',null,'Each card draws the berth header and the exact shipped bark row. Captions name the DockBark selector and FX string.');
+ root.append(key);
+ dockBarkData.states.forEach((state,stateIndex)=>{
+  const group=el('section','dock-bark-state');
+  group.append(el('h3',null,null,'After '+state.label),el('p','muted',null,state.facts));
+  const gallery=el('div','native-gallery');
+  dockBarkData.berths.forEach(berth=>{
+   const bark=berth.barks[stateIndex];
+   const card=el('div','native-card');
+   const art=el('span','native-art');
+   mountDockBark(art,berth,bark);
+   card.append(art,el('small',null,null,berth.name+' — '+bark.text),el('small','render-note',null,bark.symbol+' · '+state.label));
+   gallery.append(card);
+  });
+  group.append(gallery);
+  root.append(group);
+ });
+}
 function sceneCards(id){const scene=storyData.scenes.find(item=>item.id===id);if(!scene)throw new Error('Missing story scene '+id);return scene.cards;}
 const staticSpecs=[
  ['first-result','#first-delivery',''],
@@ -284,6 +343,7 @@ window.addEventListener('hashchange',activateHash);
 document.querySelectorAll(Object.keys(controllerRegistry).map(hash=>'a[href="'+hash+'"]').join(',')).forEach(link=>link.addEventListener('click',()=>{setActiveController(controllerRegistry[link.hash]);}));
 document.addEventListener('keydown',event=>{if(event.target.matches('input,textarea,[contenteditable]'))return;if(event.key===' '&&event.target.matches('button'))return;if(['ArrowRight','ArrowLeft',' '].includes(event.key)){event.preventDefault();activeController.step(event.key==='ArrowLeft'?-1:1);}});
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&activeController)activeController.pauseAnimation();});
+mountDockBarks();
 activateHash();
 </script>
 </body>
