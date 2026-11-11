@@ -138,6 +138,15 @@ void setup() {
         previousCamera = camera;
     }
 
+    // Fractional 8-px page remainder stays fixed while the hull holds station.
+    for (uint8_t remainder = 0; remainder < 8; ++remainder) {
+        place(state, 500, static_cast<int16_t>(game::kCameraScreenY + 264 + remainder));
+        for (uint8_t i = 0; i < 120; ++i) {
+            game::updateCamera(state);
+            ok = (static_cast<uint8_t>(pilot_view::cameraForState(state).subY & 7) == remainder) && ok;
+        }
+    }
+
     // Offscreen/negative projection and Q4 residual boundaries.
     state.x = 10;
     state.xFrac = 2048;
