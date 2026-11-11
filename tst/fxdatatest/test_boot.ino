@@ -122,7 +122,7 @@ static_assert(storyBeats == txt_survey_chart_hint + sizeof("A CHART  B BACK"), "
 static_assert(txt_freight_yard == storyBeats + STORY_BEAT_BYTES, "work-site labels append after the story deck blob");
 static_assert(txt_deep_relay == txt_freight_yard + sizeof("FREIGHT YARD"), "relay label follows the Freight Yard label");
 static_assert(FX_DATA_BYTES == txt_deep_relay + sizeof("DEEP RELAY"), "FX image ends after the appended labels");
-static_assert(STORY_CARD_COUNT == 41 && STORY_IMAGE_CARD_COUNT == 20 && STORY_TEXT_CARD_COUNT == 21 && STORY_IMAGE_COUNT == 17 && STORY_FRAME_COUNT == 89, "source-backed story cards");
+static_assert(STORY_CARD_COUNT == 43 && STORY_IMAGE_CARD_COUNT == 21 && STORY_TEXT_CARD_COUNT == 22 && STORY_IMAGE_COUNT == 19 && STORY_FRAME_COUNT == 98, "source-backed story cards");
 static_assert(FX_SAVE_BYTES == 4096, "save partition is one 4 KiB erase block");
 static_assert(FX_SAVE_PAGE == 0xFFF0, "save partition is the last 16 cart pages");
 static_assert((FX_DATA_BYTES + 255) / 256 + FX_SAVE_BYTES / 256 + FX_DATA_PAGE == 65536, "data and save partitions tile the cart image");
