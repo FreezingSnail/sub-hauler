@@ -322,6 +322,13 @@ inline void StationSuite(TestRunner &runner) {
         test.assertEqual(station_view::kRowStep, 7, "station board rows are 7 px apart");
         test.assertEqual(station_view::kHintY, 57, "station board hint starts at 57");
         test.assertEqual(station::kStationRowCount, 2, "no-job board has WORK and UNDOCK");
+        test.assertEqual(station_view::kBerthIconCount, campaign::kBerthCount, "every berth owns a header silhouette");
+        test.assertTrue(station_view::kNameX + station_view::kNameChars * 6 <= station_view::kIconX, "longest berth name clears the icon");
+        test.assertTrue(station_view::kIconX + station_view::kIconW <= 128, "header icon fits inside 128 columns");
+        test.assertTrue(station_view::kIconY + station_view::kIconH <= station_view::kDividerY, "header icon clears the divider");
+        test.assertTrue(station_view::kTankX + station_view::kTankW + station_view::kTankNozzleW <= 128, "air gauge stays on screen");
+        test.assertTrue(station_view::kTankY + station_view::kTankH <= station_view::kRowY0, "air gauge clears the rows");
+        test.assertTrue(station_view::kSelectMarkX + station_view::kSelectMarkW <= 128, "selection cursor stays on screen");
         runner.add(test);
     }
 }

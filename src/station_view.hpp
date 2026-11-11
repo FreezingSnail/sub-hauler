@@ -49,6 +49,28 @@ constexpr uint8_t kHintX = 3;
 constexpr uint8_t kHintY = 57;
 constexpr uint8_t kArchivalOfferChars = 20;   // "DEEP ANCHOR 240"
 
+// Native console chrome. The header keeps the longest berth label
+// ("LOWER GANTRY" / "FREIGHT YARD", 12 cells) clear of a 16x8 berth icon. The
+// air tank gauge sits under that icon so the live numbers stay readable at the
+// left, and the inert summary row gets its own small marker.
+constexpr uint8_t kNameChars = 12;
+constexpr uint8_t kBerthIconCount = 8;
+constexpr uint8_t kIconX = 110;
+constexpr uint8_t kIconY = 2;
+constexpr uint8_t kIconW = 16;
+constexpr uint8_t kIconH = 8;
+constexpr uint8_t kTankX = 104;
+constexpr uint8_t kTankY = 16;
+constexpr uint8_t kTankW = 20;
+constexpr uint8_t kTankH = 5;
+constexpr uint8_t kTankNozzleW = 3;
+constexpr uint8_t kSummaryMarkX = 1;
+constexpr uint8_t kSummaryMarkY = 2;
+constexpr uint8_t kSummaryMarkW = 2;
+constexpr uint8_t kSummaryMarkH = 3;
+constexpr uint8_t kSelectMarkX = 121;
+constexpr uint8_t kSelectMarkW = 3;
+
 // Row i's text baseline is rowY(i); the invert bar extends kRowInsetY above
 // it. Keep the last row clear of the hint and the hint inside the display.
 constexpr uint8_t rowY(uint8_t row) {
@@ -61,6 +83,13 @@ static_assert(rowY(static_cast<uint8_t>(station::kStationRowCount - 1)) + kRowIn
 static_assert(rowY(static_cast<uint8_t>(station::kActiveRowCount - 1)) + kRowInvertH <= kHintY, "active board clears the hint");
 static_assert(kHintY + 7 <= 64, "hint stays on screen");
 static_assert(kRowX + kArchivalOfferChars * 6 <= 128, "archival offer text fits inside 128 columns");
+static_assert(kNameX + kNameChars * 6 <= kIconX, "berth names clear the header icon");
+static_assert(kIconX + kIconW <= 128, "header icon fits inside the display");
+static_assert(kIconY + kIconH <= kDividerY, "header icon stays above the divider");
+static_assert(kTankX + kTankW + kTankNozzleW <= 128, "air gauge and nozzle fit inside the display");
+static_assert(kTankY + kTankH <= kRowY0, "air gauge clears the row block");
+static_assert(kSummaryMarkX + kSummaryMarkW <= kRowX, "summary marker leaves the row label clear");
+static_assert(kSelectMarkX + kSelectMarkW <= 128, "selection marker stays inside the display");
 
 // Frame ABI: four main berths with three idle selections and four active
 // selections, then one selected UNDOCK frame for each service berth. The
@@ -163,6 +192,47 @@ inline uint24_t rowLabel(uint8_t row, const game::State &state) {
     return 0;
 }
 
+// Berth silhouettes are 16x8 row-major bitmaps in program flash. The header
+// icon is native chrome, not a generated panel, and every berth has its own
+// silhouette so a dock reads as a place rather than a generic list.
+constexpr uint8_t kIconRows = 8;
+static const uint16_t kBerthIcons[kBerthIconCount][kIconRows] PROGMEM = {
+    {0x739CU, 0x739CU, 0x739CU, 0x739CU, 0x739CU, 0x739CU, 0xFFFFU, 0x0000U},   // Tidewall seawall
+    {0x0100U, 0x0380U, 0x0FF0U, 0x1FF8U, 0x3FFCU, 0x3FFCU, 0x1FF8U, 0x0000U},   // Benthos lamp dome
+    {0x0800U, 0x0800U, 0x0FFFU, 0x0800U, 0x0800U, 0x080EU, 0x080EU, 0xFFFFU},   // Cormorant crane
+    {0x0100U, 0x0380U, 0x0100U, 0x0FE0U, 0x0100U, 0x0920U, 0x1930U, 0x0000U},   // Deep Anchor
+    {0x0080U, 0x0080U, 0x0880U, 0x0880U, 0x0F80U, 0x0880U, 0x38E0U, 0x3FF8U},   // Pump Refuge
+    {0xFFFFU, 0x4002U, 0x2004U, 0x1008U, 0x0810U, 0x0420U, 0x0240U, 0x0000U},   // Lower Gantry
+    {0x0000U, 0x0F80U, 0x0880U, 0x0F80U, 0x3EF8U, 0x2288U, 0x3EF8U, 0x0000U},   // Freight Yard crates
+    {0x8001U, 0x43C2U, 0x27E4U, 0x17E8U, 0x0FF0U, 0x0180U, 0x0180U, 0x0000U},   // Deep Relay dish
+};
+
+inline void drawBerthIcon(uint8_t id) {
+    if (id >= kBerthIconCount)
+        return;
+    for (uint8_t row = 0; row < kIconRows; ++row) {
+        const uint16_t bits = pgm_read_word(&kBerthIcons[id][row]);
+        for (uint8_t column = 0; column < kIconW; ++column) {
+            if (bits & (0x8000U >> column))
+                arduboy.drawPixel(static_cast<int16_t>(kIconX + column), static_cast<int16_t>(kIconY + row), WHITE);
+        }
+    }
+}
+
+// Air remains the live numeric reading; the small tank under the berth icon
+// makes the fraction visible at a glance without moving the text baseline.
+inline void drawAirGauge(const game::State &state) {
+    arduboy.drawRect(kTankX, kTankY, kTankW, kTankH, WHITE);
+    const int16_t capacity = game::airCapacity(state);
+    if (capacity > 0) {
+        const uint8_t innerW = static_cast<uint8_t>(kTankW - 2);
+        const uint8_t fill = static_cast<uint8_t>(static_cast<uint16_t>(state.air) * innerW / capacity);
+        if (fill > 0)
+            arduboy.fillRect(static_cast<int16_t>(kTankX + 1), static_cast<int16_t>(kTankY + 1), fill, static_cast<uint8_t>(kTankH - 2), WHITE);
+    }
+    arduboy.drawFastHLine(static_cast<int16_t>(kTankX + kTankW), kTankY + 2, kTankNozzleW, WHITE);
+}
+
 inline void drawStatus(const game::State &state) {
     text::normal();
     text::at(kStatusX, kStatusY);
@@ -170,19 +240,42 @@ inline void drawStatus(const game::State &state) {
     text::number(state.air);
     text::character('/');
     text::number(game::airCapacity(state));
+    drawAirGauge(state);
 }
 
-// Native board: name, fixed-capacity air status, live rows and the generated
-// hint row. The active summary shows only the destination; there is no payout.
+inline void drawHeader(const game::State &state) {
+    text::normal();
+    text::at(kNameX, kHeaderY);
+    text::print(nameFor(static_cast<uint8_t>(state.docked)));
+    drawBerthIcon(static_cast<uint8_t>(state.docked));
+    arduboy.drawFastHLine(0, kDividerY, 128, WHITE);
+    arduboy.drawFastVLine(0, static_cast<int16_t>(kDividerY - 2), 3, WHITE);
+    arduboy.drawFastVLine(127, static_cast<int16_t>(kDividerY - 2), 3, WHITE);
+}
+
+// Inert contract summary: a small left marker keeps it visually distinct from
+// the selectable WORK/UNDOCK rows without adding copy or a false action.
+inline void drawSummaryMark(uint8_t y) {
+    arduboy.fillRect(kSummaryMarkX, static_cast<int16_t>(y + kSummaryMarkY), kSummaryMarkW, kSummaryMarkH, WHITE);
+}
+
+// The inverted row still fills the width; a black wedge at the right edge is
+// the console cursor and never approaches the longest row label.
+inline void drawSelectionMark(uint8_t y) {
+    arduboy.fillRect(kSelectMarkX, static_cast<int16_t>(y + 1), 1, 5, BLACK);
+    arduboy.fillRect(static_cast<int16_t>(kSelectMarkX + 1), static_cast<int16_t>(y + 2), 1, 3, BLACK);
+    arduboy.fillRect(static_cast<int16_t>(kSelectMarkX + 2), static_cast<int16_t>(y + 3), 1, 1, BLACK);
+}
+
+// Native board: name, berth icon, fixed-capacity air status, live rows and the
+// generated hint row. The active summary shows only the destination; there is
+// no payout.
 inline void draw(const game::State &state, uint8_t selected) {
     if (state.docked < 0)
         return;
 
     arduboy.fillRect(0, 0, 128, 64, BLACK);
-    text::normal();
-    text::at(kNameX, kHeaderY);
-    text::print(nameFor(static_cast<uint8_t>(state.docked)));
-    arduboy.drawFastHLine(0, kDividerY, 128, WHITE);
+    drawHeader(state);
     drawStatus(state);
 
     const uint8_t rows = station::rowCount(state);
@@ -195,12 +288,17 @@ inline void draw(const game::State &state, uint8_t selected) {
         } else {
             text::normal();
         }
+        if (kind == station::kRowJob)
+            drawSummaryMark(y);
         text::at(kRowX, y);
         if (kind == station::kRowJob)
             text::print(nameFor(state.activeJob.to));
         else
             text::print(rowLabel(row, state));
+        if (row == selected && kind != station::kRowJob)
+            drawSelectionMark(y);
     }
+    text::normal();
 
     panel_view::drawHint7(station_hints, panelHint(state));
 }
