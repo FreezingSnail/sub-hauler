@@ -201,7 +201,8 @@ inline void ExplorationSuite(TestRunner &runner) {
         s.tools = data::SEAL | data::THRUSTER;
         s.vxQ8 = -200;
         currents::apply(s);
-        t.assertEqual(s.vxQ8, -200, "thruster disables the return shaft tide");
+        t.assertEqual(s.vxQ8, static_cast<int16_t>(-200 + returnTide.ax_q8 / game::kStepHz),
+                      "thruster keeps the return shaft tide but stops upstream blocking");
         runner.add(t);
     }
     {

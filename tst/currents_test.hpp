@@ -198,7 +198,7 @@ inline void CurrentsSuite(TestRunner &runner) {
     }
 
     {
-        Test test("generated tides block upstream without the thruster and disable with it");
+        Test test("without the thruster a generated tide blocks upstream and pushes idle downstream");
         game::State state;
         game::resetWorld(state);
         world::Current first;
@@ -221,13 +221,103 @@ inline void CurrentsSuite(TestRunner &runner) {
             test.assertTrue((state.vxQ8 > 0) == (first.ax_q8 > 0), "tide pushes downstream on x");
         if (first.ay_q8 != 0)
             test.assertTrue((state.vyQ8 > 0) == (first.ay_q8 > 0), "tide pushes downstream on y");
+        runner.add(test);
+    }
 
+    {
+        Test test("owning the thruster keeps tide drift but stops upstream blocking");
+        game::State state;
+        game::resetWorld(state);
+        world::Current first;
+        test.assertTrue(world::currentInfo(0, first), "generated tide loads");
+        place(state, static_cast<int16_t>(first.x + first.w / 2), static_cast<int16_t>(first.y + first.h / 2));
         state.tools = exploration_data::THRUSTER;
-        state.vxQ8 = 17;
-        state.vyQ8 = -23;
+
+        // Start moving upstream: the tide still decays that velocity toward
+        // downstream, but it no longer clamps it to zero.
+        state.vxQ8 = first.ax_q8 > 0 ? -200 : (first.ax_q8 < 0 ? 200 : 0);
+        state.vyQ8 = first.ay_q8 > 0 ? -200 : (first.ay_q8 < 0 ? 200 : 0);
+        const int16_t startVx = state.vxQ8;
+        const int16_t startVy = state.vyQ8;
         currents::apply(state);
-        test.assertEqual(state.vxQ8, 17, "the thruster disables x tide force and blocking");
-        test.assertEqual(state.vyQ8, -23, "the thruster disables y tide force and blocking");
+        if (first.ax_q8 != 0)
+            test.assertTrue(first.ax_q8 > 0 ? state.vxQ8 > startVx : state.vxQ8 < startVx,
+                            "tide still accelerates an upstream-moving boat downstream");
+        if (first.ay_q8 != 0)
+            test.assertTrue(first.ay_q8 > 0 ? state.vyQ8 > startVy : state.vyQ8 < startVy,
+                            "tide still accelerates an upstream-moving boat downstream");
+
+        // From rest the tide nudges the boat downstream exactly as it does
+        // without the thruster.
+        state.vxQ8 = 0;
+        state.vyQ8 = 0;
+        currents::apply(state);
+        if (first.ax_q8 != 0)
+            test.assertTrue((state.vxQ8 > 0) == (first.ax_q8 > 0), "idle drift follows the tide on x");
+        if (first.ay_q8 != 0)
+            test.assertTrue((state.vyQ8 > 0) == (first.ay_q8 > 0), "idle drift follows the tide on y");
+
+        for (uint8_t i = 0; i < 200; ++i)
+            currents::apply(state);
+        test.assertTrue(state.vxQ8 >= -currents::kMaxDriftQ8 && state.vxQ8 <= currents::kMaxDriftQ8,
+                        "post-thruster drift keeps the existing cap on x");
+        test.assertTrue(state.vyQ8 >= -currents::kMaxDriftQ8 && state.vyQ8 <= currents::kMaxDriftQ8,
+                        "post-thruster drift keeps the existing cap on y");
+        runner.add(test);
+    }
+
+    {
+        Test test("idle boat drifts downstream after the thruster");
+        Fixture fake;
+        game::State state;
+        game::resetWorld(state);
+        world::Current first;
+        test.assertTrue(world::currentInfo(0, first), "generated tide loads");
+        const int16_t startX = static_cast<int16_t>(first.x + first.w / 2);
+        const int16_t startY = static_cast<int16_t>(first.y + first.h / 2);
+        place(state, startX, startY);
+        state.tools = exploration_data::THRUSTER;
+
+        for (uint16_t i = 0; i < 60; ++i)
+            game::stepWorld(state, idle(), fake);
+
+        if (first.ax_q8 != 0)
+            test.assertTrue(first.ax_q8 > 0 ? state.x > startX : state.x < startX,
+                            "idle x drift follows the tide");
+        if (first.ay_q8 != 0)
+            test.assertTrue(first.ay_q8 > 0 ? state.y > startY : state.y < startY,
+                            "idle y drift follows the tide");
+        runner.add(test);
+    }
+
+    {
+        Test test("thrust makes upstream headway after the thruster");
+        Fixture fake;
+        game::State state;
+        game::resetWorld(state);
+        world::Current zone;
+        bool found = false;
+        for (uint8_t id = 0; id < world::CURRENT_COUNT; ++id) {
+            test.assertTrue(world::currentInfo(id, zone), "current metadata loads");
+            if (zone.ax_q8 != 0 && zone.w > 8) {
+                found = true;
+                break;
+            }
+        }
+        test.assertTrue(found, "a horizontal generated tide exists");
+        const int16_t startX = static_cast<int16_t>(zone.x + zone.w / 2);
+        const int16_t startY = static_cast<int16_t>(zone.y + zone.h / 2);
+        place(state, startX, startY);
+        state.tools = exploration_data::THRUSTER;
+        const game::Input upstream{false, false, zone.ax_q8 > 0, zone.ax_q8 < 0};
+
+        for (uint16_t i = 0; i < 240; ++i)
+            game::stepWorld(state, upstream, fake);
+
+        test.assertTrue(zone.ax_q8 > 0 ? state.x < startX : state.x > startX,
+                        "thrust outruns the strongest authored tide upstream");
+        test.assertTrue(game::thrustAccelFor(game::kJobCrates) > (zone.ax_q8 < 0 ? -zone.ax_q8 : zone.ax_q8) / game::kQ8One,
+                        "full-cargo thrust acceleration exceeds the tide acceleration");
         runner.add(test);
     }
 
@@ -275,7 +365,7 @@ inline void CurrentsSuite(TestRunner &runner) {
     }
 
     {
-        Test test("pilot view draws readable flow marks inside a zone");
+        Test test("pilot view draws readable flow marks inside a zone after the thruster");
         game::State state;
         game::resetWorld(state);
         world::Current first;
@@ -293,12 +383,18 @@ inline void CurrentsSuite(TestRunner &runner) {
         for (uint16_t i = cave::VIEW_WIDTH * cave::VIEW_HEIGHT / 8; i < sizeof(buffer); ++i)
             test.assertEqual(buffer[i], 0xA5, "flow marks never write past the frame");
 
+        uint8_t unthrusted[cave::VIEW_WIDTH * cave::VIEW_HEIGHT / 8 + 8];
+        for (uint16_t i = 0; i < sizeof(buffer); ++i)
+            unthrusted[i] = buffer[i];
+
         state.tools = exploration_data::THRUSTER;
         for (uint16_t i = 0; i < sizeof(buffer); ++i)
             buffer[i] = 0xA5;
         hazard_view::drawCurrents(buffer, state, pilot_view::cameraForState(state));
+        bool identical = true;
         for (uint16_t i = 0; i < sizeof(buffer); ++i)
-            test.assertEqual(buffer[i], 0xA5, "the thruster disables flow marks");
+            identical = identical && buffer[i] == unthrusted[i];
+        test.assertTrue(identical, "the thruster keeps the same visible flow marks");
         runner.add(test);
     }
 }

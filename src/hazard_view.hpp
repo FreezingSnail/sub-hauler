@@ -44,9 +44,8 @@ __attribute__((noinline)) inline void flowMark(uint8_t *buffer, int16_t x, int16
 }
 
 inline void drawCurrents(uint8_t *buffer, const game::State &state, const cave::Camera &camera) {
-    // The thruster disables every tide, so its flow marks disappear with it.
-    if ((state.tools & exploration_data::THRUSTER) != 0)
-        return;
+    // Tides keep pushing after the thruster is owned, so their flow marks stay
+    // visible; the thruster only removes upstream blocking.
     const int16_t originX = cave::pixelOriginX(camera);
     const int16_t originY = cave::pixelOriginY(camera);
     const int16_t shift = static_cast<int16_t>((state.ticks >> 3) & 3);
