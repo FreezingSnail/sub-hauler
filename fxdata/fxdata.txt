@@ -23,10 +23,11 @@ image_t font_6x8 = "../fxdata/fonts/font_6x8.png"
 // The retired shop, hull and station-menu labels were removed by
 // sub-hauler-jxk.2 under the approved one-time ABI exception. Every later
 // symbol shifts down; append new declarations instead of reordering.
+// `txt_air_status` was removed here too (sub-hauler-39u) because the station
+// board no longer draws an air status line; later symbols shift down 5 B.
 string txt_paused = 'PAUSED  A/B RESUME'
 string txt_air = 'AIR'
 string txt_hauler = 'HAULER'
-string txt_air_status = 'AIR '
 string txt_tidewall = 'TIDEWALL'
 string txt_benthos = 'BENTHOS'
 string txt_cormorant = 'CORMORANT'

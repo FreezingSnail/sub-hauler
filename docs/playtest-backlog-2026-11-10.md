@@ -147,13 +147,13 @@ depends on this bead; its preview should show the bark lines.
 
 - The runtime station board is native text on black (`src/station_view.hpp`);
   generated panel frames remain archival cart ABI but are not drawn.
-- Header, air status, rows and a generated hint row are the whole composition.
+- Header, rows and a generated bark line are the whole composition.
 
 **Proposed change**
 
 - Improve the station board composition without changing row semantics:
-  berth-specific header/divider, clearer status cluster, selected-row treatment,
-  and a berth silhouette or small native icon.
+  berth-specific header/divider, selected-row treatment, and a berth
+  silhouette or small native icon.
 - Keep the live WORK/UNDOCK layout and the existing 128×64 text metrics.
 - Reuse generated FX panels or draw from native primitives; no new backend.
 

@@ -19,7 +19,6 @@
 // function is device-only because it uses the external FX font.
 //
 // Header: settlement name.
-// Status: current air against the fixed 300-unit tank.
 // Rows:   WORK/UNDOCK, or summary/WORK/UNDOCK when a contract is active.
 //         Service-only berths show UNDOCK only. One inverted selection bar.
 //         WORK opens the restoration board. B always undocks.
@@ -32,11 +31,9 @@ namespace station_view {
 constexpr uint8_t kNameX = 2;
 constexpr uint8_t kHeaderY = 2;
 constexpr uint8_t kDividerY = 11;
-constexpr uint8_t kStatusX = 2;
-constexpr uint8_t kStatusY = 15;
 constexpr uint8_t kRowX = 4;
 // Three rows (summary/WORK/UNDOCK) must fit above the bark:
-// header/status end at y=21, rows are 22+7*row, and the bark starts at 56.
+// rows are 22+7*row and the bark starts at 56.
 constexpr uint8_t kRowY0 = 22;
 constexpr uint8_t kRowStep = 7;
 constexpr uint8_t kRowInsetY = 0;
@@ -46,20 +43,14 @@ constexpr uint8_t kBarkY = 56;
 constexpr uint8_t kHintChars = 20;
 
 // Native console chrome. The header keeps the longest berth label
-// ("LOWER GANTRY" / "FREIGHT YARD", 12 cells) clear of a 16x8 berth icon. The
-// air tank gauge sits under that icon so the live numbers stay readable at the
-// left, and the inert summary row gets its own small marker.
+// ("LOWER GANTRY" / "FREIGHT YARD", 12 cells) clear of a 16x8 berth icon, and
+// the inert summary row gets its own small marker.
 constexpr uint8_t kNameChars = 12;
 constexpr uint8_t kBerthIconCount = 8;
 constexpr uint8_t kIconX = 110;
 constexpr uint8_t kIconY = 2;
 constexpr uint8_t kIconW = 16;
 constexpr uint8_t kIconH = 8;
-constexpr uint8_t kTankX = 104;
-constexpr uint8_t kTankY = 16;
-constexpr uint8_t kTankW = 20;
-constexpr uint8_t kTankH = 5;
-constexpr uint8_t kTankNozzleW = 3;
 constexpr uint8_t kSummaryMarkX = 1;
 constexpr uint8_t kSummaryMarkY = 2;
 constexpr uint8_t kSummaryMarkW = 2;
@@ -74,7 +65,6 @@ constexpr uint8_t rowY(uint8_t row) {
 }
 
 static_assert(station::kStationRowCount > 0, "station board needs at least one row");
-static_assert(rowY(0) - kRowInsetY >= kStatusY + 7, "rows start below the status line");
 static_assert(rowY(static_cast<uint8_t>(station::kStationRowCount - 1)) + kRowInvertH <= kBarkY, "last row clears the bark");
 static_assert(rowY(static_cast<uint8_t>(station::kActiveRowCount - 1)) + kRowInvertH <= kBarkY, "active board clears the bark");
 static_assert(kBarkY + 8 <= 64, "bark stays on screen");
@@ -82,8 +72,6 @@ static_assert(kHintX + kHintChars * 6 <= 128, "the longest bark fits inside 128 
 static_assert(kNameX + kNameChars * 6 <= kIconX, "berth names clear the header icon");
 static_assert(kIconX + kIconW <= 128, "header icon fits inside the display");
 static_assert(kIconY + kIconH <= kDividerY, "header icon stays above the divider");
-static_assert(kTankX + kTankW + kTankNozzleW <= 128, "air gauge and nozzle fit inside the display");
-static_assert(kTankY + kTankH <= kRowY0, "air gauge clears the row block");
 static_assert(kSummaryMarkX + kSummaryMarkW <= kRowX, "summary marker leaves the row label clear");
 static_assert(kSelectMarkX + kSelectMarkW <= 128, "selection marker stays inside the display");
 
@@ -150,30 +138,6 @@ inline void drawBerthIcon(uint8_t id) {
                berth_icons + 2, id, Blit::OVERWRITE);
 }
 
-// Air remains the live numeric reading; the small tank under the berth icon
-// makes the fraction visible at a glance without moving the text baseline.
-inline void drawAirGauge(const game::State &state) {
-    arduboy.drawRect(kTankX, kTankY, kTankW, kTankH, WHITE);
-    const int16_t capacity = game::airCapacity(state);
-    if (capacity > 0) {
-        const uint8_t innerW = static_cast<uint8_t>(kTankW - 2);
-        const uint8_t fill = static_cast<uint8_t>(static_cast<uint16_t>(state.air) * innerW / capacity);
-        if (fill > 0)
-            arduboy.fillRect(static_cast<int16_t>(kTankX + 1), static_cast<int16_t>(kTankY + 1), fill, static_cast<uint8_t>(kTankH - 2), WHITE);
-    }
-    arduboy.drawFastHLine(static_cast<int16_t>(kTankX + kTankW), kTankY + 2, kTankNozzleW, WHITE);
-}
-
-inline void drawStatus(const game::State &state) {
-    text::normal();
-    text::at(kStatusX, kStatusY);
-    text::print(txt_air_status);
-    text::number(state.air);
-    text::character('/');
-    text::number(game::airCapacity(state));
-    drawAirGauge(state);
-}
-
 inline void drawHeader(const game::State &state) {
     text::normal();
     text::at(kNameX, kHeaderY);
@@ -198,16 +162,14 @@ inline void drawSelectionMark(uint8_t y) {
     arduboy.fillRect(static_cast<int16_t>(kSelectMarkX + 2), static_cast<int16_t>(y + 3), 1, 1, BLACK);
 }
 
-// Native board: name, berth icon, fixed-capacity air status, live rows and the
-// generated hint row. The active summary shows only the destination; there is
-// no payout.
+// Native board: name, berth icon, live rows and the generated hint row. The
+// active summary shows only the destination; there is no payout.
 inline void draw(const game::State &state, uint8_t selected) {
     if (state.docked < 0)
         return;
 
     arduboy.fillRect(0, 0, 128, 64, BLACK);
     drawHeader(state);
-    drawStatus(state);
 
     const uint8_t rows = station::rowCount(state);
     for (uint8_t row = 0; row < rows; ++row) {

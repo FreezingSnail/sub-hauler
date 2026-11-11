@@ -1,6 +1,6 @@
 // Independent live-font reference for the native station board. The reference
-// composes labels, status and bars natively; the candidate is station_view::draw
-// with the same generated hint row. Compare complete frames.
+// composes labels and bars natively; the candidate is station_view::draw with
+// the same generated bark row. Compare complete frames.
 #include <Arduboy2.h>
 #include <ArduboyFX.h>
 #include "src/common.hpp"
@@ -34,7 +34,6 @@ void header(uint24_t title) {
     arduboy.drawFastHLine(0, station_view::kDividerY, 128, WHITE);
     arduboy.drawFastVLine(0, static_cast<int16_t>(station_view::kDividerY - 2), 3, WHITE);
     arduboy.drawFastVLine(127, static_cast<int16_t>(station_view::kDividerY - 2), 3, WHITE);
-    station_view::drawStatus(state);
 }
 
 void stationReference(uint8_t selected) {

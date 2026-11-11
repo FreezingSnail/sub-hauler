@@ -32,6 +32,8 @@ constexpr uint24_t PILOT_SPRITE_BYTES = 2 + 4 * 26 * 2;
 // active level sections and labels follow in declaration order.
 static_assert(font_6x8 == 0, "external font is the first shipped symbol");
 static_assert(txt_paused > font_6x8, "text must follow the font");
+static_assert(txt_tidewall == txt_hauler + sizeof("HAULER"),
+              "berth labels follow HAULER; the retired AIR status string leaves no gap");
 static_assert(hauler == txt_undock + sizeof("UNDOCK"),
               "pilot sheet must follow the shipped strings");
 static_assert(sh_harbor_bubbles == hauler + PILOT_SPRITE_BYTES,
