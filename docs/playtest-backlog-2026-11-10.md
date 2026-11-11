@@ -51,10 +51,19 @@ handling; note 18 depends on note 2.
 | 646.18 | `9fe0526` | Removed 1.42 MB archival ADPCM from shipping cart. |
 | 646.6/12/13/15 | `1b77cc9` | Opening Benthos scene; relay briefing and HOME departure art. |
 | 646.8/9 | `e1f4d39` | Four cove wall landmarks + lens-cave texture; collision unchanged. |
+| 646.17 | `8393fc9` | Offline dock-bark preview in the story sketchbook. |
+| 646.19 | `e2665a3` | Flight probe refit to 29,616 B; 842 frames, 11,792 µs, gap 1. |
 
 Integrated baseline after the wave: **29,652 / 29,696 B flash (44 free)**,
 **1,665 / 2,560 B static RAM**, story blob **61,365 B**, cart
-**672,205 / 676,352 B**, host **264/264**, tooling **157**, `test_story` P.
+**672,205 / 676,352 B**, host **264/264**, tooling **166**, `test_story` P.
+
+Final gate: `gen-check` deterministic; host **264/264**; tooling **166**;
+`docs-check` 33 + 8 preview; **15/15** device suites P; save-chain **P**
+(stack **682 B**); runtime-page **P**; flight **P** at **29,616 B**, **842**
+frames, **11,792 µs**, **0** misses, gap **1 tick**, **0** audio
+underruns/errors; release and Mini **29,652 B**; `make size` **44 B** flash
+free.
 
 ## 1. Tides after the thruster
 
@@ -267,8 +276,8 @@ probably."
 cove gets a distinct wreck/landmark type while staying inside the existing
 scenery language.
 
-**Filed:** sub-hauler-646.8. One combined art/level-scenery bead; coordinates
-with note 9 because both regenerate terrain/scenery.
+**Filed:** sub-hauler-646.8. **Done:** committed `e1f4d39`; four distinct
+wall-mounted cove landmarks, collision/chart/object ABI unchanged.
 
 ## 9. Lens cave texture
 
@@ -292,7 +301,8 @@ with note 9 because both regenerate terrain/scenery.
 lens is picked up. The bead chooses the specific lens-cave texture treatment and
 shows a render-world comparison.
 
-**Filed:** sub-hauler-646.9. Level/art chore; coordinates with note 8.
+**Filed:** sub-hauler-646.9. **Done:** committed `e1f4d39`; `DL` now uses
+the scoped `lens` wall texture with rings/shards, pickup unchanged.
 
 ## 10. (Not present in the source notes)
 
@@ -472,7 +482,9 @@ the per-berth bark lines once note 2 lands. Keep it offline and dependency-free.
 If editing is later requested, export copyable JSON rather than writing
 canonical files.
 
-**Filed:** sub-hauler-646.17. Blocked by sub-hauler-646.3 (note 2).
+**Filed:** sub-hauler-646.17. **Done:** committed `8393fc9`; sketchbook
+section 9 previews all eight checkpoints × eight berths at native size, with a
+generator parity test and no duplicated prose.
 
 ## Cross-cutting constraints
 
