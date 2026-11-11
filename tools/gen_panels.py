@@ -556,6 +556,30 @@ def campaign_panels():
     ]
 
 
+# Berth silhouettes, one 16x8 row-major bitmap per berth, MSB = left pixel.
+# Order matches campaign::Berth. These are opaque icons packed by gen_sprites.
+BERTH_ICON_ROWS = (
+    (0x739C, 0x739C, 0x739C, 0x739C, 0x739C, 0x739C, 0xFFFF, 0x0000),  # Tidewall seawall
+    (0x0100, 0x0380, 0x0FF0, 0x1FF8, 0x3FFC, 0x3FFC, 0x1FF8, 0x0000),  # Benthos lamp dome
+    (0x0800, 0x0800, 0x0FFF, 0x0800, 0x0800, 0x080E, 0x080E, 0xFFFF),  # Cormorant crane
+    (0x0100, 0x0380, 0x0100, 0x0FE0, 0x0100, 0x0920, 0x1930, 0x0000),  # Deep Anchor
+    (0x0080, 0x0080, 0x0880, 0x0880, 0x0F80, 0x0880, 0x38E0, 0x3FF8),  # Pump Refuge
+    (0xFFFF, 0x4002, 0x2004, 0x1008, 0x0810, 0x0420, 0x0240, 0x0000),  # Lower Gantry
+    (0x0000, 0x0F80, 0x0880, 0x0F80, 0x3EF8, 0x2288, 0x3EF8, 0x0000),  # Freight Yard crates
+    (0x8001, 0x43C2, 0x27E4, 0x17E8, 0x0FF0, 0x0180, 0x0180, 0x0000),  # Deep Relay dish
+)
+
+
+def berth_icon_sheet():
+    image = Image.new("RGBA", (len(BERTH_ICON_ROWS) * 16, 8), BG_COLOR)
+    for index, rows in enumerate(BERTH_ICON_ROWS):
+        for y, bits in enumerate(rows):
+            for x in range(16):
+                if bits & (0x8000 >> x):
+                    image.putpixel((index * 16 + x, y), TEXT_COLOR)
+    return ("berth_icons_16x8", image)
+
+
 def write_dir(directory, rows):
     directory = Path(directory)
     directory.mkdir(parents=True, exist_ok=True)
@@ -580,7 +604,7 @@ def main(argv=None):
     parser.add_argument("--fxdata", default="fxdata/fxdata.txt")
     args = parser.parse_args(argv)
     strings = load_strings(args.fxdata)
-    panel_rows = panels(strings) + title_panels(strings)
+    panel_rows = panels(strings) + title_panels(strings) + [berth_icon_sheet()]
     story_rows = story_panels(strings)
     campaign_rows = campaign_panels()
     pause_rows = pause_panels(strings)

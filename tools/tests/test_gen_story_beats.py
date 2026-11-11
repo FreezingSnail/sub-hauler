@@ -291,6 +291,19 @@ class StoryBeatGenerationTest(unittest.TestCase):
         self.assertIn("STORY_SCENE_EXPEDITION_RESULT = 15", header)
         self.assertIn("STORY_SCENE_EXPEDITION_DEPARTURE = 16", header)
         self.assertIn("STORY_SCENE_OPENING = 17", header)
+        self.assertIn("STORY_META_SCENE_CARDS = 0", header)
+        self.assertIn("STORY_META_SCENE_FIRST = STORY_META_SCENE_CARDS + STORY_SCENE_COUNT", header)
+        self.assertIn("STORY_META_BYTES = STORY_META_CARD_KIND + STORY_CARD_COUNT", header)
+        self.assertNotIn("PROGMEM", header)
+
+    def test_cold_metadata_matches_the_packed_layout(self):
+        meta = gen.build_metadata(self.layout)
+        self.assertEqual(len(meta), 122)
+        self.assertEqual(meta, gen.META_OUTPUT.read_bytes())
+        self.assertEqual(meta[:18], bytes(self.layout["scene_cards"]))
+        self.assertEqual(meta[18:36], bytes(self.layout["scene_first"]))
+        self.assertEqual(meta[36:79], bytes(self.layout["card_frames"]))
+        self.assertEqual(meta[79:], bytes(self.layout["card_kinds"]))
 
 
 if __name__ == "__main__":

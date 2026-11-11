@@ -192,33 +192,10 @@ static void drawNextStopHint(uint8_t finishedDeck) {
         drawVoyageNotice(label);
 }
 
-#if SH_DEV_MODE
-// Debug maps show their collision state directly. The tag uses the external
-// 6x8 font already loaded for the HUD, so no extra FX string is needed.
-static void drawDebugNoClip() {
-    if (!s_debugNoClip)
-        return;
-    cave::fillRect(Arduboy2Base::sBuffer, hud::kHintBackingX, hud::kHintBackingY, hud::kHintBackingW, hud::kHintBackingH, false);
-    text::at(hud::kHintX, hud::kHintY);
-    text::character('N');
-    text::character('O');
-    text::character('C');
-    text::character('L');
-    text::character('I');
-    text::character('P');
-    text::character(' ');
-    text::character('O');
-    text::character('N');
-}
-#endif
-
 static void drawPilot() {
     const cave::Camera camera = pilot_view::cameraForState(s_state);
     view::frame(s_state, camera, s_cache, s_tables);
     hud::draw(s_state);
-#if SH_DEV_MODE
-    drawDebugNoClip();
-#endif
     uint24_t notice = 0;
     if (s_savedNoticeTicks != 0)
         notice = txt_saved_berth;
@@ -648,9 +625,6 @@ static void drawChart() {
     // on blink changes from the frame number rather than the frozen
     // simulation clock.
     chart_view::draw(Arduboy2Base::sBuffer, s_chart, s_state, s_tables, static_cast<uint8_t>(Arduboy2Base::frameCount));
-#if SH_DEV_MODE
-    drawDebugNoClip();
-#endif
 }
 
 // Pause frame: no world step, no air/ballast drain, no job clock, and no cart

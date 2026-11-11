@@ -8,6 +8,7 @@ are provenance, not active inputs. Prose wraps and automatically paginates.
 
 Outputs:
   fxdata/tables/story-beats.bin
+  fxdata/tables/story-meta.bin
   src/generated/story_beats.hpp
   tst/fxdatatest/story_frame_crc.hpp
   docs/assets/first-beat-animation/frames.js
@@ -29,6 +30,7 @@ SOURCE = ROOT / "story/scenes.json"
 CARD_SHEET = ROOT / "docs/assets/story-cards.png"
 CARD_MAP = ROOT / "docs/assets/story-cards.json"
 OUTPUT = ROOT / "fxdata/tables/story-beats.bin"
+META_OUTPUT = ROOT / "fxdata/tables/story-meta.bin"
 HEADER = ROOT / "src/generated/story_beats.hpp"
 PREVIEW = ROOT / "docs/assets/first-beat-animation/frames.js"
 
@@ -439,6 +441,21 @@ def build_layout(document, source_path: Path = SOURCE, sheet_image=None):
     }
 
 
+def build_metadata(layout) -> bytes:
+    """Cold AVR lookup table: scene cards, first card, card frame, card kind."""
+    meta = bytes(
+        list(layout["scene_cards"])
+        + list(layout["scene_first"])
+        + list(layout["card_frames"])
+        + list(layout["card_kinds"])
+    )
+    expected = (len(layout["scene_cards"]) + len(layout["scene_first"])
+                + len(layout["card_frames"]) + len(layout["card_kinds"]))
+    if len(meta) != expected:
+        raise StoryError("story metadata is {} B, expected {} B".format(len(meta), expected))
+    return meta
+
+
 def write_header(path: Path, layout, size: int) -> None:
     scene_constants = "\n".join(
         "constexpr uint8_t {} = {};".format(cpp_name, index + 1)
@@ -474,13 +491,16 @@ def write_header(path: Path, layout, size: int) -> None:
         "\n"
         "{}\n"
         "\n"
-        "#if defined(__AVR__)\n"
-        "#include <avr/pgmspace.h>\n"
-        "const uint8_t STORY_SCENE_CARDS[STORY_SCENE_COUNT] PROGMEM = {{{}}};\n"
-        "const uint8_t STORY_SCENE_FIRST_CARD[STORY_SCENE_COUNT] PROGMEM = {{{}}};\n"
-        "const uint8_t STORY_CARD_FRAME[STORY_CARD_COUNT] PROGMEM = {{{}}};\n"
-        "const uint8_t STORY_CARD_KIND[STORY_CARD_COUNT] PROGMEM = {{{}}};\n"
-        "#else\n"
+        "// Story metadata byte offsets inside fxdata/tables/story-meta.bin:\n"
+        "// SCENE_CARDS, SCENE_FIRST_CARD, CARD_FRAME, CARD_KIND. The AVR build reads\n"
+        "// this table from the FX cart, so no program-flash copy is linked.\n"
+        "constexpr uint16_t STORY_META_SCENE_CARDS = 0;\n"
+        "constexpr uint16_t STORY_META_SCENE_FIRST = STORY_META_SCENE_CARDS + STORY_SCENE_COUNT;\n"
+        "constexpr uint16_t STORY_META_CARD_FRAME = STORY_META_SCENE_FIRST + STORY_SCENE_COUNT;\n"
+        "constexpr uint16_t STORY_META_CARD_KIND = STORY_META_CARD_FRAME + STORY_CARD_COUNT;\n"
+        "constexpr uint16_t STORY_META_BYTES = STORY_META_CARD_KIND + STORY_CARD_COUNT;\n"
+        "\n"
+        "#if !defined(__AVR__)\n"
         "constexpr uint8_t STORY_SCENE_CARDS[STORY_SCENE_COUNT] = {{{}}};\n"
         "constexpr uint8_t STORY_SCENE_FIRST_CARD[STORY_SCENE_COUNT] = {{{}}};\n"
         "constexpr uint8_t STORY_CARD_FRAME[STORY_CARD_COUNT] = {{{}}};\n"
@@ -498,10 +518,6 @@ def write_header(path: Path, layout, size: int) -> None:
             size,
             layout["max_cards"],
             scene_constants,
-            scene_cards,
-            scene_first,
-            card_frames,
-            card_kinds,
             scene_cards,
             scene_first,
             card_frames,
@@ -606,14 +622,18 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--source", type=Path, default=SOURCE)
     parser.add_argument("--output", type=Path, default=OUTPUT)
+    parser.add_argument("--meta-output", type=Path, default=META_OUTPUT)
     parser.add_argument("--header", type=Path, default=HEADER)
     args = parser.parse_args()
 
     scenes = parse_source(args.source.read_text(encoding="utf-8"), args.source)
     layout = build_layout(scenes, args.source)
     blob = layout["blob"]
+    metadata = build_metadata(layout)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_bytes(blob)
+    args.meta_output.parent.mkdir(parents=True, exist_ok=True)
+    args.meta_output.write_bytes(metadata)
     write_header(args.header, layout, len(blob))
     write_test_crcs(blob, layout["frames"])
     write_preview(layout)

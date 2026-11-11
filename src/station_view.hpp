@@ -4,6 +4,8 @@
 
 #include "game.hpp"
 #include "station.hpp"
+#include "generated/dock_barks.hpp"
+#include "generated/panel_sprites.hpp"
 
 // The runtime station board is native: the row rules below own the live
 // WORK/UNDOCK and summary/WORK/UNDOCK shapes. The retired generated menu
@@ -126,59 +128,26 @@ inline uint24_t rowLabel(uint8_t row, const game::State &state) {
 
 // One shared bark table: the pure campaign selector chooses a bark for every
 // berth, and both the station board and the WORK clue read the same existing
-// FX string. Index 0 is deliberately empty so kDockBarkNone draws no row.
-static const uint32_t kDockBarkText[] PROGMEM = {
-    0,
-    txt_first_clue,
-    txt_benthos_lamps_on,
-    txt_pump_survey_clue,
-    txt_pump_source_clue,
-    txt_survey_lift_clue,
-    txt_lift_source_clue,
-    txt_pump_part_ready,
-    txt_lift_restored,
-    txt_beacon_needs_seal,
-    txt_beacon_ready,
-    txt_beacon_clue,
-    txt_beacon_lit,
-    txt_network_on,
-    txt_deep_relay,
-    txt_no_work,
-};
-constexpr uint8_t kDockBarkTextCount = static_cast<uint8_t>(sizeof(kDockBarkText) / sizeof(kDockBarkText[0]));
-
+// FX string. The generated blob holds 16 little-endian uint16 offsets at
+// dockBarks, followed by NUL-terminated bark text. Index 0 is deliberately
+// empty so kDockBarkNone draws no row.
 inline uint24_t dockBarkText(campaign::DockBark bark) {
     const uint8_t index = static_cast<uint8_t>(bark);
-    if (index >= kDockBarkTextCount)
+    if (index == 0)
         return 0;
-    return static_cast<uint24_t>(pgm_read_dword(&kDockBarkText[index]));
+    uint8_t bytes[2];
+    cartService();
+    FX::readDataBytes(dockBarks + static_cast<uint24_t>(index) * 2, bytes, 2);
+    const uint16_t offset = static_cast<uint16_t>(bytes[0]) | (static_cast<uint16_t>(bytes[1]) << 8);
+    return dockBarks + 32 + offset;
 }
 
-// Berth silhouettes are 16x8 row-major bitmaps in program flash. The header
-// icon is native chrome, not a generated panel, and every berth has its own
-// silhouette so a dock reads as a place rather than a generic list.
-constexpr uint8_t kIconRows = 8;
-static const uint16_t kBerthIcons[kBerthIconCount][kIconRows] PROGMEM = {
-    {0x739CU, 0x739CU, 0x739CU, 0x739CU, 0x739CU, 0x739CU, 0xFFFFU, 0x0000U},   // Tidewall seawall
-    {0x0100U, 0x0380U, 0x0FF0U, 0x1FF8U, 0x3FFCU, 0x3FFCU, 0x1FF8U, 0x0000U},   // Benthos lamp dome
-    {0x0800U, 0x0800U, 0x0FFFU, 0x0800U, 0x0800U, 0x080EU, 0x080EU, 0xFFFFU},   // Cormorant crane
-    {0x0100U, 0x0380U, 0x0100U, 0x0FE0U, 0x0100U, 0x0920U, 0x1930U, 0x0000U},   // Deep Anchor
-    {0x0080U, 0x0080U, 0x0880U, 0x0880U, 0x0F80U, 0x0880U, 0x38E0U, 0x3FF8U},   // Pump Refuge
-    {0xFFFFU, 0x4002U, 0x2004U, 0x1008U, 0x0810U, 0x0420U, 0x0240U, 0x0000U},   // Lower Gantry
-    {0x0000U, 0x0F80U, 0x0880U, 0x0F80U, 0x3EF8U, 0x2288U, 0x3EF8U, 0x0000U},   // Freight Yard crates
-    {0x8001U, 0x43C2U, 0x27E4U, 0x17E8U, 0x0FF0U, 0x0180U, 0x0180U, 0x0000U},   // Deep Relay dish
-};
-
+// Berth silhouettes are 16x8 opaque icons packed by gen_sprites into the
+// panel sprite sheet. Every berth has its own silhouette so a dock reads as a
+// place rather than a generic list.
 inline void drawBerthIcon(uint8_t id) {
-    if (id >= kBerthIconCount)
-        return;
-    for (uint8_t row = 0; row < kIconRows; ++row) {
-        const uint16_t bits = pgm_read_word(&kBerthIcons[id][row]);
-        for (uint8_t column = 0; column < kIconW; ++column) {
-            if (bits & (0x8000U >> column))
-                arduboy.drawPixel(static_cast<int16_t>(kIconX + column), static_cast<int16_t>(kIconY + row), WHITE);
-        }
-    }
+    Blit::draw(kIconX, kIconY, BERTH_ICONS_WIDTH, BERTH_ICONS_HEIGHT,
+               berth_icons + 2, id, Blit::OVERWRITE);
 }
 
 // Air remains the live numeric reading; the small tank under the berth icon

@@ -42,17 +42,31 @@ class DockBarkPreviewTest(unittest.TestCase):
             for row in berth["barks"]:
                 self.assertEqual(row["text"], strings[row["symbol"]], row["symbol"])
 
-    def test_bark_table_order_still_matches_the_dock_bark_enum(self):
+    def test_bark_table_order_matches_the_dock_bark_enum(self):
         campaign = gen.CAMPAIGN.read_text(encoding="utf-8")
-        station = gen.STATION_VIEW.read_text(encoding="utf-8")
         enum = re.search(r"enum\s+DockBark\s*:[^{]*\{(.*?)\};", campaign, re.S).group(1)
         symbols = re.findall(r"\b(kDockBark[A-Za-z0-9_]+)\b", enum)
-        table = re.search(r"kDockBarkText\s*\[\s*\]\s*PROGMEM\s*=\s*\{(.*?)\};", station, re.S).group(1)
-        entries = re.findall(r"\b(?:0|txt_[A-Za-z0-9_]+)\b", table)
-        self.assertEqual(len(symbols), len(entries))
+        entries = [name for name, _symbol in gen.DOCK_BARK_TEXT]
+        self.assertEqual(entries, symbols)
+        table = {name: symbol for name, symbol in gen.DOCK_BARK_TEXT}
         for berth in self.document["berths"]:
             for row in berth["barks"]:
-                self.assertEqual(entries[symbols.index(row["bark"])], row["symbol"], row["bark"])
+                self.assertEqual(table[row["bark"]], row["symbol"], row["bark"])
+
+    def test_cold_table_header_and_text_are_current(self):
+        blob = gen.build_blob()
+        self.assertEqual(blob, gen.BARK_OUTPUT.read_bytes())
+        self.assertEqual(gen.HEADER.read_text(encoding="utf-8"), gen.render_header(len(blob)))
+        offsets = [int.from_bytes(blob[i * 2:i * 2 + 2], "little") for i in range(16)]
+        self.assertEqual(offsets[0], 0)
+        self.assertEqual(offsets, sorted(offsets))
+        self.assertEqual(blob[32], 0)
+        strings = gen.parse_fx_strings(gen.FXDATA.read_text(encoding="utf-8"), gen.FXDATA)
+        for index, (_name, symbol) in enumerate(gen.DOCK_BARK_TEXT):
+            start = 32 + offsets[index]
+            end = blob.index(0, start)
+            expected = "" if symbol is None else strings[symbol]
+            self.assertEqual(blob[start:end].decode("ascii"), expected, symbol)
 
     def test_native_row_constants_are_used(self):
         self.assertEqual(self.document["font"]["cellWidth"], 6)
