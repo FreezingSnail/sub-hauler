@@ -46,6 +46,13 @@ constexpr uint8_t kBlowCarryStep = 4;       // 4.0 air units/s while blowing
 constexpr uint8_t kBallastCarryStep = 18;   // 18 ballast units/s blow or flood
 constexpr uint8_t kRateTicks = 60;          // carry denominator for per-second rates
 
+// Owning the current thruster doubles horizontal thrust and the ballast valve
+// rate. The multiplier applies after the cargo penalty so a loaded boat keeps
+// its existing mass disadvantage but benefits from the same boost. Reverse
+// stays at half of forward, so both directions double.
+constexpr uint8_t kThrusterBoost = 2;
+constexpr uint8_t kBallastCarryStepBoost = kBallastCarryStep * kThrusterBoost;
+
 constexpr int16_t kBallastDriveMax = 35;    // ballast units -> drive clamp
 constexpr int16_t kBallastAccelQ8 = 128;    // 0.5 px/s^2, in Q8.8
 // Base vertical clamp. Cargo scales the two directions apart: a heavy hold
@@ -61,6 +68,10 @@ constexpr int16_t kTopSpeedBase = 30;         // px/s at zero cargo
 constexpr int16_t kTopSpeedPerCargo = 3;      // px/s lost per cargo unit
 constexpr int16_t kMaxVxBaseQ8 = kTopSpeedBase * kQ8One;
 constexpr int16_t kMaxVxPerCargoQ8 = kTopSpeedPerCargo * kQ8One;
+// Empty cargo is the fastest case, so the boosted base is the camera proof's
+// worst-case look-ahead.
+constexpr int16_t kMaxVxBoostQ8 = kMaxVxBaseQ8 * kThrusterBoost;
+static_assert(kMaxVxBoostQ8 <= 32767, "boosted top speed fits Q8.8 int16");
 
 // 1.2 s^-1 drag at 60 Hz is 2% of velocity per tick. A one-unit minimum keeps
 // small velocities decaying to rest instead of sticking above zero.
@@ -264,6 +275,27 @@ inline int16_t topSpeedQ8For(uint8_t cargo) {
     return topSpeedQ8ForNormalized(clampCargo(cargo));
 }
 
+inline bool thrusterOwned(const State &state) {
+    return (state.tools & exploration_data::THRUSTER) != 0;
+}
+
+// Live-rule helpers. The base functions above stay the pre-thruster contract
+// used by the existing tuning proofs; these apply the owned-thruster multiplier
+// after the cargo penalty.
+inline int16_t thrustAccelForState(const State &state) {
+    const int16_t base = thrustAccelForNormalized(state.cargo);
+    return thrusterOwned(state) ? static_cast<int16_t>(base * kThrusterBoost) : base;
+}
+
+inline int16_t topSpeedQ8ForState(const State &state) {
+    const int16_t base = topSpeedQ8ForNormalized(state.cargo);
+    return thrusterOwned(state) ? static_cast<int16_t>(base * kThrusterBoost) : base;
+}
+
+inline uint8_t ballastCarryStepForState(const State &state) {
+    return thrusterOwned(state) ? kBallastCarryStepBoost : kBallastCarryStep;
+}
+
 // Vertical clamp per direction. Down grows with cargo (heavy sinks faster);
 // up shrinks with cargo (heavy rises slower). Both stay well inside int16.
 static_assert(kMaxVyQ8 + kMaxVyDownPerCargoQ8 * kCargoMax <= 32767, "down clamp fits int16");
@@ -357,6 +389,7 @@ inline void stepPhysics(State &state, const Input &input) {
 
     const bool blow = input.up && !input.down;
     const bool flood = input.down && !input.up;
+    const uint8_t ballastStep = ballastCarryStepForState(state);
 
     if (blow && state.air > 0) {
         // Blowing spends air and lightens the boat. The air rate is flat for
@@ -369,7 +402,7 @@ inline void stepPhysics(State &state, const Input &input) {
         }
 
         if (state.ballast > 0) {
-            state.ballastCarry = static_cast<uint8_t>(state.ballastCarry + kBallastCarryStep);
+            state.ballastCarry = static_cast<uint8_t>(state.ballastCarry + ballastStep);
             if (state.ballastCarry >= kRateTicks) {
                 state.ballastCarry = static_cast<uint8_t>(state.ballastCarry - kRateTicks);
                 --state.ballast;
@@ -380,7 +413,7 @@ inline void stepPhysics(State &state, const Input &input) {
     } else if (flood) {
         // Flooding is free: no air cost.
         if (state.ballast < kBallastMax) {
-            state.ballastCarry = static_cast<uint8_t>(state.ballastCarry + kBallastCarryStep);
+            state.ballastCarry = static_cast<uint8_t>(state.ballastCarry + ballastStep);
             if (state.ballastCarry >= kRateTicks) {
                 state.ballastCarry = static_cast<uint8_t>(state.ballastCarry - kRateTicks);
                 ++state.ballast;
@@ -401,18 +434,21 @@ inline void stepPhysics(State &state, const Input &input) {
     state.vyQ8 = clampI16(nextVyQ8, static_cast<int16_t>(-maxVyUpQ8ForNormalized(state.cargo)), maxVyDownQ8ForNormalized(state.cargo));
 
     // Horizontal thrust: forward is full, reverse is half. Cargo lowers both
-    // acceleration and the clamp speed.
+    // acceleration and the clamp speed; owning the thruster doubles both after
+    // that penalty, so reverse also becomes twice as strong as before.
     const int16_t direction = static_cast<int16_t>(input.right) - static_cast<int16_t>(input.left);
+    const int16_t thrustAccel = thrustAccelForState(state);
     int16_t power = 0;
     if (direction > 0) {
-        power = thrustAccelForNormalized(state.cargo);
+        power = thrustAccel;
         state.facingLeft = false;
     } else if (direction < 0) {
-        power = static_cast<int16_t>(-(thrustAccelForNormalized(state.cargo) / 2));
+        power = static_cast<int16_t>(-(thrustAccel / 2));
         state.facingLeft = true;
     }
     const int16_t powerQ8 = static_cast<int16_t>(power * kQ8One / kStepHz);
-    state.vxQ8 = clampI16(static_cast<int16_t>(state.vxQ8 + powerQ8 - dragStep(state.vxQ8)), -topSpeedQ8ForNormalized(state.cargo), topSpeedQ8ForNormalized(state.cargo));
+    const int16_t topSpeedQ8 = topSpeedQ8ForState(state);
+    state.vxQ8 = clampI16(static_cast<int16_t>(state.vxQ8 + powerQ8 - dragStep(state.vxQ8)), static_cast<int16_t>(-topSpeedQ8), topSpeedQ8);
 }
 
 inline void step(State &state, const Input &input) {

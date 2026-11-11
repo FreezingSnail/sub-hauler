@@ -39,6 +39,101 @@ inline void GameSuite(TestRunner &runner) {
     }
 
     {
+        Test test("pre-thruster handling keeps the base thrust and ballast rates");
+        game::State state;
+        game::reset(state);
+        test.assertTrue(!game::thrusterOwned(state), "fresh run does not own the thruster");
+        test.assertEqual(game::thrustAccelForState(state), game::kThrustAccel, "empty forward acceleration is 34 px/s^2");
+        test.assertEqual(game::topSpeedQ8ForState(state), game::kMaxVxBaseQ8, "empty top speed is 30 px/s");
+        test.assertEqual(game::ballastCarryStepForState(state), 18, "ballast valve is 18 units/s");
+
+        game::stepPhysics(state, forwardInput());
+        test.assertEqual(state.vxQ8, 145, "one forward tick adds 145 Q8 units");
+        state.vxQ8 = 30000;
+        game::stepPhysics(state, idleInput());
+        test.assertEqual(state.vxQ8, game::kMaxVxBaseQ8, "forward clamp stays 30 px/s");
+        state.vxQ8 = 0;
+        game::stepPhysics(state, reverseInput());
+        test.assertEqual(state.vxQ8, -72, "one reverse tick keeps the half-power 72 Q8 step");
+        state.vxQ8 = -30000;
+        game::stepPhysics(state, idleInput());
+        test.assertEqual(state.vxQ8, static_cast<int16_t>(-game::kMaxVxBaseQ8), "reverse clamp stays 30 px/s");
+
+        game::reset(state);
+        runTicks(state, blowInput(), 60);
+        test.assertEqual(state.ballast, 52, "60 ticks still blow 18 ballast units");
+        game::reset(state);
+        runTicks(state, floodInput(), 60);
+        test.assertEqual(state.ballast, 88, "60 ticks still flood 18 ballast units");
+        runner.add(test);
+    }
+
+    {
+        Test test("owned thruster doubles top speed and acceleration both directions");
+        game::State state;
+        game::reset(state);
+        state.tools = exploration_data::THRUSTER;
+        test.assertTrue(game::thrusterOwned(state), "thruster bit is detected");
+        test.assertEqual(game::thrustAccelForState(state), game::kThrustAccel * 2, "forward acceleration doubles");
+        test.assertEqual(game::topSpeedQ8ForState(state), game::kMaxVxBaseQ8 * 2, "top speed doubles");
+        test.assertEqual(game::ballastCarryStepForState(state), 36, "ballast valve doubles");
+
+        game::stepPhysics(state, forwardInput());
+        test.assertEqual(state.vxQ8, 290, "one boosted forward tick adds twice the base 145 Q8");
+        state.vxQ8 = 0;
+        game::stepPhysics(state, reverseInput());
+        test.assertEqual(state.vxQ8, -145, "boosted reverse tick adds the former full-power 145 Q8");
+
+        state.vxQ8 = 30000;
+        game::stepPhysics(state, idleInput());
+        test.assertEqual(state.vxQ8, game::kMaxVxBoostQ8, "boosted forward clamp is 60 px/s");
+        state.vxQ8 = -30000;
+        game::stepPhysics(state, idleInput());
+        test.assertEqual(state.vxQ8, static_cast<int16_t>(-game::kMaxVxBoostQ8), "boosted reverse clamp is 60 px/s");
+        runner.add(test);
+    }
+
+    {
+        Test test("thruster boost applies after the cargo penalty");
+        game::State empty;
+        game::reset(empty);
+        empty.tools = exploration_data::THRUSTER;
+        game::State loaded;
+        game::reset(loaded);
+        loaded.tools = exploration_data::THRUSTER;
+        game::setCargo(loaded, 4);
+
+        test.assertEqual(game::thrustAccelForState(loaded), 44, "loaded boosted acceleration is (34-12)*2");
+        test.assertEqual(game::topSpeedQ8ForState(loaded), 9216, "loaded boosted top speed is (30-12)*2 px/s");
+        test.assertTrue(game::topSpeedQ8ForState(loaded) < game::topSpeedQ8ForState(empty), "cargo still lowers boosted top speed");
+        test.assertEqual(game::ballastCarryStepForState(loaded), 36, "cargo does not change the boost rate");
+        runner.add(test);
+    }
+
+    {
+        Test test("owned thruster doubles the ballast valve without changing blow air rate");
+        game::State state;
+        game::reset(state);
+        state.tools = exploration_data::THRUSTER;
+        runTicks(state, blowInput(), 30);
+        test.assertEqual(state.ballast, 52, "30 boosted ticks blow 18 units, matching 60 pre-thruster ticks");
+        test.assertEqual(state.air, game::kAirCapacity - 2, "blow air still drains at 4 units/s");
+
+        game::reset(state);
+        state.tools = exploration_data::THRUSTER;
+        runTicks(state, blowInput(), 60);
+        test.assertEqual(state.ballast, 34, "a held boost empties ballast in half the time");
+        test.assertEqual(state.air, game::kAirCapacity - 4, "a full boosted blow spends the same 4 air units/s, not more");
+
+        game::reset(state);
+        state.tools = exploration_data::THRUSTER;
+        runTicks(state, floodInput(), 30);
+        test.assertEqual(state.ballast, 88, "30 boosted flood ticks add 18 units");
+        test.assertEqual(state.air, game::kAirCapacity, "flooding stays free");
+        runner.add(test);
+    }
+
+    {
         Test test("neutral trim follows cargo and reset starts neutral");
         test.assertEqual(game::neutralFor(-3), 70, "cargo below zero clamps");
         test.assertEqual(game::neutralFor(0), 70, "empty trim");

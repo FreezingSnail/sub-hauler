@@ -102,6 +102,24 @@ inline void StationSuite(TestRunner &runner) {
     }
 
     {
+        Test test("thruster top speed still has to brake below the dock threshold");
+        world::Settlement settlement;
+        test.assertTrue(anySettlement(settlement), "settlement metadata loads");
+
+        game::State state;
+        game::reset(state);
+        state.tools = exploration_data::THRUSTER;
+        place(state, settlement.pixel_x, settlement.pixel_y);
+        state.vxQ8 = game::kMaxVxBoostQ8;
+        test.assertTrue(!station::dock(state), "boosted top speed is too fast to dock");
+        test.assertEqual(state.docked, static_cast<int8_t>(-1), "rejected boosted approach stays in free flight");
+
+        state.vxQ8 = station::kDockSpeedQ8;
+        test.assertTrue(station::dock(state), "braking to the unchanged threshold docks");
+        runner.add(test);
+    }
+
+    {
         Test test("dock refills air and neutralizes trim");
         world::Settlement settlement;
         test.assertTrue(anySettlement(settlement), "settlement metadata loads");

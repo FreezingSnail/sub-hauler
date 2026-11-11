@@ -23,11 +23,12 @@ constexpr int16_t kCameraScreenX = 44;
 constexpr int16_t kCameraScreenY = 32;
 
 // Directional look-ahead: shift the target half a pixel per px/s of Q8.8
-// velocity. Base top speed (30 px/s) gives 15 px right and max vertical
-// (20 px/s) gives 10 px down; reverse velocity mirrors that exactly. In Q4 the
-// same lead is velocityQ8 / 32, so 30 px/s = 240 Q4 = 15 px. The look-ahead is
-// stateless, so a stop immediately recentres the target while the camera itself
-// still eases back, and a reversal flips the target without a camera snap.
+// velocity. Base top speed (30 px/s) gives 15 px right, and the owned-thruster
+// 60 px/s gives 30 px; max vertical (20 px/s) gives 10 px down. Reverse
+// velocity mirrors that exactly. In Q4 the same lead is velocityQ8 / 32, so
+// 30 px/s = 240 Q4 = 15 px. The look-ahead is stateless, so a stop immediately
+// recentres the target while the camera itself still eases back, and a reversal
+// flips the target without a camera snap.
 constexpr uint8_t kCameraLookAheadShiftQ4 = 5;
 constexpr uint16_t kCameraLookAheadMaskQ4 = (1u << kCameraLookAheadShiftQ4) - 1u;
 static_assert((-1 >> kCameraLookAheadShiftQ4) == -1, "signed right shift must floor");
@@ -46,11 +47,12 @@ constexpr uint16_t kCameraMaxYQ4 = static_cast<uint16_t>(kCameraMaxYQ4Wide);
 constexpr uint16_t kCameraScreenXQ4 = static_cast<uint16_t>(kCameraScreenX) << kCameraQ4Shift;
 constexpr uint16_t kCameraScreenYQ4 = static_cast<uint16_t>(kCameraScreenY) << kCameraQ4Shift;
 
-// Correction bounds. Normal flight tops out at 0.5 px/frame, so 2 px/frame is
-// four times the tracking requirement and still bounds a 15 px look-ahead drop
-// (stop or collision) to a 2 px terrain step instead of the old 3.75 px jolt.
-// Developer direct traversal moves 6 px/frame, so only that explicit path may
-// use the larger bound; gameplay camera state and saves are unchanged.
+// Correction bounds. Pre-thruster flight tops out at 0.5 px/frame and the
+// owned-thruster boost at 1 px/frame, so 2 px/frame is twice the fastest
+// tracking requirement and still bounds a 30 px look-ahead drop (stop or
+// collision) to a 2 px terrain step instead of a jolt. Developer direct
+// traversal moves 6 px/frame, so only that explicit path may use the larger
+// bound; gameplay camera state and saves are unchanged.
 constexpr uint16_t kCameraMaxStepQ4 = 2u << kCameraQ4Shift;
 constexpr uint16_t kDevCameraMaxStepQ4 = 6u << kCameraQ4Shift;
 
@@ -61,9 +63,10 @@ constexpr uint8_t kDevSpeedScale = 3;
 static_assert(kCameraMaxX >= 0 && kCameraMaxY >= 0, "world must be at least one view");
 static_assert(kCameraScreenX >= 0 && kCameraScreenX < static_cast<int16_t>(world::PIXELS_X), "camera target x can clamp");
 static_assert(kCameraScreenY >= 0 && kCameraScreenY < static_cast<int16_t>(world::PIXELS_Y), "camera target y can clamp");
-// Full look-ahead must keep the whole 26x8 hull inside the 128x64 view.
-static_assert(kCameraScreenXQ4 - (kMaxVxBaseQ8 >> kCameraLookAheadShiftQ4) >= 0, "left look-ahead keeps the hull on screen");
-static_assert(kCameraScreenXQ4 + (kMaxVxBaseQ8 >> kCameraLookAheadShiftQ4) + (kHullW << kCameraQ4Shift) <= (kViewW << kCameraQ4Shift), "right look-ahead keeps the hull on screen");
+// Full look-ahead must keep the whole 26x8 hull inside the 128x64 view. The
+// thruster proof uses the boosted horizontal clamp, the largest possible lead.
+static_assert(kCameraScreenXQ4 - (kMaxVxBoostQ8 >> kCameraLookAheadShiftQ4) >= 0, "boosted left look-ahead keeps the hull on screen");
+static_assert(kCameraScreenXQ4 + (kMaxVxBoostQ8 >> kCameraLookAheadShiftQ4) + (kHullW << kCameraQ4Shift) <= (kViewW << kCameraQ4Shift), "boosted right look-ahead keeps the hull on screen");
 static_assert(kCameraScreenYQ4 - (kMaxVyQ8 >> kCameraLookAheadShiftQ4) >= 0, "top look-ahead keeps the hull on screen");
 static_assert(kCameraScreenYQ4 + (kMaxVyQ8 >> kCameraLookAheadShiftQ4) + (kHullH << kCameraQ4Shift) <= (kViewH << kCameraQ4Shift), "bottom look-ahead keeps the hull on screen");
 

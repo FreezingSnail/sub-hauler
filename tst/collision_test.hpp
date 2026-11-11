@@ -175,6 +175,31 @@ inline void CollisionSuite(TestRunner &runner) {
     }
 
     {
+        Test test("thruster top speed cannot tunnel through a wall");
+        Fixture fake;
+        fillTiles(fake, 10, 0, 10, 159, true);
+        game::State state;
+        game::resetWorld(state);
+        place(state, 60, 80);
+        state.tools = exploration_data::THRUSTER;
+        state.vxQ8 = game::kMaxVxBoostQ8;
+        state.xFrac = game::kSubpixelOne - 1;
+
+        bool crossed = false;
+        for (int i = 0; i < 60; ++i) {
+            game::stepWorld(state, right(), fake);
+            if (state.x > 67)
+                crossed = true;
+        }
+        test.assertTrue(!crossed, "no overshoot at boosted top speed");
+        test.assertEqual(state.x, 67, "boosted impact resolves to the last valid pixel");
+        test.assertEqual(state.impactAxis, 1, "boosted wall impact is horizontal");
+        test.assertTrue(state.impactSpeedQ8 > 0, "boosted impact speed is reported");
+        test.assertEqual(state.xFrac, 0, "boosted impact clears the remainder");
+        runner.add(test);
+    }
+
+    {
         Test test("developer no-clip crosses solid terrain");
         Fixture fake;
         fillTiles(fake, 10, 0, 10, 159, true);   // solid column at x=80
@@ -365,6 +390,47 @@ inline void CollisionSuite(TestRunner &runner) {
         test.assertTrue(pilot_view::visible(left, top), "hull stays visible at full look-ahead");
         test.assertEqual(left, 16, "look-ahead hull left stays on screen");
         test.assertEqual(top, 18, "look-ahead hull top stays on screen");
+        runner.add(test);
+    }
+
+    {
+        Test test("thruster look-ahead leads 30 px and keeps the hull visible");
+        game::State state;
+        game::resetWorld(state);
+        place(state, 500, 300);
+        state.tools = exploration_data::THRUSTER;
+        state.vxQ8 = game::kMaxVxBoostQ8;
+        test.assertEqual(game::cameraLookAheadQ4(state.vxQ8), game::cameraPixelToQ4(30), "boosted top speed leads 30 px");
+        test.assertEqual(game::cameraTargetXQ4(state), game::cameraPixelToQ4(486), "boosted forward target adds 30 px lead");
+        for (int i = 0; i < 100; ++i)
+            game::updateCamera(state);
+        test.assertEqual(state.cameraXQ4, game::cameraPixelToQ4(486), "camera converges to the boosted lead");
+        {
+            const cave::Camera camera = pilot_view::cameraForState(state);
+            const int16_t left = static_cast<int16_t>(pilot_view::screenX(state, camera) - game::kHullHalfW);
+            const int16_t top = static_cast<int16_t>(pilot_view::screenY(state, camera) - game::kHullHalfH);
+            test.assertEqual(left, 1, "boosted forward hull left stays on screen");
+            test.assertTrue(pilot_view::visible(left, top), "boosted forward hull stays visible");
+        }
+
+        state.vxQ8 = static_cast<int16_t>(-game::kMaxVxBoostQ8);
+        test.assertEqual(game::cameraLookAheadQ4(state.vxQ8), static_cast<int16_t>(-game::cameraPixelToQ4(30)), "boosted reverse lead mirrors 30 px");
+        test.assertEqual(game::cameraTargetXQ4(state), game::cameraPixelToQ4(426), "boosted reverse target flips the lead");
+        for (int i = 0; i < 100; ++i)
+            game::updateCamera(state);
+        test.assertEqual(state.cameraXQ4, game::cameraPixelToQ4(426), "camera converges to the boosted reverse lead");
+        {
+            const cave::Camera camera = pilot_view::cameraForState(state);
+            const int16_t left = static_cast<int16_t>(pilot_view::screenX(state, camera) - game::kHullHalfW);
+            const int16_t top = static_cast<int16_t>(pilot_view::screenY(state, camera) - game::kHullHalfH);
+            test.assertTrue(pilot_view::visible(left, top), "boosted reverse hull stays visible");
+        }
+
+        place(state, 2500, 1250);
+        state.vxQ8 = game::kMaxVxBoostQ8;
+        state.vyQ8 = game::kMaxVyQ8;
+        test.assertEqual(game::cameraTargetXQ4(state), game::kCameraMaxXQ4, "boosted right edge target clamps");
+        test.assertEqual(game::cameraTargetYQ4(state), game::kCameraMaxYQ4, "boosted bottom edge target clamps");
         runner.add(test);
     }
 

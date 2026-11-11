@@ -69,6 +69,18 @@ probe docks and delivers with **18 air** left, so the guard is a **5% reserve**
 rather than the former 20%. A 270-unit tank with the same blow cost arrives
 with 0 air and was rejected.
 
+Thruster boost (2026-11-10, `sub-hauler-646.11`): owning the THRUSTER applies a
+**2x** multiplier in `src/game.hpp` after the cargo penalty. Empty horizontal
+top speed is 30 -> **60 px/s** (loaded 18 -> **36 px/s**) and thrust
+acceleration is 34 -> **68 px/s^2** (loaded 22 -> **44 px/s^2**); the clamp and
+acceleration apply in both directions, so reverse doubles from its half-power
+17 px/s^2 to 34 px/s^2 empty. The ballast valve moves 18 -> **36 units/s** in
+both directions. Blow air still drains at the fixed 4 units/s, so a full
+boosted blow empties ballast in half the time and spends about half the air.
+Pre-thruster handling is unchanged. Camera look-ahead grows to 30 px at boosted
+top speed and the hull still stays inside the 128 px view; collision still
+walks one pixel at a time, so the faster clamp cannot tunnel through rock.
+
 Startup splash measurements and art provenance are in
 [startup-splashes.md](startup-splashes.md). The new FX section appends after
 all shipped menus. `story/scenes.json` is the single editable UTF-8 source for
