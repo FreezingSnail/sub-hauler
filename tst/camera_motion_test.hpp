@@ -80,6 +80,34 @@ inline void CameraMotionSuite(TestRunner &runner) {
     }
 
     {
+        Test test("thruster top speed keeps cadence and a stable hull both directions");
+        for (int8_t direction = -1; direction <= 1; direction += 2) {
+            game::State state = boatAt(900);
+            state.tools = exploration_data::THRUSTER;
+            state.vxQ8 = static_cast<int16_t>(direction * game::kMaxVxBoostQ8);
+            for (int i = 0; i < 60; ++i)
+                advance(state);
+            const int16_t steadyHull = hullScreenX(state);
+            int16_t previousCamera = cameraScreenOrigin(state);
+            const int16_t startX = state.x;
+            const int16_t startCamera = previousCamera;
+            for (int i = 0; i < 120; ++i) {
+                advance(state);
+                const int16_t camera = cameraScreenOrigin(state);
+                test.assertTrue(camera == previousCamera || camera == static_cast<int16_t>(previousCamera + direction),
+                                "boosted terrain advances one pixel per tick in the travel direction");
+                test.assertEqual(hullScreenX(state), steadyHull, "boosted hull screen stays stable");
+                previousCamera = camera;
+            }
+            const int16_t travel = static_cast<int16_t>(state.x - startX);
+            const int16_t cameraTravel = static_cast<int16_t>(cameraScreenOrigin(state) - startCamera);
+            test.assertEqual(direction > 0 ? travel : static_cast<int16_t>(-travel), 120, "boosted 60 px/s covers 120 px in 120 ticks");
+            test.assertEqual(direction > 0 ? cameraTravel : static_cast<int16_t>(-cameraTravel), 120, "boosted camera follows the same 120 px");
+        }
+        runner.add(test);
+    }
+
+    {
         Test test("slow travel keeps one-way cadence without a hull twitch");
         game::State state = boatAt(500);
         state.vxQ8 = 2560;   // 10 px/s: about one pixel every six ticks
