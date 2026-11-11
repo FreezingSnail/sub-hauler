@@ -18,7 +18,7 @@ behavior and the schema-7 save contract are in
 ## Intended result
 
 Sub-hauler has one complete game configuration. Stations, campaign,
-exploration, fog chart, hazards, damage, particles, hull selection,
+exploration, fog chart, hazards, damage, particles, the fixed HAULER hull,
 schema-7 FX saves, startup splashes and ATMlib2FX synth music are unconditional.
 The shop, currency, job payouts, repeatable freight offers and credit caches
 were removed on 2026-11-01.

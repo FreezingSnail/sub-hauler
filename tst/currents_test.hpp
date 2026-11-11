@@ -1,5 +1,8 @@
 #pragma once
 
+#include <array>
+#include <fstream>
+
 #include "../src/currents.hpp"
 #include "../src/hazard_view.hpp"
 #include "../src/pilot.hpp"
@@ -117,6 +120,63 @@ inline void CurrentsSuite(TestRunner &runner) {
     }
 
     {
+        Test test("generated current zones span their actual wall-to-wall cross-section");
+        std::array<uint8_t, world::WORLD_BYTES> tiles{};
+        std::ifstream file("fxdata/tables/exploration.bin", std::ios::binary);
+        test.assertTrue(static_cast<bool>(file), "generated collision plane loads");
+        file.read(reinterpret_cast<char *>(tiles.data()), static_cast<std::streamsize>(tiles.size()));
+        const auto solid = [&](int16_t tx, int16_t ty) {
+            return ((tiles[ty * world::WORLD_ROW_BYTES + (tx >> 3)] >> (tx & 7)) & 1u) != 0;
+        };
+
+        world::Current zone;
+        bool horizontal = false;
+        bool vertical = false;
+        for (uint8_t id = 0; id < world::CURRENT_COUNT; ++id) {
+            test.assertTrue(world::currentInfo(id, zone), "zone loads");
+            test.assertTrue(world::currentGated(id) || (zone.w >= world::CURRENT_WIDTH_PX && zone.h >= world::CURRENT_HEIGHT_PX),
+                            "zone keeps the authored flow length on at least one axis");
+            test.assertTrue(zone.w > world::CURRENT_WIDTH_PX || zone.h > world::CURRENT_HEIGHT_PX,
+                            "zone widens beyond the retired compact cross-section");
+            if (zone.ax_q8 != 0)
+                horizontal = true;
+            else
+                vertical = true;
+            const int16_t cx = static_cast<int16_t>((zone.x + zone.w / 2) / 8);
+            const int16_t cy = static_cast<int16_t>((zone.y + zone.h / 2) / 8);
+            test.assertTrue(!solid(cx, cy), "zone centre is navigable water");
+            test.assertTrue(static_cast<int16_t>(game::thrustAccelFor(game::kJobCrates)) > static_cast<int16_t>(zone.ax_q8 < 0 ? -zone.ax_q8 : zone.ax_q8) / game::kQ8One,
+                            "full-cargo thrust beats the current force");
+        }
+        test.assertTrue(horizontal && vertical, "both current axes are covered");
+        runner.add(test);
+    }
+
+    {
+        Test test("without the thruster a current blocks upstream motion only");
+        game::State state;
+        game::reset(state);
+        state.tools = 0;
+        state.vxQ8 = -200;
+        state.vyQ8 = 0;
+        world::Current right = {0, 0, 32, 16, 4096, 0};
+        currents::applyZone(state, right);   // raw helper stays unconditional
+        test.assertEqual(state.vxQ8, static_cast<int16_t>(-200 + 4096 / game::kStepHz), "raw zone helper still accelerates");
+
+        state.vxQ8 = -200;
+        currents::blockUpstream(state, right);
+        test.assertEqual(state.vxQ8, 0, "upstream velocity is clamped");
+        state.vxQ8 = 200;
+        currents::blockUpstream(state, right);
+        test.assertEqual(state.vxQ8, 200, "downstream velocity is untouched");
+        state.vyQ8 = -200;
+        world::Current down = {0, 0, 32, 16, 0, 4096};
+        currents::blockUpstream(state, down);
+        test.assertEqual(state.vyQ8, 0, "vertical upstream velocity is clamped");
+        runner.add(test);
+    }
+
+    {
         Test test("outside every zone leaves velocity unchanged");
         game::State state;
         game::resetWorld(state);
@@ -138,17 +198,36 @@ inline void CurrentsSuite(TestRunner &runner) {
     }
 
     {
-        Test test("world step applies a generated current before collision");
-        Fixture fake;
+        Test test("generated tides block upstream without the thruster and disable with it");
         game::State state;
         game::resetWorld(state);
         world::Current first;
-        world::currentInfo(0, first);
+        test.assertTrue(world::currentInfo(0, first), "generated tide loads");
         place(state, static_cast<int16_t>(first.x + first.w / 2), static_cast<int16_t>(first.y + first.h / 2));
 
-        game::stepWorld(state, idle(), fake);
-        test.assertEqual(state.vxQ8, static_cast<int16_t>(first.ax_q8 / game::kStepHz), "stepWorld applied the current acceleration");
-        test.assertEqual(state.vyQ8, 0, "idle trim produced no vertical thrust");
+        state.tools = 0;
+        state.vxQ8 = first.ax_q8 > 0 ? -200 : (first.ax_q8 < 0 ? 200 : 0);
+        state.vyQ8 = first.ay_q8 > 0 ? -200 : (first.ay_q8 < 0 ? 200 : 0);
+        currents::apply(state);
+        if (first.ax_q8 != 0)
+            test.assertEqual(state.vxQ8, 0, "upstream x is blocked without the thruster");
+        if (first.ay_q8 != 0)
+            test.assertEqual(state.vyQ8, 0, "upstream y is blocked without the thruster");
+
+        state.vxQ8 = 0;
+        state.vyQ8 = 0;
+        currents::apply(state);
+        if (first.ax_q8 != 0)
+            test.assertTrue((state.vxQ8 > 0) == (first.ax_q8 > 0), "tide pushes downstream on x");
+        if (first.ay_q8 != 0)
+            test.assertTrue((state.vyQ8 > 0) == (first.ay_q8 > 0), "tide pushes downstream on y");
+
+        state.tools = exploration_data::THRUSTER;
+        state.vxQ8 = 17;
+        state.vyQ8 = -23;
+        currents::apply(state);
+        test.assertEqual(state.vxQ8, 17, "the thruster disables x tide force and blocking");
+        test.assertEqual(state.vyQ8, -23, "the thruster disables y tide force and blocking");
         runner.add(test);
     }
 
@@ -213,6 +292,13 @@ inline void CurrentsSuite(TestRunner &runner) {
         test.assertTrue(drawn > 0, "flow marks wrote visible pixels");
         for (uint16_t i = cave::VIEW_WIDTH * cave::VIEW_HEIGHT / 8; i < sizeof(buffer); ++i)
             test.assertEqual(buffer[i], 0xA5, "flow marks never write past the frame");
+
+        state.tools = exploration_data::THRUSTER;
+        for (uint16_t i = 0; i < sizeof(buffer); ++i)
+            buffer[i] = 0xA5;
+        hazard_view::drawCurrents(buffer, state, pilot_view::cameraForState(state));
+        for (uint16_t i = 0; i < sizeof(buffer); ++i)
+            test.assertEqual(buffer[i], 0xA5, "the thruster disables flow marks");
         runner.add(test);
     }
 }

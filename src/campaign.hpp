@@ -18,7 +18,7 @@ namespace campaign {
 using game::State;
 
 constexpr uint8_t kMissionNone = game::kMissionNone;
-constexpr uint8_t kMissionCount = 7;
+constexpr uint8_t kMissionCount = 8;
 constexpr uint8_t kDeliveryNone = 0;   // jobs::DeliveryResult::kDeliveryNone
 
 enum MissionId : uint8_t {
@@ -29,6 +29,7 @@ enum MissionId : uint8_t {
     kLift = 4,
     kBeacon = 5,
     kHome = 6,
+    kExpedition = 7,
 };
 
 enum SurveyId : uint8_t {
@@ -36,19 +37,23 @@ enum SurveyId : uint8_t {
     kLiftSurveyId = 1,
 };
 
-// Milestone bits. Monotonic: BEACON needs PUMP and LIFT; HOME needs BEACON.
+// Milestone bits. The campaign route is linear at the end: BEACON needs PUMP
+// and LIFT; DEEP RELAY needs BEACON plus all four tools; HOME needs BEACON and
+// the completed DEEP RELAY. Legacy checkpoints may hold HOME without
+// EXPEDITION and remain loadable; they cannot create a new HOME acceptance.
 constexpr uint8_t kMilestoneFirst = 1u << 0;
 constexpr uint8_t kMilestonePump = 1u << 1;
 constexpr uint8_t kMilestoneLift = 1u << 2;
 constexpr uint8_t kMilestoneBeacon = 1u << 3;
 constexpr uint8_t kMilestoneHome = 1u << 4;
-constexpr uint8_t kMilestoneMask = 0x1Fu;
+constexpr uint8_t kMilestoneExpedition = 1u << 5;
+constexpr uint8_t kMilestoneMask = 0x3Fu;
 
 constexpr uint8_t kSurveyPump = 1u << kPumpSurveyId;
 constexpr uint8_t kSurveyLift = 1u << kLiftSurveyId;
 constexpr uint8_t kSurveyMask = 0x03u;
 
-// Berth IDs. 0-3 are the only freight settlements; 4-5 are service-only.
+// Berth IDs. 0-3 are the only freight settlements; 4-6 are work/service sites.
 enum Berth : uint8_t {
     kTidewall = 0,
     kBenthos = 1,
@@ -56,11 +61,13 @@ enum Berth : uint8_t {
     kDeepAnchor = 3,
     kPumpRefuge = 4,
     kLowerGantry = 5,
+    kFreightYard = 6,
+    kDeepRelay = 7,
 };
-constexpr uint8_t kBerthCount = 6;
+constexpr uint8_t kBerthCount = 8;
 constexpr uint8_t kSettlementCount = world::SETTLEMENT_COUNT;
 static_assert(world::BERTH_COUNT == kBerthCount, "generated berth ids match the frozen campaign count");
-static_assert(world::SERVICE_BERTH_COUNT == 2, "both restoration berths have generated geography");
+static_assert(world::SERVICE_BERTH_COUNT == 4, "both restoration berths and the two work sites have generated geography");
 static_assert(world::BERTH_PUMP_REFUGE == kPumpRefuge, "Pump Refuge keeps its frozen berth id");
 static_assert(world::BERTH_LOWER_GANTRY == kLowerGantry, "Lower Gantry keeps its frozen berth id");
 static_assert(world::SURVEY_PUMP == kPumpSurveyId, "pump survey keeps its frozen id");
@@ -86,11 +93,12 @@ constexpr MissionSpec kMissions[kMissionCount] = {
 #endif
     {kTidewall, kBenthos, true, kMilestoneFirst, kNoBit},             // FIRST
     {kBenthos, game::kJobNone, false, kNoBit, kPumpSurveyId},         // PUMP_SURVEY
-    {kCormorant, kBenthos, true, kMilestonePump, kNoBit},             // PUMP
+    {kCormorant, kPumpRefuge, true, kMilestonePump, kNoBit},          // PUMP
     {kCormorant, game::kJobNone, false, kNoBit, kLiftSurveyId},       // LIFT_SURVEY
-    {kBenthos, kCormorant, true, kMilestoneLift, kNoBit},             // LIFT
+    {kBenthos, kFreightYard, true, kMilestoneLift, kNoBit},           // LIFT
     {kCormorant, kDeepAnchor, true, kMilestoneBeacon, kNoBit},        // BEACON
     {kDeepAnchor, kTidewall, true, kMilestoneHome, kNoBit},           // HOME
+    {kDeepAnchor, kDeepRelay, true, kMilestoneExpedition, kNoBit},    // EXPEDITION
 };
 
 inline bool missionInfo(uint8_t id, MissionSpec &out) {
@@ -164,6 +172,40 @@ inline bool missionCompleted(const State &state, uint8_t id) {
     return missionCompleted(state.campaign, state.surveys, id);
 }
 
+// Station-board next-stop hint after a story deck finishes. Only the two repair
+// deliveries post one, and the choice is derived from the saved campaign facts
+// so the notice can never disagree with the WORK rows or chart markers. The
+// enum is presentation-neutral: app.hpp maps it to the shipped FX strings.
+enum NextStop : uint8_t {
+    kNextStopNone = 0,
+    kNextStopLiftSurvey,
+    kNextStopLiftSource,
+    kNextStopPumpSurvey,
+    kNextStopPumpSource,
+    kNextStopSeal,
+    kNextStopBeacon,
+};
+
+// Symmetric branch guidance after either repair deck. A missing survey is
+// named before its repair source, and BEACON is never announced until both
+// repairs and the pressure seal are held. The completed mission id only gates
+// whether a repair deck may post a notice at all.
+inline NextStop nextStopAfter(const State &state, uint8_t completedMissionId) {
+    if (completedMissionId != kPump && completedMissionId != kLift)
+        return kNextStopNone;
+    if (!hasMilestone(state, kMilestoneLift)) {
+        if (!surveyRecorded(state, kLiftSurveyId))
+            return kNextStopLiftSurvey;
+        return kNextStopLiftSource;
+    }
+    if (!hasMilestone(state, kMilestonePump)) {
+        if (!surveyRecorded(state, kPumpSurveyId))
+            return kNextStopPumpSurvey;
+        return kNextStopPumpSource;
+    }
+    return sealOwned(state) ? kNextStopBeacon : kNextStopSeal;
+}
+
 // Prerequisites without the "not already complete" test. Completion flags are
 // deliberately independent of cargo; surveys can be recorded in any order.
 inline bool missionPrerequisites(uint8_t campaign, uint8_t surveys, uint8_t tools, uint8_t id) {
@@ -180,7 +222,14 @@ inline bool missionPrerequisites(uint8_t campaign, uint8_t surveys, uint8_t tool
     case kBeacon:
         return hasMilestone(campaign, kMilestonePump) && hasMilestone(campaign, kMilestoneLift) && (tools & exploration_data::SEAL) != 0;
     case kHome:
-        return hasMilestone(campaign, kMilestoneBeacon);
+        return hasMilestone(campaign, kMilestoneBeacon) && hasMilestone(campaign, kMilestoneExpedition);
+    case kExpedition:
+        // The mandatory late Deep Anchor expedition. The survey lens reads the
+        // buried relay; cutter, seal and thruster make the lower-right wreck
+        // reachable and survivable. All four are explicit prerequisites.
+        return hasMilestone(campaign, kMilestoneBeacon) &&
+               (tools & (exploration_data::CUTTER | exploration_data::SEAL | exploration_data::THRUSTER | exploration_data::LENS)) ==
+                   (exploration_data::CUTTER | exploration_data::SEAL | exploration_data::THRUSTER | exploration_data::LENS);
     default:
         return false;
     }
@@ -195,10 +244,25 @@ inline bool missionAvailable(const State &state, uint8_t id) {
     return missionPrerequisites(state, id) && !missionCompleted(state, id);
 }
 
+// Pre-linear checkpoints could accept HOME with only BEACON. Keep that one
+// in-flight delivery completable and loadable so a build update cannot strand a
+// save mid-return. No new save can create this shape: accept() and the WORK row
+// both require the expedition milestone. A completed legacy HOME (with no
+// expedition bit) is likewise preserved by milestonesValid().
+inline bool legacyHomeJob(const game::ActiveJob &job, uint8_t campaign) {
+    return job.kind == game::kJobKindCampaign && job.mission == kHome && hasMilestone(campaign, kMilestoneBeacon) &&
+           !hasMilestone(campaign, kMilestoneExpedition);
+}
+
+inline bool legacyHomeJob(const State &state) {
+    return legacyHomeJob(state.activeJob, state.campaign);
+}
+
 // WORK page rows. Story missions are compacted in stable mission-id order at
 // their clue or source berth; the two field surveys therefore appear as
-// non-cargo quest rows. After HOME, Tidewall adds a replayable VIEW ENDING row.
-// kWorkEnding is outside the frozen mission ids.
+// non-cargo quest rows. Deep Anchor exposes the mandatory DEEP RELAY row after
+// BEACON, then HOME after the relay. After HOME, Tidewall adds a replayable VIEW
+// ENDING row. kWorkEnding is outside the frozen mission ids.
 constexpr uint8_t kWorkEnding = 0xFE;
 
 inline bool endingAvailable(const State &state) {
@@ -207,7 +271,7 @@ inline bool endingAvailable(const State &state) {
 
 inline uint8_t workMissionAt(const State &state, uint8_t berth, uint8_t row) {
     uint8_t visible = 0;
-    for (uint8_t id = kFirst; id <= kHome; ++id) {
+    for (uint8_t id = kFirst; id <= kExpedition; ++id) {
         MissionSpec spec;
         if (!missionInfo(id, spec) || spec.from != berth)
             continue;
@@ -235,7 +299,10 @@ inline bool recordSurvey(State &state, uint8_t surveyId) {
 
 inline bool completeMission(State &state, uint8_t id) {
     MissionSpec spec;
-    if (!missionInfo(id, spec) || missionCompleted(state, id) || !missionPrerequisites(state, id))
+    if (!missionInfo(id, spec) || missionCompleted(state, id))
+        return false;
+    const bool legacyHome = id == kHome && legacyHomeJob(state);
+    if (!missionPrerequisites(state, id) && !legacyHome)
         return false;
     if (!spec.cargo) {
         state.surveys |= static_cast<uint8_t>(1u << surveyForMission(id));
@@ -255,8 +322,14 @@ inline bool berthAvailable(uint8_t campaign, uint8_t berth) {
     return hasMilestone(campaign, info.milestone);
 }
 
+// Restoration normally unlocks a work berth. While the matching repair load is
+// aboard, that berth is also a valid destination before its own milestone: this
+// is what lets the pump and lift accept delivery at the machine that they will
+// restore, without a self-locking gate.
 inline bool berthAvailable(const State &state, uint8_t berth) {
-    return berthAvailable(state.campaign, berth);
+    if (berthAvailable(state.campaign, berth))
+        return true;
+    return game::hasActiveJob(state) && state.activeJob.to == berth;
 }
 
 inline bool freightBerth(uint8_t berth) {
@@ -312,6 +385,11 @@ inline bool milestonesValid(uint8_t mask) {
         return false;
     if ((mask & kMilestoneHome) && !(mask & kMilestoneBeacon))
         return false;
+    // EXPEDITION is required for new HOME acceptance but is independent in the
+    // save mask: legacy pre-linear checkpoints may hold HOME without it, and a
+    // postgame checkpoint may hold EXPEDITION without HOME. Never reject those.
+    if ((mask & kMilestoneExpedition) && !(mask & kMilestoneBeacon))
+        return false;
     if ((mask & kMilestoneBeacon) && (mask & (kMilestonePump | kMilestoneLift)) != (kMilestonePump | kMilestoneLift))
         return false;
     return true;
@@ -327,14 +405,17 @@ inline bool activeJobValid(const game::ActiveJob &job, uint8_t campaign, uint8_t
     }
     if (job.kind != game::kJobKindCampaign)
         return false;
-    if (job.crates != game::kJobCrates || job.to >= world::SETTLEMENT_COUNT)
+    if (job.crates != game::kJobCrates || job.to >= kBerthCount)
+        return false;
+    world::Berth destination;
+    if (!world::berthInfo(job.to, destination))
         return false;
 
     MissionSpec spec;
     if (!missionInfo(job.mission, spec) || !spec.cargo)
         return false;
     return job.from == spec.from && job.to == spec.to && !missionCompleted(campaign, surveys, job.mission) &&
-           missionPrerequisites(campaign, surveys, tools, job.mission);
+           (missionPrerequisites(campaign, surveys, tools, job.mission) || legacyHomeJob(job, campaign));
 }
 
 inline bool activeJobValid(const State &state) {

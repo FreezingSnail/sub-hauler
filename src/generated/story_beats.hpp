@@ -5,10 +5,50 @@
 
 constexpr uint8_t STORY_BEAT_WIDTH  = 128;
 constexpr uint8_t STORY_BEAT_HEIGHT = 64;
-constexpr uint8_t STORY_BEAT_CARDS  = 30;
-constexpr uint8_t STORY_BEAT_IMAGES = 15;
-constexpr uint8_t STORY_BEAT_FRAMES = 75;
-constexpr uint16_t STORY_BEAT_BYTES = 46673;
+constexpr uint8_t STORY_SCENE_MAX  = 16;
+constexpr uint8_t STORY_SCENE_COUNT = 17;
+constexpr uint8_t STORY_CARD_COUNT = 41;
+constexpr uint8_t STORY_IMAGE_CARD_COUNT = 20;
+constexpr uint8_t STORY_TEXT_CARD_COUNT = 21;
+constexpr uint8_t STORY_IMAGE_COUNT = 17;
+constexpr uint8_t STORY_FRAME_COUNT = 89;
+constexpr uint16_t STORY_BEAT_BYTES = 57023;
 constexpr uint8_t STORY_BEAT_FRAME_TICKS = 18;
 constexpr uint8_t STORY_BEAT_CYCLE_TICKS = 72;
 constexpr uint8_t STORY_BEAT_MAX_CARDS = 6;
+constexpr uint8_t STORY_KIND_IMAGE = 0;
+constexpr uint8_t STORY_KIND_TEXT = 1;
+// Compatibility aliases used by frame/CRC fixtures.
+constexpr uint8_t STORY_BEAT_IMAGES = STORY_IMAGE_COUNT;
+constexpr uint8_t STORY_BEAT_FRAMES = STORY_FRAME_COUNT;
+constexpr uint8_t STORY_BEAT_CARDS = STORY_CARD_COUNT;
+
+constexpr uint8_t STORY_SCENE_FIRST_RESULT = 1;
+constexpr uint8_t STORY_SCENE_PUMP_SURVEY = 2;
+constexpr uint8_t STORY_SCENE_PUMP_RESULT = 3;
+constexpr uint8_t STORY_SCENE_LIFT_SURVEY = 4;
+constexpr uint8_t STORY_SCENE_LIFT_RESULT = 5;
+constexpr uint8_t STORY_SCENE_BEACON_RESULT = 6;
+constexpr uint8_t STORY_SCENE_HOME_RESULT = 7;
+constexpr uint8_t STORY_SCENE_FIRST_DEPARTURE = 8;
+constexpr uint8_t STORY_SCENE_PUMP_PICKUP = 9;
+constexpr uint8_t STORY_SCENE_LIFT_PICKUP = 10;
+constexpr uint8_t STORY_SCENE_JOINT_MISSING = 11;
+constexpr uint8_t STORY_SCENE_JOINT_READY = 12;
+constexpr uint8_t STORY_SCENE_BEACON_DEPARTURE = 13;
+constexpr uint8_t STORY_SCENE_HOME_DEPARTURE = 14;
+constexpr uint8_t STORY_SCENE_EXPEDITION_RESULT = 15;
+constexpr uint8_t STORY_SCENE_EXPEDITION_DEPARTURE = 16;
+
+#if defined(__AVR__)
+#include <avr/pgmspace.h>
+const uint8_t STORY_SCENE_CARDS[STORY_SCENE_COUNT] PROGMEM = {0, 6, 4, 2, 4, 2, 2, 2, 2, 2, 2, 2, 2, 3, 2, 2, 2};
+const uint8_t STORY_SCENE_FIRST_CARD[STORY_SCENE_COUNT] PROGMEM = {0, 0, 6, 10, 12, 16, 18, 20, 22, 24, 26, 28, 30, 32, 35, 37, 39};
+const uint8_t STORY_CARD_FRAME[STORY_CARD_COUNT] PROGMEM = {0, 4, 5, 9, 10, 14, 15, 19, 20, 24, 25, 29, 30, 34, 35, 39, 40, 44, 45, 49, 50, 54, 55, 59, 60, 64, 65, 69, 70, 74, 70, 75, 76, 80, 81, 60, 82, 83, 87, 83, 88};
+const uint8_t STORY_CARD_KIND[STORY_CARD_COUNT] PROGMEM = {0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1};
+#else
+constexpr uint8_t STORY_SCENE_CARDS[STORY_SCENE_COUNT] = {0, 6, 4, 2, 4, 2, 2, 2, 2, 2, 2, 2, 2, 3, 2, 2, 2};
+constexpr uint8_t STORY_SCENE_FIRST_CARD[STORY_SCENE_COUNT] = {0, 0, 6, 10, 12, 16, 18, 20, 22, 24, 26, 28, 30, 32, 35, 37, 39};
+constexpr uint8_t STORY_CARD_FRAME[STORY_CARD_COUNT] = {0, 4, 5, 9, 10, 14, 15, 19, 20, 24, 25, 29, 30, 34, 35, 39, 40, 44, 45, 49, 50, 54, 55, 59, 60, 64, 65, 69, 70, 74, 70, 75, 76, 80, 81, 60, 82, 83, 87, 83, 88};
+constexpr uint8_t STORY_CARD_KIND[STORY_CARD_COUNT] = {0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1};
+#endif

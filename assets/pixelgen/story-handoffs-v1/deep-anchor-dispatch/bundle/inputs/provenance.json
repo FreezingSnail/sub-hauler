@@ -1,0 +1,134 @@
+{
+  "assets": [
+    {
+      "height": 64,
+      "path": "background.png",
+      "role": "background",
+      "sha256": "628f1b6ad86de9c382c1f0c9c71ba331d7cdb010d6d32ad6e245f54d6ffcda52",
+      "width": 128
+    },
+    {
+      "height": 16,
+      "path": "sealed-records-and-supplies-matte.png",
+      "role": "layer:sealed-records-and-supplies:matte",
+      "sha256": "f622424e0bc6bcc4fd7cf461537462c96aabf6534dd2e4ab22ab21746836c2ce",
+      "width": 35
+    },
+    {
+      "height": 16,
+      "path": "sealed-records-and-supplies.png",
+      "role": "layer:sealed-records-and-supplies:source",
+      "sha256": "0d7b51a79a85c9afecd9a91ae31b1822e42884e2f86860919da3e56b8d224f4c",
+      "width": 35
+    }
+  ],
+  "background": {
+    "path": "background.png",
+    "sha256": "628f1b6ad86de9c382c1f0c9c71ba331d7cdb010d6d32ad6e245f54d6ffcda52"
+  },
+  "canvas": {
+    "depth": 1,
+    "height": 64,
+    "width": 128
+  },
+  "expected_mask_sha256": null,
+  "format": "pixelgen.motion.provenance/1",
+  "frame_sha256": [
+    "06f2480a171f9d82789557a328e6e16d931d337405b00011a19c74d4b701d9f2",
+    "468bdc967e21167643a7c90300f0fcb30c8cdc5f0465201e84015f205caf6577",
+    "c13392f38a429030441da4f85ba0f4f1ca14f77b931a7928e6785850bb68af2b",
+    "30373188f7c66baeadfb67380067e74c8d36864d2f8948db4fd5c6285935f4e9"
+  ],
+  "layers": [
+    {
+      "clip": "error",
+      "layer_id": "sealed-records-and-supplies",
+      "matte": {
+        "path": "sealed-records-and-supplies-matte.png",
+        "sha256": "f622424e0bc6bcc4fd7cf461537462c96aabf6534dd2e4ab22ab21746836c2ce"
+      },
+      "motion_bounds": null,
+      "origin": {
+        "x": 83,
+        "y": 21
+      },
+      "pivot": null,
+      "poses": {},
+      "role": "part",
+      "source": {
+        "path": "sealed-records-and-supplies.png",
+        "sha256": "0d7b51a79a85c9afecd9a91ae31b1822e42884e2f86860919da3e56b8d224f4c"
+      },
+      "track": [
+        {
+          "pose": null,
+          "translate": {
+            "x": 0,
+            "y": 0
+          },
+          "turn_16ths": 0,
+          "visible": true
+        },
+        {
+          "pose": null,
+          "translate": {
+            "x": 0,
+            "y": 2
+          },
+          "turn_16ths": 0,
+          "visible": true
+        },
+        {
+          "pose": null,
+          "translate": {
+            "x": 0,
+            "y": 4
+          },
+          "turn_16ths": 0,
+          "visible": true
+        },
+        {
+          "pose": null,
+          "translate": {
+            "x": -1,
+            "y": 2
+          },
+          "turn_16ths": 0,
+          "visible": true
+        }
+      ],
+      "z": 10
+    }
+  ],
+  "layout": null,
+  "layout_id": null,
+  "mask_pixels": 716,
+  "mask_sha256": "046db0fa19ac6f601d8beb053575524aa295b55b7e5f8548316bd6deb3b3d04e",
+  "master_seed": 73105,
+  "phases": [
+    {
+      "duration_ms": 300,
+      "phase_id": "pose-0",
+      "seed": 73105
+    },
+    {
+      "duration_ms": 300,
+      "phase_id": "pose-1",
+      "seed": 73106
+    },
+    {
+      "duration_ms": 300,
+      "phase_id": "pose-2",
+      "seed": 73107
+    },
+    {
+      "duration_ms": 300,
+      "phase_id": "pose-3",
+      "seed": 73108
+    }
+  ],
+  "recipe_id": "story-handoffs-v1-deep-anchor-dispatch",
+  "recipe_sha256": "cd4eca11cb8cbf0ee20380c9fc2b0b5071f09ee28fe961702eccca0b4e613a47",
+  "renderer": "pixelgen.motion/1",
+  "revision": 3
+}

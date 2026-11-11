@@ -85,13 +85,13 @@ void storyPanels() {
     music::service();
     // Every finalized story pose decodes through the compressed cart reader
     // while the synth is active. The probe measures the decoder scratch frame.
-    for (uint8_t beat = story_view::kCardFirst; beat <= story_view::kCardCount; ++beat) {
-        const uint8_t count = story_view::cardCount(beat);
+    for (uint8_t scene = story_view::kSceneFirst; scene <= story_view::kSceneMax; ++scene) {
+        const uint8_t count = story_view::cardCount(scene);
         for (uint8_t card = 0; card < count; ++card) {
-            const bool image = story_view::isImageCard(story_view::globalCard(beat, card));
+            const bool image = story_view::isImageCard(scene, card);
             const uint8_t phases = image ? 4 : 1;
             for (uint8_t phase = 0; phase < phases; ++phase) {
-                story_view::draw(beat, card, phase);
+                story_view::draw(scene, card, phase);
                 music::service();
                 FX::display(CLEAR_BUFFER);
                 music::service();
@@ -110,8 +110,7 @@ void storyPanels() {
     voyage_flow::BootStatus boot;
     boot.state = voyage_flow::kBootValid;
     boot.hasValid = true;
-            const uint8_t titleHull = s_state.hullClass;
-    voyage_view::drawTitle(boot, voyage_view::kTitleContinue, titleHull, voyage_view::kTitleMenu);
+    voyage_view::drawTitle(boot, voyage_view::kTitleContinue, voyage_view::kTitleMenu);
     music::service();
     FX::display(CLEAR_BUFFER);
     music::service();

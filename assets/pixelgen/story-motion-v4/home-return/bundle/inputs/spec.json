@@ -1,0 +1,332 @@
+{
+  "anchor_prompt": null,
+  "frames": [
+    {
+      "candidate": null,
+      "duration_ms": 300,
+      "frame_id": "pose-0",
+      "phase": "pose-0",
+      "seed": 4152,
+      "source": {
+        "encoded_bytes": null,
+        "format": "png",
+        "height": null,
+        "opaque": true,
+        "path": "inputs/frames/000.png",
+        "sha256": "8bc54e63ece621b75c6d895fc09b55e233dd9f1817e6598d735397d4f936834a",
+        "width": null
+      }
+    },
+    {
+      "candidate": null,
+      "duration_ms": 300,
+      "frame_id": "pose-1",
+      "phase": "pose-1",
+      "seed": 4153,
+      "source": {
+        "encoded_bytes": null,
+        "format": "png",
+        "height": null,
+        "opaque": true,
+        "path": "inputs/frames/001.png",
+        "sha256": "8c82cfe40076ca915caff31cc481e51096d46c6f0d1fc10402d867a24ece7712",
+        "width": null
+      }
+    },
+    {
+      "candidate": null,
+      "duration_ms": 300,
+      "frame_id": "pose-2",
+      "phase": "pose-2",
+      "seed": 4154,
+      "source": {
+        "encoded_bytes": null,
+        "format": "png",
+        "height": null,
+        "opaque": true,
+        "path": "inputs/frames/002.png",
+        "sha256": "ef8b5e18409ccbda5edc95b0c5b038ce90dcec3b93f4715fe747b85bd578d6e4",
+        "width": null
+      }
+    },
+    {
+      "candidate": null,
+      "duration_ms": 300,
+      "frame_id": "pose-3",
+      "phase": "pose-3",
+      "seed": 4155,
+      "source": {
+        "encoded_bytes": null,
+        "format": "png",
+        "height": null,
+        "opaque": true,
+        "path": "inputs/frames/003.png",
+        "sha256": "482358f3b95e1e61c7f519be3bdc805b032b2b5095434aecb12afc3d9eda8050",
+        "width": null
+      }
+    }
+  ],
+  "layout": null,
+  "layout_id": null,
+  "mask": {
+    "height": 64,
+    "kind": "png",
+    "path": "inputs/mask.png",
+    "rectangles": [
+      {
+        "height": 1,
+        "width": 43,
+        "x": 29,
+        "y": 22
+      },
+      {
+        "height": 1,
+        "width": 43,
+        "x": 29,
+        "y": 23
+      },
+      {
+        "height": 1,
+        "width": 43,
+        "x": 29,
+        "y": 24
+      },
+      {
+        "height": 1,
+        "width": 43,
+        "x": 29,
+        "y": 25
+      },
+      {
+        "height": 1,
+        "width": 43,
+        "x": 29,
+        "y": 26
+      },
+      {
+        "height": 1,
+        "width": 43,
+        "x": 29,
+        "y": 27
+      },
+      {
+        "height": 1,
+        "width": 3,
+        "x": 25,
+        "y": 28
+      },
+      {
+        "height": 1,
+        "width": 43,
+        "x": 29,
+        "y": 28
+      },
+      {
+        "height": 1,
+        "width": 48,
+        "x": 24,
+        "y": 29
+      },
+      {
+        "height": 1,
+        "width": 48,
+        "x": 24,
+        "y": 30
+      },
+      {
+        "height": 1,
+        "width": 48,
+        "x": 24,
+        "y": 31
+      },
+      {
+        "height": 1,
+        "width": 5,
+        "x": 23,
+        "y": 32
+      },
+      {
+        "height": 1,
+        "width": 43,
+        "x": 29,
+        "y": 32
+      },
+      {
+        "height": 1,
+        "width": 5,
+        "x": 23,
+        "y": 33
+      },
+      {
+        "height": 1,
+        "width": 43,
+        "x": 29,
+        "y": 33
+      },
+      {
+        "height": 1,
+        "width": 5,
+        "x": 23,
+        "y": 34
+      },
+      {
+        "height": 1,
+        "width": 43,
+        "x": 29,
+        "y": 34
+      },
+      {
+        "height": 1,
+        "width": 48,
+        "x": 24,
+        "y": 35
+      },
+      {
+        "height": 1,
+        "width": 48,
+        "x": 24,
+        "y": 36
+      },
+      {
+        "height": 1,
+        "width": 48,
+        "x": 24,
+        "y": 37
+      },
+      {
+        "height": 1,
+        "width": 5,
+        "x": 23,
+        "y": 38
+      },
+      {
+        "height": 1,
+        "width": 43,
+        "x": 29,
+        "y": 38
+      },
+      {
+        "height": 1,
+        "width": 5,
+        "x": 23,
+        "y": 39
+      },
+      {
+        "height": 1,
+        "width": 43,
+        "x": 29,
+        "y": 39
+      },
+      {
+        "height": 1,
+        "width": 5,
+        "x": 23,
+        "y": 40
+      },
+      {
+        "height": 1,
+        "width": 43,
+        "x": 29,
+        "y": 40
+      },
+      {
+        "height": 1,
+        "width": 3,
+        "x": 24,
+        "y": 41
+      },
+      {
+        "height": 1,
+        "width": 43,
+        "x": 29,
+        "y": 41
+      },
+      {
+        "height": 1,
+        "width": 2,
+        "x": 84,
+        "y": 41
+      },
+      {
+        "height": 1,
+        "width": 4,
+        "x": 83,
+        "y": 42
+      },
+      {
+        "height": 1,
+        "width": 4,
+        "x": 83,
+        "y": 43
+      },
+      {
+        "height": 1,
+        "width": 3,
+        "x": 83,
+        "y": 44
+      },
+      {
+        "height": 1,
+        "width": 4,
+        "x": 82,
+        "y": 45
+      },
+      {
+        "height": 1,
+        "width": 4,
+        "x": 82,
+        "y": 46
+      },
+      {
+        "height": 1,
+        "width": 3,
+        "x": 83,
+        "y": 47
+      },
+      {
+        "height": 1,
+        "width": 4,
+        "x": 83,
+        "y": 48
+      },
+      {
+        "height": 1,
+        "width": 4,
+        "x": 83,
+        "y": 49
+      },
+      {
+        "height": 1,
+        "width": 3,
+        "x": 83,
+        "y": 50
+      },
+      {
+        "height": 1,
+        "width": 4,
+        "x": 82,
+        "y": 51
+      },
+      {
+        "height": 1,
+        "width": 4,
+        "x": 82,
+        "y": 52
+      },
+      {
+        "height": 1,
+        "width": 2,
+        "x": 83,
+        "y": 53
+      }
+    ],
+    "sha256": "994886dbb68a4d485083148093f10ba36aa481da67d82fb4df944b432b2eb318",
+    "width": 128
+  },
+  "master_seed": 4152,
+  "mode": "assemble",
+  "model": null,
+  "schema_version": "pixelgen.animation/1",
+  "spec_id": "story-v4-home-return",
+  "tail": null
+}

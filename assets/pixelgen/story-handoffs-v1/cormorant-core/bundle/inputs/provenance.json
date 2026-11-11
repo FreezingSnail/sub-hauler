@@ -1,0 +1,134 @@
+{
+  "assets": [
+    {
+      "height": 64,
+      "path": "background.png",
+      "role": "background",
+      "sha256": "5ea65a1d950815fccf2cfded771f3f44a5da7de6a9c8a4358b98117461e29754",
+      "width": 128
+    },
+    {
+      "height": 17,
+      "path": "sealed-beacon-core-matte.png",
+      "role": "layer:sealed-beacon-core:matte",
+      "sha256": "721f2dd1db5d0ec58dc708945cf7e1d1c9358d92eec596805add5728a86947f0",
+      "width": 15
+    },
+    {
+      "height": 17,
+      "path": "sealed-beacon-core.png",
+      "role": "layer:sealed-beacon-core:source",
+      "sha256": "dd75793a90b83b3517a90e978711805f91ceeed476c6142b6df55bdb309d2085",
+      "width": 15
+    }
+  ],
+  "background": {
+    "path": "background.png",
+    "sha256": "5ea65a1d950815fccf2cfded771f3f44a5da7de6a9c8a4358b98117461e29754"
+  },
+  "canvas": {
+    "depth": 1,
+    "height": 64,
+    "width": 128
+  },
+  "expected_mask_sha256": null,
+  "format": "pixelgen.motion.provenance/1",
+  "frame_sha256": [
+    "6134016c13db9d795a236f3d4b1632c4c421d18d0f91b027e6ff0972d654c94c",
+    "5adc2b72fda1db7d3de6a9167e48d2af72ebc5c6b82eef338a034fc04fb3da8c",
+    "3f65a2b1453679cc9958efd671c827730097fe5c3e41ff652fa082d6c158404c",
+    "48656a7f4ddea4496b5534d943e9ac7468cdb2c694afb1711bc635483611d103"
+  ],
+  "layers": [
+    {
+      "clip": "error",
+      "layer_id": "sealed-beacon-core",
+      "matte": {
+        "path": "sealed-beacon-core-matte.png",
+        "sha256": "721f2dd1db5d0ec58dc708945cf7e1d1c9358d92eec596805add5728a86947f0"
+      },
+      "motion_bounds": null,
+      "origin": {
+        "x": 97,
+        "y": 20
+      },
+      "pivot": null,
+      "poses": {},
+      "role": "part",
+      "source": {
+        "path": "sealed-beacon-core.png",
+        "sha256": "dd75793a90b83b3517a90e978711805f91ceeed476c6142b6df55bdb309d2085"
+      },
+      "track": [
+        {
+          "pose": null,
+          "translate": {
+            "x": 0,
+            "y": 0
+          },
+          "turn_16ths": 0,
+          "visible": true
+        },
+        {
+          "pose": null,
+          "translate": {
+            "x": 0,
+            "y": 2
+          },
+          "turn_16ths": 0,
+          "visible": true
+        },
+        {
+          "pose": null,
+          "translate": {
+            "x": 0,
+            "y": 4
+          },
+          "turn_16ths": 0,
+          "visible": true
+        },
+        {
+          "pose": null,
+          "translate": {
+            "x": -1,
+            "y": 2
+          },
+          "turn_16ths": 0,
+          "visible": true
+        }
+      ],
+      "z": 10
+    }
+  ],
+  "layout": null,
+  "layout_id": null,
+  "mask_pixels": 332,
+  "mask_sha256": "193c199add6ca2af424bbdaf2d957fbc469817c6201df4fb519f805ce580ddf2",
+  "master_seed": 73109,
+  "phases": [
+    {
+      "duration_ms": 300,
+      "phase_id": "pose-0",
+      "seed": 73109
+    },
+    {
+      "duration_ms": 300,
+      "phase_id": "pose-1",
+      "seed": 73110
+    },
+    {
+      "duration_ms": 300,
+      "phase_id": "pose-2",
+      "seed": 73111
+    },
+    {
+      "duration_ms": 300,
+      "phase_id": "pose-3",
+      "seed": 73112
+    }
+  ],
+  "recipe_id": "story-handoffs-v1-cormorant-core",
+  "recipe_sha256": "02fe20d3f90066cda71bef0e79266145e787a0a4e8268dad097a0e00b23492ee",
+  "renderer": "pixelgen.motion/1",
+  "revision": 3
+}

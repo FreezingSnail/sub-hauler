@@ -1,0 +1,96 @@
+{
+  "assets": [
+    {
+      "license": null,
+      "path": "inputs/config.json",
+      "pixel_sha256": null,
+      "role": "config",
+      "sha256": "e41f3b7d959083ca4e347060d0ccb553805e818a2aa644ed4838a86002662c38",
+      "source": null
+    }
+  ],
+  "backend": null,
+  "environment": {
+    "core_lock_sha256": "21d731c34e8abfc6f3bab153e5b9d407ac16d02fb9a36b85704aa3c667b905c6",
+    "hardware": "arm64",
+    "os": "Darwin 25.6.0",
+    "python_version": "3.14.10",
+    "runtime_lock_sha256": null,
+    "runtime_python_version": null,
+    "uv_version": "uv 0.13.6 (Homebrew 2026-10-26 aarch64-apple-darwin)"
+  },
+  "failure": null,
+  "final": {
+    "license": null,
+    "path": "final.png",
+    "pixel_sha256": "c8eacf364fdc9b23e7033747dfadb105d651d58a0a27c72d74c81d7c8803d771",
+    "role": "final",
+    "sha256": "6e890b9cd7043496b5b668bbc81f74c29946488bb859ad3992a48bfe83a46afe",
+    "source": null
+  },
+  "layout": null,
+  "mode": "convert",
+  "preview": {
+    "license": null,
+    "path": "preview.png",
+    "pixel_sha256": "8ca3f494a476d95516c6267f3bae11f08720d2a2cf49246ffeb1764a2992252e",
+    "role": "preview",
+    "sha256": "df01775d4eab5c32adaabe4521532d5bcf06f409ddddaba027d820d215d8c309",
+    "source": null
+  },
+  "reproducibility": {
+    "conversion_replay": "not-performed",
+    "fresh_generation": "not-attempted"
+  },
+  "request": null,
+  "resolved_generation": null,
+  "run_id": "convert-7bb73b39dc3a9cc8",
+  "schema_version": "1.0",
+  "source": {
+    "license": null,
+    "path": "source.png",
+    "pixel_sha256": "7798f861a816c46d6020e303cf63442733b80b23432802eee31beac7e331a5dc",
+    "role": "source",
+    "sha256": "83b96bd3ea38596f6665512c57b69999ddac603ecbbf5f327b7810af7ca90669",
+    "source": null
+  },
+  "tail": {
+    "quantization": {
+      "bayer_matrix": [
+        [
+          0,
+          8,
+          2,
+          10
+        ],
+        [
+          12,
+          4,
+          14,
+          6
+        ],
+        [
+          3,
+          11,
+          1,
+          9
+        ],
+        [
+          15,
+          7,
+          13,
+          5
+        ]
+      ],
+      "mode": "bayer",
+      "origin_x": 0,
+      "origin_y": 0,
+      "threshold": 128
+    },
+    "resample": {
+      "mode": "nearest",
+      "target_height": 64,
+      "target_width": 128
+    }
+  }
+}

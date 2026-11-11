@@ -54,6 +54,10 @@ constexpr uint16_t kCameraScreenYQ4 = static_cast<uint16_t>(kCameraScreenY) << k
 constexpr uint16_t kCameraMaxStepQ4 = 2u << kCameraQ4Shift;
 constexpr uint16_t kDevCameraMaxStepQ4 = 6u << kCameraQ4Shift;
 
+// Developer fast traverse: position advance only, so the fixed physics tick,
+// air, currents, docking threshold and voyage clock stay at production rates.
+constexpr uint8_t kDevSpeedScale = 3;
+
 static_assert(kCameraMaxX >= 0 && kCameraMaxY >= 0, "world must be at least one view");
 static_assert(kCameraScreenX >= 0 && kCameraScreenX < static_cast<int16_t>(world::PIXELS_X), "camera target x can clamp");
 static_assert(kCameraScreenY >= 0 && kCameraScreenY < static_cast<int16_t>(world::PIXELS_Y), "camera target y can clamp");
@@ -208,10 +212,14 @@ template <typename Reader> inline bool hullHits(Reader &reader, const world::Til
 // velocity cannot tunnel through a wall, even though expected top speed only
 // moves half a pixel per tick. A blocked axis zeroes its velocity and Q12
 // remainder so pressure does not accumulate against the wall, and records the
-// impact for presentation. Returns true only when this call recorded a blocked
-// impact, so debris stays event-scoped even though the impact fields
-// deliberately latch the last contact for presentation.
-template <typename Reader> inline bool moveAxis(State &state, Reader &reader, const world::TileCache *cache, bool horizontal) {
+// impact for presentation. `collide=false` is the developer map-inspection path:
+// it moves the full integrated step without reading terrain or gates. Returns
+// true only when this call recorded a blocked impact, so debris stays
+// event-scoped even though the impact fields deliberately latch the last
+// contact for presentation. `speedScale` repeats the same fixed-step advance
+// without changing stored velocity or physics; only the developer image passes
+// more than one.
+template <typename Reader> inline bool moveAxis(State &state, Reader &reader, const world::TileCache *cache, bool horizontal, bool collide = true, uint8_t speedScale = 1) {
     int16_t &position = horizontal ? state.x : state.y;
     int16_t &frac = horizontal ? state.xFrac : state.yFrac;
     int16_t &velocity = horizontal ? state.vxQ8 : state.vyQ8;
@@ -222,7 +230,14 @@ template <typename Reader> inline bool moveAxis(State &state, Reader &reader, co
     const int16_t from = position;
     int16_t to = position;
     int16_t toFrac = frac;
-    advanceAxis(to, toFrac, velocity);
+    for (uint8_t step = 0; step < speedScale; ++step)
+        advanceAxis(to, toFrac, velocity);
+
+    if (!collide) {
+        position = to;
+        frac = toFrac;
+        return false;
+    }
 
     if (to == from) {
         frac = toFrac;
@@ -280,8 +295,11 @@ template <typename Reader> inline bool moveAxis(State &state, Reader &reader, co
 
 // One fixed 1/60 s step against the world. Physics is byte-identical to
 // step(); only the position advance changes, because it now resolves against
-// the cave. X moves first, then Y, matching the browser order.
-template <typename Reader> inline void stepWorld(State &state, const Input &input, Reader &reader, const world::TileCache *cache = nullptr) {
+// the cave. X moves first, then Y, matching the browser order. `collide=false`
+// keeps the boat inside the baked world but ignores terrain and equipment
+// gates; only the developer debug image passes it. `speedScale` is the
+// developer fast-traverse multiplier and never alters the one-tick rules step.
+template <typename Reader> inline void stepWorld(State &state, const Input &input, Reader &reader, const world::TileCache *cache = nullptr, bool collide = true, uint8_t speedScale = 1) {
     const bool freeFlight = state.docked < 0;
     exploration::beginStep(state);
     stepPhysics(state, input);
@@ -292,12 +310,36 @@ template <typename Reader> inline void stepWorld(State &state, const Input &inpu
     // Resolve each axis immediately after its move. The impact fields still
     // latch the last blocked axis for existing presentation/tests, but debris
     // is event-scoped, so an old wall field can never re-fire.
-    const bool hitX = moveAxis(state, reader, cache, true);
+    const bool hitX = moveAxis(state, reader, cache, true, collide, speedScale);
     if (freeFlight && hitX && state.impactAxis == 1 && game::hardWallImpact(state))
         particles::spawn(state);
-    const bool hitY = moveAxis(state, reader, cache, false);
-    if (freeFlight && hitY && state.impactAxis == 2 && game::hardWallImpact(state))
+    // moveAxis zeroes the blocked axis velocity, so capture the descent before
+    // the Y move decides whether this was a floor slam.
+    const bool descendingY = state.vyQ8 > 0;
+    const bool hitY = moveAxis(state, reader, cache, false, collide, speedScale);
+    if (freeFlight && hitY && state.impactAxis == 2 && game::hardWallImpact(state)) {
         particles::spawn(state);
+        if (descendingY)
+            game::spendHardFloorImpactAir(state);
+    }
+    if (!collide) {
+        // No-clip still respects the sealed world border so the camera and
+        // renderer always have a valid baked window to show.
+        const int16_t minX = kHullHalfW;
+        const int16_t maxX = static_cast<int16_t>(world::PIXELS_X - kHullHalfW);
+        const int16_t minY = kHullHalfH;
+        const int16_t maxY = static_cast<int16_t>(world::PIXELS_Y - kHullHalfH);
+        if (state.x < minX || state.x > maxX || (state.x == minX && state.vxQ8 < 0) || (state.x == maxX && state.vxQ8 > 0)) {
+            state.x = clampI16(state.x, minX, maxX);
+            state.xFrac = 0;
+            state.vxQ8 = 0;
+        }
+        if (state.y < minY || state.y > maxY || (state.y == minY && state.vyQ8 < 0) || (state.y == maxY && state.vyQ8 > 0)) {
+            state.y = clampI16(state.y, minY, maxY);
+            state.yFrac = 0;
+            state.vyQ8 = 0;
+        }
+    }
     // Age the pool once per free-flight tick, after any spawn this tick.
     if (freeFlight)
         particles::tick(state);

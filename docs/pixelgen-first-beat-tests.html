@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>Sub-hauler — pixelgen first-beat animation loops</title>
+<style>
+:root{--bg:#101214;--panel:#181b1f;--line:#384049;--ink:#eceff1;--muted:#9aa4ae;--accent:#b8d7ff;--warm:#c6b98a}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,-apple-system,Segoe UI,sans-serif}
+main{max-width:1080px;margin:auto;padding:28px 20px 64px}
+h1{font-size:26px;line-height:1.15;margin:0 0 8px}
+h2{font-size:20px;margin:0 0 6px}
+p{margin:0 0 12px}
+.lede{max-width:820px;color:var(--muted)}
+.toolbar{display:flex;gap:18px;align-items:center;flex-wrap:wrap;margin:18px 0 8px;padding:10px 12px;border:1px solid var(--line);background:var(--panel)}
+.toolbar a{color:var(--accent)}
+label{user-select:none}
+.beat{border-top:1px solid var(--line);margin-top:30px;padding-top:24px}
+.meta{color:var(--muted);font:13px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace}
+.compare{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:14px 0 18px}
+.player{margin:0;background:#000;border:1px solid var(--line)}
+.screen{position:relative;aspect-ratio:2/1;background:#000;overflow:hidden}
+.pose{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;opacity:0;image-rendering:pixelated;image-rendering:crisp-edges;animation:cycle 1.2s steps(1,end) infinite;animation-delay:calc(var(--i) * .3s);animation-fill-mode:backwards}
+figcaption{padding:7px 9px;border-top:1px solid var(--line);color:var(--muted);font:13px/1.3 ui-monospace,SFMono-Regular,Menlo,monospace}
+.reference figcaption{color:var(--warm)}
+.pause-toggle{position:absolute;opacity:0;pointer-events:none}
+.pause-toggle:checked~main .pose{animation-play-state:paused}
+.strip{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:0 0 16px}
+.strip figure{margin:0;padding:7px;background:var(--panel);border:1px solid var(--line)}
+.strip img{display:block;width:100%;height:auto;image-rendering:pixelated;image-rendering:crisp-edges;background:#000}
+.strip figcaption{padding:6px 0 0;border:0}
+.mask-row{display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap;margin:0 0 16px;padding:10px;border:1px solid var(--line);background:var(--panel)}
+.mask-row img{display:block;width:256px;max-width:100%;height:auto;image-rendering:pixelated;image-rendering:crisp-edges;background:#000}
+.mask-row p{max-width:680px;margin:0;color:var(--muted);font-size:14px}
+details{border:1px solid var(--line);background:var(--panel);padding:9px 12px;margin:0 0 8px}
+summary{cursor:pointer;color:var(--muted)}
+details ul{margin:9px 0 0;padding-left:20px;font:13px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace}
+details a{color:var(--accent)}
+@keyframes cycle{0%{opacity:0}0.01%,24.99%{opacity:1}25%,100%{opacity:0}}
+@media(max-width:760px){.compare{grid-template-columns:1fr}.strip{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(prefers-reduced-motion:reduce){.pose{animation:none}.pose:first-child{opacity:1}}
+</style>
+</head>
+<body>
+<input class="pause-toggle" type="checkbox" id="pause">
+<main>
+<header>
+<h1>Pixelgen first-beat animation loops</h1>
+<p class="lede">Three consistent loops, one per first-beat image card. Each uses one anchor still and a motion mask; only the masked region changes. The retry anchors strengthen the submarine silhouette and use dithered texture closer to the existing decks. Four native frames at 300 ms gives a 1.2 s loop at 3.3 fps.</p>
+<p class="meta">pixelgen.animation/1 · 128×64 · 1-bit · assemble/replay matched · reports unreviewed</p>
+<div class="toolbar">
+<label for="pause">Pause all loops</label>
+<a href="story-sketchbook.html">← Story sketchbook</a>
+</div>
+</header>
+
+<section class="beat" aria-labelledby="arrival-heading">
+<h2 id="arrival-heading">1 · The sub arrives</h2>
+<p class="meta">Anchor seed 601 · sub bobs 2 px · PNG silhouette mask · 4 × 300 ms</p>
+<div class="compare">
+<figure class="player">
+<div class="screen">
+<img class="pose" style="--i:0" src="../assets/pixelgen/first-beat-arrival-loop/bundle/frames/000.png" alt="Arrival loop frame 0">
+<img class="pose" style="--i:1" src="../assets/pixelgen/first-beat-arrival-loop/bundle/frames/001.png" alt="Arrival loop frame 1">
+<img class="pose" style="--i:2" src="../assets/pixelgen/first-beat-arrival-loop/bundle/frames/002.png" alt="Arrival loop frame 2">
+<img class="pose" style="--i:3" src="../assets/pixelgen/first-beat-arrival-loop/bundle/frames/003.png" alt="Arrival loop frame 3">
+</div>
+<figcaption>Pixelgen loop · native frames · 3.3 fps</figcaption>
+</figure>
+<figure class="player reference">
+<div class="screen">
+<img class="pose" style="--i:0" src="assets/first-beat-animation/all-beats-v3/arrival-0.png" alt="Current arrival pose 1">
+<img class="pose" style="--i:1" src="assets/first-beat-animation/all-beats-v3/arrival-1.png" alt="Current arrival pose 2">
+<img class="pose" style="--i:2" src="assets/first-beat-animation/all-beats-v3/arrival-2.png" alt="Current arrival pose 3">
+<img class="pose" style="--i:3" src="assets/first-beat-animation/all-beats-v3/arrival-3.png" alt="Current arrival pose 4">
+</div>
+<figcaption>Current 4-pose deck · perspective reference</figcaption>
+</figure>
+</div>
+<div class="strip">
+<figure><img src="../assets/pixelgen/first-beat-arrival-loop/bundle/frames/000.png" alt="Arrival frame 0"><figcaption>000 · anchor</figcaption></figure>
+<figure><img src="../assets/pixelgen/first-beat-arrival-loop/bundle/frames/001.png" alt="Arrival frame 1"><figcaption>001 · rise</figcaption></figure>
+<figure><img src="../assets/pixelgen/first-beat-arrival-loop/bundle/frames/002.png" alt="Arrival frame 2"><figcaption>002 · peak</figcaption></figure>
+<figure><img src="../assets/pixelgen/first-beat-arrival-loop/bundle/frames/003.png" alt="Arrival frame 3"><figcaption>003 · settle</figcaption></figure>
+</div>
+<div class="mask-row">
+<img src="../assets/pixelgen/first-beat-arrival-loop/bundle/inputs/mask.png" alt="Arrival motion mask">
+<p>White permits change; black preserves frame 0. The silhouette mask bounds the submarine’s bob without touching the seabed, coral or open water.</p>
+</div>
+<details><summary>Bundle provenance</summary>
+<ul>
+<li><a href="../assets/pixelgen/first-beat-arrival-loop/bundle/manifest.json">manifest</a> · <a href="../assets/pixelgen/first-beat-arrival-loop/bundle/report.json">report</a> · <a href="../assets/pixelgen/first-beat-arrival-loop/bundle/inputs/spec.json">spec</a> · <a href="../assets/pixelgen/first-beat-arrival-loop/bundle/contact_sheet.html">contact sheet</a> · <a href="../assets/pixelgen/first-beat-arrival-loop/bundle/preview.gif">GIF preview</a></li>
+<li>anchor: <a href="../assets/pixelgen/first-beat-arrival/final.png">first-beat-arrival/final.png</a> · <a href="../assets/pixelgen/first-beat-arrival/manifest.json">manifest</a> · <a href="../assets/pixelgen/first-beat-arrival/report.json">report</a></li>
+</ul>
+</details>
+</section>
+
+<section class="beat" aria-labelledby="grow-heading">
+<h2 id="grow-heading">2 · The grow tanks</h2>
+<p class="meta">Anchor seed 701 · bubbles rise 3 px per frame · two tank masks · 4 × 300 ms</p>
+<div class="compare">
+<figure class="player">
+<div class="screen">
+<img class="pose" style="--i:0" src="../assets/pixelgen/first-beat-grow-tanks-loop/bundle/frames/000.png" alt="Grow-tank loop frame 0">
+<img class="pose" style="--i:1" src="../assets/pixelgen/first-beat-grow-tanks-loop/bundle/frames/001.png" alt="Grow-tank loop frame 1">
+<img class="pose" style="--i:2" src="../assets/pixelgen/first-beat-grow-tanks-loop/bundle/frames/002.png" alt="Grow-tank loop frame 2">
+<img class="pose" style="--i:3" src="../assets/pixelgen/first-beat-grow-tanks-loop/bundle/frames/003.png" alt="Grow-tank loop frame 3">
+</div>
+<figcaption>Pixelgen loop · native frames · 3.3 fps</figcaption>
+</figure>
+<figure class="player reference">
+<div class="screen">
+<img class="pose" style="--i:0" src="assets/first-beat-animation/all-beats-v3/grow-tanks-0.png" alt="Current grow-tank pose 1">
+<img class="pose" style="--i:1" src="assets/first-beat-animation/all-beats-v3/grow-tanks-1.png" alt="Current grow-tank pose 2">
+<img class="pose" style="--i:2" src="assets/first-beat-animation/all-beats-v3/grow-tanks-2.png" alt="Current grow-tank pose 3">
+<img class="pose" style="--i:3" src="assets/first-beat-animation/all-beats-v3/grow-tanks-3.png" alt="Current grow-tank pose 4">
+</div>
+<figcaption>Current 4-pose deck · perspective reference</figcaption>
+</figure>
+</div>
+<div class="strip">
+<figure><img src="../assets/pixelgen/first-beat-grow-tanks-loop/bundle/frames/000.png" alt="Grow-tank frame 0"><figcaption>000 · anchor</figcaption></figure>
+<figure><img src="../assets/pixelgen/first-beat-grow-tanks-loop/bundle/frames/001.png" alt="Grow-tank frame 1"><figcaption>001 · step 1</figcaption></figure>
+<figure><img src="../assets/pixelgen/first-beat-grow-tanks-loop/bundle/frames/002.png" alt="Grow-tank frame 2"><figcaption>002 · step 2</figcaption></figure>
+<figure><img src="../assets/pixelgen/first-beat-grow-tanks-loop/bundle/frames/003.png" alt="Grow-tank frame 3"><figcaption>003 · step 3</figcaption></figure>
+</div>
+<div class="mask-row">
+<img src="../assets/pixelgen/first-beat-grow-tanks-loop/bundle/inputs/mask.png" alt="Grow-tank motion mask">
+<p>The two mask rectangles cover the planted tank interiors. The frames and pipework outside them come from the anchor unchanged.</p>
+</div>
+<details><summary>Bundle provenance</summary>
+<ul>
+<li><a href="../assets/pixelgen/first-beat-grow-tanks-loop/bundle/manifest.json">manifest</a> · <a href="../assets/pixelgen/first-beat-grow-tanks-loop/bundle/report.json">report</a> · <a href="../assets/pixelgen/first-beat-grow-tanks-loop/bundle/inputs/spec.json">spec</a> · <a href="../assets/pixelgen/first-beat-grow-tanks-loop/bundle/contact_sheet.html">contact sheet</a> · <a href="../assets/pixelgen/first-beat-grow-tanks-loop/bundle/preview.gif">GIF preview</a></li>
+<li>anchor: <a href="../assets/pixelgen/first-beat-grow-tanks/final.png">first-beat-grow-tanks/final.png</a> · <a href="../assets/pixelgen/first-beat-grow-tanks/manifest.json">manifest</a> · <a href="../assets/pixelgen/first-beat-grow-tanks/report.json">report</a></li>
+</ul>
+</details>
+</section>
+
+<section class="beat" aria-labelledby="repair-heading">
+<h2 id="repair-heading">3 · Benthos asks for repairs</h2>
+<p class="meta">Anchor seed 803 · impeller turns 90° per frame · circular mask · 4 × 300 ms</p>
+<div class="compare">
+<figure class="player">
+<div class="screen">
+<img class="pose" style="--i:0" src="../assets/pixelgen/first-beat-repair-bay-loop/bundle/frames/000.png" alt="Repair-bay loop frame 0">
+<img class="pose" style="--i:1" src="../assets/pixelgen/first-beat-repair-bay-loop/bundle/frames/001.png" alt="Repair-bay loop frame 1">
+<img class="pose" style="--i:2" src="../assets/pixelgen/first-beat-repair-bay-loop/bundle/frames/002.png" alt="Repair-bay loop frame 2">
+<img class="pose" style="--i:3" src="../assets/pixelgen/first-beat-repair-bay-loop/bundle/frames/003.png" alt="Repair-bay loop frame 3">
+</div>
+<figcaption>Pixelgen loop · native frames · 3.3 fps</figcaption>
+</figure>
+<figure class="player reference">
+<div class="screen">
+<img class="pose" style="--i:0" src="assets/first-beat-animation/all-beats-v3/repair-bay-0.png" alt="Current repair-bay pose 1">
+<img class="pose" style="--i:1" src="assets/first-beat-animation/all-beats-v3/repair-bay-1.png" alt="Current repair-bay pose 2">
+<img class="pose" style="--i:2" src="assets/first-beat-animation/all-beats-v3/repair-bay-2.png" alt="Current repair-bay pose 3">
+<img class="pose" style="--i:3" src="assets/first-beat-animation/all-beats-v3/repair-bay-3.png" alt="Current repair-bay pose 4">
+</div>
+<figcaption>Current 4-pose deck · perspective reference</figcaption>
+</figure>
+</div>
+<div class="strip">
+<figure><img src="../assets/pixelgen/first-beat-repair-bay-loop/bundle/frames/000.png" alt="Repair-bay frame 0"><figcaption>000 · anchor</figcaption></figure>
+<figure><img src="../assets/pixelgen/first-beat-repair-bay-loop/bundle/frames/001.png" alt="Repair-bay frame 1"><figcaption>001 · quarter turn</figcaption></figure>
+<figure><img src="../assets/pixelgen/first-beat-repair-bay-loop/bundle/frames/002.png" alt="Repair-bay frame 2"><figcaption>002 · half turn</figcaption></figure>
+<figure><img src="../assets/pixelgen/first-beat-repair-bay-loop/bundle/frames/003.png" alt="Repair-bay frame 3"><figcaption>003 · three-quarter turn</figcaption></figure>
+</div>
+<div class="mask-row">
+<img src="../assets/pixelgen/first-beat-repair-bay-loop/bundle/inputs/mask.png" alt="Repair-bay motion mask">
+<p>The mask keeps the pump housing, floor and lift opening frozen while the dark impeller spokes turn inside a circular window.</p>
+</div>
+<details><summary>Bundle provenance</summary>
+<ul>
+<li><a href="../assets/pixelgen/first-beat-repair-bay-loop/bundle/manifest.json">manifest</a> · <a href="../assets/pixelgen/first-beat-repair-bay-loop/bundle/report.json">report</a> · <a href="../assets/pixelgen/first-beat-repair-bay-loop/bundle/inputs/spec.json">spec</a> · <a href="../assets/pixelgen/first-beat-repair-bay-loop/bundle/contact_sheet.html">contact sheet</a> · <a href="../assets/pixelgen/first-beat-repair-bay-loop/bundle/preview.gif">GIF preview</a></li>
+<li>anchor: <a href="../assets/pixelgen/first-beat-repair-bay/final.png">first-beat-repair-bay/final.png</a> · <a href="../assets/pixelgen/first-beat-repair-bay/manifest.json">manifest</a> · <a href="../assets/pixelgen/first-beat-repair-bay/report.json">report</a></li>
+</ul>
+</details>
+</section>
+
+<section class="beat" aria-labelledby="notes-heading">
+<h2 id="notes-heading">Bundle notes</h2>
+<p>Native frames in each bundle are authoritative. The GIF is a preview only. Each loop was assembled from supplied frames with a rectangle motion mask, then checked and replayed; reports remain <code>unreviewed</code>.</p>
+</section>
+</main>
+</body>
+</html>

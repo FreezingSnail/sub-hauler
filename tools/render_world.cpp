@@ -37,7 +37,6 @@ int main(int argc, char **argv) {
             const cave::Camera camera = cave::cameraAtTile(tx, ty);
             cave::streamFrame(camera, terrain, buffer);
             hazard_view::drawCurrents(buffer, state, camera);
-            hazard_view::drawMines(buffer, state, camera);
             exploration_view::draw(buffer, state, camera);
             pilot_view::draw(buffer, state, camera);
             for (int16_t y = 0; y < 64; ++y) {

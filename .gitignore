@@ -11,3 +11,6 @@ tools/tests/__pycache__/
 compile_commands.json
 .cache/
 .clangd
+
+# Pixelgen transient runs
+.pixelgen/

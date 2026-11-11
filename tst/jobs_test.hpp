@@ -4,6 +4,7 @@
 #include "../src/game.hpp"
 #include "../src/jobs.hpp"
 #include "../src/station.hpp"
+#include "../src/story_view.hpp"
 #include "../src/world.hpp"
 #include "test.hpp"
 #include "world_test.hpp"
@@ -35,8 +36,8 @@ inline bool otherSettlement(uint8_t origin, uint8_t skip, uint8_t &id) {
 }
 
 inline bool dockAt(game::State &state, uint8_t settlementId) {
-    world::Settlement settlement;
-    if (!world::settlementInfo(settlementId, settlement))
+    world::Berth settlement;
+    if (!world::berthInfo(settlementId, settlement))
         return false;
     state.docked = -1;
     state.dockCooldown = 0;
@@ -116,21 +117,20 @@ inline void JobsSuite(TestRunner &runner) {
     }
 
     {
-        Test test("abandon clears the contract and hold without a payout");
+        Test test("mandatory story work cannot be discarded from the active board");
         game::State state;
         game::reset(state);
         test.assertTrue(dockAt(state, campaign::kTidewall), "dock succeeds");
-        test.assertTrue(!jobs::abandon(state), "abandon is inert without a contract");
         test.assertTrue(campaign::accept(state, campaign::kFirst), "contract accepted");
-        state.lastDelivery = jobs::kDeliveryFailed;   // simulate a stale note before abandon
+        state.lastDelivery = jobs::kDeliveryFailed;
 
-        test.assertEqual(station::activate(station::kAbandonRow, state), station::kActionAbandoned, "A on ABANDON clears the contract");
-        test.assertTrue(!station::jobActive(state), "contract is gone");
-        test.assertEqual(state.cargo, 0, "hold is cleared");
-        test.assertEqual(state.ballast, game::neutralFor(0), "unladen trim is restored");
-        test.assertEqual(state.delivered, 0, "abandonment never counts a delivery");
-        test.assertEqual(state.lastDelivery, jobs::kDeliveryNone, "abandon clears the delivery note");
-        test.assertTrue(campaign::missionAvailable(state, campaign::kFirst), "abandon leaves the mission available");
+        test.assertEqual(station::activate(station::kActiveWorkRow, state), station::kActionWork, "WORK does not clear the load");
+        test.assertEqual(station::activate(station::kActiveUndockRow, state), station::kActionUndocked, "UNDOCK leaves with the load");
+        test.assertTrue(station::jobActive(state), "contract survives every available row");
+        test.assertEqual(state.cargo, game::kJobCrates, "hold is retained");
+        test.assertEqual(state.ballast, game::neutralFor(state.cargo), "loaded trim is retained");
+        test.assertEqual(state.delivered, 0, "no delivery is counted");
+        test.assertEqual(state.lastDelivery, jobs::kDeliveryFailed, "the short note is not cleared by leaving");
         runner.add(test);
     }
 
@@ -150,6 +150,64 @@ inline void JobsSuite(TestRunner &runner) {
         test.assertTrue(!jobs::deliveryFailed(state), "a completed delivery has no failure note");
         test.assertEqual(state.campaign & campaign::kMilestoneFirst, campaign::kMilestoneFirst, "FIRST milestone set");
         test.assertTrue(campaign::missionCompleted(state, campaign::kFirst), "FIRST completion flag");
+        runner.add(test);
+    }
+
+    {
+        Test test("fresh LIFT dock delivery selects the four-card LIFT deck once");
+        game::State state;
+        game::reset(state);
+        // Prerequisites for LIFT: FIRST complete and the Cormorant lift survey
+        // recorded. The cable reels load at Benthos and deliver at Cormorant.
+        state.campaign = campaign::kMilestoneFirst;
+        state.surveys = campaign::kSurveyLift;
+        test.assertTrue(dockAt(state, campaign::kBenthos), "dock at the LIFT source");
+        test.assertTrue(campaign::accept(state, campaign::kLift), "LIFT contract accepted");
+        test.assertEqual(state.activeJob.to, campaign::kFreightYard, "LIFT is bound for the Freight Yard lift");
+        test.assertEqual(state.cargo, game::kJobCrates, "LIFT loads four cable reels");
+
+        // Mirrors updateFlight(): capture the milestone mask before the dock
+        // step, then select the one-shot beat from the post-delivery mask.
+        const uint8_t before = state.campaign;
+        test.assertTrue(travelTo(state, campaign::kFreightYard), "dock at the Freight Yard work site with the load");
+        test.assertEqual(state.lastDelivery, jobs::kDeliveryDelivered, "cable reels delivered");
+        test.assertEqual(state.campaign & campaign::kMilestoneLift, campaign::kMilestoneLift, "the dock sets the LIFT milestone");
+        test.assertEqual(story_view::cardForNewMilestone(before, state.campaign), story_view::kCardLift, "fresh LIFT selects the LIFT deck");
+        test.assertEqual(story_view::cardCount(story_view::kCardLift), 2, "LIFT result deck is two cards after pickup");
+
+        // A later dock with the milestone already set cannot replay the beat.
+        test.assertTrue(travelTo(state, campaign::kBenthos), "leave and dock again");
+        test.assertEqual(story_view::cardForNewMilestone(state.campaign, state.campaign), story_view::kCardNone, "repeat dock shows no deck");
+        runner.add(test);
+    }
+
+    {
+        Test test("repair cargo completes only at its real pump or lift work site");
+        game::State pump;
+        game::reset(pump);
+        pump.campaign = campaign::kMilestoneFirst;
+        pump.surveys = campaign::kSurveyPump;
+        test.assertTrue(dockAt(pump, campaign::kCormorant), "dock at the impeller source");
+        test.assertTrue(campaign::accept(pump, campaign::kPump), "PUMP accepted");
+        test.assertEqual(pump.activeJob.to, campaign::kPumpRefuge, "PUMP is bound for Pump Refuge");
+        test.assertTrue(travelTo(pump, campaign::kBenthos), "old Benthos handoff no longer completes");
+        test.assertTrue(station::jobActive(pump), "PUMP load survives Benthos");
+        test.assertEqual(pump.cargo, game::kJobCrates, "PUMP hold survives Benthos");
+        test.assertTrue(travelTo(pump, campaign::kPumpRefuge), "dock at Pump Refuge");
+        test.assertTrue(campaign::missionCompleted(pump, campaign::kPump), "PUMP completes at the pump");
+
+        game::State lift;
+        game::reset(lift);
+        lift.campaign = campaign::kMilestoneFirst;
+        lift.surveys = campaign::kSurveyLift;
+        test.assertTrue(dockAt(lift, campaign::kBenthos), "dock at the cable source");
+        test.assertTrue(campaign::accept(lift, campaign::kLift), "LIFT accepted");
+        test.assertEqual(lift.activeJob.to, campaign::kFreightYard, "LIFT is bound for Freight Yard");
+        test.assertTrue(travelTo(lift, campaign::kCormorant), "old Cormorant handoff no longer completes");
+        test.assertTrue(station::jobActive(lift), "LIFT load survives Cormorant");
+        test.assertEqual(lift.cargo, game::kJobCrates, "LIFT hold survives Cormorant");
+        test.assertTrue(travelTo(lift, campaign::kFreightYard), "dock at Freight Yard");
+        test.assertTrue(campaign::missionCompleted(lift, campaign::kLift), "LIFT completes at the lift");
         runner.add(test);
     }
 
@@ -229,7 +287,7 @@ inline void JobsSuite(TestRunner &runner) {
     }
 
     {
-        Test test("station board offers WORK and active board keeps ABANDON deliberate");
+        Test test("station board offers WORK and the active board has no abandon row");
         game::State state;
         game::reset(state);
         test.assertTrue(dockAt(state, campaign::kTidewall), "dock at origin");
@@ -242,18 +300,15 @@ inline void JobsSuite(TestRunner &runner) {
 
         test.assertTrue(campaign::accept(state, campaign::kFirst), "contract accepted");
         test.assertEqual(station::rowCount(state), station::kActiveRowCount, "active board shape");
-        test.assertEqual(station::kActiveRowCount, 4, "active board is summary/ABANDON/WORK/UNDOCK");
+        test.assertEqual(station::kActiveRowCount, 3, "active board is summary/WORK/UNDOCK");
         test.assertEqual(station::rowKind(station::kActiveSummaryRow, state), station::kRowJob, "summary row");
         test.assertEqual(station::initialRow(state), station::kActiveUndockRow, "safe UNDOCK starts the active board");
-        test.assertEqual(station::selectNext(station::kActiveUndockRow, state), station::kAbandonRow, "down reaches ABANDON");
-        test.assertEqual(station::selectPrevious(station::kActiveUndockRow, state), station::kActiveWorkRow, "up reaches WORK");
-        test.assertEqual(station::selectPrevious(station::kActiveWorkRow, state), station::kAbandonRow, "WORK follows ABANDON");
+        test.assertEqual(station::selectNext(station::kActiveWorkRow, state), station::kActiveUndockRow, "WORK advances to UNDOCK");
+        test.assertEqual(station::selectPrevious(station::kActiveWorkRow, state), station::kActiveUndockRow, "WORK wraps to UNDOCK");
         test.assertEqual(station::rowKind(station::kActiveWorkRow, state), station::kRowWork, "active WORK row");
-        test.assertEqual(station::rowKind(station::kAbandonRow, state), station::kRowAbandon, "ABANDON row");
         test.assertEqual(station::rowKind(station::kActiveUndockRow, state), station::kRowUndock, "UNDOCK row");
         test.assertEqual(station::activate(station::kActiveSummaryRow, state), station::kActionNone, "summary row is inert");
-        test.assertEqual(station::activate(station::kAbandonRow, state), station::kActionAbandoned, "ABANDON action works");
-        test.assertEqual(station::rowCount(state), station::kStationRowCount, "board returns to WORK after abandonment");
+        test.assertTrue(station::jobActive(state), "no selectable row clears the contract");
         runner.add(test);
     }
 }

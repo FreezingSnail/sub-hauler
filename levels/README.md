@@ -1,8 +1,9 @@
 # Authored exploration level
 
 `exploration.json` is the editable source for the active game map. It contains
-32 named rooms, 42 passages, four station IDs, nine equipment gates and four
-equipment coves (cutter, seal, thruster, survey lens). Coordinates/radii are in
+32 named rooms, 42 passages, four station IDs, six equipment gates, three tide
+sections and four equipment coves (cutter, seal, thruster, survey lens).
+Coordinates/radii are in
 8-pixel tiles. `terrain` selects the
 deterministic organic carve; room `size`/`lobes` shape asymmetric chambers and
 route `via` points describe winding, variable-width passages. Room `obstacles`
@@ -11,6 +12,9 @@ and route `obstacles` add solid shelves, teeth, ribs and rock islands; route
 features, occupying 509 tiles that would otherwise be water.
 `requires` lists capability tools. Explicit gate positions/axes
 allow an entrance to be sealed without blocking a neighboring route.
+`music_region` optionally overrides the room's travel cue without changing its
+scenery theme; the generator also merges gate-cut cue fragments under 256 open
+tiles into the neighbouring region.
 
 Station rooms also supply a `dock: [tile_x, tile_y]` separate from the room's
 navigation centre. It places the real berth on a cave-wall ledge. Generation
@@ -107,6 +111,15 @@ or object array is copied into SRAM. Device code uses integer math only.
 
 ## Playable behavior
 
+- Current zones cover the common navigable cross-section of their flow strip
+  and overlap rock on each edge. The intersection rule deliberately leaves
+  side coves and dead-end pockets out of the tide, so a current cannot pin the
+  boat in a pocket. Every tide is a thruster gate: without the current
+  thruster it blocks upstream travel while leaving the downstream escape open;
+  owning the thruster disables the tide completely. The authored Cormorant
+  passage is a one-way upward tide, so its downstream return stays open.
+  Remaining room-centre currents are thruster-gated tide walls.
+  Tile-count metadata preserves extents above 255 pixels.
 - The cutter is recoverable from the western cove near Tidewall. Hold the boat
   slow and close to a find for half a second to recover it. Bottom-line hints
   identify equipment; station rumors guide required discoveries.
@@ -117,17 +130,18 @@ or object array is copied into SRAM. Device code uses integer math only.
   the cutter. Every entry into the lowest region needs the seal; the return
   shaft additionally needs the thruster. Deep Anchor is the lowest settlement.
 - Four equipment coves hold the cutter, pressure seal, current thruster and
-  survey lens. The survey lens is still collectible, but gameplay sonar was
-  retired on 2026-10-28, so the lens currently sets its tool bit without
-  changing any reveal radius. There are no credit caches or purses.
+  survey lens. The survey lens is required for the mandatory lower-right DEEP
+  RELAY expedition, where it reads the buried relay. Gameplay sonar was retired
+  on 2026-10-28, so the lens does not change any reveal radius. There are no
+  credit caches or purses.
 - The chart remembers encountered gates and shows finds only in explored
   cells. Claimed finds and passable gates use smaller markers.
 - Story work is untimed and unpaid. Contracts do not offer Deep Anchor before
   the pressure seal is owned. Intermediate berth stops refill the fixed 300-unit
   air tank while retaining the active job and cargo.
 
-The fixed build ships campaign restoration missions, homecoming and a
-persistent schema 7 voyage save. Continue and rescue restore
+The fixed build ships campaign restoration missions, the mandatory DEEP RELAY
+expedition, homecoming and a persistent schema 7 voyage save. Continue and rescue restore
 the last committed berth, including saved tools, claims and opened grates;
 unsaved expedition gains roll back. A New Voyage resets exploration.
 See [progression.md](../docs/progression.md). `layout_version` is
@@ -135,7 +149,8 @@ now 3, so the optional standalone chart save rejects the preceding terrain's
 chart. The JSON schema version and SHL2 object encoding remain version 2.
 
 Exploration is always enabled in the fixed build; there are no feature
-profiles or developer noclip mode.
+profiles or shipping developer modes. The developer-only `make debug` image
+adds no-clip map inspection without changing the shipping build.
 
 ## Validation and preview
 
@@ -164,7 +179,11 @@ After `make gen`, run `make render-world` to export the packed world using the
 actual host versions of the cave, station, gate, pickup, current and pilot
 renderers, including the streamed native terrain. It writes `build/world-render/game-world-native.png` (2560x1280,
 1-bit scene pixels without HUD) and `build/world-render/game-world.png`
-(2560x1530, labeled overview). All finds/gates are in new-run state and
+(2560x1530, labeled overview) and `build/world-render/game-world-music.png`
+(2560x1630, travel cue regions highlighted), then refreshes the guide copies at
+`docs/assets/exploration-world-native-2026-11-09.png`,
+`docs/assets/exploration-world-2026-11-09.png` and
+`docs/assets/exploration-world-music-2026-11-09.png`. All finds/gates are in new-run state and
 all areas are visible. This preview command reads existing generated data and
 does not change game assets or the FX layout.
 `game-world-regions.png` shows eight 128x64 native crops enlarged 4× without

@@ -1,0 +1,210 @@
+{
+  "assets": [
+    {
+      "height": 64,
+      "path": "background.png",
+      "role": "background",
+      "sha256": "14a164d9822fa05b23eabb20809da9385ae3abcced5b969c87cc262954aa0cb4",
+      "width": 128
+    },
+    {
+      "height": 2,
+      "path": "running-lift-cable-marker-matte.png",
+      "role": "layer:running-lift-cable-marker:matte",
+      "sha256": "18744f6ce2bf6f7938ed2c1c2cff7577b90301dbc5a06c1c19ef76bfd3b6848c",
+      "width": 7
+    },
+    {
+      "height": 2,
+      "path": "running-lift-cable-marker.png",
+      "role": "layer:running-lift-cable-marker:source",
+      "sha256": "18744f6ce2bf6f7938ed2c1c2cff7577b90301dbc5a06c1c19ef76bfd3b6848c",
+      "width": 7
+    },
+    {
+      "height": 11,
+      "path": "working-pump-rotor-matte.png",
+      "role": "layer:working-pump-rotor:matte",
+      "sha256": "eea292629a0b12e54a708a5024454ac7a0d679189a26101039fff28d30d2d105",
+      "width": 11
+    },
+    {
+      "height": 11,
+      "path": "working-pump-rotor.png",
+      "role": "layer:working-pump-rotor:source",
+      "sha256": "d8e85c7b8c1d2dee7d56a4f2afbe91a75b6a2c99588f3e2e5fa9f2a2765cf197",
+      "width": 11
+    }
+  ],
+  "background": {
+    "path": "background.png",
+    "sha256": "14a164d9822fa05b23eabb20809da9385ae3abcced5b969c87cc262954aa0cb4"
+  },
+  "canvas": {
+    "depth": 1,
+    "height": 64,
+    "width": 128
+  },
+  "expected_mask_sha256": null,
+  "format": "pixelgen.motion.provenance/1",
+  "frame_sha256": [
+    "0d9adc06b133094543114d9f1e29061ac82e6b670cccf751d68b91f7caf9b4e4",
+    "d8241061f34e1f2299a3a93e9ffa05e39e3e06231652605d1768d56f2bee99e6",
+    "3a598f422a9f68fc0e32666bfd6f644ab889f52760e82cf3aeb3192495ff29da",
+    "2caf48977c481c84757dda346080f5e09553a21ae05e2e5307b8a4b574f82c32"
+  ],
+  "layers": [
+    {
+      "clip": "error",
+      "layer_id": "working-pump-rotor",
+      "matte": {
+        "path": "working-pump-rotor-matte.png",
+        "sha256": "eea292629a0b12e54a708a5024454ac7a0d679189a26101039fff28d30d2d105"
+      },
+      "motion_bounds": null,
+      "origin": {
+        "x": 8,
+        "y": 35
+      },
+      "pivot": {
+        "x": 13,
+        "y": 40
+      },
+      "poses": {},
+      "role": "part",
+      "source": {
+        "path": "working-pump-rotor.png",
+        "sha256": "d8e85c7b8c1d2dee7d56a4f2afbe91a75b6a2c99588f3e2e5fa9f2a2765cf197"
+      },
+      "track": [
+        {
+          "pose": null,
+          "translate": {
+            "x": 0,
+            "y": 0
+          },
+          "turn_16ths": 0,
+          "visible": true
+        },
+        {
+          "pose": null,
+          "translate": {
+            "x": 0,
+            "y": 0
+          },
+          "turn_16ths": 2,
+          "visible": true
+        },
+        {
+          "pose": null,
+          "translate": {
+            "x": 0,
+            "y": 0
+          },
+          "turn_16ths": 4,
+          "visible": true
+        },
+        {
+          "pose": null,
+          "translate": {
+            "x": 0,
+            "y": 0
+          },
+          "turn_16ths": 6,
+          "visible": true
+        }
+      ],
+      "z": 10
+    },
+    {
+      "clip": "error",
+      "layer_id": "running-lift-cable-marker",
+      "matte": {
+        "path": "running-lift-cable-marker-matte.png",
+        "sha256": "18744f6ce2bf6f7938ed2c1c2cff7577b90301dbc5a06c1c19ef76bfd3b6848c"
+      },
+      "motion_bounds": null,
+      "origin": {
+        "x": 107,
+        "y": 23
+      },
+      "pivot": null,
+      "poses": {},
+      "role": "part",
+      "source": {
+        "path": "running-lift-cable-marker.png",
+        "sha256": "18744f6ce2bf6f7938ed2c1c2cff7577b90301dbc5a06c1c19ef76bfd3b6848c"
+      },
+      "track": [
+        {
+          "pose": null,
+          "translate": {
+            "x": 0,
+            "y": 0
+          },
+          "turn_16ths": 0,
+          "visible": true
+        },
+        {
+          "pose": null,
+          "translate": {
+            "x": 0,
+            "y": 3
+          },
+          "turn_16ths": 0,
+          "visible": true
+        },
+        {
+          "pose": null,
+          "translate": {
+            "x": 0,
+            "y": 6
+          },
+          "turn_16ths": 0,
+          "visible": true
+        },
+        {
+          "pose": null,
+          "translate": {
+            "x": 0,
+            "y": 3
+          },
+          "turn_16ths": 0,
+          "visible": true
+        }
+      ],
+      "z": 20
+    }
+  ],
+  "layout": null,
+  "layout_id": null,
+  "mask_pixels": 139,
+  "mask_sha256": "72db96557ee4eb90267b4e590b02b6f9b9d79003c16c07ada1e14e15c146a7b6",
+  "master_seed": 73113,
+  "phases": [
+    {
+      "duration_ms": 300,
+      "phase_id": "pose-0",
+      "seed": 73113
+    },
+    {
+      "duration_ms": 300,
+      "phase_id": "pose-1",
+      "seed": 73114
+    },
+    {
+      "duration_ms": 300,
+      "phase_id": "pose-2",
+      "seed": 73115
+    },
+    {
+      "duration_ms": 300,
+      "phase_id": "pose-3",
+      "seed": 73116
+    }
+  ],
+  "recipe_id": "story-handoffs-v1-restoration-ready",
+  "recipe_sha256": "0979fecb6eca9b983ff7d3409d611c764f1292c33fec33e0c8c32629bf5e3ed4",
+  "renderer": "pixelgen.motion/1",
+  "revision": 3
+}

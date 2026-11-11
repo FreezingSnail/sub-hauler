@@ -17,8 +17,8 @@
 Arduboy2Base arduboy;
 
 static bool dockAt(game::State &state, uint8_t berth) {
-    world::Settlement settlement;
-    if (!world::settlementInfo(berth, settlement))
+    world::Berth settlement;
+    if (!world::berthInfo(berth, settlement))
         return false;
     state.docked = -1;
     state.dockCooldown = 0;
@@ -86,7 +86,7 @@ void setup() {
     work_view::draw(state, 0);
     ok = work_view::accept(state, work_view::rowAt(state, 0)) && ok;
     ok = (state.cargo == game::kJobCrates) && ok;
-    ok = dockAt(state, campaign::kBenthos) && ok;
+    ok = dockAt(state, campaign::kPumpRefuge) && ok;
     ok = (state.lastDelivery == jobs::kDeliveryDelivered) && ok;
     ok = (state.campaign & campaign::kMilestonePump) && ok;
 
@@ -106,24 +106,20 @@ void setup() {
             ok = (work_view::rowAt(state, row).kind == work_view::kRowStory) && ok;
     }
 
-    // Stream every pose through the compressed deck reader: seven alternating
-    // decks, sixty animated image poses and fifteen static text cards.
-    uint8_t deckCards = 0;
-    uint8_t deckFrames = 0;
-    for (uint8_t beat = story_view::kCardFirst; beat <= story_view::kCardCount; ++beat) {
-        const uint8_t count = story_view::cardCount(beat);
-        deckCards = static_cast<uint8_t>(deckCards + count);
+    // Stream every source scene/card through the compressed reader, including
+    // consecutive text pages and reused loading/restoration art.
+    uint8_t sceneCards = 0;
+    for (uint8_t scene = story_view::kSceneFirst; scene <= story_view::kSceneMax; ++scene) {
+        const uint8_t count = story_view::cardCount(scene);
+        sceneCards = static_cast<uint8_t>(sceneCards + count);
         for (uint8_t card = 0; card < count; ++card) {
-            const bool image = story_view::isImageCard(story_view::globalCard(beat, card));
+            const bool image = story_view::isImageCard(scene, card);
             const uint8_t phases = image ? 4 : 1;
-            for (uint8_t phase = 0; phase < phases; ++phase) {
-                story_view::draw(beat, card, phase);
-                ++deckFrames;
-            }
+            for (uint8_t phase = 0; phase < phases; ++phase)
+                story_view::draw(scene, card, phase);
         }
     }
-    ok = (deckCards == STORY_BEAT_CARDS) && ok;
-    ok = (deckFrames == STORY_BEAT_FRAMES) && ok;
+    ok = (sceneCards == STORY_CARD_COUNT) && ok;
 
     work_view::draw(state, 0);
     FX::display(CLEAR_BUFFER);

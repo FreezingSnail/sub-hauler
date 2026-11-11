@@ -1,0 +1,212 @@
+{
+  "anchor_prompt": null,
+  "frames": [
+    {
+      "candidate": null,
+      "duration_ms": 300,
+      "frame_id": "pose-0",
+      "phase": "pose-0",
+      "seed": 73109,
+      "source": {
+        "encoded_bytes": null,
+        "format": "png",
+        "height": null,
+        "opaque": true,
+        "path": "inputs/frames/000.png",
+        "sha256": "6134016c13db9d795a236f3d4b1632c4c421d18d0f91b027e6ff0972d654c94c",
+        "width": null
+      }
+    },
+    {
+      "candidate": null,
+      "duration_ms": 300,
+      "frame_id": "pose-1",
+      "phase": "pose-1",
+      "seed": 73110,
+      "source": {
+        "encoded_bytes": null,
+        "format": "png",
+        "height": null,
+        "opaque": true,
+        "path": "inputs/frames/001.png",
+        "sha256": "5adc2b72fda1db7d3de6a9167e48d2af72ebc5c6b82eef338a034fc04fb3da8c",
+        "width": null
+      }
+    },
+    {
+      "candidate": null,
+      "duration_ms": 300,
+      "frame_id": "pose-2",
+      "phase": "pose-2",
+      "seed": 73111,
+      "source": {
+        "encoded_bytes": null,
+        "format": "png",
+        "height": null,
+        "opaque": true,
+        "path": "inputs/frames/002.png",
+        "sha256": "3f65a2b1453679cc9958efd671c827730097fe5c3e41ff652fa082d6c158404c",
+        "width": null
+      }
+    },
+    {
+      "candidate": null,
+      "duration_ms": 300,
+      "frame_id": "pose-3",
+      "phase": "pose-3",
+      "seed": 73112,
+      "source": {
+        "encoded_bytes": null,
+        "format": "png",
+        "height": null,
+        "opaque": true,
+        "path": "inputs/frames/003.png",
+        "sha256": "48656a7f4ddea4496b5534d943e9ac7468cdb2c694afb1711bc635483611d103",
+        "width": null
+      }
+    }
+  ],
+  "layout": null,
+  "layout_id": null,
+  "mask": {
+    "height": 64,
+    "kind": "png",
+    "path": "inputs/mask.png",
+    "rectangles": [
+      {
+        "height": 1,
+        "width": 15,
+        "x": 97,
+        "y": 20
+      },
+      {
+        "height": 1,
+        "width": 15,
+        "x": 97,
+        "y": 21
+      },
+      {
+        "height": 1,
+        "width": 16,
+        "x": 96,
+        "y": 22
+      },
+      {
+        "height": 1,
+        "width": 16,
+        "x": 96,
+        "y": 23
+      },
+      {
+        "height": 1,
+        "width": 16,
+        "x": 96,
+        "y": 24
+      },
+      {
+        "height": 1,
+        "width": 16,
+        "x": 96,
+        "y": 25
+      },
+      {
+        "height": 1,
+        "width": 16,
+        "x": 96,
+        "y": 26
+      },
+      {
+        "height": 1,
+        "width": 16,
+        "x": 96,
+        "y": 27
+      },
+      {
+        "height": 1,
+        "width": 16,
+        "x": 96,
+        "y": 28
+      },
+      {
+        "height": 1,
+        "width": 16,
+        "x": 96,
+        "y": 29
+      },
+      {
+        "height": 1,
+        "width": 16,
+        "x": 96,
+        "y": 30
+      },
+      {
+        "height": 1,
+        "width": 16,
+        "x": 96,
+        "y": 31
+      },
+      {
+        "height": 1,
+        "width": 16,
+        "x": 96,
+        "y": 32
+      },
+      {
+        "height": 1,
+        "width": 16,
+        "x": 96,
+        "y": 33
+      },
+      {
+        "height": 1,
+        "width": 16,
+        "x": 96,
+        "y": 34
+      },
+      {
+        "height": 1,
+        "width": 16,
+        "x": 96,
+        "y": 35
+      },
+      {
+        "height": 1,
+        "width": 16,
+        "x": 96,
+        "y": 36
+      },
+      {
+        "height": 1,
+        "width": 16,
+        "x": 96,
+        "y": 37
+      },
+      {
+        "height": 1,
+        "width": 16,
+        "x": 96,
+        "y": 38
+      },
+      {
+        "height": 1,
+        "width": 15,
+        "x": 97,
+        "y": 39
+      },
+      {
+        "height": 1,
+        "width": 15,
+        "x": 97,
+        "y": 40
+      }
+    ],
+    "sha256": "193c199add6ca2af424bbdaf2d957fbc469817c6201df4fb519f805ce580ddf2",
+    "width": 128
+  },
+  "master_seed": 73109,
+  "mode": "assemble",
+  "model": null,
+  "schema_version": "pixelgen.animation/1",
+  "spec_id": "story-handoffs-v1-cormorant-core",
+  "tail": null
+}

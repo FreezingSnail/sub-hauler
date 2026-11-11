@@ -89,10 +89,10 @@ struct Current {
 
 #if defined(__AVR__)
 
-// Compact position-only copy: 4 * 4 B + 8 * 5 B in program flash.
-// Settlement ids are implicit in the index and tile coordinates derive from
-// the pixel pair. Current extents are the generated constants and the signed
-// axis direction is one compact code.
+// Compact position-only copy in program flash. Settlement ids are implicit in
+// the index and tile coordinates derive from the pixel pair.
+// Compact position-only copy. Current extents are the generated constants and
+// the signed axis direction is one compact code.
 struct SettlementMeta {
     int16_t pixel_x;
     int16_t pixel_y;

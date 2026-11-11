@@ -1,0 +1,83 @@
+{
+  "schema_version": "pixelgen.motion/1",
+  "recipe_id": "story-handoffs-v1-deep-anchor-dispatch",
+  "revision": 3,
+  "canvas": {
+    "width": 128,
+    "height": 64,
+    "depth": 1
+  },
+  "background": {
+    "path": "background.png",
+    "sha256": "628f1b6ad86de9c382c1f0c9c71ba331d7cdb010d6d32ad6e245f54d6ffcda52"
+  },
+  "master_seed": 73105,
+  "phases": [
+    {
+      "phase_id": "pose-0",
+      "duration_ms": 300
+    },
+    {
+      "phase_id": "pose-1",
+      "duration_ms": 300
+    },
+    {
+      "phase_id": "pose-2",
+      "duration_ms": 300
+    },
+    {
+      "phase_id": "pose-3",
+      "duration_ms": 300
+    }
+  ],
+  "layers": [
+    {
+      "layer_id": "sealed-records-and-supplies",
+      "role": "part",
+      "z": 10,
+      "source": {
+        "path": "sealed-records-and-supplies.png",
+        "sha256": "0d7b51a79a85c9afecd9a91ae31b1822e42884e2f86860919da3e56b8d224f4c"
+      },
+      "matte": {
+        "path": "sealed-records-and-supplies-matte.png",
+        "sha256": "f622424e0bc6bcc4fd7cf461537462c96aabf6534dd2e4ab22ab21746836c2ce"
+      },
+      "origin": {
+        "x": 83,
+        "y": 21
+      },
+      "track": [
+        {
+          "translate": {
+            "x": 0,
+            "y": 0
+          },
+          "turn_16ths": 0
+        },
+        {
+          "translate": {
+            "x": 0,
+            "y": 2
+          },
+          "turn_16ths": 0
+        },
+        {
+          "translate": {
+            "x": 0,
+            "y": 4
+          },
+          "turn_16ths": 0
+        },
+        {
+          "translate": {
+            "x": -1,
+            "y": 2
+          },
+          "turn_16ths": 0
+        }
+      ],
+      "clip": "error"
+    }
+  ]
+}

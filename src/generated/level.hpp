@@ -44,18 +44,21 @@ constexpr uint8_t  CHART_CELL_TILES  = 5;
 constexpr uint8_t  CHART_ROW_BYTES   = 8;
 constexpr uint16_t CHART_BYTES       = 256;
 constexpr uint8_t  SETTLEMENT_COUNT  = 4;
-constexpr uint8_t  CURRENT_COUNT     = 8;
-constexpr uint8_t  BERTH_COUNT       = 6;
-constexpr uint8_t  SERVICE_BERTH_COUNT = 2;
+constexpr uint16_t CURRENT_GATE_MASK = 0x01FF;
+constexpr uint8_t  CURRENT_COUNT     = 9;
+constexpr uint8_t  BERTH_COUNT       = 8;
+constexpr uint8_t  SERVICE_BERTH_COUNT = 4;
 constexpr uint8_t  SURVEY_COUNT      = 2;
 constexpr uint8_t BERTH_PUMP_REFUGE = 4;
 constexpr uint8_t BERTH_LOWER_GANTRY = 5;
+constexpr uint8_t BERTH_FREIGHT_YARD = 6;
+constexpr uint8_t BERTH_DEEP_RELAY = 7;
 constexpr uint8_t SURVEY_PUMP = 0;
 constexpr uint8_t SURVEY_LIFT = 1;
 constexpr int16_t  DOCK_CLEARANCE_PX = 42;
 constexpr uint8_t  CURRENT_WIDTH_PX  = 32;
 constexpr uint8_t  CURRENT_HEIGHT_PX = 16;
-constexpr int16_t  CURRENT_ACCEL_Q8 = 4096;
+constexpr int16_t  CURRENT_ACCEL_Q8 = 2048;
 constexpr uint8_t  CURRENT_DIR_XPOS = 0;
 constexpr uint8_t  CURRENT_DIR_YPOS = 1;
 constexpr uint8_t  CURRENT_DIR_XNEG = 2;
@@ -66,7 +69,7 @@ constexpr int16_t SPAWN_TILE_X  = 41;
 constexpr int16_t SPAWN_TILE_Y  = 30;
 constexpr int16_t SPAWN_PIXEL_X = 328;
 constexpr int16_t SPAWN_PIXEL_Y = 240;
-constexpr int16_t SPAWN_SUB_X   = 328;
+constexpr int16_t SPAWN_SUB_X   = 300;
 constexpr int16_t SPAWN_SUB_Y   = 240;
 
 struct Settlement {
@@ -83,8 +86,8 @@ struct Settlement {
 struct Current {
     int16_t x;
     int16_t y;
-    uint8_t w;
-    uint8_t h;
+    uint16_t w;
+    uint16_t h;
     int16_t ax_q8;
     int16_t ay_q8;
 };
@@ -113,10 +116,11 @@ struct Survey {
 
 #if defined(__AVR__)
 
-// Compact position-only copy: 4 * 4 B + 8 * 5 B in program flash.
-// Settlement ids are implicit in the index and tile coordinates derive from
-// the pixel pair. Current extents are the generated constants and the signed
-// axis direction is one compact code.
+// Compact position-only copy in program flash. Settlement ids are implicit in
+// the index and tile coordinates derive from the pixel pair.
+// Compact position-only copy. Current extents are per-zone because the
+// generated zones cover their actual passage cross-sections. Tile counts keep
+// extents over 255 pixels compact; direction is one compact code.
 struct SettlementMeta {
     int16_t pixel_x;
     int16_t pixel_y;
@@ -132,18 +136,21 @@ const SettlementMeta SETTLEMENT_META[SETTLEMENT_COUNT] PROGMEM = {
 struct CurrentMeta {
     int16_t x;
     int16_t y;
+    uint8_t tileW;
+    uint8_t tileH;
     uint8_t dir;
 };
 
 const CurrentMeta CURRENT_META[CURRENT_COUNT] PROGMEM = {
-    {1000, 224, 0},
-    {1328, 136, 1},
-    {1368, 368, 2},
-    {2120, 408, 3},
-    {1360, 576, 0},
-    {2184, 760, 1},
-    {320, 952, 2},
-    {1672, 1104, 3},
+    {1312, 136, 9, 2, 1},
+    {2048, 408, 24, 2, 1},
+    {1360, 528, 4, 14, 0},
+    {1608, 1104, 20, 2, 3},
+    {1744, 507, 12, 1, 3},
+    {642, 832, 1, 12, 0},
+    {552, 784, 17, 1, 3},
+    {941, 1071, 12, 1, 3},
+    {1852, 1038, 1, 12, 2},
 };
 
 inline bool settlementMeta(uint8_t id, Settlement &out) {
@@ -163,8 +170,8 @@ inline bool currentMeta(uint8_t id, Current &out) {
         return false;
     out.x = static_cast<int16_t>(pgm_read_word(&CURRENT_META[id].x));
     out.y = static_cast<int16_t>(pgm_read_word(&CURRENT_META[id].y));
-    out.w = CURRENT_WIDTH_PX;
-    out.h = CURRENT_HEIGHT_PX;
+    out.w = static_cast<uint16_t>(pgm_read_byte(&CURRENT_META[id].tileW)) * TILE_PIXELS;
+    out.h = static_cast<uint16_t>(pgm_read_byte(&CURRENT_META[id].tileH)) * TILE_PIXELS;
     const uint8_t direction = pgm_read_byte(&CURRENT_META[id].dir);
     out.ax_q8 = direction == CURRENT_DIR_XPOS
                     ? CURRENT_ACCEL_Q8
@@ -185,6 +192,8 @@ struct ServiceBerthMeta {
 const ServiceBerthMeta SERVICE_BERTH_META[SERVICE_BERTH_COUNT] PROGMEM = {
     {4, 2, 2160, 208},
     {5, 4, 1776, 808},
+    {6, 4, 2168, 616},
+    {7, 32, 1992, 1224},
 };
 
 inline bool serviceBerthMeta(uint8_t index, Berth &out) {
@@ -249,14 +258,15 @@ constexpr Settlement SETTLEMENTS[SETTLEMENT_COUNT] = {
 };
 
 constexpr Current CURRENTS[CURRENT_COUNT] = {
-    {1000, 224, 32, 16, 4096, 0},
-    {1328, 136, 32, 16, 0, 4096},
-    {1368, 368, 32, 16, -4096, 0},
-    {2120, 408, 32, 16, 0, -4096},
-    {1360, 576, 32, 16, 4096, 0},
-    {2184, 760, 32, 16, 0, 4096},
-    {320, 952, 32, 16, -4096, 0},
-    {1672, 1104, 32, 16, 0, -4096},
+    {1312, 136, 72, 16, 0, 2048},
+    {2048, 408, 192, 16, 0, 2048},
+    {1360, 528, 32, 112, 2048, 0},
+    {1608, 1104, 160, 16, 0, -2048},
+    {1744, 507, 96, 8, 0, -2048},
+    {642, 832, 8, 96, 2048, 0},
+    {552, 784, 136, 8, 0, -2048},
+    {941, 1071, 96, 8, 0, -2048},
+    {1852, 1038, 8, 96, -2048, 0},
 };
 
 inline bool settlementMeta(uint8_t id, Settlement &out) {
@@ -276,6 +286,8 @@ inline bool currentMeta(uint8_t id, Current &out) {
 constexpr Berth SERVICE_BERTHS[SERVICE_BERTH_COUNT] = {
     {4, 2, "PUMP REFUGE", 270, 26, 2160, 208},
     {5, 4, "LOWER GANTRY", 222, 101, 1776, 808},
+    {6, 4, "FREIGHT YARD", 271, 77, 2168, 616},
+    {7, 32, "DEEP RELAY", 249, 153, 1992, 1224},
 };
 
 inline bool serviceBerthMeta(uint8_t index, Berth &out) {

@@ -1,0 +1,131 @@
+{
+  "schema_version": "pixelgen.motion/1",
+  "recipe_id": "story-v4-lift-cable",
+  "revision": 1,
+  "canvas": {
+    "width": 128,
+    "height": 64,
+    "depth": 1
+  },
+  "background": {
+    "path": "background.png",
+    "sha256": "9c63482cede876cddc159ded9d24f48d6889708783ab0cd2a9b290945f081e52"
+  },
+  "master_seed": 4132,
+  "phases": [
+    {
+      "phase_id": "pose-0",
+      "duration_ms": 300
+    },
+    {
+      "phase_id": "pose-1",
+      "duration_ms": 300
+    },
+    {
+      "phase_id": "pose-2",
+      "duration_ms": 300
+    },
+    {
+      "phase_id": "pose-3",
+      "duration_ms": 300
+    }
+  ],
+  "layers": [
+    {
+      "layer_id": "frayed-cable",
+      "role": "part",
+      "z": 10,
+      "source": {
+        "path": "layers/frayed-cable.png",
+        "sha256": "c546335280c354ca8dcb3d778c982cded0e8e0acb82e8f1454a365550d0a329d"
+      },
+      "matte": {
+        "path": "layers/frayed-cable-matte.png",
+        "sha256": "dd17ed4230982fc5071391c78072908df646c72fc4cd8664e98369ad0ece0f62"
+      },
+      "origin": {
+        "x": 43,
+        "y": 27
+      },
+      "track": [
+        {
+          "translate": {
+            "x": 0,
+            "y": 0
+          },
+          "turn_16ths": 0
+        },
+        {
+          "translate": {
+            "x": 1,
+            "y": 0
+          },
+          "turn_16ths": 0
+        },
+        {
+          "translate": {
+            "x": 0,
+            "y": 0
+          },
+          "turn_16ths": 0
+        },
+        {
+          "translate": {
+            "x": -1,
+            "y": 0
+          },
+          "turn_16ths": 0
+        }
+      ],
+      "clip": "error"
+    },
+    {
+      "layer_id": "bubble-0",
+      "role": "part",
+      "z": 20,
+      "source": {
+        "path": "layers/bubble-0.png",
+        "sha256": "12c754398b8f352f4899b3620c8fad335cf1f689d26d774d592c94c897b4c882"
+      },
+      "matte": {
+        "path": "layers/bubble-0-matte.png",
+        "sha256": "f71596d08b54af5b0d40285c1b6ad0aabdac8160c0929eb6eee76dd85755740e"
+      },
+      "origin": {
+        "x": 73,
+        "y": 39
+      },
+      "track": [
+        {
+          "translate": {
+            "x": 0,
+            "y": 0
+          },
+          "turn_16ths": 0
+        },
+        {
+          "translate": {
+            "x": 1,
+            "y": -4
+          },
+          "turn_16ths": 0
+        },
+        {
+          "translate": {
+            "x": 0,
+            "y": -8
+          },
+          "turn_16ths": 0
+        },
+        {
+          "translate": {
+            "x": 1,
+            "y": -12
+          },
+          "turn_16ths": 0
+        }
+      ],
+      "clip": "error"
+    }
+  ]
+}

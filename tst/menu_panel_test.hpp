@@ -26,6 +26,13 @@ inline void MenuPanelSuite(TestRunner &runner) {
                 }
                 const bool service = station::serviceBerth(state);
                 const bool active = !service && station::jobActive(state);
+                // The appended Freight Yard work site is native-only; the
+                // generated sheet still carries the two earlier service frames.
+                if (berth >= station_view::kPanelMainBerths + station_view::kPanelServiceBerths) {
+                    test.assertTrue(service, "new work site stays service-only");
+                    test.assertEqual(station::rowKind(0, state), station::kRowUndock, "new work site shows only UNDOCK");
+                    continue;
+                }
                 const uint8_t first = station::firstSelectable(state);
                 const uint8_t choices = station::selectableCount(state);
                 for (uint8_t n = 0; n < choices; ++n) {
@@ -43,7 +50,7 @@ inline void MenuPanelSuite(TestRunner &runner) {
                 }
             }
         }
-        test.assertEqual(count, 22, "every live station selection has a unique archival frame");
+        test.assertEqual(count, 18, "every live station selection has a unique archival frame");
         runner.add(test);
     }
     {

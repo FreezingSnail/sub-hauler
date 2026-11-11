@@ -1,0 +1,326 @@
+{
+  "version": 1,
+  "art": {
+    "file": "art.png",
+    "tile_width": 128,
+    "tile_height": 64,
+    "poses": 4,
+    "rows": [
+      "tidewall-filters",
+      "arrival",
+      "grow-tanks",
+      "repair-bay",
+      "pump-approach",
+      "pump-cracked-impeller",
+      "delivery-loading",
+      "delivery-water",
+      "lift-yard",
+      "lift-cable",
+      "lift-delivery-cable",
+      "lift-delivery-working",
+      "restoration-ready",
+      "cormorant-core",
+      "beacon-lit",
+      "deep-relay",
+      "home-lights"
+    ]
+  },
+  "scenes": [
+    {
+      "name": "first-departure",
+      "cards": [
+        {
+          "kind": "image",
+          "art": "tidewall-filters"
+        },
+        {
+          "kind": "text",
+          "paragraphs": [
+            "Deep Anchor is quiet. Its pump and Freight Yard lift are broken. Benthos needs Tidewall filters."
+          ]
+        }
+      ],
+      "title": "FIRST departure"
+    },
+    {
+      "name": "first-result",
+      "cards": [
+        {
+          "kind": "image",
+          "art": "arrival"
+        },
+        {
+          "kind": "text",
+          "paragraphs": [
+            "The sub arrives at Benthos with filter supplies inside the hull."
+          ]
+        },
+        {
+          "kind": "image",
+          "art": "grow-tanks"
+        },
+        {
+          "kind": "text",
+          "paragraphs": [
+            "These tanks grow Benthos food. Your filters help keep them alive."
+          ]
+        },
+        {
+          "kind": "image",
+          "art": "repair-bay"
+        },
+        {
+          "kind": "text",
+          "paragraphs": [
+            "Benthos asks for help restoring its pump and the remote Cormorant Freight Yard lift."
+          ]
+        }
+      ],
+      "title": "FIRST result"
+    },
+    {
+      "name": "pump-survey",
+      "cards": [
+        {
+          "kind": "image",
+          "art": "pump-approach"
+        },
+        {
+          "kind": "text",
+          "paragraphs": [
+            "At Pump Refuge, you hold position beside the pump."
+          ]
+        },
+        {
+          "kind": "image",
+          "art": "pump-cracked-impeller"
+        },
+        {
+          "kind": "text",
+          "paragraphs": [
+            "The impeller is cracked. Replacement impeller: collect at Cormorant."
+          ]
+        }
+      ],
+      "title": "PUMP SURVEY"
+    },
+    {
+      "name": "pump-pickup",
+      "cards": [
+        {
+          "kind": "image",
+          "art": "delivery-loading"
+        },
+        {
+          "kind": "text",
+          "paragraphs": [
+            "Load the impeller inside the hull. Deliver to Pump Refuge. Fit it at the pump."
+          ]
+        }
+      ],
+      "title": "PUMP pickup"
+    },
+    {
+      "name": "pump-result",
+      "cards": [
+        {
+          "kind": "image",
+          "art": "delivery-water"
+        },
+        {
+          "kind": "text",
+          "paragraphs": [
+            "The pump turns again. Water flows. Grow room lights come on. Pump Refuge opens as a service berth."
+          ]
+        }
+      ],
+      "title": "PUMP result"
+    },
+    {
+      "name": "lift-survey",
+      "cards": [
+        {
+          "kind": "image",
+          "art": "lift-yard"
+        },
+        {
+          "kind": "text",
+          "paragraphs": [
+            "At Freight Yard, you hold position beside the lift."
+          ]
+        },
+        {
+          "kind": "image",
+          "art": "lift-cable"
+        },
+        {
+          "kind": "text",
+          "paragraphs": [
+            "The cable is ruined. Replacement cable: collect at Benthos."
+          ]
+        }
+      ],
+      "title": "LIFT SURVEY"
+    },
+    {
+      "name": "lift-pickup",
+      "cards": [
+        {
+          "kind": "image",
+          "art": "lift-delivery-cable"
+        },
+        {
+          "kind": "text",
+          "paragraphs": [
+            "Benthos supplies the replacement cable. Deliver to Freight Yard. Fit the cable at the lift."
+          ]
+        }
+      ],
+      "title": "LIFT pickup"
+    },
+    {
+      "name": "lift-result",
+      "cards": [
+        {
+          "kind": "image",
+          "art": "lift-delivery-working"
+        },
+        {
+          "kind": "text",
+          "paragraphs": [
+            "The Freight Yard lift runs again. Workshop lights come on. Lower Gantry opens as a service berth."
+          ]
+        }
+      ],
+      "title": "LIFT result"
+    },
+    {
+      "name": "joint-missing",
+      "cards": [
+        {
+          "kind": "image",
+          "art": "restoration-ready"
+        },
+        {
+          "kind": "text",
+          "paragraphs": [
+            "Both repairs are done. The core can be finished at Cormorant. Pressure seal: West Workshop."
+          ]
+        }
+      ],
+      "title": "Joint restoration - seal missing"
+    },
+    {
+      "name": "joint-ready",
+      "cards": [
+        {
+          "kind": "image",
+          "art": "restoration-ready"
+        },
+        {
+          "kind": "text",
+          "paragraphs": [
+            "Both repairs are done. The seal is aboard. Collect the beacon core at Cormorant."
+          ]
+        }
+      ],
+      "title": "Joint restoration - seal held"
+    },
+    {
+      "name": "beacon-departure",
+      "cards": [
+        {
+          "kind": "image",
+          "art": "cormorant-core"
+        },
+        {
+          "kind": "text",
+          "paragraphs": [
+            "The dive ahead reaches Deep Anchor. The sealed hull carries the core. Its signal is limited. The network still needs a physical dispatch."
+          ]
+        }
+      ],
+      "title": "BEACON departure"
+    },
+    {
+      "name": "beacon-result",
+      "cards": [
+        {
+          "kind": "image",
+          "art": "beacon-lit"
+        },
+        {
+          "kind": "text",
+          "paragraphs": [
+            "Deep Anchor lights its beacon. The capsule windows glow in the dark."
+          ]
+        }
+      ],
+      "title": "BEACON result"
+    },
+    {
+      "name": "deep-relay-departure",
+      "cards": [
+        {
+          "kind": "image",
+          "art": "deep-relay"
+        },
+        {
+          "kind": "text",
+          "paragraphs": [
+            "Beacon hears a call. Lens locates buried relay. Cutter clears rock. Seal holds pressure. Thruster beats current."
+          ]
+        }
+      ],
+      "title": "DEEP RELAY departure"
+    },
+    {
+      "name": "deep-relay-result",
+      "cards": [
+        {
+          "kind": "image",
+          "art": "deep-relay"
+        },
+        {
+          "kind": "text",
+          "paragraphs": [
+            "DEEP RELAY FOUND."
+          ]
+        }
+      ],
+      "title": "DEEP RELAY result"
+    },
+    {
+      "name": "home-departure",
+      "cards": [
+        {
+          "kind": "image",
+          "art": "delivery-loading"
+        },
+        {
+          "kind": "text",
+          "paragraphs": [
+            "Take survey records and supplies from Deep Anchor to Tidewall."
+          ]
+        }
+      ],
+      "title": "HOME departure"
+    },
+    {
+      "name": "home-result",
+      "cards": [
+        {
+          "kind": "image",
+          "art": "home-lights"
+        },
+        {
+          "kind": "text",
+          "paragraphs": [
+            "Tidewall answers. They know your hull. The network is lit. You can keep exploring."
+          ]
+        }
+      ],
+      "title": "HOME result"
+    }
+  ]
+}

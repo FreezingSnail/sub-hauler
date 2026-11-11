@@ -33,8 +33,11 @@ constexpr int16_t kHullH = kHullHalfH * 2;
 
 constexpr uint8_t kCargoMax = 4;
 constexpr int16_t kBallastMax = 100;
-constexpr int16_t kNeutralBase = 50;      // ballast at zero cargo
-constexpr int16_t kNeutralPerCargo = 5;   // neutral falls 5 per cargo unit
+// Empty trim sits high on the gauge, leaving a large blow reserve. Each cargo
+// unit lowers neutral by ten ballast units, so a full hold trims at 30: a wide
+// 40-unit cargo delta with the loaded trim unchanged.
+constexpr int16_t kNeutralBase = 70;      // ballast at zero cargo
+constexpr int16_t kNeutralPerCargo = 10;  // neutral falls 10 per cargo unit
 
 constexpr int16_t kAirCapacity = 300;      // fixed integer air units at full tank
 constexpr uint16_t kAirDrainTicks = 150;   // 0.4 units/s -> one unit per 150 ticks
@@ -45,7 +48,12 @@ constexpr uint8_t kRateTicks = 60;          // carry denominator for per-second 
 
 constexpr int16_t kBallastDriveMax = 35;    // ballast units -> drive clamp
 constexpr int16_t kBallastAccelQ8 = 128;    // 0.5 px/s^2, in Q8.8
-constexpr int16_t kMaxVyQ8 = 20 * kQ8One;   // 20 px/s down (browser maxVy)
+// Base vertical clamp. Cargo scales the two directions apart: a heavy hold
+// falls faster and rises slower. kMaxVyQ8 stays the empty/base reference used
+// by the camera framing proofs and collision tests.
+constexpr int16_t kMaxVyQ8 = 20 * kQ8One;           // 20 px/s base
+constexpr int16_t kMaxVyDownPerCargoQ8 = 2 * kQ8One;   // +2 px/s down per cargo
+constexpr int16_t kMaxVyUpPerCargoQ8 = 2 * kQ8One;     // -2 px/s up per cargo
 
 constexpr int16_t kThrustAccel = 34;          // px/s^2 at zero cargo
 constexpr int16_t kThrustAccelPerCargo = 3;   // px/s^2 lost per cargo unit
@@ -63,6 +71,11 @@ constexpr int16_t kDragDivisor = 50;
 // collisions puff debris while scrapes stay free. Shared by the particle spawn
 // trigger and the wall-impact presentation.
 constexpr int16_t kHardImpactSpeedQ8 = 16 * kQ8One;
+
+// A hard descending floor impact costs a fixed five air units. This is small
+// against the 300-unit tank, so ordinary soft bumps stay free while a real
+// slam still bites. Side, ceiling and gate contacts never charge it.
+constexpr int16_t kHardFloorAirCost = 5;
 
 // ---------------------------------------------------------------------------
 // State
@@ -136,8 +149,8 @@ struct State {
     uint8_t ballast;   // 0..100
     int16_t air;     // integer units, 0..airCapacity(state)
     uint8_t cargo;   // 0..4
-    // Selected roster class, owned by the title screen and kept across
-    // dock/undock.
+    // Frozen schema-8 hull-class byte. Always HAULER in the live state; load
+    // normalizes retired Minnow/Leviathan ids.
     uint8_t hullClass;
     bool facingLeft;
     uint16_t ticks;
@@ -165,6 +178,7 @@ struct State {
     uint16_t delivered;     // completed campaign deliveries, saturating
     uint16_t rescues;       // recovery requests, saturating
     uint8_t ending;         // ending cards presented
+    uint8_t pendingStory;   // selected milestone deck awaiting presentation, 0 = none
     ActiveJob activeJob;
 };
 
@@ -188,6 +202,12 @@ inline void tickVoyage(State &state) {
 // axis move that produced it.
 inline bool hardWallImpact(const State &state) {
     return (state.impactAxis == 1 || state.impactAxis == 2) && state.impactSpeedQ8 >= kHardImpactSpeedQ8;
+}
+
+// Charge the fixed floor-impact cost, flooring the tank at zero. Call only for
+// a hard descending y impact with impactAxis == 2.
+inline void spendHardFloorImpactAir(State &state) {
+    state.air = static_cast<int16_t>(state.air > kHardFloorAirCost ? state.air - kHardFloorAirCost : 0);
 }
 
 // ---------------------------------------------------------------------------
@@ -242,6 +262,19 @@ inline int16_t topSpeedQ8ForNormalized(uint8_t cargo) {
 
 inline int16_t topSpeedQ8For(uint8_t cargo) {
     return topSpeedQ8ForNormalized(clampCargo(cargo));
+}
+
+// Vertical clamp per direction. Down grows with cargo (heavy sinks faster);
+// up shrinks with cargo (heavy rises slower). Both stay well inside int16.
+static_assert(kMaxVyQ8 + kMaxVyDownPerCargoQ8 * kCargoMax <= 32767, "down clamp fits int16");
+static_assert(kMaxVyQ8 - kMaxVyUpPerCargoQ8 * kCargoMax > 0, "up clamp stays positive");
+
+inline int16_t maxVyDownQ8ForNormalized(uint8_t cargo) {
+    return static_cast<int16_t>(kMaxVyQ8 + kMaxVyDownPerCargoQ8 * cargo);
+}
+
+inline int16_t maxVyUpQ8ForNormalized(uint8_t cargo) {
+    return static_cast<int16_t>(kMaxVyQ8 - kMaxVyUpPerCargoQ8 * cargo);
 }
 
 // Cargo changes mass and trim but never silently moves ballast: the player
@@ -326,7 +359,9 @@ inline void stepPhysics(State &state, const Input &input) {
     const bool flood = input.down && !input.up;
 
     if (blow && state.air > 0) {
-        // Blowing spends air and lightens the boat.
+        // Blowing spends air and lightens the boat. The air rate is flat for
+        // every load; a heavy hold still spends more air over a climb because
+        // the lower up clamp makes the ascent longer and needs more re-blows.
         state.airBlowCarry = static_cast<uint8_t>(state.airBlowCarry + kBlowCarryStep);
         if (state.airBlowCarry >= kRateTicks) {
             state.airBlowCarry = static_cast<uint8_t>(state.airBlowCarry - kRateTicks);
@@ -362,7 +397,8 @@ inline void stepPhysics(State &state, const Input &input) {
     const int16_t neutral = neutralForNormalized(state.cargo);
     const int16_t drive = clampI16(static_cast<int16_t>(state.ballast - neutral), -kBallastDriveMax, kBallastDriveMax);
     const int16_t accelQ8 = static_cast<int16_t>(drive * kBallastAccelQ8 / kStepHz);
-    state.vyQ8 = clampI16(static_cast<int16_t>(state.vyQ8 + accelQ8 - dragStep(state.vyQ8)), -kMaxVyQ8, kMaxVyQ8);
+    const int16_t nextVyQ8 = static_cast<int16_t>(state.vyQ8 + accelQ8 - dragStep(state.vyQ8));
+    state.vyQ8 = clampI16(nextVyQ8, static_cast<int16_t>(-maxVyUpQ8ForNormalized(state.cargo)), maxVyDownQ8ForNormalized(state.cargo));
 
     // Horizontal thrust: forward is full, reverse is half. Cargo lowers both
     // acceleration and the clamp speed.

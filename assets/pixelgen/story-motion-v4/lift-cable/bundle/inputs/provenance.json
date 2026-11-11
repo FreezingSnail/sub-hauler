@@ -1,0 +1,207 @@
+{
+  "assets": [
+    {
+      "height": 64,
+      "path": "background.png",
+      "role": "background",
+      "sha256": "9c63482cede876cddc159ded9d24f48d6889708783ab0cd2a9b290945f081e52",
+      "width": 128
+    },
+    {
+      "height": 5,
+      "path": "layers/bubble-0-matte.png",
+      "role": "layer:bubble-0:matte",
+      "sha256": "f71596d08b54af5b0d40285c1b6ad0aabdac8160c0929eb6eee76dd85755740e",
+      "width": 5
+    },
+    {
+      "height": 5,
+      "path": "layers/bubble-0.png",
+      "role": "layer:bubble-0:source",
+      "sha256": "12c754398b8f352f4899b3620c8fad335cf1f689d26d774d592c94c897b4c882",
+      "width": 5
+    },
+    {
+      "height": 30,
+      "path": "layers/frayed-cable-matte.png",
+      "role": "layer:frayed-cable:matte",
+      "sha256": "dd17ed4230982fc5071391c78072908df646c72fc4cd8664e98369ad0ece0f62",
+      "width": 15
+    },
+    {
+      "height": 30,
+      "path": "layers/frayed-cable.png",
+      "role": "layer:frayed-cable:source",
+      "sha256": "c546335280c354ca8dcb3d778c982cded0e8e0acb82e8f1454a365550d0a329d",
+      "width": 15
+    }
+  ],
+  "background": {
+    "path": "background.png",
+    "sha256": "9c63482cede876cddc159ded9d24f48d6889708783ab0cd2a9b290945f081e52"
+  },
+  "canvas": {
+    "depth": 1,
+    "height": 64,
+    "width": 128
+  },
+  "expected_mask_sha256": null,
+  "format": "pixelgen.motion.provenance/1",
+  "frame_sha256": [
+    "8d94bbfc9b1e46644f3f0cf69d98ad09789c147400302a1b2871419ad054f476",
+    "0d92aef480569dd0338a8277d4c3d34aa64d8190ebe5ca88a8f911066a663f9c",
+    "a559a25d31f971167e3a941812f5059908a3c6f992feda03a422398f5b2dae57",
+    "10efa48263b574d06923e8e5f5c18e439e003bd7be70e7fc3015d3c9cc0a8dc1"
+  ],
+  "layers": [
+    {
+      "clip": "error",
+      "layer_id": "frayed-cable",
+      "matte": {
+        "path": "layers/frayed-cable-matte.png",
+        "sha256": "dd17ed4230982fc5071391c78072908df646c72fc4cd8664e98369ad0ece0f62"
+      },
+      "motion_bounds": null,
+      "origin": {
+        "x": 43,
+        "y": 27
+      },
+      "pivot": null,
+      "poses": {},
+      "role": "part",
+      "source": {
+        "path": "layers/frayed-cable.png",
+        "sha256": "c546335280c354ca8dcb3d778c982cded0e8e0acb82e8f1454a365550d0a329d"
+      },
+      "track": [
+        {
+          "pose": null,
+          "translate": {
+            "x": 0,
+            "y": 0
+          },
+          "turn_16ths": 0,
+          "visible": true
+        },
+        {
+          "pose": null,
+          "translate": {
+            "x": 1,
+            "y": 0
+          },
+          "turn_16ths": 0,
+          "visible": true
+        },
+        {
+          "pose": null,
+          "translate": {
+            "x": 0,
+            "y": 0
+          },
+          "turn_16ths": 0,
+          "visible": true
+        },
+        {
+          "pose": null,
+          "translate": {
+            "x": -1,
+            "y": 0
+          },
+          "turn_16ths": 0,
+          "visible": true
+        }
+      ],
+      "z": 10
+    },
+    {
+      "clip": "error",
+      "layer_id": "bubble-0",
+      "matte": {
+        "path": "layers/bubble-0-matte.png",
+        "sha256": "f71596d08b54af5b0d40285c1b6ad0aabdac8160c0929eb6eee76dd85755740e"
+      },
+      "motion_bounds": null,
+      "origin": {
+        "x": 73,
+        "y": 39
+      },
+      "pivot": null,
+      "poses": {},
+      "role": "part",
+      "source": {
+        "path": "layers/bubble-0.png",
+        "sha256": "12c754398b8f352f4899b3620c8fad335cf1f689d26d774d592c94c897b4c882"
+      },
+      "track": [
+        {
+          "pose": null,
+          "translate": {
+            "x": 0,
+            "y": 0
+          },
+          "turn_16ths": 0,
+          "visible": true
+        },
+        {
+          "pose": null,
+          "translate": {
+            "x": 1,
+            "y": -4
+          },
+          "turn_16ths": 0,
+          "visible": true
+        },
+        {
+          "pose": null,
+          "translate": {
+            "x": 0,
+            "y": -8
+          },
+          "turn_16ths": 0,
+          "visible": true
+        },
+        {
+          "pose": null,
+          "translate": {
+            "x": 1,
+            "y": -12
+          },
+          "turn_16ths": 0,
+          "visible": true
+        }
+      ],
+      "z": 20
+    }
+  ],
+  "layout": null,
+  "layout_id": null,
+  "mask_pixels": 588,
+  "mask_sha256": "4f07b2749f41fbaed68faef359572f8ab365e4de616300264054a472ae11bb7d",
+  "master_seed": 4132,
+  "phases": [
+    {
+      "duration_ms": 300,
+      "phase_id": "pose-0",
+      "seed": 4132
+    },
+    {
+      "duration_ms": 300,
+      "phase_id": "pose-1",
+      "seed": 4133
+    },
+    {
+      "duration_ms": 300,
+      "phase_id": "pose-2",
+      "seed": 4134
+    },
+    {
+      "duration_ms": 300,
+      "phase_id": "pose-3",
+      "seed": 4135
+    }
+  ],
+  "recipe_id": "story-v4-lift-cable",
+  "recipe_sha256": "938527f5eaf66971208720cb05227347ee6aaac35d182454fe7aaf7a62ab857e",
+  "renderer": "pixelgen.motion/1",
+  "revision": 1
+}

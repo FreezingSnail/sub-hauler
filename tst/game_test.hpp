@@ -31,17 +31,17 @@ inline void runTicks(game::State &state, game::Input input, int ticks) {
 inline void GameSuite(TestRunner &runner) {
     {
         Test test("neutral trim follows cargo and reset starts neutral");
-        test.assertEqual(game::neutralFor(-3), 50, "cargo below zero clamps");
-        test.assertEqual(game::neutralFor(0), 50, "empty trim");
-        test.assertEqual(game::neutralFor(1), 45, "one unit");
-        test.assertEqual(game::neutralFor(2), 40, "two units");
-        test.assertEqual(game::neutralFor(3), 35, "three units");
+        test.assertEqual(game::neutralFor(-3), 70, "cargo below zero clamps");
+        test.assertEqual(game::neutralFor(0), 70, "empty trim");
+        test.assertEqual(game::neutralFor(1), 60, "one unit");
+        test.assertEqual(game::neutralFor(2), 50, "two units");
+        test.assertEqual(game::neutralFor(3), 40, "three units");
         test.assertEqual(game::neutralFor(4), 30, "four units");
         test.assertEqual(game::neutralFor(9), 30, "cargo above max clamps");
 
         game::State state;
         game::reset(state);
-        test.assertEqual(state.ballast, 50, "reset ballast is neutral");
+        test.assertEqual(state.ballast, 70, "reset ballast is neutral");
         test.assertEqual(state.air, game::kAirCapacity, "reset air is full");
         test.assertEqual(state.cargo, 0, "reset cargo is empty");
         test.assertEqual(state.vxQ8, 0, "reset horizontal velocity");
@@ -49,7 +49,7 @@ inline void GameSuite(TestRunner &runner) {
         test.assertEqual(state.ticks, 0, "reset ticks");
 
         runTicks(state, idleInput(), game::kAirDrainTicks);
-        test.assertEqual(state.ballast, 50, "neutral ballast holds depth");
+        test.assertEqual(state.ballast, 70, "neutral ballast holds depth");
         test.assertEqual(state.y, game::kSpawnY, "depth does not drift");
         test.assertEqual(state.vyQ8, 0, "vertical velocity stays zero");
         test.assertEqual(state.air, game::kAirCapacity - 1, "air drains one unit per drain period");
@@ -64,10 +64,10 @@ inline void GameSuite(TestRunner &runner) {
         game::setCargo(state, 4);
         test.assertEqual(state.cargo, 4, "cargo set");
         test.assertEqual(game::neutralFor(state.cargo), 30, "loaded neutral");
-        test.assertEqual(state.ballast, 50, "cargo does not move ballast");
+        test.assertEqual(state.ballast, 70, "cargo does not move ballast");
 
         runTicks(state, idleInput(), 300);
-        test.assertEqual(state.ballast, 50, "ballast stays put");
+        test.assertEqual(state.ballast, 70, "ballast stays put");
         test.assertTrue(state.vyQ8 > 0, "loaded boat accelerates down");
         test.assertTrue(state.y > game::kSpawnY + 8, "loaded boat visibly sinks");
         runner.add(test);
@@ -79,11 +79,57 @@ inline void GameSuite(TestRunner &runner) {
         game::reset(state);
         const int16_t startY = state.y;
         runTicks(state, blowInput(), 60);
-        test.assertEqual(state.ballast, 32, "18 ballast units blown in one second");
+        test.assertEqual(state.ballast, 52, "18 ballast units blown in one second");
         test.assertEqual(state.air, game::kAirCapacity - 3, "blow spends three air units");
         test.assertTrue(state.vyQ8 < 0, "blowing accelerates upward");
         test.assertTrue(state.y < startY, "blowing rises");
         test.assertEqual(state.cargo, 0, "trim unchanged");
+        runner.add(test);
+    }
+
+    {
+        Test test("blow air cost is flat across cargo");
+        game::State empty;
+        game::reset(empty);
+        runTicks(empty, blowInput(), 60);
+        test.assertEqual(empty.air, game::kAirCapacity - 3, "empty hold costs three air per second");
+
+        game::State loaded;
+        game::reset(loaded);
+        game::setCargo(loaded, 4);
+        runTicks(loaded, blowInput(), 60);
+        test.assertEqual(loaded.air, game::kAirCapacity - 3, "full hold still costs three air per second");
+
+        // The climb is slower under load because the up clamp drops from 20 to
+        // 12 px/s, so the same held blow lasts longer and a long climb needs
+        // more re-floods/re-blows. The per-second rate itself does not change.
+        test.assertTrue(game::maxVyUpQ8ForNormalized(4) < game::maxVyUpQ8ForNormalized(0),
+                        "loaded ascent is slower, so a climb spends air for longer");
+        runner.add(test);
+    }
+
+    {
+        Test test("cargo scales the vertical clamp both directions");
+        test.assertEqual(game::maxVyDownQ8ForNormalized(0), game::kMaxVyQ8, "empty down clamp is the base");
+        test.assertEqual(game::maxVyDownQ8ForNormalized(4), 28 * game::kQ8One, "full down clamp is 28 px/s");
+        test.assertEqual(game::maxVyUpQ8ForNormalized(0), game::kMaxVyQ8, "empty up clamp is the base");
+        test.assertEqual(game::maxVyUpQ8ForNormalized(4), 12 * game::kQ8One, "full up clamp is 12 px/s");
+        test.assertTrue(game::maxVyDownQ8ForNormalized(4) > game::maxVyUpQ8ForNormalized(4), "loaded sink is faster than rise");
+
+        for (uint8_t cargo = 0; cargo <= game::kCargoMax; cargo += 4) {
+            game::State state;
+            game::reset(state);
+            game::setCargo(state, cargo);
+            state.ballast = static_cast<uint8_t>(game::neutralFor(cargo));
+
+            state.vyQ8 = 30000;
+            game::stepPhysics(state, idleInput());
+            test.assertEqual(state.vyQ8, game::maxVyDownQ8ForNormalized(cargo), "down velocity clamps by cargo");
+
+            state.vyQ8 = -30000;
+            game::stepPhysics(state, idleInput());
+            test.assertEqual(state.vyQ8, static_cast<int16_t>(-game::maxVyUpQ8ForNormalized(cargo)), "up velocity clamps by cargo");
+        }
         runner.add(test);
     }
 
@@ -93,7 +139,7 @@ inline void GameSuite(TestRunner &runner) {
         game::reset(state);
         const int16_t startY = state.y;
         runTicks(state, floodInput(), 60);
-        test.assertEqual(state.ballast, 68, "18 ballast units flooded in one second");
+        test.assertEqual(state.ballast, 88, "18 ballast units flooded in one second");
         test.assertEqual(state.air, game::kAirCapacity, "flood costs no air");
         test.assertTrue(state.vyQ8 > 0, "flooding accelerates downward");
         test.assertTrue(state.y > startY, "flooding sinks");
@@ -106,13 +152,13 @@ inline void GameSuite(TestRunner &runner) {
         game::reset(state);
         state.air = 0;
         runTicks(state, blowInput(), 120);
-        test.assertEqual(state.ballast, 50, "empty tank cannot lighten ballast");
+        test.assertEqual(state.ballast, 70, "empty tank cannot lighten ballast");
         test.assertEqual(state.air, 0, "air stays empty");
         test.assertEqual(state.y, game::kSpawnY, "no rise without air");
         test.assertEqual(state.vyQ8, 0, "no upward velocity without air");
 
         runTicks(state, floodInput(), 60);
-        test.assertEqual(state.ballast, 68, "flood still works without air");
+        test.assertEqual(state.ballast, 88, "flood still works without air");
         runner.add(test);
     }
 

@@ -65,8 +65,10 @@ inline void ChartSuite(TestRunner &runner) {
         int16_t cellX = -1;
         int16_t cellY = -1;
         test.assertTrue(chart::cellFromPixels(world::SPAWN_SUB_X, world::SPAWN_SUB_Y, cellX, cellY), "spawn pixel maps");
-        test.assertEqual(cellX, static_cast<int16_t>(world::SPAWN_TILE_X / 5), "spawn chart x");
-        test.assertEqual(cellY, static_cast<int16_t>(world::SPAWN_TILE_Y / 5), "spawn chart y");
+        // The live spawn sits beside the home gantry, so its chart cell can
+        // differ from the dock tile while the radius-1 reveal still covers it.
+        test.assertEqual(cellX, static_cast<int16_t>(world::SPAWN_SUB_X / chart::kCellPixels), "spawn chart x");
+        test.assertEqual(cellY, static_cast<int16_t>(world::SPAWN_SUB_Y / chart::kCellPixels), "spawn chart y");
 
         test.assertTrue(chart::cellFromTile(world::SPAWN_TILE_X, world::SPAWN_TILE_Y, cellX, cellY), "spawn tile maps");
         test.assertEqual(cellX, static_cast<int16_t>(world::SPAWN_TILE_X / 5), "spawn tile chart x");
@@ -123,8 +125,10 @@ inline void ChartSuite(TestRunner &runner) {
         chart::State state;
         chart::reset(state);
         chart::revealInitial(state, gameState);
-        test.assertTrue(chart::isExplored(state, world::SPAWN_TILE_X / 5, world::SPAWN_TILE_Y / 5), "spawn cell is explored");
-        test.assertTrue(chart::isExplored(state, world::SPAWN_TILE_X / 5 + 1, world::SPAWN_TILE_Y / 5), "spawn reveal radius reaches a neighbour");
+        const int16_t spawnCellX = static_cast<int16_t>(world::SPAWN_SUB_X / chart::kCellPixels);
+        const int16_t spawnCellY = static_cast<int16_t>(world::SPAWN_SUB_Y / chart::kCellPixels);
+        test.assertTrue(chart::isExplored(state, spawnCellX, spawnCellY), "spawn cell is explored");
+        test.assertTrue(chart::isExplored(state, spawnCellX + 1, spawnCellY), "spawn reveal radius reaches the home dock cell");
 
         gameState.x = 1000;
         gameState.y = 800;

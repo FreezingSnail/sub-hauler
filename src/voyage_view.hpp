@@ -6,7 +6,6 @@
 
 #include "game.hpp"
 #include "panel_view.hpp"
-#include "roster.hpp"
 #include "voyage_flow.hpp"
 
 // Focused 128x64 menu frames for the voyage app slice: title/Continue, save
@@ -87,15 +86,6 @@ inline uint24_t statusLabel(const voyage_flow::BootStatus &status) {
     return txt_no_save;
 }
 
-inline uint24_t hullName(uint8_t hullClass) {
-    const roster::HullClass hull = roster::sanitize(static_cast<roster::HullClass>(hullClass));
-    if (hull == roster::kMinnow)
-        return txt_minnow;
-    if (hull == roster::kLeviathan)
-        return txt_leviathan;
-    return txt_hauler;
-}
-
 inline void menuRow(uint8_t y, uint24_t label, bool selected) {
     if (selected) {
         arduboy.fillRect(0, y - 1, 128, kRowInvertH, WHITE);
@@ -107,15 +97,18 @@ inline void menuRow(uint8_t y, uint24_t label, bool selected) {
     text::print(label);
 }
 
-// Baked title frames: status enum 0..4 x hull 0..2 x selected row 0..1. The two
-// confirmation modes use their own sheets; replace embeds the status line.
-inline void drawTitle(const voyage_flow::BootStatus &status, uint8_t selected, uint8_t hullClass, TitleMode mode) {
+// Baked title frames: status enum 0..4 x hull 0..2 x selected row 0..1. The
+// hull index is frozen at the HAULER column (1) so the shipped sheet keeps its
+// ABI while the title only ever shows the playable hull. The two confirmation
+// modes use their own sheets; replace embeds the status line.
+constexpr uint8_t kTitleHullFrame = 1;
+
+inline void drawTitle(const voyage_flow::BootStatus &status, uint8_t selected, TitleMode mode) {
     if (mode == kTitleConfirmReplace) {
         panel_view::draw(title_replace, status.state, 64);
         return;
     }
-    const uint8_t hull = static_cast<uint8_t>(roster::sanitize(static_cast<roster::HullClass>(hullClass)));
-    const uint16_t frame = static_cast<uint16_t>(status.state * 6u + hull * 2u + selected);
+    const uint16_t frame = static_cast<uint16_t>(status.state * 6u + kTitleHullFrame * 2u + selected);
     panel_view::draw(title_menu, frame, 64);
 }
 

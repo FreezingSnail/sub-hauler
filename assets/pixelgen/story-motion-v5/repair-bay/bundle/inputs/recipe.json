@@ -1,0 +1,83 @@
+{
+  "schema_version": "pixelgen.motion/1",
+  "recipe_id": "story-v5-repair-bay",
+  "revision": 2,
+  "canvas": {
+    "width": 128,
+    "height": 64,
+    "depth": 1
+  },
+  "background": {
+    "path": "background.png",
+    "sha256": "1052a71fa3893e80353380bd2b8f9e907eeb2bddd61b6f9422d71fc0e59dec34"
+  },
+  "master_seed": 4108,
+  "phases": [
+    {
+      "phase_id": "pose-0",
+      "duration_ms": 300
+    },
+    {
+      "phase_id": "pose-1",
+      "duration_ms": 300
+    },
+    {
+      "phase_id": "pose-2",
+      "duration_ms": 300
+    },
+    {
+      "phase_id": "pose-3",
+      "duration_ms": 300
+    }
+  ],
+  "layers": [
+    {
+      "layer_id": "lift-hook",
+      "role": "part",
+      "z": 10,
+      "source": {
+        "path": "layers/lift-hook.png",
+        "sha256": "73abdfbc3ff3444e4b7e3774fa0d8fa16a1199ee717deff6d97c9eb2165dfddf"
+      },
+      "matte": {
+        "path": "layers/lift-hook-matte.png",
+        "sha256": "75e693b1a00a2e502e371c751f8f777c1f52c05d66f52a359f161aece0bf422a"
+      },
+      "origin": {
+        "x": 107,
+        "y": 17
+      },
+      "track": [
+        {
+          "translate": {
+            "x": 0,
+            "y": 0
+          },
+          "turn_16ths": 0
+        },
+        {
+          "translate": {
+            "x": 1,
+            "y": 0
+          },
+          "turn_16ths": 0
+        },
+        {
+          "translate": {
+            "x": 0,
+            "y": 1
+          },
+          "turn_16ths": 0
+        },
+        {
+          "translate": {
+            "x": -1,
+            "y": 0
+          },
+          "turn_16ths": 0
+        }
+      ],
+      "clip": "error"
+    }
+  ]
+}

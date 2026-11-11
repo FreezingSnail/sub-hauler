@@ -26,8 +26,13 @@ TOOLS = {'cutter': 1, 'seal': 2, 'thruster': 4, 'lens': 8}
 KINDS = {'cutter': 1, 'seal': 2, 'thruster': 3, 'lens': 6}
 # Campaign milestone bits are a flash/save ABI even though they live in a
 # generated header, so the names are frozen here.
-MILESTONES = {'first': 1, 'pump': 2, 'lift': 4, 'beacon': 8, 'home': 16}
+MILESTONES = {'first': 1, 'pump': 2, 'lift': 4, 'beacon': 8, 'home': 16, 'expedition': 32}
 SURVEY_IDS = {'pump': 0, 'lift': 1}
+
+# A new voyage enters the water beside the home gantry, not on its dock pixel:
+# 28 px clears the 14 px auto-dock ring with visible separation, and the left
+# side matches the dock's clear wall approach.
+SPAWN_DOCK_OFFSET_PX = 28
 
 # Authored route phases are frozen by endpoint. Removing a retired route from
 # the level must not re-phase every later surviving passage and reshape the
@@ -92,6 +97,7 @@ class Level:
     pickups: list[Pickup]
     service_berths: list[ServiceBerth]
     surveys: list[Survey]
+    current_gate_mask: int = 0
 
 
 def shape_cavern(grid, cx, cy, rx, ry, phase=0.0, solid=False):
@@ -161,8 +167,8 @@ def on_spine(points, t):
 
 
 def make_gate(route, spine, pressure_y):
-    required=sum(TOOLS[t] for t in route.get('requires',[]))
-    if not required:return None
+    required=sum(TOOLS[t] for t in route.get('gate_required',route.get('requires',[])))
+    if not required and 'gate_required' not in route:return None
     if 'gate' in route:
         gx,gy=route['gate']['position']
         horizontal=route['gate']['axis']=='y'
@@ -243,6 +249,73 @@ def carve_organic(source, grid, rooms):
     return gates
 
 
+def open_run(is_open, low, high, centre):
+    """Contiguous open interval containing (or nearest to) centre."""
+    runs = []
+    start = None
+    for value in range(low, high + 1):
+        if is_open(value):
+            if start is None:
+                start = value
+        elif start is not None:
+            runs.append((start, value - 1))
+            start = None
+    if start is not None:
+        runs.append((start, high))
+    if not runs:
+        raise ValueError('no open cross-section')
+    return min(runs, key=lambda run: 0 if run[0] <= centre <= run[1] else min(abs(centre - run[0]), abs(centre - run[1])))
+
+
+def cover_current(grid, rooms, current):
+    """Span the common cross-section of the flow strip, then overlap rock.
+
+    Every slice of the authored flow strip must agree on the open run before
+    the current covers it. Using the intersection (rather than the union) keeps
+    the tide out of side coves and dead-end pockets that are open at only one
+    slice; those pockets were the source of inescapable current traps. The
+    final one-tile overlap into rock keeps the wall-to-wall read in the map.
+    """
+    cx = current.x + current.w // 2
+    cy = current.y + current.h // 2
+    horizontal = current.ax_q8 != 0
+    if horizontal:
+        low = 0
+        high = 159
+        columns = range(max(0, current.x // 8), min(320, (current.x + current.w - 1) // 8 + 1))
+        for tx in columns:
+            if not 0 <= tx < 320:
+                continue
+            run = open_run(lambda ty: not grid[ty * 320 + tx],
+                           0, 159,
+                           cy // 8)
+            low = max(low, run[0])
+            high = min(high, run[1])
+        if high < low:
+            raise ValueError('horizontal current has no common navigable cross-section')
+        low = max(0, low - 1)
+        high = min(159, high + 1)
+        return old.Current(current.x, low * 8, current.w, (high - low + 1) * 8,
+                           current.ax_q8, current.ay_q8)
+    low = 0
+    high = 319
+    rows = range(max(0, current.y // 8), min(160, (current.y + current.h - 1) // 8 + 1))
+    for ty in rows:
+        if not 0 <= ty < 160:
+            continue
+        run = open_run(lambda tx: not grid[ty * 320 + tx],
+                       0, 319,
+                       cx // 8)
+        low = max(low, run[0])
+        high = min(high, run[1])
+    if high < low:
+        raise ValueError('vertical current has no common navigable cross-section')
+    low = max(0, low - 1)
+    high = min(319, high + 1)
+    return old.Current(low * 8, current.y, (high - low + 1) * 8, current.h,
+                       current.ax_q8, current.ay_q8)
+
+
 def build(source: dict) -> Level:
     if source.get('format') != 'sub-hauler-level' or source.get('version') != 2:
         raise ValueError('unsupported authored level format/version')
@@ -276,12 +349,16 @@ def build(source: dict) -> Level:
     for r in sorted((r for r in rows if 'station' in r),key=lambda r:r['station']):
         x,y = r['position']
         settlements.append(old.Settlement(r['station'],r['name'].upper(),x,y,x*8,y*8))
-    # Eight current zones, kept clear of berths.
-    current_rooms = ['F','K','V','S','R','A','O','I']
+    # Four room-centre current zones, kept clear of berths. Their
+    # perpendicular extent is widened after the cave is carved to cover the
+    # common wall-to-wall passage cross-section, so a boat cannot skirt the
+    # flow by hugging either wall and side coves are not swallowed. F, V, A
+    # and O were retired: their walls added no routing decision.
+    current_rooms = ['K','S','R','I']
+    current_dirs = [(0,2048),(0,2048),(2048,0),(0,-2048)]
     currents=[]
-    for i,key in enumerate(current_rooms):
+    for key,(ax,ay) in zip(current_rooms,current_dirs):
         x,y=rooms[key]['position'];x*=8;y*=8
-        ax,ay = [(4096,0),(0,4096),(-4096,0),(0,-4096)][i%4]
         currents.append(old.Current(x-16,y-8,32,16,ax,ay))
     spawn=rooms[source['spawn']]['position']
     world=old.World(0,grid,old.pack_chart(old.build_chart(grid)),
@@ -289,6 +366,40 @@ def build(source: dict) -> Level:
                     tuple(settlements),tuple(currents),*spawn,spawn[0]*8,spawn[1]*8,
                     spawn[0]*8-13,spawn[1]*8+4)
     old.validate_world(world)
+    # Authored current zones add tide gates beyond the eight room-centre
+    # hazards. They are appended after the legacy compact validation, then all
+    # zones share the same common-cross-section expansion unless the spec pins
+    # an exact gate rectangle.
+    fixed_currents = []
+    for spec in source.get('currents', []):
+        direction = spec.get('dir')
+        if direction not in ('x+', 'x-', 'y+', 'y-'):
+            raise ValueError('current needs a signed axis direction')
+        if any(type(spec.get(key)) is not int for key in ('x', 'y', 'w', 'h')):
+            raise ValueError('current needs integer x/y/w/h')
+        if spec['w'] <= 0 or spec['h'] <= 0:
+            raise ValueError('current needs a positive extent')
+        ax, ay = {
+            'x+': (2048, 0),
+            'x-': (-2048, 0),
+            'y+': (0, 2048),
+            'y-': (0, -2048),
+        }[direction]
+        current = old.Current(spec['x'], spec['y'], spec['w'], spec['h'], ax, ay)
+        if spec.get('fixed'):
+            fixed_currents.append(current)
+        else:
+            currents.append(current)
+    # Widen each zone across the carved passage only after the legacy compact
+    # validation, so the legacy seed-4242 world header stays byte-identical.
+    expanded=[]
+    for current in currents:
+        expanded.append(cover_current(grid, rooms, current))
+    expanded.extend(fixed_currents)
+    world=replace(world,currents=tuple(expanded))
+    # Every tide is a thruster gate: upstream travel is blocked until the
+    # thruster is owned, and the zone is disabled once it is.
+    current_gate_mask = (1 << len(expanded)) - 1
     # Legacy validation checks the open navigation chambers. Wall berths have
     # a directional approach instead of the old six-tile empty circle.
     docks=[]
@@ -300,7 +411,7 @@ def build(source: dict) -> Level:
     home=next(d for d in docks if d.id==rooms[source['spawn']]['station'])
     world=replace(world,settlements=tuple(docks),spawn_tile_x=home.tile_x,spawn_tile_y=home.tile_y,
                   spawn_pixel_x=home.pixel_x,spawn_pixel_y=home.pixel_y,
-                  spawn_sub_x=home.pixel_x,spawn_sub_y=home.pixel_y)
+                  spawn_sub_x=home.pixel_x-SPAWN_DOCK_OFFSET_PX,spawn_sub_y=home.pixel_y)
 
     service_berths=[]
     seen_berths={d.id for d in docks}
@@ -344,8 +455,9 @@ def build(source: dict) -> Level:
         surveys.append(Survey(survey_id,item.get('name',rooms[item['room']]['name']).upper(),symbol,
                               x,y,x*8,y*8))
 
-    level=Level(source,world,gates,pickups,service_berths,surveys)
+    level=Level(source,world,gates,pickups,service_berths,surveys,current_gate_mask)
     validate_docks(level)
+    validate_spawn(level)
     validate_surveys(level)
     return level
 
@@ -385,6 +497,19 @@ def validate_docks(level):
                 raise ValueError('service berth overlaps freight dock: '+dock.name)
 
 
+def validate_spawn(level):
+    grid=level.world.grid
+    px,py=level.world.spawn_sub_x,level.world.spawn_sub_y
+    # The hull centre starts beside the wall gantry. Keep the same 26x8
+    # navigability and current-free guarantees the legacy spawn had.
+    if any(grid[ty*320+tx] for ty in range((py-4)//8,(py+3)//8+1)
+           for tx in range((px-13)//8,(px+12)//8+1)):
+        raise ValueError('spawn hull is not navigable')
+    for current in level.world.currents:
+        if px+13>current.x and px-13<current.x+current.w and py+4>current.y and py-4<current.y+current.h:
+            raise ValueError('spawn hull overlaps a current')
+
+
 def validate_surveys(level):
     grid=level.world.grid
     for survey in level.surveys:
@@ -418,12 +543,22 @@ def reachable_tiles(level: Level, tools: int) -> set[tuple[int,int]]:
     grid=level.world.grid
     free=bytearray(320*160)
     closed=[g for g in level.gates if tools&g.required!=g.required]
+    # A tide gate has no blocking gate record: it is an authored current whose
+    # passage only opens with its required tool. Treat its authored rectangle
+    # as closed for the same reachability contract.
+    tide_rects=[]
+    for spec in level.source.get('currents', []):
+        needed=sum(TOOLS[t] for t in spec.get('requires', []))
+        if tools&needed!=needed:
+            tide_rects.append(spec)
     for y in range(1,159):
         for x in range(2,318):
             if any(grid[yy*320+xx] for yy in (y-1,y) for xx in range(x-2,x+2)):
                 continue
             px,py=x*8,y*8
             if any(px+13>g.x and px-13<g.x+g.w and py+4>g.y and py-4<g.y+g.h for g in closed):
+                continue
+            if any(px+13>t['x'] and px-13<t['x']+t['w'] and py+4>t['y'] and py-4<t['y']+t['h'] for t in tide_rects):
                 continue
             free[y*320+x]=1
     start=tuple(next(r for r in level.source['rooms'] if r['id']==level.source['spawn'])['position'])
@@ -466,8 +601,13 @@ def validate_access(level: Level) -> None:
         if berth.milestone == MILESTONES['lift'] and berth.tile_y >= level.source['pressure_y']:
             raise ValueError('Lower Gantry service berth must stay above the pressure boundary: '+berth.name)
     base_reach=reachable_tiles(level,0)
+    full_tools=sum(TOOLS.values())
     for berth in level.service_berths:
-        if (berth.tile_x,berth.tile_y) not in base_reach:
+        # The optional Deep Relay expedition is deliberately late: it is only
+        # offered after every tool is held. Restoration berths stay base-boat
+        # reachable so no mandatory tool sits behind its own branch.
+        reach=reachable_tiles(level,full_tools) if berth.milestone==MILESTONES['expedition'] else base_reach
+        if (berth.tile_x,berth.tile_y) not in reach:
             raise ValueError('unreachable service berth without optional tools: '+berth.name)
     for survey in level.surveys:
         if (survey.tile_x,survey.tile_y) not in base_reach:
@@ -551,6 +691,8 @@ inline Pickup pickup(uint8_t id) {{
 
 
 def render_preview(level: Level) -> str:
+    pickup_labels={1:'CUTTER',2:'SEAL',3:'THRUSTER',6:'LENS'}
+    delivery_labels={'PUMP_REFUGE':'PUMP DELIVERY','FREIGHT_YARD':'LIFT DELIVERY'}
     parts=['<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 680"><title>Encoded Sub-hauler exploration terrain</title><rect width="1280" height="680" fill="#263a47"/><g transform="scale(4)">']
     for y in range(160):
         x=0
@@ -559,14 +701,33 @@ def render_preview(level: Level) -> str:
             start=x
             while x<320 and not level.world.grid[y*320+x]:x+=1
             parts.append(f'<path d="M{start} {y+.5}h{x-start}" stroke="#081c2b"/>')
+    for c in level.world.currents:
+        parts.append(f'<rect x="{c.x/8}" y="{c.y/8}" width="{c.w/8}" height="{c.h/8}" fill="#6cc7e8" fill-opacity=".22" stroke="#6cc7e8" stroke-opacity=".45" stroke-width=".4" vector-effect="non-scaling-stroke"/>')
     for g in level.gates:
+        if g.required == 0:
+            continue
         color='#ba9be8' if g.required&2 else '#6cd5df' if g.required&4 else '#edb96a'
         parts.append(f'<rect x="{g.x/8}" y="{g.y/8}" width="{g.w/8}" height="{g.h/8}" fill="{color}"/>')
     for p in level.pickups:
         parts.append(f'<circle cx="{p.x/8}" cy="{p.y/8}" r="1.5" fill="#edb96a"/>')
+    for s in level.surveys:
+        parts.append(f'<circle cx="{s.pixel_x/8}" cy="{s.pixel_y/8}" r="1.8" fill="none" stroke="#e5efed" stroke-width=".7"/>')
+    for b in level.service_berths:
+        parts.append(f'<rect x="{b.pixel_x/8-1.5}" y="{b.pixel_y/8-1.5}" width="3" height="3" fill="#f4f0c6" stroke="#081c2b" stroke-width=".6"/>')
     parts.append('</g><g font-family="sans-serif" font-size="13" fill="#e5efed">')
     for s in level.world.settlements:
         parts.append(f'<text x="{s.tile_x*4-20}" y="{s.tile_y*4-20}">{escape(s.name)}</text>')
+    for b in level.service_berths:
+        parts.append(f'<text x="{b.tile_x*4-20}" y="{b.tile_y*4+18}">{escape(b.name)}</text>')
+        delivery=delivery_labels.get(b.symbol)
+        if delivery:
+            parts.append(f'<text x="{b.tile_x*4-20}" y="{b.tile_y*4+31}" font-size="11" fill="#f4d28a">{delivery}</text>')
+    for p in level.pickups:
+        label=pickup_labels.get(p.kind,'EQUIPMENT')
+        parts.append(f'<text x="{p.x/2+8}" y="{p.y/2+4}" font-size="11" fill="#f4d28a">{label}</text>')
+    for s in level.surveys:
+        parts.append(f'<text x="{s.pixel_x/2+8}" y="{s.pixel_y/2+4}" font-size="11" fill="#cfe7e2">{s.symbol} SURVEY</text>')
+    parts.append('<text x="20" y="648" font-size="12" fill="#9bb5bd">Cyan = expanded current · amber = cutter gate · violet = seal gate · cyan line = thruster gate · circles = equipment coves · rings = surveys · squares = service berths</text>')
     parts.append(f'<text x="20" y="670">Actual 320x160 packed tile geometry · gates and {len(level.pickups)} equipment coves · generated by make gen</text></g></svg>')
     return '\n'.join(parts)+'\n'
 
@@ -634,7 +795,9 @@ def main() -> None:
     (root/'exploration-terrain.bin').write_bytes(terrain)
     (ROOT/'docs/assets/exploration-scenery.json').write_text(json.dumps(scenery,indent=2)+'\n')
     print(f'gen_scenery: {json.dumps(scenery, separators=(",", ":"))}')
-    header=old.render_header(level.world,service_berths=level.service_berths,surveys=level.surveys).replace('Generated by tools/gen_world.py.','Generated by tools/gen_level.py.').replace('LAYOUT_VERSION    = 1',f'LAYOUT_VERSION    = {level.source.get("layout_version",2)}').replace('world.bin','exploration.bin').replace('world-chart.bin','exploration-chart.bin')
+    header=old.render_header(level.world,service_berths=level.service_berths,surveys=level.surveys,variable_current_extents=True).replace('Generated by tools/gen_world.py.','Generated by tools/gen_level.py.').replace('LAYOUT_VERSION    = 1',f'LAYOUT_VERSION    = {level.source.get("layout_version",2)}').replace('CURRENT_ACCEL_Q8 = 4096', 'CURRENT_ACCEL_Q8 = 2048').replace('world.bin','exploration.bin').replace('world-chart.bin','exploration-chart.bin')
+    header=header.replace('constexpr uint8_t  CURRENT_COUNT',
+                          f'constexpr uint16_t CURRENT_GATE_MASK = 0x{level.current_gate_mask:04X};\nconstexpr uint8_t  CURRENT_COUNT',1)
     (ROOT/'src/generated/level.hpp').write_text(header)
     (ROOT/'src/generated/exploration.hpp').write_text(render_objects(level))
     (ROOT/'docs/assets/exploration-terrain.svg').write_text(render_preview(level))

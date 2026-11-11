@@ -1,0 +1,176 @@
+{
+  "anchor_prompt": null,
+  "frames": [
+    {
+      "candidate": null,
+      "duration_ms": 300,
+      "frame_id": "pose-0",
+      "phase": "pose-0",
+      "seed": 4136,
+      "source": {
+        "encoded_bytes": null,
+        "format": "png",
+        "height": null,
+        "opaque": true,
+        "path": "inputs/frames/000.png",
+        "sha256": "4ca3df855e5773ee5e9b3546ded6b4bb4c69866288aa9a83078c950edc71e3f8",
+        "width": null
+      }
+    },
+    {
+      "candidate": null,
+      "duration_ms": 300,
+      "frame_id": "pose-1",
+      "phase": "pose-1",
+      "seed": 4137,
+      "source": {
+        "encoded_bytes": null,
+        "format": "png",
+        "height": null,
+        "opaque": true,
+        "path": "inputs/frames/001.png",
+        "sha256": "1acb031960c7fe31bf7ff7a3f25bc2a2a11c4d5ff1d7ecf00da363af49e567d4",
+        "width": null
+      }
+    },
+    {
+      "candidate": null,
+      "duration_ms": 300,
+      "frame_id": "pose-2",
+      "phase": "pose-2",
+      "seed": 4138,
+      "source": {
+        "encoded_bytes": null,
+        "format": "png",
+        "height": null,
+        "opaque": true,
+        "path": "inputs/frames/002.png",
+        "sha256": "c2a405d0dac79c8b91d30aea23d0a855b0d6d2f9b9861d408e7817f347b15acc",
+        "width": null
+      }
+    },
+    {
+      "candidate": null,
+      "duration_ms": 300,
+      "frame_id": "pose-3",
+      "phase": "pose-3",
+      "seed": 4139,
+      "source": {
+        "encoded_bytes": null,
+        "format": "png",
+        "height": null,
+        "opaque": true,
+        "path": "inputs/frames/003.png",
+        "sha256": "7348c83c78acfe6bf007df50a39af86b7953a4bc7c398ede6cc86d8995a97855",
+        "width": null
+      }
+    }
+  ],
+  "layout": null,
+  "layout_id": null,
+  "mask": {
+    "height": 64,
+    "kind": "png",
+    "path": "inputs/mask.png",
+    "rectangles": [
+      {
+        "height": 1,
+        "width": 1,
+        "x": 35,
+        "y": 27
+      },
+      {
+        "height": 1,
+        "width": 3,
+        "x": 37,
+        "y": 27
+      },
+      {
+        "height": 1,
+        "width": 2,
+        "x": 34,
+        "y": 28
+      },
+      {
+        "height": 1,
+        "width": 4,
+        "x": 37,
+        "y": 28
+      },
+      {
+        "height": 1,
+        "width": 4,
+        "x": 32,
+        "y": 29
+      },
+      {
+        "height": 1,
+        "width": 6,
+        "x": 37,
+        "y": 29
+      },
+      {
+        "height": 1,
+        "width": 11,
+        "x": 32,
+        "y": 30
+      },
+      {
+        "height": 1,
+        "width": 13,
+        "x": 31,
+        "y": 31
+      },
+      {
+        "height": 1,
+        "width": 13,
+        "x": 31,
+        "y": 32
+      },
+      {
+        "height": 1,
+        "width": 12,
+        "x": 31,
+        "y": 33
+      },
+      {
+        "height": 1,
+        "width": 12,
+        "x": 31,
+        "y": 34
+      },
+      {
+        "height": 1,
+        "width": 11,
+        "x": 32,
+        "y": 35
+      },
+      {
+        "height": 1,
+        "width": 9,
+        "x": 33,
+        "y": 36
+      },
+      {
+        "height": 1,
+        "width": 7,
+        "x": 34,
+        "y": 37
+      },
+      {
+        "height": 1,
+        "width": 5,
+        "x": 35,
+        "y": 38
+      }
+    ],
+    "sha256": "e8c5c352a108bd2b7500b7ad9ff9edaa67d590c75e2d2fb675aa11743ee23161",
+    "width": 128
+  },
+  "master_seed": 4136,
+  "mode": "assemble",
+  "model": null,
+  "schema_version": "pixelgen.animation/1",
+  "spec_id": "story-v4-lift-delivery-cable",
+  "tail": null
+}

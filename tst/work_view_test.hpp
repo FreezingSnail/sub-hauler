@@ -107,6 +107,12 @@ inline void WorkViewSuite(TestRunner &runner) {
         state.campaign |= static_cast<uint8_t>(campaign::kMilestonePump | campaign::kMilestoneLift | campaign::kMilestoneBeacon);
         state.tools = exploration_data::SEAL;
         test.assertTrue(dockAt(state, campaign::kDeepAnchor), "Deep Anchor docks");
+        test.assertEqual(work_view::rowCount(state), 0, "DEEP RELAY needs all four tools");
+        state.tools |= static_cast<uint8_t>(exploration_data::CUTTER | exploration_data::THRUSTER | exploration_data::LENS);
+        test.assertEqual(work_view::rowCount(state), 1, "DEEP RELAY only");
+        test.assertEqual(work_view::rowAt(state, 0).mission, campaign::kExpedition, "DEEP RELAY is the story row");
+
+        state.campaign |= campaign::kMilestoneExpedition;
         test.assertEqual(work_view::rowCount(state), 1, "HOME only");
         test.assertEqual(work_view::rowAt(state, 0).mission, campaign::kHome, "HOME is the story row");
 
@@ -119,11 +125,56 @@ inline void WorkViewSuite(TestRunner &runner) {
     }
 
     {
+        Test test("empty WORK boards keep an actionable clue");
+        game::State state;
+        game::reset(state);
+        state.campaign = static_cast<uint8_t>(campaign::kMilestoneFirst | campaign::kMilestonePump);
+        state.surveys = campaign::kSurveyPump;   // lift survey still missing
+        test.assertTrue(dockAt(state, campaign::kBenthos), "Benthos docks");
+        test.assertEqual(work_view::rowCount(state), 0, "PUMP leaves Benthos with no row until the lift survey");
+        test.assertEqual(work_view::clueFor(state, campaign::kBenthos), work_view::kClueLiftSurvey, "empty Benthos board names the Freight Yard survey");
+
+        state.campaign = static_cast<uint8_t>(campaign::kMilestoneFirst | campaign::kMilestoneLift);
+        state.surveys = campaign::kSurveyLift;   // pump survey still missing
+        test.assertTrue(dockAt(state, campaign::kCormorant), "Cormorant docks");
+        test.assertEqual(work_view::rowCount(state), 0, "LIFT leaves Cormorant with no row until the pump survey");
+        test.assertEqual(work_view::clueFor(state, campaign::kCormorant), work_view::kCluePumpSurvey, "empty Cormorant board names Pump Refuge");
+
+        state.campaign = static_cast<uint8_t>(campaign::kMilestoneFirst | campaign::kMilestonePump | campaign::kMilestoneLift);
+        state.surveys = campaign::kSurveyMask;
+        state.tools = 0;
+        test.assertEqual(work_view::rowCount(state), 0, "both repairs still need the seal");
+        test.assertEqual(work_view::clueFor(state, campaign::kCormorant), work_view::kClueBeaconNeedsSeal, "empty board names the seal");
+        state.tools = exploration_data::SEAL;
+        test.assertEqual(work_view::clueFor(state, campaign::kCormorant), work_view::kClueBeaconReady, "seal completes the beacon lead");
+
+        test.assertEqual(work_view::clueFor(state, campaign::kDeepAnchor), work_view::kClueBeaconPlan, "Deep Anchor introduces the joint plan before BEACON");
+        state.campaign |= campaign::kMilestoneBeacon;
+        test.assertEqual(work_view::clueFor(state, campaign::kDeepAnchor), work_view::kClueDeepRelay, "Deep Anchor advertises the mandatory relay");
+        state.campaign |= campaign::kMilestoneExpedition;
+        test.assertEqual(work_view::clueFor(state, campaign::kDeepAnchor), work_view::kClueBeaconLit, "Deep Anchor reports the lit beacon after the relay");
+        state.campaign |= campaign::kMilestoneHome;
+        test.assertEqual(work_view::clueFor(state, campaign::kTidewall), work_view::kClueNetworkOn, "Tidewall reports the restored network");
+
+        game::State fresh;
+        game::reset(fresh);
+        test.assertEqual(work_view::equipmentClue(fresh), work_view::kEquipmentCutter, "fresh equipment lead is the cutter");
+        fresh.tools = exploration_data::CUTTER;
+        test.assertEqual(work_view::equipmentClue(fresh), work_view::kEquipmentSeal, "cutter precedes the seal lead");
+        fresh.tools |= exploration_data::SEAL;
+        test.assertEqual(work_view::equipmentClue(fresh), work_view::kEquipmentNone, "owned tools post no lead");
+        runner.add(test);
+    }
+
+    {
         Test test("active work shows no selectable rows and accepts nothing twice");
         game::State state;
         game::reset(state);
         test.assertTrue(dockAt(state, campaign::kTidewall), "Tidewall docks");
         test.assertTrue(work_view::accept(state, work_view::rowAt(state, 0)), "FIRST accepted through WORK");
+        test.assertEqual(state.activeJob.kind, game::kJobKindCampaign, "active work is always a campaign job");
+        test.assertEqual(state.activeJob.mission, campaign::kFirst, "active summary keeps the mission");
+        test.assertEqual(state.activeJob.to, campaign::kBenthos, "active summary keeps the destination");
         test.assertEqual(work_view::rowCount(state), 0, "active work has no row list");
         test.assertEqual(kindAt(state, 0), work_view::kRowNone, "no row is exposed while carrying");
         test.assertTrue(!work_view::accept(state, work_view::rowAt(state, 0)), "second acceptance is refused");

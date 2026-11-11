@@ -1,0 +1,376 @@
+{
+  "tile_width": 128,
+  "tile_height": 64,
+  "columns": 4,
+  "cards": [
+    {
+      "row": 0,
+      "scene": "first-departure",
+      "card": 0,
+      "kind": "image",
+      "poses": 4,
+      "title": "Image - tidewall-filters",
+      "packed_card": 22
+    },
+    {
+      "row": 1,
+      "scene": "first-departure",
+      "card": 1,
+      "kind": "text",
+      "poses": 1,
+      "title": "Text page 1",
+      "packed_card": 23
+    },
+    {
+      "row": 2,
+      "scene": "first-result",
+      "card": 0,
+      "kind": "image",
+      "poses": 4,
+      "title": "Image - arrival",
+      "packed_card": 0
+    },
+    {
+      "row": 3,
+      "scene": "first-result",
+      "card": 1,
+      "kind": "text",
+      "poses": 1,
+      "title": "Text page 1",
+      "packed_card": 1
+    },
+    {
+      "row": 4,
+      "scene": "first-result",
+      "card": 2,
+      "kind": "image",
+      "poses": 4,
+      "title": "Image - grow-tanks",
+      "packed_card": 2
+    },
+    {
+      "row": 5,
+      "scene": "first-result",
+      "card": 3,
+      "kind": "text",
+      "poses": 1,
+      "title": "Text page 2",
+      "packed_card": 3
+    },
+    {
+      "row": 6,
+      "scene": "first-result",
+      "card": 4,
+      "kind": "image",
+      "poses": 4,
+      "title": "Image - repair-bay",
+      "packed_card": 4
+    },
+    {
+      "row": 7,
+      "scene": "first-result",
+      "card": 5,
+      "kind": "text",
+      "poses": 1,
+      "title": "Text page 3",
+      "packed_card": 5
+    },
+    {
+      "row": 8,
+      "scene": "pump-survey",
+      "card": 0,
+      "kind": "image",
+      "poses": 4,
+      "title": "Image - pump-approach",
+      "packed_card": 6
+    },
+    {
+      "row": 9,
+      "scene": "pump-survey",
+      "card": 1,
+      "kind": "text",
+      "poses": 1,
+      "title": "Text page 1",
+      "packed_card": 7
+    },
+    {
+      "row": 10,
+      "scene": "pump-survey",
+      "card": 2,
+      "kind": "image",
+      "poses": 4,
+      "title": "Image - pump-cracked-impeller",
+      "packed_card": 8
+    },
+    {
+      "row": 11,
+      "scene": "pump-survey",
+      "card": 3,
+      "kind": "text",
+      "poses": 1,
+      "title": "Text page 2",
+      "packed_card": 9
+    },
+    {
+      "row": 12,
+      "scene": "pump-pickup",
+      "card": 0,
+      "kind": "image",
+      "poses": 4,
+      "title": "Image - delivery-loading",
+      "packed_card": 24
+    },
+    {
+      "row": 13,
+      "scene": "pump-pickup",
+      "card": 1,
+      "kind": "text",
+      "poses": 1,
+      "title": "Text page 1",
+      "packed_card": 25
+    },
+    {
+      "row": 14,
+      "scene": "pump-result",
+      "card": 0,
+      "kind": "image",
+      "poses": 4,
+      "title": "Image - delivery-water",
+      "packed_card": 10
+    },
+    {
+      "row": 15,
+      "scene": "pump-result",
+      "card": 1,
+      "kind": "text",
+      "poses": 1,
+      "title": "Text page 1",
+      "packed_card": 11
+    },
+    {
+      "row": 16,
+      "scene": "lift-survey",
+      "card": 0,
+      "kind": "image",
+      "poses": 4,
+      "title": "Image - lift-yard",
+      "packed_card": 12
+    },
+    {
+      "row": 17,
+      "scene": "lift-survey",
+      "card": 1,
+      "kind": "text",
+      "poses": 1,
+      "title": "Text page 1",
+      "packed_card": 13
+    },
+    {
+      "row": 18,
+      "scene": "lift-survey",
+      "card": 2,
+      "kind": "image",
+      "poses": 4,
+      "title": "Image - lift-cable",
+      "packed_card": 14
+    },
+    {
+      "row": 19,
+      "scene": "lift-survey",
+      "card": 3,
+      "kind": "text",
+      "poses": 1,
+      "title": "Text page 2",
+      "packed_card": 15
+    },
+    {
+      "row": 20,
+      "scene": "lift-pickup",
+      "card": 0,
+      "kind": "image",
+      "poses": 4,
+      "title": "Image - lift-delivery-cable",
+      "packed_card": 26
+    },
+    {
+      "row": 21,
+      "scene": "lift-pickup",
+      "card": 1,
+      "kind": "text",
+      "poses": 1,
+      "title": "Text page 1",
+      "packed_card": 27
+    },
+    {
+      "row": 22,
+      "scene": "lift-result",
+      "card": 0,
+      "kind": "image",
+      "poses": 4,
+      "title": "Image - lift-delivery-working",
+      "packed_card": 16
+    },
+    {
+      "row": 23,
+      "scene": "lift-result",
+      "card": 1,
+      "kind": "text",
+      "poses": 1,
+      "title": "Text page 1",
+      "packed_card": 17
+    },
+    {
+      "row": 24,
+      "scene": "joint-missing",
+      "card": 0,
+      "kind": "image",
+      "poses": 4,
+      "title": "Image - restoration-ready",
+      "packed_card": 28
+    },
+    {
+      "row": 25,
+      "scene": "joint-missing",
+      "card": 1,
+      "kind": "text",
+      "poses": 1,
+      "title": "Text page 1",
+      "packed_card": 29
+    },
+    {
+      "row": 26,
+      "scene": "joint-ready",
+      "card": 0,
+      "kind": "image",
+      "poses": 4,
+      "title": "Image - restoration-ready",
+      "packed_card": 30
+    },
+    {
+      "row": 27,
+      "scene": "joint-ready",
+      "card": 1,
+      "kind": "text",
+      "poses": 1,
+      "title": "Text page 1",
+      "packed_card": 31
+    },
+    {
+      "row": 28,
+      "scene": "beacon-departure",
+      "card": 0,
+      "kind": "image",
+      "poses": 4,
+      "title": "Image - cormorant-core",
+      "packed_card": 32
+    },
+    {
+      "row": 29,
+      "scene": "beacon-departure",
+      "card": 1,
+      "kind": "text",
+      "poses": 1,
+      "title": "Text page 1",
+      "packed_card": 33
+    },
+    {
+      "row": 30,
+      "scene": "beacon-departure",
+      "card": 2,
+      "kind": "text",
+      "poses": 1,
+      "title": "Text page 2",
+      "packed_card": 34
+    },
+    {
+      "row": 31,
+      "scene": "beacon-result",
+      "card": 0,
+      "kind": "image",
+      "poses": 4,
+      "title": "Image - beacon-lit",
+      "packed_card": 18
+    },
+    {
+      "row": 32,
+      "scene": "beacon-result",
+      "card": 1,
+      "kind": "text",
+      "poses": 1,
+      "title": "Text page 1",
+      "packed_card": 19
+    },
+    {
+      "row": 33,
+      "scene": "deep-relay-departure",
+      "card": 0,
+      "kind": "image",
+      "poses": 4,
+      "title": "Image - deep-relay",
+      "packed_card": 39
+    },
+    {
+      "row": 34,
+      "scene": "deep-relay-departure",
+      "card": 1,
+      "kind": "text",
+      "poses": 1,
+      "title": "Text page 1",
+      "packed_card": 40
+    },
+    {
+      "row": 35,
+      "scene": "deep-relay-result",
+      "card": 0,
+      "kind": "image",
+      "poses": 4,
+      "title": "Image - deep-relay",
+      "packed_card": 37
+    },
+    {
+      "row": 36,
+      "scene": "deep-relay-result",
+      "card": 1,
+      "kind": "text",
+      "poses": 1,
+      "title": "Text page 1",
+      "packed_card": 38
+    },
+    {
+      "row": 37,
+      "scene": "home-departure",
+      "card": 0,
+      "kind": "image",
+      "poses": 4,
+      "title": "Image - delivery-loading",
+      "packed_card": 35
+    },
+    {
+      "row": 38,
+      "scene": "home-departure",
+      "card": 1,
+      "kind": "text",
+      "poses": 1,
+      "title": "Text page 1",
+      "packed_card": 36
+    },
+    {
+      "row": 39,
+      "scene": "home-result",
+      "card": 0,
+      "kind": "image",
+      "poses": 4,
+      "title": "Image - home-lights",
+      "packed_card": 20
+    },
+    {
+      "row": 40,
+      "scene": "home-result",
+      "card": 1,
+      "kind": "text",
+      "poses": 1,
+      "title": "Text page 1",
+      "packed_card": 21
+    }
+  ]
+}

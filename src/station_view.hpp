@@ -9,7 +9,7 @@
 
 // The generated station menu frames and hint rows remain cart ABI, but the
 // runtime board is native: the shipped frames still carry the retired SHOP row
-// and no longer match the WORK/UNDOCK and summary/ABANDON/WORK/UNDOCK shapes.
+// and no longer match the live WORK/UNDOCK and summary/WORK/UNDOCK shapes.
 // Keeping the frame selectors here documents that ABI for the menu tests while
 // the draw path below uses the live row rules.
 
@@ -22,9 +22,9 @@
 //
 // Header: settlement name.
 // Status: current air against the fixed 300-unit tank.
-// Rows:   WORK/UNDOCK, or summary/ABANDON/WORK/UNDOCK when a contract is
-//         active. Service-only berths show UNDOCK only. One inverted selection
-//         bar. WORK opens the restoration board. B always undocks.
+// Rows:   WORK/UNDOCK, or summary/WORK/UNDOCK when a contract is active.
+//         Service-only berths show UNDOCK only. One inverted selection bar.
+//         WORK opens the restoration board. B always undocks.
 // Hint:   A confirms the row and B always undocks. Contract acceptance
 //         auto-loads the four cargo units, so the active board needs no load
 //         row or screen.
@@ -39,7 +39,7 @@ constexpr uint8_t kDividerY = 11;
 constexpr uint8_t kStatusX = 2;
 constexpr uint8_t kStatusY = 15;
 constexpr uint8_t kRowX = 4;
-// Four rows (summary/ABANDON/WORK/UNDOCK) must fit above the hint:
+// Three rows (summary/WORK/UNDOCK) must fit above the hint:
 // header/status end at y=21, rows are 22+7*row, and the hint starts at 57.
 constexpr uint8_t kRowY0 = 22;
 constexpr uint8_t kRowStep = 7;
@@ -87,10 +87,15 @@ constexpr bool panelMainBerth(uint8_t berth) {
     return berth < kPanelMainBerths;
 }
 
+// Archival frame selector: the shipped sheet still has four active selections
+// (summary/retired ABANDON/WORK/UNDOCK). Runtime never selects the retired
+// frame; the live board uses only summary/WORK/UNDOCK.
+constexpr uint8_t kPanelArchivalActiveFirst = 1;
+
 inline bool panelValidFrame(uint8_t berth, bool active, uint8_t selected) {
     if (panelMainBerth(berth)) {
         if (active)
-            return selected >= station::kAbandonRow && selected <= station::kActiveUndockRow;
+            return selected >= kPanelArchivalActiveFirst && selected <= kPanelArchivalActiveFirst + 2;
         return selected < station::kStationRowCount;
     }
     return berth < kPanelMainBerths + kPanelServiceBerths && !active && selected == 0;
@@ -100,7 +105,7 @@ inline uint16_t panelFrame(uint8_t berth, bool active, uint8_t selected) {
     if (!panelMainBerth(berth))
         return static_cast<uint16_t>(kPanelMainBerths * kPanelFramesPerBerth + (berth - kPanelMainBerths));
     const uint16_t base = static_cast<uint16_t>(berth * kPanelFramesPerBerth);
-    return active ? static_cast<uint16_t>(base + 3 + (selected - station::kAbandonRow)) : static_cast<uint16_t>(base + selected);
+    return active ? static_cast<uint16_t>(base + 3 + (selected - kPanelArchivalActiveFirst)) : static_cast<uint16_t>(base + selected);
 }
 
 inline uint8_t panelHint(const game::State &state) {
@@ -125,9 +130,10 @@ inline uint8_t panelHint(const game::State &state) {
 
 // Generated AVR settlement records carry position only (name is null), so the
 // station board owns the display names. Order matches the generated flash ABI.
-// An if-chain, not a switch: the six labels would otherwise become an 18-byte
-// RAM-resident CSWTCH table copied by the startup code. Proportional string
-// addresses make a PROGMEM table no smaller than these branches.
+// An if-chain, not a switch: the seven labels would otherwise become a
+// RAM-resident CSWTCH table copied by the startup code. The appended Freight
+// Yard label fits the alignment padding before the save partition, so every
+// earlier FX offset and the save offset stay frozen.
 inline uint24_t nameFor(uint8_t id) {
     if (id == 0)
         return txt_tidewall;
@@ -141,6 +147,10 @@ inline uint24_t nameFor(uint8_t id) {
         return txt_pump_refuge;
     if (id == 5)
         return txt_lower_gantry;
+    if (id == 6)
+        return txt_freight_yard;
+    if (id == 7)
+        return txt_deep_relay;
     return txt_station;
 }
 
@@ -150,8 +160,6 @@ inline uint24_t rowLabel(uint8_t row, const game::State &state) {
         return txt_work;
     if (kind == station::kRowUndock)
         return txt_undock;
-    if (kind == station::kRowAbandon)
-        return txt_abandon;
     return 0;
 }
 

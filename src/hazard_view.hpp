@@ -28,16 +28,25 @@ __attribute__((noinline)) inline void flowMark(uint8_t *buffer, int16_t x, int16
     }
     const int16_t tipX = horizontal ? static_cast<int16_t>(x + 3 * direction) : x;
     const int16_t tipY = horizontal ? y : static_cast<int16_t>(y + 3 * direction);
+    // Put a point at the tip and the barbs one pixel behind it so the mark
+    // reads as an arrow rather than a T or Y. The tiny glyph matters for
+    // one-way tide gates.
+    cave::setPixel(buffer, tipX, tipY);
     if (horizontal) {
-        cave::setPixel(buffer, tipX, static_cast<int16_t>(tipY - 1));
-        cave::setPixel(buffer, tipX, static_cast<int16_t>(tipY + 1));
+        const int16_t barbX = static_cast<int16_t>(x + 2 * direction);
+        cave::setPixel(buffer, barbX, static_cast<int16_t>(tipY - 1));
+        cave::setPixel(buffer, barbX, static_cast<int16_t>(tipY + 1));
     } else {
-        cave::setPixel(buffer, static_cast<int16_t>(tipX - 1), tipY);
-        cave::setPixel(buffer, static_cast<int16_t>(tipX + 1), tipY);
+        const int16_t barbY = static_cast<int16_t>(y + 2 * direction);
+        cave::setPixel(buffer, static_cast<int16_t>(tipX - 1), barbY);
+        cave::setPixel(buffer, static_cast<int16_t>(tipX + 1), barbY);
     }
 }
 
 inline void drawCurrents(uint8_t *buffer, const game::State &state, const cave::Camera &camera) {
+    // The thruster disables every tide, so its flow marks disappear with it.
+    if ((state.tools & exploration_data::THRUSTER) != 0)
+        return;
     const int16_t originX = cave::pixelOriginX(camera);
     const int16_t originY = cave::pixelOriginY(camera);
     const int16_t shift = static_cast<int16_t>((state.ticks >> 3) & 3);
@@ -54,11 +63,18 @@ inline void drawCurrents(uint8_t *buffer, const game::State &state, const cave::
 
         const bool horizontal = zone.ax_q8 != 0;
         const int8_t direction = static_cast<int8_t>((horizontal ? zone.ax_q8 : zone.ay_q8) > 0 ? 1 : -1);
-        for (uint8_t mark = 0; mark < 3; ++mark) {
-            if (horizontal)
-                flowMark(buffer, static_cast<int16_t>(sx + 3 + mark * 9 + shift), static_cast<int16_t>(sy + 3 + mark * 4), true, direction);
-            else
-                flowMark(buffer, static_cast<int16_t>(sx + 3 + mark * 4), static_cast<int16_t>(sy + 3 + mark * 9 + shift), false, direction);
+        // Tile short flow dashes across the whole affected cross-section so a
+        // widened barrier reads as a filled passage, not just a top-edge decal.
+        if (horizontal) {
+            for (int16_t my = static_cast<int16_t>(sy + 3); my < static_cast<int16_t>(sy + zone.h); my = static_cast<int16_t>(my + 12)) {
+                for (uint8_t mark = 0; mark < 3; ++mark)
+                    flowMark(buffer, static_cast<int16_t>(sx + 3 + mark * 9 + shift), my, true, direction);
+            }
+        } else {
+            for (int16_t mx = static_cast<int16_t>(sx + 3); mx < static_cast<int16_t>(sx + zone.w); mx = static_cast<int16_t>(mx + 12)) {
+                for (uint8_t mark = 0; mark < 3; ++mark)
+                    flowMark(buffer, mx, static_cast<int16_t>(sy + 3 + mark * 9 + shift), false, direction);
+            }
         }
     }
 }

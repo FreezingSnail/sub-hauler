@@ -2,13 +2,16 @@
 
 #include <stdint.h>
 
+#include "campaign.hpp"
 #include "game.hpp"
 #include "generated/music_regions.hpp"
+#include "story_view.hpp"
 
 // Pure music cue policy shared by the device wrapper and host tests. Region
 // ownership comes from the authored room table (tile centres), not screen
-// quadrants. The nearest authored room wins everywhere, including connecting
-// passages; ties use the lower room index. Flight regions must persist for two
+// quadrants. The nearest authored room supplies the initial owner, including
+// connecting passages; tiny gate-cut fragments merge at generation. The host
+// helper approximates the baked plane. Flight regions must persist for two
 // seconds before they change the cue.
 namespace music_logic {
 
@@ -61,6 +64,42 @@ inline uint8_t travelCue(uint8_t region) {
     if (region == music_regions::kRegionWorks)
         return kBubblejet;
     return kAbyssal;
+}
+
+// Station boards reflect restoration progress without new cart streams:
+// Tidewall keeps the familiar harbor theme; Benthos and Cormorant switch to the
+// restored tidepool theme once their own repair milestone commits; Deep Anchor
+// keeps abyssal tension until its beacon lights; service berths are tidepool.
+inline uint8_t stationCue(uint8_t berth, uint8_t campaignMask) {
+    switch (berth) {
+    case campaign::kTidewall:
+        return kHarbor;
+    case campaign::kBenthos:
+        return (campaignMask & campaign::kMilestonePump) != 0 ? kTidepool : kHarbor;
+    case campaign::kCormorant:
+        return (campaignMask & campaign::kMilestoneLift) != 0 ? kTidepool : kHarbor;
+    case campaign::kDeepAnchor:
+        return (campaignMask & campaign::kMilestoneBeacon) != 0 ? kTidepool : kAbyssal;
+    case campaign::kPumpRefuge:
+    case campaign::kLowerGantry:
+        return kTidepool;
+    default:
+        return kHarbor;
+    }
+}
+
+// Delivery story decks immediately share the restored tidepool theme for PUMP,
+// LIFT and BEACON. Survey decks, FIRST and HOME keep their existing paths (HOME
+// joins the ending; surveys are mid-voyage work). kCueNone means "no override".
+inline uint8_t deliveryStoryCue(uint8_t storyCard) {
+    switch (storyCard) {
+    case story_view::kCardPump:
+    case story_view::kCardLift:
+    case story_view::kCardBeacon:
+        return kTidepool;
+    default:
+        return kCueNone;
+    }
 }
 
 inline void resetFlight(FlightState &state, uint8_t currentCue = kHarbor) {

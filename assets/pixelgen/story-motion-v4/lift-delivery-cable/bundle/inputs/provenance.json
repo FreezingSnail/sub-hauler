@@ -1,0 +1,172 @@
+{
+  "assets": [
+    {
+      "height": 64,
+      "path": "background.png",
+      "role": "background",
+      "sha256": "6ff611c9d5f72f53c50e5f93a1fc4cabf9061dd677393edb1c14c2d4178ad9dc",
+      "width": 128
+    },
+    {
+      "height": 22,
+      "path": "layers/reel-rim-matte.png",
+      "role": "layer:reel-rim:matte",
+      "sha256": "5e41d56704dbef5320ddc94379a7e8e0586a797ba7e69fd0e1fd99cf543962f9",
+      "width": 22
+    },
+    {
+      "height": 22,
+      "path": "layers/reel-rim.png",
+      "role": "layer:reel-rim:source",
+      "sha256": "3fa48cbeccfe71bf9783367c83d7100b427d60aa52b9f3c05803f7022fcd839b",
+      "width": 22
+    },
+    {
+      "height": 12,
+      "path": "layers/reel-spokes-matte.png",
+      "role": "layer:reel-spokes:matte",
+      "sha256": "92b19010fa1b1a78aecf7e01db06948095de9dcd5687bdc00b3075fa726dbd67",
+      "width": 12
+    },
+    {
+      "height": 12,
+      "path": "layers/reel-spokes.png",
+      "role": "layer:reel-spokes:source",
+      "sha256": "92b19010fa1b1a78aecf7e01db06948095de9dcd5687bdc00b3075fa726dbd67",
+      "width": 12
+    }
+  ],
+  "background": {
+    "path": "background.png",
+    "sha256": "6ff611c9d5f72f53c50e5f93a1fc4cabf9061dd677393edb1c14c2d4178ad9dc"
+  },
+  "canvas": {
+    "depth": 1,
+    "height": 64,
+    "width": 128
+  },
+  "expected_mask_sha256": null,
+  "format": "pixelgen.motion.provenance/1",
+  "frame_sha256": [
+    "4ca3df855e5773ee5e9b3546ded6b4bb4c69866288aa9a83078c950edc71e3f8",
+    "1acb031960c7fe31bf7ff7a3f25bc2a2a11c4d5ff1d7ecf00da363af49e567d4",
+    "c2a405d0dac79c8b91d30aea23d0a855b0d6d2f9b9861d408e7817f347b15acc",
+    "7348c83c78acfe6bf007df50a39af86b7953a4bc7c398ede6cc86d8995a97855"
+  ],
+  "layers": [
+    {
+      "clip": "error",
+      "layer_id": "reel-rim",
+      "matte": {
+        "path": "layers/reel-rim-matte.png",
+        "sha256": "5e41d56704dbef5320ddc94379a7e8e0586a797ba7e69fd0e1fd99cf543962f9"
+      },
+      "motion_bounds": null,
+      "origin": {
+        "x": 26,
+        "y": 22
+      },
+      "pivot": null,
+      "poses": {},
+      "role": "static",
+      "source": {
+        "path": "layers/reel-rim.png",
+        "sha256": "3fa48cbeccfe71bf9783367c83d7100b427d60aa52b9f3c05803f7022fcd839b"
+      },
+      "z": 10
+    },
+    {
+      "clip": "error",
+      "layer_id": "reel-spokes",
+      "matte": {
+        "path": "layers/reel-spokes-matte.png",
+        "sha256": "92b19010fa1b1a78aecf7e01db06948095de9dcd5687bdc00b3075fa726dbd67"
+      },
+      "motion_bounds": null,
+      "origin": {
+        "x": 31,
+        "y": 27
+      },
+      "pivot": {
+        "x": 37,
+        "y": 33
+      },
+      "poses": {},
+      "role": "part",
+      "source": {
+        "path": "layers/reel-spokes.png",
+        "sha256": "92b19010fa1b1a78aecf7e01db06948095de9dcd5687bdc00b3075fa726dbd67"
+      },
+      "track": [
+        {
+          "pose": null,
+          "translate": {
+            "x": 0,
+            "y": 0
+          },
+          "turn_16ths": 0,
+          "visible": true
+        },
+        {
+          "pose": null,
+          "translate": {
+            "x": 0,
+            "y": 0
+          },
+          "turn_16ths": 1,
+          "visible": true
+        },
+        {
+          "pose": null,
+          "translate": {
+            "x": 0,
+            "y": 0
+          },
+          "turn_16ths": 2,
+          "visible": true
+        },
+        {
+          "pose": null,
+          "translate": {
+            "x": 0,
+            "y": 0
+          },
+          "turn_16ths": 3,
+          "visible": true
+        }
+      ],
+      "z": 20
+    }
+  ],
+  "layout": null,
+  "layout_id": null,
+  "mask_pixels": 113,
+  "mask_sha256": "e8c5c352a108bd2b7500b7ad9ff9edaa67d590c75e2d2fb675aa11743ee23161",
+  "master_seed": 4136,
+  "phases": [
+    {
+      "duration_ms": 300,
+      "phase_id": "pose-0",
+      "seed": 4136
+    },
+    {
+      "duration_ms": 300,
+      "phase_id": "pose-1",
+      "seed": 4137
+    },
+    {
+      "duration_ms": 300,
+      "phase_id": "pose-2",
+      "seed": 4138
+    },
+    {
+      "duration_ms": 300,
+      "phase_id": "pose-3",
+      "seed": 4139
+    }
+  ],
+  "recipe_id": "story-v4-lift-delivery-cable",
+  "recipe_sha256": "71704026dc98643039940f0915e3c0efb55266b3089895d4d32edd9ba3802357",
+  "renderer": "pixelgen.motion/1",
+  "revision": 1
+}

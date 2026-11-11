@@ -14,12 +14,15 @@ Hardware, resource, and toolchain facts are canonical in
 model live in [`docs/design.md`](docs/design.md). The retired device-port sequence and profile history are retained in
 [`docs/archive/roadmap.md`](docs/archive/roadmap.md).
 
-## Status — 2026-11-01 (fixed build)
+## Status — 2026-11-09 (fixed build)
 
 The device loads the authored map from [`levels/exploration.json`](levels/exploration.json):
-32 rooms, 42 passages, nine equipment gates and four equipment coves.
+32 rooms, 42 passages, nine gate records (six equipment gates and three tide sections) and four equipment coves.
 The high-pressure region is lowest. Recover the cutter near Tidewall, then
-find the pressure seal and optional current thruster to open more routes.
+find the pressure seal, current thruster and survey lens that open the deep
+routes and the mandatory lower-right DEEP RELAY expedition. The thruster
+disables every tide wall; without it, tides push downstream and block upstream
+travel.
 Hold still near finds or cutter grates for half a second; station rumors and
 bottom-line hints provide guidance. Small C/P/T HUD marks show owned tools.
 
@@ -31,52 +34,67 @@ inhabited settlement cutaways are all streamed from the same generated native
 terrain image.
 
 The fixed build enables stations, campaign, exploration, fog chart,
-currents, wall-impact particles, hull selection, schema 7 FX saves, startup
-splashes and ATMlib2FX synth music unconditionally. There is no shop, currency,
+currents, wall-impact particles, the fixed HAULER hull, schema 8 FX saves,
+startup splashes and ATMlib2FX synth music unconditionally. There is no shop, currency,
 job payout, repeatable freight offer or credit cache: campaign story deliveries
-are intrinsic restoration work. There are no feature, development, backend or
-USB build variants. The shipped matrix is:
+are intrinsic restoration work. There is one shipping build; the developer-only
+`make debug` image is not part of the shipped matrix. The shipped matrix is:
 
 | Image | Flash | Static RAM |
 | --- | ---: | ---: |
-| FX fixed build | 27,230 B | 1,646 B |
-| Mini fixed build | 27,230 B | 1,646 B |
+| FX fixed build | 28,702 B | 1,650 B |
+| Mini fixed build | 28,702 B | 1,650 B |
 
-The image leaves 2,466 B under the 29,696 B hardware flash limit and 54 B of
-static headroom under the 1,700 B ceiling. AVR `game::State` is 90 B. Measured
-stack reserves are **702 B** for the exact production save chain and **660 B**
+The image leaves 994 B under the 29,696 B hardware flash limit and 50 B of
+static headroom under the 1,700 B ceiling. AVR `game::State` is 77 B. Measured
+stack reserves are **703 B** for the exact production save chain and **626 B**
 for the combined music probe, both above the 600 B target. The fixed native
-suite passes **215** host tests and **128** tooling tests; all **14** default
+suite passes **246** host tests and **155** tooling tests; all **15** default
 device suites print `P`, and the flight probe covers **842** complete frames at
-**11.600 ms maximum**, zero 16 ms misses, **gap=1 tick**, and zero audio
-underruns/errors. `make gen-check` is deterministic.
+**11.440 ms maximum**, zero 16 ms misses, **gap=1 tick**, and zero audio
+underruns/errors. `make gen-check` is deterministic. The latest generation
+produces 16 scenes, 41 cards and 89 frames in a **57,023 B** story blob; the
+FX payload/image are **2,092,503 / 2,096,640 B**, leaving 512 B below 2 MiB.
 
-All seven campaign beats now show finalized animated decks: fifteen 128×64
-scenes with four poses at 3.3 fps alternate with baked story-text cards. FIRST
-has three image/text pairs; the other six beats have two. Survey decks play
-when the in-world dwell records the fact. HOME is the first part of the ending
-and resumes after a reload until the ending-presented flag is committed. See
-[story beats](docs/story-beats.md) for text, triggers and replay semantics.
+All story prose now comes from one editable UTF-8 source,
+[`story/scenes.json`](story/scenes.json); artwork is edited as one Piskel sheet,
+[`story/art.png`](story/art.png). See the [editing instructions](story/README.md).
+The packer wraps and paginates prose
+automatically into as many native text cards as needed, so long handoffs keep
+their full destinations, seal location and dispatch motivation. The sixteen
+scenes produce 41 cards and 89 frames from 17 shared 128×64 art scenes,
+including six departure briefings, both joint-restoration variants and the
+mandatory lower-right DEEP RELAY result. Four
+`story-handoffs-v1` bundles replace the old departure placeholders. Survey decks play when
+the in-world dwell records the fact. HOME is the first part of the ending and
+resumes after a reload until the ending-presented flag is committed. See
+[story beats](docs/story-beats.md) for the source format, preview and
+save/replay semantics.
+The latest motion pass retains the original sub artwork, a separated cable break, a moving
+freight carriage and reel, a sweeping beacon and visible water circulation.
 The older static restoration cards remain appended in the cart as historical
 flash ABI but are no longer drawn.
 
 [Level encoding and behavior](levels/README.md) documents the packed 1-bit
 collision/chart planes and little-endian object records.
 [Actual encoded terrain](docs/assets/exploration-terrain.svg) shows the native
-map geometry. A 41,544-byte payload prefix precedes the unchanged 409,600 B
+map geometry; the [fully rendered game world](docs/assets/exploration-world-2026-11-09.png)
+is the guide’s labeled in-game overview, and the
+[music-region map](docs/assets/exploration-world-music-2026-11-09.png) highlights
+which travel cue plays in each area. A 41,544-byte payload prefix precedes the unchanged 409,600 B
 native terrain section; later music, menu, splash, story and save sections make
-the current payload/image **2,082,129 / 2,086,400 B**.
+the current payload/image **2,092,503 / 2,096,640 B** (512 B below 2 MiB).
 
-Normal startup shows Snailware followed by the Sub-hauler splash, then the
-title menu. The logo holds for about 1 s and the title splash for about 2.4 s.
-Press any button to skip; its release is consumed before menu input. See the
-[splash preview and measurements](docs/startup-splashes.md).
+Normal startup shows Snailware for about 1 s, then the Sub-hauler game splash.
+The splash waits indefinitely for a fresh button press; a button held to skip
+the logo must be released first, and its release is consumed before menu input.
+See the [splash preview and measurements](docs/startup-splashes.md).
 
 Gameplay sonar and its upgrade are removed, and so are the shop, currency and
 repeatable freight. The station board is drawn natively: `WORK / UNDOCK`
-without a job, `summary / ABANDON / WORK / UNDOCK` while carrying one, and
-`UNDOCK` alone at a service berth. WORK lists only story and survey rows.
-Campaign work is untimed with no payment. The shipped shop/menu frames and text
+without a job, `summary / WORK / UNDOCK` while carrying one, and `UNDOCK` alone
+at a work/service berth. Mandatory story work cannot be abandoned. WORK lists
+only story and survey rows. Campaign work is untimed with no payment. The shipped shop/menu frames and text
 remain archival cart ABI and are never drawn. See the
 [menu measurements](docs/menu-flash-design.md) and
 [progression design](docs/progression.md).
@@ -129,14 +147,14 @@ make gen          # images/fonts -> Sprites/PilotSprites/fxdata.bin + headers
 make gen-check    # regeneration must be byte-identical
 make gen-audio    # archival reference PCM/ADPCM evidence only
 make build        # dist/fx/sub-hauler.ino.hex + .elf
-make test         # host rules tests (215)
-make test-tools   # Python tooling tests (128)
-make fxtest       # 14 device suites through Ardens
+make test         # host rules tests (217)
+make test-tools   # Python tooling tests (135)
+make fxtest       # 15 device suites through Ardens
 make fxtest-flight # 842-frame complete-flight timing with active music
 make size         # flash/RAM headroom
 make mini         # Arduboy Mini firmware -> dist/mini/
 make run          # Ardens with the ELF + FX image
-make render-world # native scene PNG + labeled full-world overview
+make render-world # native scene PNG + labeled overview + guide copies
 make music-viewer # audition the underwater loops in ATMlib2FX's jukebox
 ```
 
@@ -154,10 +172,14 @@ ATMlib2FX compact synth.
 
 ## Fixed build
 
-There is one game configuration and one host suite. `src/features.hpp`,
-profile selection, development mode, chart-save EEPROM writing, alternate
-menus, the streaming comparison backend and runtime-USB production builds are
-retired. Platform/compiler distinctions (`__AVR__`, include guards, `-mrelax`,
+There is one shipping game configuration and one host suite. `src/features.hpp`,
+profile selection, chart-save EEPROM writing, alternate menus, the streaming
+comparison backend and runtime-USB production builds are retired. The
+developer-only `DEBUG=1` image (`make debug`) adds map-inspection no-clip and
+uses `build/debug` / `dist/debug`; it is not a shipping configuration. Ardens
+keys saves by build hash, so `make save-migrate SAVE=/path/absim_<hash>.save`
+copies an existing save under the current image key without changing its
+payload. Platform/compiler distinctions (`__AVR__`, include guards, `-mrelax`,
 `-mcall-prologues`, LTO and the dependency's fixed compact synth ring/loop
 settings) remain build requirements, not gameplay switches.
 

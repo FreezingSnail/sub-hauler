@@ -44,15 +44,27 @@ inline bool completeFirst(game::State &state) {
 inline bool completePump(game::State &state) {
     if (campaign::missionCompleted(state, campaign::kPump))
         return true;
-    return campaign::recordSurvey(state, campaign::kPumpSurveyId) && acceptAt(state, campaign::kCormorant, campaign::kPump) && travelTo(state, campaign::kBenthos) &&
+    return campaign::recordSurvey(state, campaign::kPumpSurveyId) && acceptAt(state, campaign::kCormorant, campaign::kPump) && travelTo(state, campaign::kPumpRefuge) &&
            campaign::missionCompleted(state, campaign::kPump);
 }
 
 inline bool completeLift(game::State &state) {
     if (campaign::missionCompleted(state, campaign::kLift))
         return true;
-    return campaign::recordSurvey(state, campaign::kLiftSurveyId) && acceptAt(state, campaign::kBenthos, campaign::kLift) && travelTo(state, campaign::kCormorant) &&
+    return campaign::recordSurvey(state, campaign::kLiftSurveyId) && acceptAt(state, campaign::kBenthos, campaign::kLift) && travelTo(state, campaign::kFreightYard) &&
            campaign::missionCompleted(state, campaign::kLift);
+}
+
+// Post-BEACON route step. The relay expedition is mandatory for HOME but still
+// requires every tool; this helper only advances tests that already established
+// the prerequisite checks.
+inline bool completeExpedition(game::State &state) {
+    if (campaign::missionCompleted(state, campaign::kExpedition))
+        return true;
+    state.tools |= static_cast<uint8_t>(exploration_data::CUTTER | exploration_data::SEAL | exploration_data::THRUSTER | exploration_data::LENS);
+    if (!acceptAt(state, campaign::kDeepAnchor, campaign::kExpedition))
+        return false;
+    return travelTo(state, campaign::kDeepRelay) && campaign::missionCompleted(state, campaign::kExpedition);
 }
 
 }   // namespace campaign_test
@@ -65,7 +77,7 @@ inline void CampaignSuite(TestRunner &runner) {
         bool exact = true;
         const uint8_t bits[] = {campaign::kMilestoneFirst, campaign::kNoBit, campaign::kMilestonePump,
                                campaign::kNoBit, campaign::kMilestoneLift, campaign::kMilestoneBeacon,
-                               campaign::kMilestoneHome};
+                               campaign::kMilestoneHome, campaign::kMilestoneExpedition};
         for (uint16_t id = 0; id < 256; ++id) {
             campaign::MissionSpec spec;
             if (campaign::missionInfo(static_cast<uint8_t>(id), spec))
@@ -105,12 +117,14 @@ inline void CampaignSuite(TestRunner &runner) {
         test.assertEqual(campaign::kLift, 4, "LIFT id");
         test.assertEqual(campaign::kBeacon, 5, "BEACON id");
         test.assertEqual(campaign::kHome, 6, "HOME id");
+        test.assertEqual(campaign::kExpedition, 7, "Deep Relay expedition id");
         test.assertEqual(campaign::kTidewall, 0, "Tidewall berth");
         test.assertEqual(campaign::kBenthos, 1, "Benthos berth");
         test.assertEqual(campaign::kCormorant, 2, "Cormorant berth");
         test.assertEqual(campaign::kDeepAnchor, 3, "Deep Anchor berth");
         test.assertEqual(campaign::kPumpRefuge, 4, "Pump Refuge berth");
         test.assertEqual(campaign::kLowerGantry, 5, "Lower Gantry berth");
+        test.assertEqual(campaign::kFreightYard, 6, "Freight Yard lift work berth");
 
         campaign::MissionSpec spec;
         test.assertTrue(campaign::missionInfo(campaign::kFirst, spec), "FIRST spec exists");
@@ -118,7 +132,7 @@ inline void CampaignSuite(TestRunner &runner) {
         test.assertEqual(spec.to, campaign::kBenthos, "FIRST delivers at Benthos");
         test.assertTrue(campaign::isCargoMission(campaign::kFirst), "FIRST is cargo");
         test.assertTrue(!campaign::isCargoMission(campaign::kPumpSurvey), "PUMP_SURVEY is not cargo");
-        test.assertTrue(!campaign::missionInfo(7, spec), "unknown mission id rejected");
+        test.assertTrue(!campaign::missionInfo(8, spec), "unknown mission id rejected");
         runner.add(test);
     }
 
@@ -202,15 +216,13 @@ inline void CampaignSuite(TestRunner &runner) {
         test.assertTrue(at(shortState, campaign::kTidewall), "return to source");
         test.assertTrue(campaign::accept(shortState, campaign::kFirst), "source reissues FIRST for free");
 
-        test.assertTrue(jobs::abandon(shortState), "campaign load can be abandoned");
-        test.assertEqual(shortState.cargo, 0, "abandon clears the load");
-        test.assertTrue(campaign::missionAvailable(shortState, campaign::kFirst), "abandon leaves the mission available");
-        test.assertTrue(campaign::accept(shortState, campaign::kFirst), "abandoned mission reissues");
+        test.assertTrue(game::hasActiveJob(shortState), "reissued load stays active");
+        test.assertTrue(!campaign::canAccept(shortState, campaign::kFirst), "the one active slot refuses another load");
         runner.add(test);
     }
 
     {
-        Test test("pump branch first: surveys early, both service berths, beacon then HOME");
+        Test test("pump branch first: surveys early, both service berths, beacon, relay then HOME");
         game::State state;
         game::reset(state);
         state.tools = exploration_data::CUTTER | exploration_data::SEAL;
@@ -223,30 +235,45 @@ inline void CampaignSuite(TestRunner &runner) {
         test.assertTrue(!campaign::berthAvailable(state, campaign::kPumpRefuge), "Pump Refuge inactive before repair");
         test.assertTrue(!campaign::berthAvailable(state, campaign::kLowerGantry), "Lower Gantry inactive before repair");
         test.assertTrue(campaign::berthAvailable(state, campaign::kTidewall), "existing berths remain available");
-        test.assertTrue(!campaign::berthAvailable(state, 6), "no phantom berth id");
+        test.assertTrue(!campaign::berthAvailable(state, 7), "no phantom berth id");
 
         test.assertTrue(acceptAt(state, campaign::kCormorant, campaign::kPump), "PUMP accepted at Cormorant");
-        test.assertTrue(travelTo(state, campaign::kBenthos), "impeller delivered to Benthos");
+        test.assertTrue(travelTo(state, campaign::kBenthos), "old Benthos handoff does not complete PUMP");
+        test.assertTrue(campaign::missionCompleted(state, campaign::kPump) == false, "PUMP still active after Benthos");
+        test.assertTrue(travelTo(state, campaign::kPumpRefuge), "impeller delivered to Pump Refuge");
         test.assertTrue(campaign::missionCompleted(state, campaign::kPump), "PUMP milestone set");
         test.assertTrue(campaign::berthAvailable(state, campaign::kPumpRefuge), "Pump Refuge opens after PUMP");
         test.assertTrue(!campaign::berthAvailable(state, campaign::kLowerGantry), "Lower Gantry still closed");
 
         test.assertTrue(acceptAt(state, campaign::kBenthos, campaign::kLift), "LIFT accepted at Benthos");
-        test.assertTrue(travelTo(state, campaign::kCormorant), "cable reels delivered to Cormorant");
+        test.assertTrue(travelTo(state, campaign::kCormorant), "old Cormorant handoff does not complete LIFT");
+        test.assertTrue(campaign::missionCompleted(state, campaign::kLift) == false, "LIFT still active after Cormorant");
+        test.assertTrue(travelTo(state, campaign::kFreightYard), "cable reels delivered to the Freight Yard lift");
         test.assertTrue(campaign::missionCompleted(state, campaign::kLift), "LIFT milestone set");
         test.assertTrue(campaign::berthAvailable(state, campaign::kLowerGantry), "Lower Gantry opens after LIFT");
+        test.assertTrue(campaign::berthAvailable(state, campaign::kFreightYard), "Freight Yard stays open after LIFT");
 
         test.assertTrue(acceptAt(state, campaign::kCormorant, campaign::kBeacon), "BEACON explicitly accepted");
         test.assertTrue(travelTo(state, campaign::kDeepAnchor), "beacon core delivered");
         test.assertTrue(campaign::missionCompleted(state, campaign::kBeacon), "BEACON milestone set");
         test.assertTrue(!game::hasActiveJob(state), "BEACON does not auto-load HOME");
         test.assertEqual(state.cargo, 0, "Deep Anchor docking leaves the hold empty");
-        test.assertTrue(campaign::missionAvailable(state, campaign::kHome), "HOME offered after BEACON");
+        test.assertTrue(!campaign::missionAvailable(state, campaign::kHome), "HOME waits for DEEP RELAY, not just BEACON");
+        test.assertTrue(!campaign::missionAvailable(state, campaign::kExpedition), "DEEP RELAY still needs the missing thruster and lens");
+        state.tools |= static_cast<uint8_t>(exploration_data::THRUSTER | exploration_data::LENS);
+        test.assertTrue(campaign::missionAvailable(state, campaign::kExpedition), "all four tools expose DEEP RELAY");
+        test.assertTrue(!campaign::missionAvailable(state, campaign::kHome), "HOME remains closed before the relay");
         test.assertTrue(!campaign::missionCompleted(state, campaign::kHome), "HOME is not auto-complete");
+
+        test.assertTrue(acceptAt(state, campaign::kDeepAnchor, campaign::kExpedition), "DEEP RELAY accepted at Deep Anchor");
+        test.assertEqual(state.activeJob.to, campaign::kDeepRelay, "DEEP RELAY is bound for the lower-right wreck");
+        test.assertTrue(travelTo(state, campaign::kDeepRelay), "relay recovered at the work site");
+        test.assertTrue(campaign::missionCompleted(state, campaign::kExpedition), "DEEP RELAY milestone set");
+        test.assertTrue(campaign::missionAvailable(state, campaign::kHome), "HOME opens only after DEEP RELAY");
 
         test.assertTrue(acceptAt(state, campaign::kDeepAnchor, campaign::kHome), "HOME explicitly accepted");
         test.assertTrue(travelTo(state, campaign::kTidewall), "dispatch delivered home");
-        test.assertEqual(state.delivered, 5, "five deliveries counted");
+        test.assertEqual(state.delivered, 6, "six deliveries counted");
         test.assertTrue(campaign::missionCompleted(state, campaign::kHome), "HOME milestone set");
         test.assertTrue(campaign::stateValid(state), "completed campaign state remains valid");
         test.assertTrue(campaign::markEndingPresented(state), "ending can be marked after HOME");
@@ -254,7 +281,7 @@ inline void CampaignSuite(TestRunner &runner) {
 
         test.assertTrue(station::undock(state), "undock after ending");
         test.assertTrue(at(state, campaign::kTidewall), "redock at Tidewall");
-        test.assertEqual(state.delivered, 5, "HOME never counts twice");
+        test.assertEqual(state.delivered, 6, "HOME never counts twice");
         runner.add(test);
     }
 
@@ -267,19 +294,21 @@ inline void CampaignSuite(TestRunner &runner) {
         test.assertTrue(completeFirst(state), "FIRST completes");
 
         test.assertTrue(acceptAt(state, campaign::kBenthos, campaign::kLift), "LIFT accepted first");
-        test.assertTrue(travelTo(state, campaign::kCormorant), "LIFT delivered first");
+        test.assertTrue(travelTo(state, campaign::kFreightYard), "LIFT delivered first at Freight Yard");
         test.assertTrue(campaign::berthAvailable(state, campaign::kLowerGantry), "Lower Gantry opens");
 
         test.assertTrue(acceptAt(state, campaign::kCormorant, campaign::kPump), "PUMP accepted second");
-        test.assertTrue(travelTo(state, campaign::kBenthos), "PUMP delivered second");
+        test.assertTrue(travelTo(state, campaign::kPumpRefuge), "PUMP delivered second at Pump Refuge");
         test.assertTrue(campaign::berthAvailable(state, campaign::kPumpRefuge), "Pump Refuge opens");
 
         state.tools |= exploration_data::SEAL;
         test.assertTrue(acceptAt(state, campaign::kCormorant, campaign::kBeacon), "BEACON after both orders");
         test.assertTrue(travelTo(state, campaign::kDeepAnchor), "BEACON delivered");
+        test.assertTrue(!campaign::missionAvailable(state, campaign::kHome), "reversed order still needs DEEP RELAY");
+        test.assertTrue(completeExpedition(state), "DEEP RELAY completes after BEACON");
         test.assertTrue(acceptAt(state, campaign::kDeepAnchor, campaign::kHome), "HOME accepted");
         test.assertTrue(travelTo(state, campaign::kTidewall), "HOME delivered");
-        test.assertEqual(state.delivered, 5, "five deliveries in reversed order");
+        test.assertEqual(state.delivered, 6, "six deliveries in reversed order");
         test.assertTrue(campaign::stateValid(state), "reversed-order state is valid");
         runner.add(test);
     }
@@ -310,11 +339,58 @@ inline void CampaignSuite(TestRunner &runner) {
     }
 
     {
+        Test test("next-stop hint follows surveys, repairs and seal in both repair orders");
+        game::State pumpFirst;
+        game::reset(pumpFirst);
+        test.assertTrue(completeFirst(pumpFirst), "FIRST completes");
+        test.assertEqual(campaign::nextStopAfter(pumpFirst, campaign::kFirst), campaign::kNextStopNone, "FIRST deck posts no next-stop hint");
+
+        test.assertTrue(completePump(pumpFirst), "PUMP completes with the lift survey still unrecorded");
+        test.assertTrue(!campaign::surveyRecorded(pumpFirst, campaign::kLiftSurveyId), "lift survey missing after PUMP");
+        test.assertEqual(campaign::nextStopAfter(pumpFirst, campaign::kPump), campaign::kNextStopLiftSurvey, "PUMP points at the lift survey");
+        test.assertEqual(campaign::nextStopAfter(pumpFirst, campaign::kLiftSurvey), campaign::kNextStopNone, "survey deck posts no hint");
+
+        test.assertTrue(campaign::recordSurvey(pumpFirst, campaign::kLiftSurveyId), "lift survey recorded");
+        test.assertEqual(campaign::nextStopAfter(pumpFirst, campaign::kPump), campaign::kNextStopLiftSource, "PUMP with the survey points at the cable source");
+
+        test.assertTrue(completeLift(pumpFirst), "LIFT completes after PUMP");
+        test.assertTrue(!campaign::sealOwned(pumpFirst), "seal missing after both repairs");
+        test.assertEqual(campaign::nextStopAfter(pumpFirst, campaign::kPump), campaign::kNextStopSeal, "PUMP deck after LIFT points at the seal");
+        test.assertEqual(campaign::nextStopAfter(pumpFirst, campaign::kLift), campaign::kNextStopSeal, "LIFT deck points at the seal");
+
+        pumpFirst.tools |= exploration_data::SEAL;
+        test.assertEqual(campaign::nextStopAfter(pumpFirst, campaign::kPump), campaign::kNextStopBeacon, "PUMP deck with the seal points at BEACON");
+        test.assertEqual(campaign::nextStopAfter(pumpFirst, campaign::kLift), campaign::kNextStopBeacon, "LIFT deck with the seal points at BEACON");
+        test.assertEqual(campaign::nextStopAfter(pumpFirst, campaign::kBeacon), campaign::kNextStopNone, "BEACON deck posts no hint");
+        test.assertEqual(campaign::nextStopAfter(pumpFirst, campaign::kHome), campaign::kNextStopNone, "HOME deck posts no hint");
+
+        game::State liftFirst;
+        game::reset(liftFirst);
+        test.assertTrue(completeFirst(liftFirst), "FIRST completes");
+        test.assertTrue(completeLift(liftFirst), "LIFT completes first");
+        test.assertTrue(!campaign::sealOwned(liftFirst), "seal missing after LIFT");
+        test.assertEqual(campaign::nextStopAfter(liftFirst, campaign::kLift), campaign::kNextStopPumpSurvey, "LIFT-first deck names the unfinished pump survey, not the seal");
+        liftFirst.tools |= exploration_data::SEAL;
+        test.assertEqual(campaign::nextStopAfter(liftFirst, campaign::kLift), campaign::kNextStopPumpSurvey, "a seal cannot skip the unfinished pump survey");
+        liftFirst.tools &= static_cast<uint8_t>(~exploration_data::SEAL);
+
+        test.assertTrue(campaign::recordSurvey(liftFirst, campaign::kPumpSurveyId), "pump survey recorded");
+        test.assertEqual(campaign::nextStopAfter(liftFirst, campaign::kLift), campaign::kNextStopPumpSource, "LIFT-first deck then points at the Cormorant impeller");
+        test.assertTrue(completePump(liftFirst), "PUMP completes second");
+        test.assertEqual(campaign::nextStopAfter(liftFirst, campaign::kPump), campaign::kNextStopSeal, "PUMP after LIFT points at the seal");
+        liftFirst.tools |= exploration_data::SEAL;
+        test.assertEqual(campaign::nextStopAfter(liftFirst, campaign::kPump), campaign::kNextStopBeacon, "PUMP with both repairs and the seal points at BEACON");
+        runner.add(test);
+    }
+
+    {
         Test test("save invariants reject malformed campaign jobs");
         game::State state;
         game::reset(state);
         test.assertTrue(campaign::stateValid(state), "fresh state is valid");
         test.assertTrue(!campaign::milestonesValid(campaign::kMilestoneHome), "HOME needs BEACON");
+        test.assertTrue(campaign::milestonesValid(static_cast<uint8_t>(campaign::kMilestonePump | campaign::kMilestoneLift | campaign::kMilestoneBeacon | campaign::kMilestoneHome)),
+                        "legacy completed HOME without EXPEDITION remains loadable");
         test.assertTrue(!campaign::milestonesValid(campaign::kMilestoneBeacon), "BEACON needs both repairs");
         test.assertTrue(campaign::milestonesValid(campaign::kMilestoneBeacon | campaign::kMilestonePump | campaign::kMilestoneLift), "BEACON plus both repairs is valid");
         test.assertTrue(!campaign::surveysValid(0x04), "survey mask is two bits");
@@ -324,6 +400,42 @@ inline void CampaignSuite(TestRunner &runner) {
         test.assertTrue(campaign::activeJobValid(state), "campaign active job is valid");
         state.activeJob.kind = 9;
         test.assertTrue(!campaign::activeJobValid(state), "unknown job kind is invalid");
+        runner.add(test);
+    }
+
+    {
+        Test test("legacy in-flight HOME stays completable while new HOME acceptance needs the relay");
+        game::State legacy;
+        game::reset(legacy);
+        legacy.campaign = static_cast<uint8_t>(campaign::kMilestoneFirst | campaign::kMilestonePump | campaign::kMilestoneLift | campaign::kMilestoneBeacon);
+        legacy.tools = exploration_data::SEAL;
+        legacy.docked = static_cast<int8_t>(campaign::kDeepAnchor);
+        legacy.activeJob.kind = game::kJobKindCampaign;
+        legacy.activeJob.mission = campaign::kHome;
+        legacy.activeJob.from = campaign::kDeepAnchor;
+        legacy.activeJob.to = campaign::kTidewall;
+        legacy.activeJob.crates = game::kJobCrates;
+        game::setCargo(legacy, game::kJobCrates);
+        test.assertTrue(!campaign::missionPrerequisites(legacy, campaign::kHome), "new prerequisites reject a pre-linear HOME");
+        test.assertTrue(campaign::legacyHomeJob(legacy), "the in-flight legacy job is recognized");
+        test.assertTrue(campaign::activeJobValid(legacy), "the legacy in-flight checkpoint validates");
+        test.assertTrue(campaign::stateValid(legacy), "the legacy in-flight state remains checkpoint-valid");
+        test.assertTrue(travelTo(legacy, campaign::kTidewall), "the pre-linear dispatch can still be delivered home");
+        test.assertTrue(campaign::missionCompleted(legacy, campaign::kHome), "legacy HOME completes");
+        test.assertEqual(legacy.lastDelivery, jobs::kDeliveryDelivered, "legacy delivery records success");
+        test.assertEqual(legacy.delivered, 1, "legacy HOME counts once");
+        test.assertTrue(campaign::stateValid(legacy), "completed legacy HOME without EXPEDITION remains valid");
+
+        game::State fresh;
+        game::reset(fresh);
+        fresh.campaign = static_cast<uint8_t>(campaign::kMilestoneFirst | campaign::kMilestonePump | campaign::kMilestoneLift | campaign::kMilestoneBeacon);
+        fresh.tools = static_cast<uint8_t>(exploration_data::CUTTER | exploration_data::SEAL | exploration_data::THRUSTER | exploration_data::LENS);
+        test.assertTrue(at(fresh, campaign::kDeepAnchor), "new voyage docks at Deep Anchor");
+        test.assertTrue(!campaign::missionAvailable(fresh, campaign::kHome), "new HOME is unavailable before DEEP RELAY");
+        test.assertTrue(!campaign::accept(fresh, campaign::kHome), "new HOME cannot be accepted before DEEP RELAY");
+        test.assertTrue(!campaign::completeMission(fresh, campaign::kHome), "a bare call cannot skip the relay");
+        fresh.campaign |= campaign::kMilestoneExpedition;
+        test.assertTrue(campaign::accept(fresh, campaign::kHome), "HOME accepts after the relay milestone");
         runner.add(test);
     }
 
@@ -407,7 +519,7 @@ inline void CampaignSuite(TestRunner &runner) {
     }
 
     {
-        Test test("WORK rows expose both repair branches, beacon, explicit HOME and VIEW ENDING");
+        Test test("WORK rows expose both repair branches, beacon, DEEP RELAY, explicit HOME and VIEW ENDING");
         game::State state;
         game::reset(state);
         test.assertTrue(at(state, campaign::kTidewall), "dock at Tidewall");
@@ -434,7 +546,14 @@ inline void CampaignSuite(TestRunner &runner) {
 
         test.assertTrue(acceptAt(state, campaign::kCormorant, campaign::kBeacon), "BEACON accepted explicitly");
         test.assertTrue(travelTo(state, campaign::kDeepAnchor), "BEACON delivered");
-        test.assertEqual(campaign::workMissionAt(state, campaign::kDeepAnchor, 0), campaign::kHome, "HOME row appears at Deep Anchor");
+        test.assertEqual(campaign::workMissionAt(state, campaign::kDeepAnchor, 0), campaign::kMissionNone, "DEEP RELAY needs all four tools");
+        state.tools |= static_cast<uint8_t>(exploration_data::CUTTER | exploration_data::THRUSTER | exploration_data::LENS);
+        test.assertEqual(campaign::workMissionAt(state, campaign::kDeepAnchor, 0), campaign::kExpedition, "DEEP RELAY row appears at Deep Anchor");
+        test.assertEqual(campaign::workMissionAt(state, campaign::kDeepAnchor, 1), campaign::kMissionNone, "HOME is hidden before DEEP RELAY");
+        test.assertTrue(acceptAt(state, campaign::kDeepAnchor, campaign::kExpedition), "DEEP RELAY accepted through the row");
+        test.assertTrue(travelTo(state, campaign::kDeepRelay), "DEEP RELAY delivered at the lower-right site");
+        test.assertEqual(campaign::workMissionAt(state, campaign::kDeepAnchor, 0), campaign::kHome, "HOME row appears only after DEEP RELAY");
+        test.assertTrue(travelTo(state, campaign::kDeepAnchor), "return to Deep Anchor for HOME dispatch");
         test.assertTrue(campaign::accept(state, campaign::kHome), "HOME is not auto-loaded by docking");
         test.assertEqual(state.activeJob.mission, campaign::kHome, "HOME carries its own mission id");
         test.assertTrue(travelTo(state, campaign::kTidewall), "HOME delivered");
@@ -442,6 +561,33 @@ inline void CampaignSuite(TestRunner &runner) {
         test.assertEqual(campaign::workMissionAt(state, campaign::kBenthos, 0), campaign::kMissionNone, "completed LIFT never respawns");
         test.assertEqual(campaign::workMissionAt(state, campaign::kCormorant, 0), campaign::kMissionNone, "completed BEACON never respawns");
         test.assertEqual(campaign::workMissionAt(state, campaign::kDeepAnchor, 0), campaign::kMissionNone, "completed HOME never respawns");
+        runner.add(test);
+    }
+
+    {
+        Test test("mandatory Deep Relay expedition needs all four tools and gates HOME");
+        game::State state;
+        game::reset(state);
+        state.campaign = static_cast<uint8_t>(campaign::kMilestoneFirst | campaign::kMilestonePump | campaign::kMilestoneLift);
+        state.tools = static_cast<uint8_t>(exploration_data::CUTTER | exploration_data::SEAL | exploration_data::THRUSTER | exploration_data::LENS);
+        test.assertTrue(!campaign::missionAvailable(state, campaign::kExpedition), "DEEP RELAY still waits for BEACON");
+        state.campaign |= campaign::kMilestoneBeacon;
+        state.tools = static_cast<uint8_t>(exploration_data::CUTTER | exploration_data::SEAL | exploration_data::THRUSTER);
+        test.assertTrue(!campaign::missionAvailable(state, campaign::kExpedition), "missing survey lens blocks the expedition");
+        test.assertTrue(!campaign::missionAvailable(state, campaign::kHome), "HOME stays closed without the relay");
+        state.tools |= exploration_data::LENS;
+        test.assertTrue(campaign::missionAvailable(state, campaign::kExpedition), "all four tools open the expedition");
+        test.assertTrue(acceptAt(state, campaign::kDeepAnchor, campaign::kExpedition), "expedition accepted at Deep Anchor");
+        test.assertEqual(state.activeJob.to, campaign::kDeepRelay, "expedition is bound for Deep Relay");
+        test.assertEqual(state.cargo, game::kJobCrates, "expedition loads its recovery cargo");
+        test.assertTrue(travelTo(state, campaign::kDeepRelay), "lower-right Deep Relay work site docks");
+        test.assertTrue(campaign::missionCompleted(state, campaign::kExpedition), "expedition milestone set at the wreck");
+        test.assertTrue(campaign::missionAvailable(state, campaign::kHome), "HOME opens after the relay");
+        test.assertTrue(campaign::berthAvailable(state, campaign::kDeepRelay), "Deep Relay stays available after completion");
+        test.assertTrue(campaign::stateValid(state), "completed expedition checkpoint is valid");
+        const uint8_t beforeExpedition = static_cast<uint8_t>(state.campaign & ~campaign::kMilestoneExpedition);
+        test.assertEqual(story_view::cardForNewMilestone(beforeExpedition, state.campaign),
+                         story_view::kCardExpedition, "fresh expedition selects the relay result deck");
         runner.add(test);
     }
 

@@ -6,6 +6,7 @@
 
 #include "game.hpp"
 #include "world.hpp"
+#include "generated/exploration.hpp"
 
 // Integer current zones from generated metadata. Each zone is a pixel
 // rectangle plus a signed Q8.8 px/s^2 acceleration on one axis. Applying a
@@ -42,26 +43,62 @@ inline void applyZone(game::State &state, const world::Current &zone) {
 // Find the first zone containing the whole-pixel boat position. The generated
 // zones do not overlap; first-match keeps the rule deterministic even if a
 // future generator creates an overlap.
-inline bool findAt(int16_t x, int16_t y, world::Current &out) {
+inline bool findAt(int16_t x, int16_t y, world::Current &out, uint8_t *idOut = nullptr) {
     const uint8_t count = world::currentCount();
     for (uint8_t id = 0; id < count; ++id) {
         if (!world::currentInfo(id, out))
             continue;
-        if (contains(out, x, y))
+        if (contains(out, x, y)) {
+            if (idOut)
+                *idOut = id;
             return true;
+        }
     }
     return false;
 }
 
+// A boat without the current thruster can drift with a tide and retreat
+// downstream, but it cannot make headway against the flow. Clamping only the
+// upstream velocity component (rather than adding a huge opposing force)
+// leaves every perpendicular and downstream escape open, so a pocket cannot
+// pin the boat when the zone edge is reached. Owning the thruster disables
+// every tide completely.
+inline void blockUpstream(game::State &state, const world::Current &zone) {
+    if (zone.ax_q8 > 0) {
+        if (state.vxQ8 < 0)
+            state.vxQ8 = 0;
+    } else if (zone.ax_q8 < 0) {
+        if (state.vxQ8 > 0)
+            state.vxQ8 = 0;
+    }
+    if (zone.ay_q8 > 0) {
+        if (state.vyQ8 < 0)
+            state.vyQ8 = 0;
+    } else if (zone.ay_q8 < 0) {
+        if (state.vyQ8 > 0)
+            state.vyQ8 = 0;
+    }
+}
+
 // World-step hook. Outside every zone this leaves velocity untouched (zero
-// acceleration), and a docked boat is never pushed.
+// acceleration), and a docked boat is never pushed. Every generated tide is
+// gated: without the thruster it pushes downstream and blocks upstream motion;
+// once the thruster is owned all tide force and blocking are disabled.
 inline void apply(game::State &state) {
     if (state.docked >= 0)
         return;
     world::Current zone;
-    if (!findAt(state.x, state.y, zone))
+    uint8_t id = 0;
+    if (!findAt(state.x, state.y, zone, &id))
+        return;
+    if (!world::currentGated(id)) {
+        applyZone(state, zone);
+        return;
+    }
+    if ((state.tools & exploration_data::THRUSTER) != 0)
         return;
     applyZone(state, zone);
+    blockUpstream(state, zone);
 }
 
 }   // namespace currents

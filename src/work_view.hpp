@@ -92,6 +92,91 @@ inline bool accept(game::State &state, const Row &row) {
     return false;
 }
 
+// Persistent, host-testable clue selection. The board shows this at every
+// berth, including when the row list is empty: a completed repair must never
+// hide the next survey, source, seal or beacon step. Deep Anchor keeps a
+// beacon-state clue before and after the core delivery.
+enum Clue : uint8_t {
+    kClueNone = 0,
+    kClueFirst,
+    kClueBenthosLamps,
+    kCluePumpSurvey,
+    kCluePumpSource,
+    kClueLiftSurvey,
+    kClueLiftSource,
+    kCluePumpPartReady,
+    kClueLiftRestored,
+    kClueBeaconNeedsSeal,
+    kClueBeaconReady,
+    kClueBeaconPlan,
+    kClueBeaconLit,
+    kClueNetworkOn,
+    kClueDeepRelay,
+    kClueNoWork,
+};
+
+enum EquipmentClue : uint8_t {
+    kEquipmentNone = 0,
+    kEquipmentCutter,
+    kEquipmentSeal,
+};
+
+inline Clue clueFor(const game::State &state, uint8_t berth) {
+    if (berth == campaign::kTidewall) {
+        if (campaign::missionCompleted(state, campaign::kHome))
+            return kClueNetworkOn;
+        if (campaign::hasMilestone(state, campaign::kMilestoneFirst))
+            return kClueBenthosLamps;
+        return kClueFirst;
+    }
+    if (berth == campaign::kBenthos) {
+        if (!campaign::hasMilestone(state, campaign::kMilestoneFirst))
+            return kClueNoWork;
+        if (!campaign::surveyRecorded(state, campaign::kPumpSurveyId))
+            return kCluePumpSurvey;
+        if (!campaign::hasMilestone(state, campaign::kMilestonePump))
+            return kCluePumpSource;
+        if (!campaign::surveyRecorded(state, campaign::kLiftSurveyId))
+            return kClueLiftSurvey;
+        if (!campaign::hasMilestone(state, campaign::kMilestoneLift))
+            return kClueLiftSource;
+        return kClueLiftRestored;
+    }
+    if (berth == campaign::kCormorant) {
+        if (!campaign::hasMilestone(state, campaign::kMilestoneFirst))
+            return kClueNoWork;
+        if (!campaign::surveyRecorded(state, campaign::kLiftSurveyId))
+            return kClueLiftSurvey;
+        if (!campaign::surveyRecorded(state, campaign::kPumpSurveyId))
+            return kCluePumpSurvey;
+        if (!campaign::hasMilestone(state, campaign::kMilestonePump))
+            return kCluePumpPartReady;
+        if (!campaign::hasMilestone(state, campaign::kMilestoneLift))
+            return kClueLiftSource;
+        if (!campaign::sealOwned(state))
+            return kClueBeaconNeedsSeal;
+        return kClueBeaconReady;
+    }
+    if (berth == campaign::kDeepAnchor) {
+        if (!campaign::hasMilestone(state, campaign::kMilestoneBeacon))
+            return kClueBeaconPlan;
+        if (!campaign::missionCompleted(state, campaign::kExpedition))
+            return kClueDeepRelay;
+        if (!campaign::missionCompleted(state, campaign::kHome))
+            return kClueBeaconLit;
+        return kClueNetworkOn;
+    }
+    return kClueNone;
+}
+
+inline EquipmentClue equipmentClue(const game::State &state) {
+    if (!(state.tools & exploration_data::CUTTER))
+        return kEquipmentCutter;
+    if (!campaign::sealOwned(state))
+        return kEquipmentSeal;
+    return kEquipmentNone;
+}
+
 #if defined(__AVR__)
 
 // Branches, not a switch: the story labels would emit a RAM-resident CSWTCH
@@ -111,61 +196,54 @@ inline uint24_t missionLabel(uint8_t mission) {
         return txt_beacon;
     if (mission == campaign::kHome)
         return txt_home;
+    if (mission == campaign::kExpedition)
+        return txt_deep_relay;
     if (mission == campaign::kWorkEnding)
         return txt_view_ending;
     return 0;
 }
 
-// Branches, not a switch: the four-berth switch emitted a large inlined jump
-// chain. The clue order itself is fixed by docs/progression.md.
-inline uint24_t clueFor(const game::State &state, uint8_t berth) {
-    if (berth == campaign::kTidewall) {
-        if (campaign::missionCompleted(state, campaign::kHome))
-            return txt_network_on;
-        return (state.campaign & campaign::kMilestoneFirst) ? txt_benthos_lamps_on : txt_first_clue;
-    }
-    if (berth == campaign::kBenthos) {
-        if (!(state.campaign & campaign::kMilestoneFirst))
-            return txt_no_work;
-        if (!campaign::surveyRecorded(state, campaign::kPumpSurveyId))
-            return txt_pump_survey_clue;
-        if (!(state.campaign & campaign::kMilestonePump))
-            return txt_pump_source_clue;
-        if (!campaign::surveyRecorded(state, campaign::kLiftSurveyId))
-            return txt_lift_clue;
-        if (!(state.campaign & campaign::kMilestoneLift))
-            return txt_lift_source_clue;
+// Branches, not a switch: the clue labels would emit a RAM-resident CSWTCH
+// table. The pure clue order is fixed by docs/progression.md and tested on the
+// host, including the empty-row board case.
+inline uint24_t clueLabel(Clue clue) {
+    if (clue == kClueFirst)
+        return txt_first_clue;
+    if (clue == kClueBenthosLamps)
+        return txt_benthos_lamps_on;
+    if (clue == kCluePumpSurvey)
+        return txt_pump_survey_clue;
+    if (clue == kCluePumpSource)
+        return txt_pump_source_clue;
+    if (clue == kClueLiftSurvey)
+        return txt_survey_lift_clue;
+    if (clue == kClueLiftSource)
+        return txt_lift_source_clue;
+    if (clue == kCluePumpPartReady)
+        return txt_pump_part_ready;
+    if (clue == kClueLiftRestored)
         return txt_lift_restored;
-    }
-    if (berth == campaign::kCormorant) {
-        if (!(state.campaign & campaign::kMilestoneFirst))
-            return txt_no_work;
-        if (!campaign::surveyRecorded(state, campaign::kLiftSurveyId))
-            return txt_survey_lift_clue;
-        if (!campaign::surveyRecorded(state, campaign::kPumpSurveyId))
-            return txt_survey_pump_clue;
-        if (!(state.campaign & campaign::kMilestonePump))
-            return txt_pump_part_ready;
-        if (!(state.campaign & campaign::kMilestoneLift))
-            return txt_lift_source_clue;
-        if (!campaign::sealOwned(state))
-            return txt_beacon_needs_seal;
+    if (clue == kClueBeaconNeedsSeal)
+        return txt_beacon_needs_seal;
+    if (clue == kClueBeaconReady)
         return txt_beacon_ready;
-    }
-    if (berth == campaign::kDeepAnchor) {
-        if (!(state.campaign & campaign::kMilestoneBeacon))
-            return txt_beacon_clue;
-        if (!campaign::missionCompleted(state, campaign::kHome))
-            return txt_beacon_lit;
+    if (clue == kClueBeaconPlan)
+        return txt_beacon_clue;
+    if (clue == kClueBeaconLit)
+        return txt_beacon_lit;
+    if (clue == kClueNetworkOn)
         return txt_network_on;
-    }
+    if (clue == kClueDeepRelay)
+        return txt_deep_relay;
+    if (clue == kClueNoWork)
+        return txt_no_work;
     return 0;
 }
 
-inline uint24_t equipmentClue(const game::State &state) {
-    if (!(state.tools & exploration_data::CUTTER))
+inline uint24_t equipmentLabel(EquipmentClue clue) {
+    if (clue == kEquipmentCutter)
         return txt_cutter_rumor;
-    if (!campaign::sealOwned(state))
+    if (clue == kEquipmentSeal)
         return txt_seal_rumor;
     return 0;
 }
@@ -184,18 +262,14 @@ inline void drawActive(const game::State &state) {
     text::at(kRowX, kRowY0);
     text::print(txt_carrying);
     text::character(' ');
-    if (state.activeJob.kind == game::kJobKindCampaign) {
-        text::print(missionLabel(state.activeJob.mission));
-    } else {
-        text::print(txt_cargo);
-    }
+    text::print(missionLabel(state.activeJob.mission));
 
     text::at(kRowX, static_cast<uint8_t>(kRowY0 + kRowStep));
     text::print(txt_deliver_to);
     text::at(kRowX, static_cast<uint8_t>(kRowY0 + 2 * kRowStep));
     text::print(station_view::nameFor(state.activeJob.to));
 
-    const uint24_t clue = clueFor(state, static_cast<uint8_t>(state.docked));
+    const uint24_t clue = clueLabel(clueFor(state, static_cast<uint8_t>(state.docked)));
     if (clue) {
         text::at(kRowX, kClueY);
         text::print(clue);
@@ -231,6 +305,16 @@ inline void draw(const game::State &state, uint8_t selected) {
 
     const uint8_t count = rowCount(state);
     if (count == 0) {
+        // A completed repair can empty this berth before the next branch is
+        // ready. Keep the persistent clue and the equipment lead visible so a
+        // revisit never dead-ends on the back hint alone.
+        const uint24_t clue = clueLabel(clueFor(state, static_cast<uint8_t>(state.docked)));
+        const uint24_t equipment = clue ? 0 : equipmentLabel(equipmentClue(state));
+        const uint24_t lead = clue ? clue : equipment;
+        if (lead) {
+            text::at(3, kClueY);
+            text::print(lead);
+        }
         text::at(3, kHintY);
         text::print(txt_back_hint);
         return;
@@ -250,8 +334,8 @@ inline void draw(const game::State &state, uint8_t selected) {
             drawStoryRow(y, row, index == selected);
     }
 
-    const uint24_t clue = clueFor(state, static_cast<uint8_t>(state.docked));
-    const uint24_t hint = clue ? clue : equipmentClue(state);
+    const uint24_t clue = clueLabel(clueFor(state, static_cast<uint8_t>(state.docked)));
+    const uint24_t hint = clue ? clue : equipmentLabel(equipmentClue(state));
     if (hint) {
         text::at(3, kClueY);
         text::print(hint);

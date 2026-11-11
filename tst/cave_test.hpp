@@ -318,7 +318,7 @@ inline void CaveSuite(TestRunner &runner) {
         test.assertEqual(origin.tileX, static_cast<int16_t>(0), "origin clamps x to 0");
         test.assertEqual(origin.tileY, static_cast<int16_t>(0), "origin clamps y to 0");
 
-        const cave::Camera spawn = cave::cameraCenteredAtPixel(world::SPAWN_SUB_X, world::SPAWN_SUB_Y);
+        const cave::Camera spawn = cave::cameraCenteredAtPixel(world::SPAWN_PIXEL_X, world::SPAWN_PIXEL_Y);
         test.assertEqual(spawn.tileX, static_cast<int16_t>(world::SPAWN_TILE_X - 8), "spawn camera tile x");
         test.assertEqual(spawn.tileY, static_cast<int16_t>(world::SPAWN_TILE_Y - 4), "spawn camera tile y");
 
@@ -422,7 +422,7 @@ inline void CaveSuite(TestRunner &runner) {
 
     {
         Test test("settlement gantries sit on generated dock centres");
-        const cave::Camera camera = cave::cameraCenteredAtPixel(world::SPAWN_SUB_X, world::SPAWN_SUB_Y);
+        const cave::Camera camera = cave::cameraCenteredAtPixel(world::SPAWN_PIXEL_X, world::SPAWN_PIXEL_Y);
 
         world::Settlement tidewall;
         test.assertTrue(world::settlementInfo(0, tidewall), "TIDEWALL record");
@@ -478,7 +478,7 @@ inline void CaveSuite(TestRunner &runner) {
 
         world::TileCache cache;
         world::clearCache(cache);
-        const cave::Camera camera = cave::cameraCenteredAtPixel(world::SPAWN_SUB_X, world::SPAWN_SUB_Y);
+        const cave::Camera camera = cave::cameraCenteredAtPixel(world::SPAWN_PIXEL_X, world::SPAWN_PIXEL_Y);
         world::refreshCache(cache, fake, cave::cacheOriginTileX(camera), cave::cacheOriginTileY(camera));
 
         constexpr uint16_t kBufferBytes = cave::VIEW_WIDTH * cave::VIEW_HEIGHT / 8;

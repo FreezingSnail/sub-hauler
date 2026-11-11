@@ -25,8 +25,8 @@ class StoryPanelGenerationTest(unittest.TestCase):
             self.routes,
             [
                 ("kTidewall", "kBenthos"),
-                ("kCormorant", "kBenthos"),
-                ("kBenthos", "kCormorant"),
+                ("kCormorant", "kPumpRefuge"),
+                ("kBenthos", "kFreightYard"),
                 ("kCormorant", "kDeepAnchor"),
                 ("kDeepAnchor", "kTidewall"),
             ],
