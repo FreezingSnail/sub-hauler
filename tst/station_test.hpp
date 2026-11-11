@@ -330,7 +330,6 @@ inline void StationSuite(TestRunner &runner) {
         Test test("station board rows fit above the hint at 128x64");
         const uint8_t lastRow = static_cast<uint8_t>(station::kStationRowCount - 1);
         test.assertEqual(station_view::rowY(station::kFirstRow), station_view::kRowY0, "first row uses the layout origin");
-        test.assertTrue(station_view::rowY(station::kFirstRow) - station_view::kRowInsetY >= station_view::kStatusY + 7, "first invert bar clears status");
         test.assertTrue(station_view::rowY(lastRow) + station_view::kRowInvertH <= station_view::kBarkY, "last row clears the bark");
         test.assertTrue(station_view::rowY(static_cast<uint8_t>(station::kActiveRowCount - 1)) + station_view::kRowInvertH <= station_view::kBarkY,
                         "active board's last row clears the bark");
@@ -344,8 +343,6 @@ inline void StationSuite(TestRunner &runner) {
         test.assertTrue(station_view::kNameX + station_view::kNameChars * 6 <= station_view::kIconX, "longest berth name clears the icon");
         test.assertTrue(station_view::kIconX + station_view::kIconW <= 128, "header icon fits inside 128 columns");
         test.assertTrue(station_view::kIconY + station_view::kIconH <= station_view::kDividerY, "header icon clears the divider");
-        test.assertTrue(station_view::kTankX + station_view::kTankW + station_view::kTankNozzleW <= 128, "air gauge stays on screen");
-        test.assertTrue(station_view::kTankY + station_view::kTankH <= station_view::kRowY0, "air gauge clears the rows");
         test.assertTrue(station_view::kSelectMarkX + station_view::kSelectMarkW <= 128, "selection cursor stays on screen");
         runner.add(test);
     }

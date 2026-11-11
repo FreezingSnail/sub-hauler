@@ -133,8 +133,6 @@ LAYOUT_CONSTANTS = (
     "kNameX",
     "kHeaderY",
     "kDividerY",
-    "kStatusX",
-    "kStatusY",
     "kHintX",
     "kBarkY",
     "kHintChars",

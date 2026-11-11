@@ -18,8 +18,6 @@ globalThis.DockBarks = {
     "nameX": 2,
     "headerY": 2,
     "dividerY": 11,
-    "statusX": 2,
-    "statusY": 15,
     "hintX": 3,
     "barkY": 56,
     "hintChars": 20
