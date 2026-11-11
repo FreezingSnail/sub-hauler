@@ -80,6 +80,14 @@ inline void drawServiceBerths(uint8_t *buffer, const game::State &state, const c
         if (!cave::gantryVisible(x, y))
             continue;
         if (!restored(state, berth.milestone)) {
+            // Only pump/lift restoration sites show an inactive mooring clue.
+            // The Deep Relay stays a bare wreck until its expedition completes.
+            if (berth.milestone != campaign::kMilestonePump && berth.milestone != campaign::kMilestoneLift)
+                continue;
+            // A pending survey owns the site: show only the ring until the
+            // pilot records it, then the inactive mooring returns as the clue.
+            if (campaign::pendingSurveyAt(state, berth.pixel_x, berth.pixel_y))
+                continue;
             // Inactive mooring: two posts and a dashed crossbar. Readable as a
             // place that will matter later, never as a working berth.
 #if defined(__AVR__)

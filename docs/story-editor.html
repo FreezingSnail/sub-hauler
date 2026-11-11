@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sub-hauler — story editor</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f3f2ee;color:#272725;font:15px/1.45 system-ui,sans-serif}button,input,textarea{font:inherit}button{cursor:pointer;border:1px solid #aaa9a2;background:#fff;color:inherit;padding:7px 12px;border-radius:3px}button:hover:not(:disabled){background:#e8e7e1}button:disabled{opacity:.45;cursor:default}button.primary{background:#272725;color:#fff;border-color:#272725}button.primary:hover:not(:disabled){background:#444}button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid #91856b;outline-offset:2px}
+header.bar{position:sticky;top:0;z-index:5;display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:12px 20px;background:#fff;border-bottom:1px solid #c6c4bb}header.bar h1{font-size:18px;margin:0}header.bar .spacer{flex:1}header.bar .status{font-size:12px;color:#686863;max-width:520px}
+main{max-width:1420px;margin:auto;padding:18px 20px 50px}.warning{padding:12px 14px;border:1px solid #b78b3b;background:#fff7e5;font-size:13px;margin-bottom:14px}.layout{display:grid;grid-template-columns:250px minmax(0,1fr);gap:18px;align-items:start}@media(max-width:900px){.layout{grid-template-columns:1fr}}
+nav.scenes{position:sticky;top:74px;max-height:calc(100vh - 100px);overflow:auto;border:1px solid #c6c4bb;background:#fff}nav.scenes h2{font-size:12px;letter-spacing:.08em;text-transform:uppercase;margin:0;padding:10px 12px;border-bottom:1px solid #dedcd4;color:#686863}nav.scenes .group{padding:8px 0;border-bottom:1px solid #ece9e1}nav.scenes .group:last-child{border-bottom:0}nav.scenes .group-title{font-size:12px;color:#686863;padding:3px 12px 5px;font-weight:600}nav.scenes button.scene{display:block;width:100%;text-align:left;border:0;border-radius:0;background:#fff;padding:5px 12px}nav.scenes button.scene[aria-current=true]{background:#272725;color:#fff}
+.panel{background:#fff;border:1px solid #c6c4bb;padding:16px}.panel h2{font-size:19px;margin:0 0 4px}.panel h3{font-size:14px;margin:18px 0 8px;letter-spacing:.04em;text-transform:uppercase;color:#686863}.muted{color:#686863;font-size:13px}
+.mission-box{background:#f7f6f1;border:1px solid #dedcd4;padding:12px;margin:10px 0 16px}.mission-box label{display:block;font-size:12px;color:#686863;margin:8px 0 3px;font-weight:600}.mission-box textarea{width:100%;min-height:58px;resize:vertical}
+.title-row input{width:100%;font-size:18px;font-weight:600;padding:7px 9px}
+.cards{display:flex;flex-direction:column;gap:14px;margin-top:14px}.card{display:grid;grid-template-columns:150px minmax(0,1fr);gap:14px;align-items:start;border-top:1px solid #ece9e1;padding-top:14px}@media(max-width:700px){.card{grid-template-columns:1fr}}.card.image{grid-template-columns:150px minmax(0,1fr)}.card .native{width:128px;height:64px;image-rendering:pixelated;border:1px solid #aaa9a2;background:#000}.card .caption{font-size:11px;color:#686863;margin-top:4px;max-width:150px}.card textarea{width:100%;min-height:74px;resize:vertical;font-family:ui-monospace,monospace;font-size:13px}.paragraph+ .paragraph{margin-top:8px}.page-strip{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}.page-strip canvas{width:128px;height:64px;image-rendering:pixelated;border:1px solid #aaa9a2;background:#000}.error{color:#a22222;font-size:12px;margin-top:4px}.invalid{border-color:#a22222 !important;background:#fff1f1}
+.hints{margin-top:26px}.hints-head{display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap}.hints-head .station{flex:0 0 auto}#station-preview{width:128px;height:64px;image-rendering:pixelated;border:1px solid #aaa9a2;background:#000}.hints-grid-wrap{overflow:auto;margin-top:12px}.hints table{border-collapse:collapse;min-width:1050px}.hints th,.hints td{border:1px solid #dedcd4;padding:3px}.hints th{font-size:11px;color:#686863;font-weight:600;background:#f7f6f1;position:sticky;top:0;z-index:1}.hints th.berth{text-align:left;min-width:110px;position:sticky;left:0;z-index:2}.hints td input{width:150px;padding:4px 5px;font-family:ui-monospace,monospace;font-size:12px}.hints td input:focus{background:#fffbe8}
+.errors{margin:12px 0 0;padding:10px 12px;border:1px solid #c98f8f;background:#fff1f1;font-size:13px;color:#7a1d1d}.errors ul{margin:4px 0 0 18px;padding:0}.errors li{margin:2px 0}
+footer{max-width:1420px;margin:0 auto;padding:0 20px 30px;font-size:12px;color:#686863}
+</style>
+</head>
+<body>
+<header class="bar">
+  <h1>Sub-hauler story editor</h1>
+  <button id="open-folder" type="button" class="primary">Open story folder</button>
+  <button id="save-all" type="button" disabled>Save all</button>
+  <button id="backup" type="button" disabled>Backup JSON</button>
+  <button id="reload" type="button" disabled>Reload</button>
+  <span class="spacer"></span>
+  <span id="status" class="status">Open the repository root or the story folder.</span>
+</header>
+<main>
+  <div id="file-warning" class="warning" hidden></div>
+  <div class="layout">
+    <nav class="scenes" aria-label="Scenes">
+      <h2>Scenes</h2>
+      <div id="scene-nav"><p class="muted" style="padding:10px 12px">Open a folder to load the fixed scene list.</p></div>
+    </nav>
+    <section class="panel" aria-live="polite">
+      <div id="scene-panel">
+        <h2>No story loaded</h2>
+        <p class="muted">Choose the repository root or the <code>story</code> folder. The editor reads <code>scenes.json</code>, <code>missions.json</code>, <code>dock_hints.json</code> and <code>art.png</code>.</p>
+      </div>
+      <section class="hints" id="hints-section" hidden>
+        <h2>Dock hints — all berths, all completion points</h2>
+        <p class="muted"><strong>This grid is campaign-wide, not filtered by the selected scene.</strong> Rows are berths; columns are campaign completion points from FRESH through HOME. Each cell is the line that berth shows at that point. Selecting a cell only changes the station preview.</p>
+        <div class="hints-head">
+          <div class="station">
+            <canvas id="station-preview" class="native" width="128" height="64" aria-label="Station board preview"></canvas>
+            <p id="station-caption" class="muted">Select a hint cell.</p>
+          </div>
+          <div>
+            <p class="muted">Hint text must be A-Z, 0-9, space, colon, period, slash, apostrophe or hyphen; 20 characters maximum. Duplicate lines are allowed.</p>
+          </div>
+        </div>
+        <div class="hints-grid-wrap"><table id="hints-table"><thead></thead><tbody></tbody></table></div>
+      </section>
+      <div id="errors" class="errors" hidden></div>
+    </section>
+  </div>
+</main>
+<footer>
+  Scene and card counts are fixed; this editor exposes text fields only. Writes only canonical JSON through the browser file handles. After saving, run <code>make gen</code>. If <code>file://</code> blocks the directory picker, run <code>make editor</code> and open <code>http://localhost:8000/docs/story-editor.html</code>. The read-only review page is <a href="story-sketchbook.html">story-sketchbook.html</a>.
+</footer>
+<input id="fallback-input" type="file" multiple accept=".json,.png" hidden>
+<noscript>This editor needs JavaScript and a Chromium browser for save-in-place.</noscript>
+<script src="assets/story-editor/schema.js"></script>
+<script src="assets/story-editor/missions.js"></script>
+<script src="assets/first-beat-animation/frames.js"></script>
+<script src="assets/story-editor/paginate.js"></script>
+<script src="assets/story-editor/validate.js"></script>
+<script src="assets/story-editor/editor.js"></script>
+</body>
+</html>

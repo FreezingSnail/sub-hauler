@@ -6,7 +6,8 @@ title scene before the existing title menu. The logo lasts 60 × 16 ms (about
 introduction measures 3,417 ms including presentation and release debounce.
 Any held button skips the introduction; waiting for release prevents that
 input from selecting NEW VOYAGE or CONTINUE. The final timeout also waits
-for release. Music and voyage time start after the introduction. Developer and
+for release. The title/menu music cue starts before the logos and keeps playing
+through the introduction; voyage time starts afterward. Developer and
 campaign/save-off profiles keep their existing startup.
 
 The generated preview is `build/splash-preview.png` (written by

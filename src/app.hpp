@@ -965,6 +965,33 @@ static void updateStation() {
     drawPilot();
 }
 
+// Production splash poll. The splash has no work of its own while it waits, so
+// each beat sleeps through timer0 ticks instead of spinning in delay()/micros();
+// one idle() returns on the next ~1 ms overflow, and 16 preserve the 16 ms beat.
+// service() keeps the menu cue's ATMlib2FX ring fed between frames.
+struct BootPoll {
+    static uint8_t buttons() {
+        return arduboy.buttonsState();
+    }
+    static void service() {
+        music::service();
+    }
+    static void delay() {
+        for (uint8_t i = 0; i < 16; ++i)
+            arduboy.idle();
+    }
+    // Same 50 ms debounce as Arduboy2Base::waitNoButtons(), but idling and
+    // still servicing the music ring.
+    static void waitNoButtons() {
+        do {
+            for (uint8_t i = 0; i < 50; ++i) {
+                arduboy.idle();
+                music::service();
+            }
+        } while (buttons() != 0);
+    }
+};
+
 // Shared boot sequence. Production uses the hardware poll; device fixtures may
 // inject a deterministic scripted poll so the indefinite splash wait is driven
 // through the exact same production path rather than bypassed.
@@ -974,8 +1001,11 @@ template <typename Poll> static void applicationBootWith(Poll &poll) {
     arduboy.setFrameRate(60);
     voyage_save::FxStorage::begin();
     FX::setCursorRange(0, 32767);
-    startup_view::run(poll);
+    // The title/menu cue starts with the first splash and keeps its position
+    // into the title; prompt the same cue here so the fade-in covers the intro.
     music::begin();
+    music::setCue(music_logic::kHarbor);
+    startup_view::run(poll);
 
     resetRun();
 
@@ -988,6 +1018,6 @@ template <typename Poll> static void applicationBootWith(Poll &poll) {
 }
 
 static void applicationBoot() {
-    startup_view::HardwarePoll poll;
+    BootPoll poll;
     applicationBootWith(poll);
 }

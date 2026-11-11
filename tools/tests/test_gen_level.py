@@ -162,6 +162,10 @@ class AuthoredLevelTest(unittest.TestCase):
             seen.add(kind)
             cx,cy=(v*8 for v in rooms[room_id]['position'])
             self.assertLessEqual(math.hypot(item['x']-cx,item['y']-cy),90,room_id)
+            pixels=gen_scenery.motif(kind,0)
+            visible=sum(cx-64 <= item['x']+px < cx+64 and cy-32 <= item['y']+py < cy+32
+                        for px,py in pixels)
+            self.assertGreaterEqual(visible, len(pixels)*0.65, f'{room_id} landmark in pickup viewport')
             for px,py in gen_scenery.motif(kind,0):
                 x,y=item['x']+px,item['y']+py
                 self.assertTrue(interior.getpixel((x,y)),f'{room_id} landmark must be etched inside rock')

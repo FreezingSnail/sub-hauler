@@ -82,40 +82,50 @@ inline void HudSuite(TestRunner &runner) {
     }
 
     {
-        Test test("a pending lift survey outranks the inactive-berth repair notice");
+        Test test("a pending survey silences its whole inactive work site");
         game::State state;
         game::resetWorld(state);
+
+        world::Berth liftBerth;
+        test.assertTrue(world::berthInfo(world::BERTH_FREIGHT_YARD, liftBerth), "generated Freight Yard berth");
         state.campaign = campaign::kMilestoneFirst | campaign::kMilestonePump;
-        world::Survey survey;
-        bool liftSurvey = false;
-        for (uint8_t i = 0; i < world::surveyCount(); ++i) {
-            if (!world::surveyInfo(i, survey) || survey.id != world::SURVEY_LIFT)
-                continue;
-            liftSurvey = true;
-            break;
-        }
-        test.assertTrue(liftSurvey, "generated world has the Freight Yard lift survey");
-        if (liftSurvey) {
-            state.x = survey.pixel_x;
-            state.y = survey.pixel_y;
-            test.assertEqual(hud::noticeFor(state), hud::kNoticeNone,
-                             "an unrecorded nearby survey suppresses the lift repair line");
-        }
+        state.x = liftBerth.pixel_x;
+        state.y = liftBerth.pixel_y;
+        test.assertEqual(hud::noticeFor(state), hud::kNoticeNone,
+                         "the unrecorded lift survey owns the Freight Yard site");
+        state.x = static_cast<int16_t>(liftBerth.pixel_x - 39);
+        test.assertEqual(hud::noticeFor(state), hud::kNoticeNone,
+                         "the lift repair line stays hidden across the berth approach");
+        state.surveys = campaign::kSurveyLift;
+        state.x = liftBerth.pixel_x;
+        test.assertEqual(hud::noticeFor(state), hud::kNoticeRepairLift,
+                         "recording the survey restores the genuine lift repair line");
+
+        world::Berth pumpBerth;
+        test.assertTrue(world::berthInfo(world::BERTH_PUMP_REFUGE, pumpBerth), "generated Pump Refuge berth");
+        game::resetWorld(state);
+        state.campaign = campaign::kMilestoneFirst;
+        state.x = pumpBerth.pixel_x;
+        state.y = pumpBerth.pixel_y;
+        test.assertEqual(hud::noticeFor(state), hud::kNoticeNone,
+                         "the unrecorded pump survey owns the Pump Refuge site");
+        state.surveys = campaign::kSurveyPump;
+        test.assertEqual(hud::noticeFor(state), hud::kNoticeRepairPump,
+                         "recording the survey restores the genuine pump repair line");
         runner.add(test);
     }
 
     {
-        Test test("the lift repair notice survives once its survey is recorded");
+        Test test("the Deep Relay wreck posts no pump or lift repair clue");
         game::State state;
         game::resetWorld(state);
-        state.campaign = campaign::kMilestoneFirst | campaign::kMilestonePump;
-        state.surveys = campaign::kSurveyLift;
+        state.campaign = campaign::kMilestoneFirst | campaign::kMilestonePump | campaign::kMilestoneLift;
         world::Berth berth;
-        test.assertTrue(world::berthInfo(world::BERTH_FREIGHT_YARD, berth), "generated Freight Yard berth");
+        test.assertTrue(world::berthInfo(world::BERTH_DEEP_RELAY, berth), "generated Deep Relay berth");
         state.x = berth.pixel_x;
         state.y = berth.pixel_y;
-        test.assertEqual(hud::noticeFor(state), hud::kNoticeRepairLift,
-                         "no pending survey leaves the genuine lift repair line");
+        test.assertEqual(hud::noticeFor(state), hud::kNoticeNone,
+                         "an inactive Deep Relay is not a broken lift");
         runner.add(test);
     }
 }

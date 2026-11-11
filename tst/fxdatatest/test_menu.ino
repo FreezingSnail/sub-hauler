@@ -55,8 +55,8 @@ void stationReference(uint8_t selected) {
         if (highlighted)
             station_view::drawSelectionMark(y);
     }
-    const uint8_t bark = station_view::dockBarkFrame(campaign::dockBark(state, static_cast<uint8_t>(state.docked)));
-    if (bark != campaign::kDockBarkNone)
+    const uint8_t bark = station_view::dockBarkFrame(static_cast<uint8_t>(state.docked), campaign::dockPoint(state));
+    if (bark != 0)
         text::stampFrame(img_dock_barks, bark, station_view::kHintX, station_view::kBarkY);
 }
 

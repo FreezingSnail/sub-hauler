@@ -16,8 +16,20 @@ constexpr uint8_t kTextInsetX = 0;
 constexpr uint8_t kBerthNameFrames = 9;
 constexpr uint8_t kBerthNameFallback = 8;
 
-// img_dock_barks: campaign::DockBark order; frame 0 is the empty bark.
-constexpr uint8_t kDockBarkFrames = 16;
+// img_dock_barks: frame 0 is empty, then one frame per berth and DockPoint in
+// story/dock_hints.json. Frames are berth-major and point-minor; every berth
+// owns one line at every saved progression point.
+constexpr uint8_t kDockBarkBerths = 8;
+constexpr uint8_t kDockBarkPoints = 9;
+constexpr uint8_t kDockBarkFrames = 73;
+static_assert(1 + (kDockBarkBerths - 1) * kDockBarkPoints + (kDockBarkPoints - 1) + 1 == kDockBarkFrames,
+              "dock bark frame count must match the berth x point grid");
+
+constexpr uint8_t dockBarkFrame(uint8_t berth, uint8_t point) {
+    return berth < kDockBarkBerths && point < kDockBarkPoints
+               ? static_cast<uint8_t>(1 + berth * kDockBarkPoints + point)
+               : 0;
+}
 
 // img_row_labels: WORK, UNDOCK, then the two inverted selection variants.
 constexpr uint8_t kRowLabelFrames = 4;

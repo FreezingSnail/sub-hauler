@@ -1,0 +1,92 @@
+{
+  "anchor_prompt": null,
+  "frames": [
+    {
+      "candidate": null,
+      "duration_ms": 300,
+      "frame_id": "frame-0",
+      "phase": "phase-0",
+      "seed": 1,
+      "source": {
+        "encoded_bytes": null,
+        "format": "png",
+        "height": null,
+        "opaque": true,
+        "path": "inputs/sources/000.png",
+        "sha256": "cf68c905bdb20b0e61d69664dfa7c4c48ddd85f8098e82c3705ff9cbb1addb26",
+        "width": null
+      }
+    },
+    {
+      "candidate": null,
+      "duration_ms": 300,
+      "frame_id": "frame-1",
+      "phase": "phase-1",
+      "seed": 2,
+      "source": {
+        "encoded_bytes": null,
+        "format": "png",
+        "height": null,
+        "opaque": true,
+        "path": "inputs/sources/001.png",
+        "sha256": "e33be6d1b3943cca7b410cd59792ab453b90700d38694d23ce853041b5b033b1",
+        "width": null
+      }
+    },
+    {
+      "candidate": null,
+      "duration_ms": 300,
+      "frame_id": "frame-2",
+      "phase": "phase-2",
+      "seed": 3,
+      "source": {
+        "encoded_bytes": null,
+        "format": "png",
+        "height": null,
+        "opaque": true,
+        "path": "inputs/sources/002.png",
+        "sha256": "840a887d23e9df2fd14babeb93af2f2bad28a83754f06d66e2e331e7f8fee65e",
+        "width": null
+      }
+    },
+    {
+      "candidate": null,
+      "duration_ms": 300,
+      "frame_id": "frame-3",
+      "phase": "phase-3",
+      "seed": 4,
+      "source": {
+        "encoded_bytes": null,
+        "format": "png",
+        "height": null,
+        "opaque": true,
+        "path": "inputs/sources/003.png",
+        "sha256": "5f3ab020293b5d0c97c85fa19be7b01cb33bf4f8506d01e2917cd340ba462cdc",
+        "width": null
+      }
+    }
+  ],
+  "layout": null,
+  "layout_id": null,
+  "mask": {
+    "height": 64,
+    "kind": "png",
+    "path": "inputs/mask.png",
+    "rectangles": [
+      {
+        "height": 4,
+        "width": 16,
+        "x": 7,
+        "y": 38
+      }
+    ],
+    "sha256": "81a997d4ae709b375d427cbc343bafcde5c75cf999b4ec3c4d72fc7b01dee38e",
+    "width": 128
+  },
+  "master_seed": null,
+  "mode": "assemble",
+  "model": null,
+  "schema_version": "pixelgen.animation/1",
+  "spec_id": "home-seal-workshop",
+  "tail": null
+}

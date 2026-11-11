@@ -20,25 +20,27 @@ passes the same screen x as the retired ``text::at(x, y)`` path. Composites and 
 runtime passes their exact screen x to ``text::stampFrame``.
 
 Text is read from ``fxdata/fxdata.txt`` and enum order from
-``src/campaign.hpp``; the bark order comes from ``tools/dock_bark_table.py``.
+``src/campaign.hpp``. The per-berth dock hints are read from the human-editable
+``story/dock_hints.json``; every berth gets one frame at every ``DockPoint``.
 """
 
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import sys
 from pathlib import Path
 
 from PIL import Image
 
-from dock_bark_table import DOCK_BARK_TEXT
 from gen_font import FRAME_HEIGHT, FRAME_WIDTH, GLYPHS
 from gen_panels import EXTRA_GLYPHS
 
 ROOT = Path(__file__).resolve().parents[1]
 FXDATA = ROOT / "fxdata/fxdata.txt"
 CAMPAIGN = ROOT / "src/campaign.hpp"
+DOCK_HINTS = ROOT / "story/dock_hints.json"
 OUTPUT = ROOT / "images/text"
 LAYOUT = ROOT / "src/generated/text_layout.hpp"
 
@@ -91,6 +93,60 @@ def parse_enum(text: str, name: str, source: Path) -> list[str]:
 def camel_to_snake(name: str) -> str:
     name = name[1:] if name.startswith("k") else name
     return re.sub(r"(?<!^)(?=[A-Z])", "_", name).lower()
+
+
+def enum_id(name: str, prefix: str) -> str:
+    snake = camel_to_snake(name)
+    return snake[len(prefix):] if snake.startswith(prefix) else snake
+
+
+DOCK_TEXT_RE = re.compile(r"^[A-Z0-9 :./'-]+$")
+
+
+def load_dock_hints() -> dict:
+    document = json.loads(DOCK_HINTS.read_text(encoding="utf-8"))
+    if document.get("schema") != 1:
+        raise ValueError("{}: expected schema 1".format(DOCK_HINTS))
+    points = document.get("points")
+    berths = document.get("berths")
+    if not isinstance(points, list) or not points:
+        raise ValueError("{}: points must be a non-empty list".format(DOCK_HINTS))
+    if not isinstance(berths, dict) or not berths:
+        raise ValueError("{}: berths must be a non-empty object".format(DOCK_HINTS))
+    for point in points:
+        if not isinstance(point, dict) or not all(isinstance(point.get(key), str) for key in ("id", "label", "facts")):
+            raise ValueError("{}: every point needs id, label and facts".format(DOCK_HINTS))
+    return document
+
+
+def dock_hint_layout(campaign_text: str, document: dict):
+    berth_ids = [enum_id(name, "") for name in parse_enum(campaign_text, "Berth", CAMPAIGN)]
+    point_ids = [enum_id(name, "dock_point_") for name in parse_enum(campaign_text, "DockPoint", CAMPAIGN)]
+    json_points = [point["id"] for point in document["points"]]
+    if json_points != point_ids:
+        raise ValueError("{}: point order {} does not match campaign::DockPoint {}".format(DOCK_HINTS, json_points, point_ids))
+    if set(document["berths"].keys()) != set(berth_ids):
+        raise ValueError("{}: berths {} do not match campaign::Berth {}".format(DOCK_HINTS, sorted(document["berths"]), berth_ids))
+    return berth_ids, point_ids
+
+
+def dock_hint_texts(campaign_text: str, document: dict) -> list[str]:
+    berth_ids, point_ids = dock_hint_layout(campaign_text, document)
+    texts = []
+    for berth in berth_ids:
+        row = document["berths"][berth]
+        if set(row) != set(point_ids):
+            raise ValueError("{}: berth {} must have exactly {}".format(DOCK_HINTS, berth, point_ids))
+        for point in point_ids:
+            text = row[point]
+            if not isinstance(text, str) or not text:
+                raise ValueError("{}: berth {} point {} has no text".format(DOCK_HINTS, berth, point))
+            if len(text) > 20:
+                raise ValueError("{}: {}/{} = {!r} exceeds 20 columns".format(DOCK_HINTS, berth, point, text))
+            if not DOCK_TEXT_RE.fullmatch(text):
+                raise ValueError("{}: {}/{} uses characters outside the 6x8 font: {!r}".format(DOCK_HINTS, berth, point, text))
+            texts.append(text)
+    return texts
 
 
 def glyph_columns(char: str):
@@ -154,7 +210,7 @@ def mission_texts(strings) -> list[str]:
     return [checked(strings, symbol) for symbol in MISSION_STRINGS]
 
 
-def build_rows(strings, campaign_text):
+def build_rows(strings, campaign_text, dock_hints):
     rows = []
     for symbol in ordered_strings(FXDATA):
         rows.append(("img_" + symbol, two_frame_row(checked(strings, symbol))))
@@ -166,7 +222,9 @@ def build_rows(strings, campaign_text):
     berth_texts.append(checked(strings, "txt_station"))
     rows.append(("img_berth_names", sheet([stamp_image(text, 0) for text in berth_texts])))
 
-    bark_texts = ["" if symbol is None else checked(strings, symbol) for _name, symbol in DOCK_BARK_TEXT]
+    # Frame 0 is the empty bark; the remaining frames are berth-major and
+    # point-minor so text_layout::dockBarkFrame() is one multiply and add.
+    bark_texts = [""] + dock_hint_texts(campaign_text, dock_hints)
     rows.append(("img_dock_barks", sheet([stamp_image(text, 0) for text in bark_texts])))
 
     label_texts = [checked(strings, symbol) for symbol in ROW_LABELS]
@@ -205,8 +263,20 @@ constexpr uint8_t kTextInsetX = {inset};
 constexpr uint8_t kBerthNameFrames = {berth_frames};
 constexpr uint8_t kBerthNameFallback = {berth_fallback};
 
-// img_dock_barks: campaign::DockBark order; frame 0 is the empty bark.
+// img_dock_barks: frame 0 is empty, then one frame per berth and DockPoint in
+// story/dock_hints.json. Frames are berth-major and point-minor; every berth
+// owns one line at every saved progression point.
+constexpr uint8_t kDockBarkBerths = {bark_berths};
+constexpr uint8_t kDockBarkPoints = {bark_points};
 constexpr uint8_t kDockBarkFrames = {bark_frames};
+static_assert(1 + (kDockBarkBerths - 1) * kDockBarkPoints + (kDockBarkPoints - 1) + 1 == kDockBarkFrames,
+              "dock bark frame count must match the berth x point grid");
+
+constexpr uint8_t dockBarkFrame(uint8_t berth, uint8_t point) {{
+    return berth < kDockBarkBerths && point < kDockBarkPoints
+               ? static_cast<uint8_t>(1 + berth * kDockBarkPoints + point)
+               : 0;
+}}
 
 // img_row_labels: WORK, UNDOCK, then the two inverted selection variants.
 constexpr uint8_t kRowLabelFrames = {row_label_frames};
@@ -227,8 +297,9 @@ constexpr uint8_t kBerthWorkFrames = {berth_work_frames};
 """
 
 
-def render_layout(rows) -> str:
+def render_layout(rows, dock_hints, campaign_text) -> str:
     counts = {name: image.width // STAMP[0] for name, image in rows}
+    berth_ids, point_ids = dock_hint_layout(campaign_text, dock_hints)
     return LAYOUT_TEMPLATE.format(
         width=STAMP[0],
         height=STAMP[1],
@@ -236,6 +307,8 @@ def render_layout(rows) -> str:
         inset=TEXT_INSET_X,
         berth_frames=counts["img_berth_names"],
         berth_fallback=counts["img_berth_names"] - 1,
+        bark_berths=len(berth_ids),
+        bark_points=len(point_ids),
         bark_frames=counts["img_dock_barks"],
         row_label_frames=counts["img_row_labels"],
         mission_frames=len(MISSION_STRINGS),
@@ -261,8 +334,9 @@ def write_images(directory, rows) -> list[Path]:
 def build(campaign_text: str | None = None):
     strings = load_strings(FXDATA)
     campaign = CAMPAIGN.read_text(encoding="utf-8") if campaign_text is None else campaign_text
-    rows = build_rows(strings, campaign)
-    return rows, render_layout(rows)
+    dock_hints = load_dock_hints()
+    rows = build_rows(strings, campaign, dock_hints)
+    return rows, render_layout(rows, dock_hints, campaign)
 
 
 def main(argv=None) -> int:

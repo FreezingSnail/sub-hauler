@@ -15,22 +15,14 @@
 <body>
 <main>
 <h1>Sub-hauler: story beats</h1>
-<p class="render-note">Edit <a href="../story/scenes.json">story text JSON</a> or the <a href="../story/art.png">Piskel artwork sheet</a>, then run <code>make gen</code>. <a href="../story/README.md">Editing instructions</a> · <a href="assets/story-cards.png">Complete card sheet</a> · <a href="assets/story-cards.json">Card row map</a>. Text pages paginate automatically.</p>
-<p class="render-note">Read-only <a href="#dock-barks">dock-bark preview</a> shows every berth's station-board bark at each saved progression checkpoint.</p>
+<p class="render-note">Edit text in the <a href="story-editor.html">story editor</a>, or edit <a href="../story/scenes.json">story text JSON</a> / <a href="../story/art.png">Piskel artwork sheet</a>, then run <code>make gen</code>. <a href="../story/README.md">Editing instructions</a> · <a href="assets/story-cards.png">Complete card sheet</a> · <a href="assets/story-cards.json">Card row map</a>. Text pages paginate automatically.</p>
+<p class="render-note">Read-only <a href="#dock-barks">dock-bark preview</a> shows every berth's station-board bark at each saved completion point.</p>
 <p class="render-note">All scenes take place underwater; loading bays are enclosed moon pools. Every image has four poses: select an image, then Play or Step frame. Playback starts paused; text cards stay static.</p>
 <p class="render-note">Original sub artwork restored, with its previous proportions and shading. Gentle motion, the clearer broken cable, moving freight carriage and reel, sweeping beacon, and grow-tank circulation remain. Compare at native size before enlarging.</p>
 <section aria-labelledby="campaign-beats-heading">
 <h2 id="campaign-beats-heading">The full campaign</h2>
-<ol>
-<li><strong><a href="#first-delivery">First delivery — keep the grow rooms alive.</a></strong> Carry filter supplies from Tidewall to Benthos. The first lamps come on, and Benthos asks for help restoring its pump and the remote Cormorant Freight Yard lift.</li>
-<li><strong><a href="#pump-survey">Pump survey — find the fault.</a></strong> Inspect the pump at Pump Refuge. Its impeller is cracked; a replacement is available at Cormorant.</li>
-<li><strong><a href="#pump-delivery">Pump delivery — bring water back.</a></strong> Carry the replacement impeller from Cormorant to the Pump Refuge pump. Water returns to the grow rooms, and Pump Refuge becomes a working service berth.</li>
-<li><strong><a href="#lift-survey">Lift survey — trace the breakdown.</a></strong> Inspect the cable housing at Freight Yard. The lift needs replacement cable from Benthos.</li>
-<li><strong><a href="#lift-delivery">Lift delivery — move freight again.</a></strong> Carry cable reels from Benthos to the Freight Yard lift. The lift and workshops return to work, and Lower Gantry becomes a service berth.</li>
-<li><strong><a href="#beacon-delivery">Beacon delivery — reconnect Deep Anchor.</a></strong> Once the pump and lift are restored and the sub has a pressure seal, carry the assembled beacon core from Cormorant to Deep Anchor. Its limited beacon and inhabited capsule lights come on; the network still needs a physical dispatch.</li>
-<li><strong><a href="#homecoming">Homecoming — bring the dispatch home.</a></strong> Carry Deep Anchor’s physical survey records and return supplies to Tidewall. Tidewall’s signal lights complete the network; the voyage ends with a homecoming and the option to keep exploring.</li>
-</ol>
-<p class="muted">The pump and lift branches can be completed in either order. Their surveys can be recorded early. All seven existing campaign objectives now have image and story card sequences below.</p>
+<ol id="campaign-list"></ol>
+<p class="muted">The pump and lift branches can be completed in either order. Their surveys can be recorded early. All eight campaign objectives now have image and story card sequences below.</p>
 </section>
 <section id="first-delivery" aria-labelledby="first-delivery-heading">
 <h2 id="first-delivery-heading">1. First delivery — image and story cards</h2>
@@ -129,10 +121,10 @@
 <div id="handoff-previews"></div>
 </section>
 <section id="dock-barks" aria-labelledby="dock-barks-heading" class="strip">
-<h2 id="dock-barks-heading">9. Dock barks — one line per berth and checkpoint</h2>
+<h2 id="dock-barks-heading">9. Dock barks — one line per berth and completion point</h2>
 <p>Every station board ends with one progression bark line. The cards below draw the berth name and the bark at the exact native 6×8 text positions from <code>station_view.hpp</code> (<code>x=3</code>, <code>y=56</code>) on a 128×64 black board.</p>
-<p class="muted">This is a read-only preview: the page never writes a canonical file. Each checkpoint is a set of saved campaign and tool facts; <strong>HOME</strong> and <strong>DONE</strong> select the same bark because DONE only adds already-implied optional bits.</p>
-<p class="render-note">Generated from <a href="../src/campaign.hpp">the selector</a> and <a href="../fxdata/fxdata.txt">the shipped FX strings</a>. The bark text is the canonical string, not a copy.</p>
+<p class="muted">This is a read-only preview: the page never writes a canonical file. Each point is a set of saved campaign and tool facts. <strong>PUMP</strong> and <strong>LIFT</strong> are separate points so the lift-first and pump-first orders each get their own line.</p>
+<p class="render-note">Generated from <a href="../story/dock_hints.json">the editable dock-hint JSON</a> and <a href="../src/campaign.hpp">the selector</a>. The preview text is the same text baked into <code>img_dock_barks</code>, not a copy.</p>
 <div id="dock-bark-previews"></div>
 </section>
 <noscript>This local sketchbook needs JavaScript and Canvas to render its local cards and navigate between them.</noscript>
@@ -140,6 +132,7 @@
 <script src="assets/first-beat-animation/frames.js"></script>
 <script src="assets/first-beat-animation/playback.js"></script>
 <script src="assets/dock-barks.js"></script>
+<script src="assets/story-editor/missions.js"></script>
 <script>
 'use strict';
 const storyData=globalThis.StoryData;
@@ -289,11 +282,26 @@ function mountDockBark(container,berth,bark){
   drawDockText(ctx,font,bark.text,layout.hintX,layout.barkY);
  }).catch(error=>{if(container.barkToken===token)container.textContent=error.message;});
 }
+function mountCampaignList(){
+ const list=document.querySelector('#campaign-list');
+ if(!list||!globalThis.StoryMissions)return;
+ const section={first:'#first-delivery',pump_survey:'#pump-survey',pump:'#pump-delivery',lift_survey:'#lift-survey',lift:'#lift-delivery',beacon:'#beacon-delivery',expedition:'#handoff-review',home:'#homecoming'};
+ globalThis.StoryMissions.missions.forEach(mission=>{
+  const item=document.createElement('li');
+  const strong=document.createElement('strong');
+  const link=document.createElement('a');
+  link.href=section[mission.id]||'#handoff-review';
+  link.textContent=mission.title;
+  strong.append(link);
+  item.append(strong,document.createTextNode(' — '+mission.summary));
+  list.append(item);
+ });
+}
 function mountDockBarks(){
  const root=document.querySelector('#dock-bark-previews');
  if(!root)return;
  if(!dockBarkData){root.textContent='Dock bark preview data is missing; run make gen.';return;}
- const key=el('p','render-note',null,'Each card draws the berth header and the exact shipped bark row. Captions name the DockBark selector and FX string.');
+ const key=el('p','render-note',null,'Each card draws the berth header and the exact shipped bark row. Captions name its frame index and completion point.');
  root.append(key);
  dockBarkData.states.forEach((state,stateIndex)=>{
   const group=el('section','dock-bark-state');
@@ -343,6 +351,7 @@ window.addEventListener('hashchange',activateHash);
 document.querySelectorAll(Object.keys(controllerRegistry).map(hash=>'a[href="'+hash+'"]').join(',')).forEach(link=>link.addEventListener('click',()=>{setActiveController(controllerRegistry[link.hash]);}));
 document.addEventListener('keydown',event=>{if(event.target.matches('input,textarea,[contenteditable]'))return;if(event.key===' '&&event.target.matches('button'))return;if(['ArrowRight','ArrowLeft',' '].includes(event.key)){event.preventDefault();activeController.step(event.key==='ArrowLeft'?-1:1);}});
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&activeController)activeController.pauseAnimation();});
+mountCampaignList();
 mountDockBarks();
 activateHash();
 </script>

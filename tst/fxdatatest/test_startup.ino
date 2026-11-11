@@ -64,10 +64,12 @@ void setup() {
     // Drive the production startup sequence without a physical button. The
     // script holds A through the logo, releases it, waits on the game splash,
     // then gives one fresh press. It proves the held logo input cannot skip the
-    // splash and that the fresh release is consumed before returning.
+    // splash, that the fresh release is consumed before returning, and that the
+    // splash services its poll on every waiting frame.
     struct ScriptedPoll {
         uint16_t ticks = 0;
         uint16_t held = 0;
+        uint16_t serviced = 0;
         uint8_t buttons() const {
             if (ticks < 64)
                 return A_BUTTON;   // held through and just past the logo
@@ -80,15 +82,19 @@ void setup() {
         void delay() {
             ++ticks;
         }
+        void service() {
+            ++serviced;
+        }
         void waitNoButtons() {
             ++held;
         }
     } poll;
     startup_view::run(poll);
-    ok = poll.ticks >= 160 && poll.held == 1 && ok;
+    ok = poll.ticks >= 160 && poll.held == 1 && poll.serviced >= 160 && ok;
     Serial.print(F("startup pixels=")); Serial.print(cases);
     Serial.print(F(" startup_ticks=")); Serial.print(poll.ticks);
-    Serial.print(F(" releases=")); Serial.println(poll.held);
+    Serial.print(F(" releases=")); Serial.print(poll.held);
+    Serial.print(F(" serviced=")); Serial.println(poll.serviced);
     Serial.println(ok ? F("P") : F("F"));
 }
 

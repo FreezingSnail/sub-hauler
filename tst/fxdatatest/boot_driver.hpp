@@ -17,6 +17,7 @@ struct Poll {
     void delay() {
         ++ticks;
     }
+    void service() {}
     void waitNoButtons() {}
 };
 

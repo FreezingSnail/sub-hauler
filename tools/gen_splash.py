@@ -5,6 +5,7 @@ from pathlib import Path
 from PIL import Image, ImageDraw
 
 from gen_panels import draw_text
+from gen_pilot import normalize as normalize_pilot
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -30,9 +31,10 @@ def frames(root=ROOT):
     pen.line([(127, 28), (119, 28), (119, 32), (109, 32), (109, 35), (103, 35)], fill="white")
     pen.line([(0, 50), (13, 50), (13, 48), (28, 48), (28, 51), (49, 51),
               (49, 52), (84, 52), (84, 50), (111, 50), (111, 47), (127, 47)], fill="white")
-    ship = Image.open(root / "images/pilot/hauler_26x8.png").convert("RGBA").crop((0, 0, 26, 8))
-    ship = ship.resize((52, 16), Image.Resampling.NEAREST)
-    game.paste(ship, (38, 30), ship)
+    ship_sheet = normalize_pilot(root / "images/pilot/hauler_26x8.png")
+    ship = ship_sheet.crop((0, 0, 26, ship_sheet.height))
+    ship = ship.resize((52, ship.height * 2), Image.Resampling.NEAREST)
+    game.paste(ship, (38, 46 - ship.height), ship)
     for x, y in ((29, 34), (23, 29), (18, 39)):
         pen.rectangle((x, y, x + 2, y + 2), outline="white")
     draw_text(game, 7, 56, "PRESS A TO START")

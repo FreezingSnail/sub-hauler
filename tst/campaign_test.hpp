@@ -688,75 +688,50 @@ inline void CampaignSuite(TestRunner &runner) {
     }
 
     {
-        Test test("dock bark names a reachable next step at all eight berths");
-        game::State state;
-        game::reset(state);
+        Test test("dock point follows saved progression in both repair orders");
+        test.assertEqual(campaign::kDockPointCount, 9, "fresh through home");
 
-        test.assertEqual(campaign::dockBark(state, campaign::kTidewall), campaign::kDockBarkFirst, "Tidewall starts the filter run");
-        test.assertEqual(campaign::dockBark(state, campaign::kBenthos), campaign::kDockBarkNoWork, "Benthos waits for FIRST");
-        test.assertEqual(campaign::dockBark(state, campaign::kCormorant), campaign::kDockBarkNoWork, "Cormorant waits for FIRST");
-        test.assertEqual(campaign::dockBark(state, campaign::kDeepAnchor), campaign::kDockBarkNoWork, "Deep Anchor waits for FIRST");
-        test.assertEqual(campaign::dockBark(state, campaign::kPumpRefuge), campaign::kDockBarkPumpSource, "locked Pump Refuge names its source");
-        test.assertEqual(campaign::dockBark(state, campaign::kLowerGantry), campaign::kDockBarkLiftSource, "locked Lower Gantry names its cable");
-        test.assertEqual(campaign::dockBark(state, campaign::kFreightYard), campaign::kDockBarkLiftSource, "locked Freight Yard names its cable");
-        test.assertEqual(campaign::dockBark(state, campaign::kDeepRelay), campaign::kDockBarkDeepRelay, "locked Deep Relay names the expedition");
-        test.assertEqual(campaign::dockBark(state, campaign::kBerthCount), campaign::kDockBarkNone, "unknown berth has no bark");
-        for (uint8_t berth = 0; berth < campaign::kBerthCount; ++berth)
-            test.assertTrue(campaign::dockBark(state, berth) != campaign::kDockBarkNone, "every berth has a bark before FIRST");
+        game::State pumpFirst;
+        game::reset(pumpFirst);
+        test.assertEqual(campaign::dockPoint(pumpFirst), campaign::kDockPointFresh, "fresh voyage");
+        pumpFirst.tools = exploration_data::SEAL;
+        test.assertEqual(campaign::dockPoint(pumpFirst), campaign::kDockPointFresh, "owned tools cannot skip FIRST");
 
-        state.campaign = campaign::kMilestoneFirst;
-        test.assertEqual(campaign::dockBark(state, campaign::kTidewall), campaign::kDockBarkBenthosLamps, "Tidewall reports the lit lamps");
-        test.assertEqual(campaign::dockBark(state, campaign::kBenthos), campaign::kDockBarkPumpSurvey, "Benthos offers the pump survey");
-        test.assertEqual(campaign::dockBark(state, campaign::kCormorant), campaign::kDockBarkLiftSurvey, "Cormorant offers the lift survey");
-        test.assertEqual(campaign::dockBark(state, campaign::kDeepAnchor), campaign::kDockBarkBeaconPlan, "Deep Anchor introduces the beacon plan");
-        test.assertEqual(campaign::dockBark(state, campaign::kPumpRefuge), campaign::kDockBarkPumpSource, "Pump Refuge still needs its part");
-        test.assertEqual(campaign::dockBark(state, campaign::kLowerGantry), campaign::kDockBarkLiftSource, "Lower Gantry still needs its cable");
-        test.assertEqual(campaign::dockBark(state, campaign::kFreightYard), campaign::kDockBarkLiftSource, "Freight Yard still needs its cable");
-        test.assertEqual(campaign::dockBark(state, campaign::kDeepRelay), campaign::kDockBarkDeepRelay, "Deep Relay still waits for BEACON");
+        pumpFirst.campaign = campaign::kMilestoneFirst;
+        test.assertEqual(campaign::dockPoint(pumpFirst), campaign::kDockPointFirst, "FIRST opens both repairs");
+        pumpFirst.surveys = campaign::kSurveyPump;
+        pumpFirst.campaign |= campaign::kMilestonePump;
+        test.assertEqual(campaign::dockPoint(pumpFirst), campaign::kDockPointPump, "pump-first names the open lift");
+        pumpFirst.surveys = campaign::kSurveyMask;
+        pumpFirst.campaign |= campaign::kMilestoneLift;
+        pumpFirst.tools = 0;
+        test.assertEqual(campaign::dockPoint(pumpFirst), campaign::kDockPointBoth, "both repairs still need the seal");
+        pumpFirst.tools = exploration_data::SEAL;
+        test.assertEqual(campaign::dockPoint(pumpFirst), campaign::kDockPointSeal, "seal makes the core ready");
+        pumpFirst.campaign |= campaign::kMilestoneBeacon;
+        test.assertEqual(campaign::dockPoint(pumpFirst), campaign::kDockPointCore, "beacon opens the relay");
+        pumpFirst.campaign |= campaign::kMilestoneExpedition;
+        test.assertEqual(campaign::dockPoint(pumpFirst), campaign::kDockPointRelay, "relay opens HOME");
+        pumpFirst.campaign |= campaign::kMilestoneHome;
+        test.assertEqual(campaign::dockPoint(pumpFirst), campaign::kDockPointHome, "HOME restores the network");
 
-        state.campaign |= campaign::kMilestonePump;
-        state.surveys = campaign::kSurveyPump;
-        test.assertEqual(campaign::dockBark(state, campaign::kBenthos), campaign::kDockBarkLiftSurvey, "Benthos moves to the lift survey");
-        test.assertEqual(campaign::dockBark(state, campaign::kCormorant), campaign::kDockBarkLiftSurvey, "Cormorant moves to the lift survey");
-        test.assertEqual(campaign::dockBark(state, campaign::kPumpRefuge), campaign::kDockBarkLiftSurvey, "Pump Refuge moves to the lift survey");
-        test.assertEqual(campaign::dockBark(state, campaign::kLowerGantry), campaign::kDockBarkLiftSource, "Lower Gantry moves to the cable source");
-        test.assertEqual(campaign::dockBark(state, campaign::kFreightYard), campaign::kDockBarkLiftSource, "Freight Yard moves to the cable source");
-        test.assertEqual(campaign::dockBark(state, campaign::kDeepAnchor), campaign::kDockBarkBeaconPlan, "Deep Anchor still needs the beacon");
+        game::State liftFirst;
+        game::reset(liftFirst);
+        liftFirst.campaign = campaign::kMilestoneFirst;
+        liftFirst.surveys = campaign::kSurveyLift;
+        liftFirst.campaign |= campaign::kMilestoneLift;
+        test.assertEqual(campaign::dockPoint(liftFirst), campaign::kDockPointLift, "lift-first names the open pump");
+        liftFirst.surveys = campaign::kSurveyMask;
+        liftFirst.campaign |= campaign::kMilestonePump;
+        test.assertEqual(campaign::dockPoint(liftFirst), campaign::kDockPointBoth, "lift-first still needs the seal");
+        liftFirst.tools = exploration_data::SEAL;
+        test.assertEqual(campaign::dockPoint(liftFirst), campaign::kDockPointSeal, "lift-first reaches the same sealed point");
 
-        state.campaign |= campaign::kMilestoneLift;
-        state.surveys = campaign::kSurveyMask;
-        state.tools = 0;
-        test.assertEqual(campaign::dockBark(state, campaign::kBenthos), campaign::kDockBarkLiftRestored, "Benthos reports the lift");
-        test.assertEqual(campaign::dockBark(state, campaign::kCormorant), campaign::kDockBarkBeaconNeedsSeal, "Cormorant names the seal before the beacon");
-        test.assertEqual(campaign::dockBark(state, campaign::kPumpRefuge), campaign::kDockBarkBeaconNeedsSeal, "Pump Refuge names the seal");
-        test.assertEqual(campaign::dockBark(state, campaign::kLowerGantry), campaign::kDockBarkBeaconNeedsSeal, "Lower Gantry names the seal");
-        test.assertEqual(campaign::dockBark(state, campaign::kFreightYard), campaign::kDockBarkBeaconNeedsSeal, "Freight Yard names the seal");
-        test.assertEqual(campaign::dockBark(state, campaign::kDeepAnchor), campaign::kDockBarkBeaconPlan, "Deep Anchor still names the beacon");
-
-        state.tools = exploration_data::SEAL;
-        test.assertEqual(campaign::dockBark(state, campaign::kCormorant), campaign::kDockBarkBeaconReady, "Cormorant reports the beacon core ready");
-        test.assertEqual(campaign::dockBark(state, campaign::kPumpRefuge), campaign::kDockBarkBeaconReady, "Pump Refuge reports the beacon core ready");
-        test.assertEqual(campaign::dockBark(state, campaign::kLowerGantry), campaign::kDockBarkBeaconReady, "Lower Gantry reports the beacon core ready");
-        test.assertEqual(campaign::dockBark(state, campaign::kFreightYard), campaign::kDockBarkBeaconReady, "Freight Yard reports the beacon core ready");
-
-        state.campaign |= campaign::kMilestoneBeacon;
-        test.assertEqual(campaign::dockBark(state, campaign::kDeepAnchor), campaign::kDockBarkDeepRelay, "Deep Anchor names the relay expedition");
-        test.assertEqual(campaign::dockBark(state, campaign::kPumpRefuge), campaign::kDockBarkDeepRelay, "Pump Refuge names the relay expedition");
-        test.assertEqual(campaign::dockBark(state, campaign::kLowerGantry), campaign::kDockBarkDeepRelay, "Lower Gantry names the relay expedition");
-        test.assertEqual(campaign::dockBark(state, campaign::kFreightYard), campaign::kDockBarkDeepRelay, "Freight Yard names the relay expedition");
-        test.assertEqual(campaign::dockBark(state, campaign::kDeepRelay), campaign::kDockBarkDeepRelay, "Deep Relay names its own expedition");
-
-        state.campaign |= campaign::kMilestoneExpedition;
-        test.assertEqual(campaign::dockBark(state, campaign::kDeepAnchor), campaign::kDockBarkBeaconLit, "Deep Anchor reports the lit beacon");
-        test.assertEqual(campaign::dockBark(state, campaign::kDeepRelay), campaign::kDockBarkBeaconLit, "Deep Relay reports the lit beacon");
-        test.assertEqual(campaign::dockBark(state, campaign::kPumpRefuge), campaign::kDockBarkBeaconLit, "Pump Refuge reports the lit beacon");
-
-        state.campaign |= campaign::kMilestoneHome;
-        test.assertEqual(campaign::dockBark(state, campaign::kTidewall), campaign::kDockBarkNetworkOn, "Tidewall reports the restored network");
-        test.assertEqual(campaign::dockBark(state, campaign::kDeepAnchor), campaign::kDockBarkNetworkOn, "Deep Anchor reports the restored network");
-        test.assertEqual(campaign::dockBark(state, campaign::kDeepRelay), campaign::kDockBarkNetworkOn, "Deep Relay reports the restored network");
-        for (uint8_t berth = 0; berth < campaign::kBerthCount; ++berth)
-            test.assertTrue(campaign::dockBark(state, berth) != campaign::kDockBarkNone, "every berth has a bark after HOME");
+        game::State legacyHome;
+        game::reset(legacyHome);
+        legacyHome.campaign = static_cast<uint8_t>(campaign::kMilestoneFirst | campaign::kMilestonePump |
+                                                 campaign::kMilestoneLift | campaign::kMilestoneBeacon | campaign::kMilestoneHome);
+        test.assertEqual(campaign::dockPoint(legacyHome), campaign::kDockPointHome, "legacy HOME without EXPEDITION stays HOME");
         runner.add(test);
     }
 }

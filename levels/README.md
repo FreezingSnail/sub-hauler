@@ -81,7 +81,8 @@ collision tiles, chart cells, gates or pickups. Artwork stays outside a
 dark wall markings stay three pixels inside solid rock. Larger motifs search
 near their authored room for a safe floor location, failing generation if no
 placement fits. Wall-mounted motifs search the room's wall for a fully
-rock-clipped location and fail the same way. Roots follow the actual curved
+rock-clipped location, prioritizing the portion visible in a 128×64 viewport
+centered on the pickup, and fail the same way. Roots follow the actual curved
 floor; textures are clipped inside its silhouette. `docs/assets/exploration-scenery.json` is a generated inspection
 report, not another flashable image. It records each landmark's `mount` and
 position. All decoration is baked into the same

@@ -347,9 +347,15 @@ def decorate(level, base, spines):
             # etched into the surrounding wall rather than dropped into the
             # protected route corridor.
             tx, ty = cx+dx, cy+dy
+            pixels = motif(item['kind'], seed+i)
+            # The player sees only 128x64 around the pickup. Prefer an intact
+            # silhouette in that view before honoring the authored offset.
+            def wall_score(p):
+                visible = sum(cx-64 <= p[0]+px < cx+64 and
+                              cy-32 <= p[1]+py < cy+32 for px, py in pixels)
+                return (-visible, (p[0]-tx)**2+(p[1]-ty)**2)
             candidates = sorted(((x, y) for y in range(ty-56, ty+57, 4)
-                                 for x in range(tx-56, tx+57, 4)),
-                                key=lambda p: (p[0]-tx)**2+(p[1]-ty)**2)
+                                 for x in range(tx-56, tx+57, 4)), key=wall_score)
         else:
             candidates = sorted(((p[0], p[1]) for p in floors
                                  if p[2] == theme and abs(p[0]-cx) < 100 and abs(p[1]-cy) < 100),

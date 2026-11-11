@@ -3,6 +3,8 @@
 
 #include <stdint.h>
 
+// fxdata/tables/story-beats.bin starts with STORY_FRAME_COUNT
+// little-endian 24-bit frame offsets, followed by the RLE frames.
 constexpr uint8_t STORY_BEAT_WIDTH  = 128;
 constexpr uint8_t STORY_BEAT_HEIGHT = 64;
 constexpr uint8_t STORY_SCENE_MAX  = 17;
@@ -10,9 +12,9 @@ constexpr uint8_t STORY_SCENE_COUNT = 18;
 constexpr uint8_t STORY_CARD_COUNT = 43;
 constexpr uint8_t STORY_IMAGE_CARD_COUNT = 21;
 constexpr uint8_t STORY_TEXT_CARD_COUNT = 22;
-constexpr uint8_t STORY_IMAGE_COUNT = 19;
-constexpr uint8_t STORY_FRAME_COUNT = 98;
-constexpr uint16_t STORY_BEAT_BYTES = 61365;
+constexpr uint8_t STORY_IMAGE_COUNT = 21;
+constexpr uint8_t STORY_FRAME_COUNT = 106;
+constexpr uint32_t STORY_BEAT_BYTES = 67468;
 constexpr uint8_t STORY_BEAT_FRAME_TICKS = 18;
 constexpr uint8_t STORY_BEAT_CYCLE_TICKS = 72;
 constexpr uint8_t STORY_BEAT_MAX_CARDS = 6;
@@ -51,8 +53,8 @@ constexpr uint16_t STORY_META_CARD_KIND = STORY_META_CARD_FRAME + STORY_CARD_COU
 constexpr uint16_t STORY_META_BYTES = STORY_META_CARD_KIND + STORY_CARD_COUNT;
 
 #if !defined(__AVR__)
-constexpr uint8_t STORY_SCENE_CARDS[STORY_SCENE_COUNT] = {0, 6, 4, 2, 4, 2, 2, 2, 2, 2, 2, 2, 2, 3, 2, 2, 2, 2};
-constexpr uint8_t STORY_SCENE_FIRST_CARD[STORY_SCENE_COUNT] = {0, 0, 6, 10, 12, 16, 18, 20, 22, 24, 26, 28, 30, 32, 35, 37, 39, 41};
-constexpr uint8_t STORY_CARD_FRAME[STORY_CARD_COUNT] = {0, 4, 5, 9, 10, 14, 15, 19, 20, 24, 25, 29, 30, 34, 35, 39, 40, 44, 45, 49, 50, 54, 55, 59, 60, 64, 65, 69, 70, 74, 70, 75, 76, 80, 81, 82, 86, 87, 91, 92, 96, 0, 97};
-constexpr uint8_t STORY_CARD_KIND[STORY_CARD_COUNT] = {0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1};
+constexpr uint8_t STORY_SCENE_CARDS[STORY_SCENE_COUNT] = {0, 6, 4, 2, 4, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 2, 2};
+constexpr uint8_t STORY_SCENE_FIRST_CARD[STORY_SCENE_COUNT] = {0, 0, 6, 10, 12, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 36, 39, 41};
+constexpr uint8_t STORY_CARD_FRAME[STORY_CARD_COUNT] = {0, 4, 5, 9, 10, 14, 15, 19, 20, 24, 25, 29, 30, 34, 35, 39, 40, 44, 45, 49, 50, 54, 55, 59, 60, 64, 65, 69, 70, 74, 75, 79, 80, 84, 85, 89, 90, 94, 95, 96, 100, 101, 105};
+constexpr uint8_t STORY_CARD_KIND[STORY_CARD_COUNT] = {0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 0, 1, 0, 1};
 #endif

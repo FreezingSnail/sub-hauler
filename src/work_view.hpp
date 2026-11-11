@@ -94,28 +94,19 @@ inline bool accept(game::State &state, const Row &row) {
 }
 
 // Persistent, host-testable clue selection. The board shows this at every
-// berth, including when the row list is empty: a completed repair must never
-// hide the next survey, source, seal or beacon step. Deep Anchor keeps a
-// beacon-state clue before and after the core delivery.
-// The WORK clue and the dock bark are one selector and one enum. Campaign owns
-// the pure choice; these aliases keep the frozen WORK-board tests and callers.
-using Clue = campaign::DockBark;
-constexpr Clue kClueNone = campaign::kDockBarkNone;
-constexpr Clue kClueFirst = campaign::kDockBarkFirst;
-constexpr Clue kClueBenthosLamps = campaign::kDockBarkBenthosLamps;
-constexpr Clue kCluePumpSurvey = campaign::kDockBarkPumpSurvey;
-constexpr Clue kCluePumpSource = campaign::kDockBarkPumpSource;
-constexpr Clue kClueLiftSurvey = campaign::kDockBarkLiftSurvey;
-constexpr Clue kClueLiftSource = campaign::kDockBarkLiftSource;
-constexpr Clue kCluePumpPartReady = campaign::kDockBarkPumpPartReady;
-constexpr Clue kClueLiftRestored = campaign::kDockBarkLiftRestored;
-constexpr Clue kClueBeaconNeedsSeal = campaign::kDockBarkBeaconNeedsSeal;
-constexpr Clue kClueBeaconReady = campaign::kDockBarkBeaconReady;
-constexpr Clue kClueBeaconPlan = campaign::kDockBarkBeaconPlan;
-constexpr Clue kClueBeaconLit = campaign::kDockBarkBeaconLit;
-constexpr Clue kClueNetworkOn = campaign::kDockBarkNetworkOn;
-constexpr Clue kClueDeepRelay = campaign::kDockBarkDeepRelay;
-constexpr Clue kClueNoWork = campaign::kDockBarkNoWork;
+// berth, including when the row list is empty: the line always describes the
+// current voyage stage. The berth chooses its own copy in story/dock_hints.json;
+// campaign owns the pure point selection.
+using Clue = campaign::DockPoint;
+constexpr Clue kClueFresh = campaign::kDockPointFresh;
+constexpr Clue kClueFirst = campaign::kDockPointFirst;
+constexpr Clue kCluePump = campaign::kDockPointPump;
+constexpr Clue kClueLift = campaign::kDockPointLift;
+constexpr Clue kClueBoth = campaign::kDockPointBoth;
+constexpr Clue kClueSeal = campaign::kDockPointSeal;
+constexpr Clue kClueCore = campaign::kDockPointCore;
+constexpr Clue kClueRelay = campaign::kDockPointRelay;
+constexpr Clue kClueHome = campaign::kDockPointHome;
 
 enum EquipmentClue : uint8_t {
     kEquipmentNone = 0,
@@ -123,8 +114,8 @@ enum EquipmentClue : uint8_t {
     kEquipmentSeal,
 };
 
-inline Clue clueFor(const game::State &state, uint8_t berth) {
-    return campaign::dockBark(state, berth);
+inline Clue clueFor(const game::State &state) {
+    return campaign::dockPoint(state);
 }
 
 inline EquipmentClue equipmentClue(const game::State &state) {
@@ -146,11 +137,11 @@ inline uint8_t missionFrame(uint8_t mission) {
     return mission;
 }
 
-// One PROGMEM dispatch shared with the station bark. The pure clue order is
-// fixed by docs/progression.md and tested on the host, including the empty-row
-// board case. The frame index is the raw campaign::DockBark value.
-inline uint8_t clueFrame(Clue clue) {
-    return static_cast<uint8_t>(clue);
+// One dispatch shared with the station bark. The pure point order is fixed by
+// campaign::DockPoint and tested on the host, including the empty-row board
+// case. The berth selects its unique pre-rendered frame from the JSON matrix.
+inline uint8_t clueFrame(const game::State &state, Clue clue) {
+    return text_layout::dockBarkFrame(static_cast<uint8_t>(state.docked), static_cast<uint8_t>(clue));
 }
 
 // Equipment leads are individual img_txt_* stamps; 0 means no lead.
@@ -178,8 +169,8 @@ inline void drawActive(const game::State &state) {
     text::stamp(img_txt_deliver_to);
     text::stampFrame(img_berth_names, state.activeJob.to, kRowX, static_cast<uint8_t>(kRowY0 + 2 * kRowStep));
 
-    const uint8_t clue = clueFrame(clueFor(state, static_cast<uint8_t>(state.docked)));
-    if (clue != campaign::kDockBarkNone)
+    const uint8_t clue = clueFrame(state, clueFor(state));
+    if (clue != 0)
         text::stampFrame(img_dock_barks, clue, kRowX, kClueY);
     text::at(3, kHintY);
     text::stamp(img_txt_back_hint);
@@ -208,9 +199,9 @@ inline void draw(const game::State &state, uint8_t selected) {
         // A completed repair can empty this berth before the next branch is
         // ready. Keep the persistent clue and the equipment lead visible so a
         // revisit never dead-ends on the back hint alone.
-        const uint8_t clue = clueFrame(clueFor(state, static_cast<uint8_t>(state.docked)));
-        const uint24_t equipment = clue != campaign::kDockBarkNone ? 0 : equipmentImage(equipmentClue(state));
-        if (clue != campaign::kDockBarkNone) {
+        const uint8_t clue = clueFrame(state, clueFor(state));
+        const uint24_t equipment = clue != 0 ? 0 : equipmentImage(equipmentClue(state));
+        if (clue != 0) {
             text::stampFrame(img_dock_barks, clue, 3, kClueY);
         } else if (equipment) {
             text::at(3, kClueY);
@@ -235,8 +226,8 @@ inline void draw(const game::State &state, uint8_t selected) {
             drawStoryRow(y, row, index == selected);
     }
 
-    const uint8_t clue = clueFrame(clueFor(state, static_cast<uint8_t>(state.docked)));
-    if (clue != campaign::kDockBarkNone) {
+    const uint8_t clue = clueFrame(state, clueFor(state));
+    if (clue != 0) {
         text::stampFrame(img_dock_barks, clue, 3, kClueY);
     } else {
         const uint24_t equipment = equipmentImage(equipmentClue(state));
