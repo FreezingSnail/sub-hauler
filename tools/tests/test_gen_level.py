@@ -68,12 +68,17 @@ class AuthoredLevelTest(unittest.TestCase):
         self.assertEqual(len(rooms),32)
         self.assertEqual(len(self.source['routes']),42)
 
-    def test_legacy_sections_and_new_assets_are_packed_without_offset_drift(self):
+    def test_legacy_sections_are_archival_and_active_assets_pack_without_offset_drift(self):
         header=(ROOT/'src/fxdata.h').read_text()
         offsets={name:int(value,16) for name,value in re.findall(r'constexpr uint24_t (\w+) = 0x([0-9A-Fa-f]+);',header)}
         cart=(ROOT/'fxdata/fxdata.bin').read_bytes()
-        self.assertEqual(offsets['cargoBank'],0x1AC2)
-        for name,file in [('worldTiles','world.bin'),('worldChart','world-chart.bin'),('explorationTiles','exploration.bin'),('explorationChart','exploration-chart.bin'),('explorationObjects','exploration-objects.bin'),('explorationTerrain','exploration-terrain.bin')]:
+        # sub-hauler-jxk.1 retired these from the shipping layout under the
+        # approved append-only ABI exception; their generators stay archival.
+        for retired in ('hero','worldTiles','worldChart','cargoBank',
+                        'explorationObjects','leviathan','minnow'):
+            self.assertNotIn(retired,offsets)
+        self.assertEqual(offsets['font_6x8'],0)
+        for name,file in [('explorationTiles','exploration.bin'),('explorationChart','exploration-chart.bin'),('explorationTerrain','exploration-terrain.bin')]:
             blob=(ROOT/'fxdata/tables'/file).read_bytes()
             self.assertEqual(cart[offsets[name]:offsets[name]+len(blob)],blob)
         self.assertEqual(hashlib.sha256((ROOT/'fxdata/tables/world.bin').read_bytes()).hexdigest(),'78b6b51d763b447af299e80e80697bd6fd3d3f2bf4da20becf5d04c50ed61873')

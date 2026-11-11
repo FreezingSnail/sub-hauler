@@ -12,7 +12,7 @@ Keep dated measurements in the checkpoint table instead of copying them around.
 | MCU | ATmega32u4 |
 | Display | 128×64 SSD1306 OLED, native 1-bit |
 | Framebuffer | 1,024 B (`Arduboy2Base::sBuffer`) |
-| Cart | external FX flash; current `fxdata/fxdata.bin` image is 672,000 B; the unpadded 667,863 B payload is `fxdata/fxdata-data.bin`, with the 4,096 B save partition at `FX_SAVE_PAGE = 0xFFF0` |
+| Cart | external FX flash; current `fxdata/fxdata.bin` image is 665,344 B; the unpadded 661,196 B payload is `fxdata/fxdata-data.bin`, with the 4,096 B save partition at `FX_SAVE_PAGE = 0xFFF0` |
 | Display mode | native 1-bit via `Arduboy2Base` |
 | Logical frame | `FRAME(x)` = `x`; one image per frame |
 | Blitting | `Blit::draw` plus-mask blits into `sBuffer`; no OLED access |
@@ -203,8 +203,8 @@ in the current fixed build; there are no feature flags to disable. Any further
 **SRAM** persistent state needs a carve of existing state first; there is no
 room for another 256 B-class feature. The optional chart save is not SRAM: its
 260 B block lives in EEPROM, so it does not consume static headroom. The
-shipped `cargoBank` remains external FX flash only; its runtime state and
-reader are gone.
+archival `cargoBank` generator output is no longer packed into external FX
+flash after `sub-hauler-jxk.1`; its runtime state and reader were already gone.
 
 The suite builds with `make fxtest-build FXTEST_ONLY=test_memory`; rerun it
 after render/state changes:
@@ -217,11 +217,13 @@ A bare `P` means the reserve is at least 600 B; `F` means it is not. Record the
 dated high-water result in the checkpoint table after that run.
 
 The active map format is documented in [levels/README.md](../levels/README.md).
-Its object records are 113 B in FX and mirrored byte-for-byte in PROGMEM for
-collision without extra SPI transactions or a dynamic SRAM object array.
+Its object records are 91 B in PROGMEM and used directly for collision without
+extra SPI transactions or a dynamic SRAM object array; the cart copy was
+retired by `sub-hauler-jxk.1` under the approved ABI exception.
 The original 88 B position-only world metadata and 128 B cave atlas retain
 their storage approach. Generated `level.hpp` is active; `world.hpp` under
-`src/generated` describes the retained legacy sections.
+`src/generated` still describes the archival legacy sections, which are no
+longer packed.
 
 ## SPI / display contract
 
@@ -301,6 +303,7 @@ current developer-only `DEBUG=1` image is documented in
 
 | Date | Flash | Static RAM | Toolchain / notes |
 | --- | --- | --- | --- |
+| 2026-11-11 | 29,654 B | 1,665 B | Legacy cart table retirement (`sub-hauler-jxk.1`, approved one-time ABI exception): removed shipping `worldTiles`, `worldChart`, `cargoBank`, `hero`, `minnow`, `leviathan` and `explorationObjects`; HAULER is the only pilot sheet. Archival generators/outputs (`world.bin`, `cargo.bin`, `exploration-objects.bin`, `gen_cargo.py`, `gen_pilot.py`) remain but are not packed. `.text/.data/.bss` **29,638 / 16 / 1,649 B**; **42 B** hardware flash free. Host **264**, tooling **166**, gen-check deterministic, targeted `test_boot` P and `test_world` P. FX payload/image **661,196 / 665,344 B**, **11,009 B payload / 11,008 B image** smaller than the prior **672,205 / 676,352 B**; `FX_DATA_PAGE=0xF5D9`, `FX_SAVE_PAGE=0xFFF0` unchanged. No physical playthrough claimed. |
 | 2026-11-10 | 29,652 B | 1,665 B | Equipment-cove landmarks and lens-cave texture (`sub-hauler-646.8`, `.9`): the four equipment coves get distinct wall-etched wreck silhouettes (`cutter-tender` at `W`, `thruster-pod` at `BR`, `workshop-lock` at `CW`, `trench-lens` at `DL`) because their pocket water is protected route corridor; `DL` gains a scoped `texture: "lens"` override with `lens-shard` wall growths and concentric lens rings. Collision, chart, object stream, `level.hpp`, `exploration.hpp` and `fxdata.h` are byte-identical to the preceding image; only the **409,600 B** native terrain section changes. `.text/.data/.bss` **29,636 / 16 / 1,649 B**; **44 B** hardware flash free. Host **264**, tooling **159**, docs **33** + preview **8**; targeted `test_world` P; gen-check deterministic. FX payload/image **672,205 / 676,352 B**. No physical playthrough or human art review claimed. |
 | 2026-11-10 | 29,652 B | 1,665 B | Story beat wave (`sub-hauler-646.6`, `.12`, `.13`, `.15`): New Voyage opening deck (scene 17, RAM-only, skipped by Continue), unique `relay-briefing` and `home-departure` rows; DEEP RELAY result keeps `deep-relay`, HOME result keeps `home-lights`. Sheet **512×1216**, nineteen rows. `.text/.data/.bss` **29,636 / 16 / 1,649 B**; **44 B** hardware flash free. Host **264**, tooling **157**, docs **33** + preview **8**; targeted `test_story` P at **10,752 µs** max over 98 frame CRCs; gen-check deterministic. `make gen`: 17 scenes / 43 cards / 98 frames, story **61,365 B**; FX payload/image **672,205 / 676,352 B**, **1,420,800 B** below 2 MiB with **51 B** alignment padding; `storyBeats=0x095200`, `FX_DATA_PAGE=0xF5AE`, `FX_SAVE_PAGE=0xFFF0` unchanged. No physical playthrough or human art review claimed. |
 | 2026-11-10 | 29,634 B | 1,665 B | Archival ADPCM removal (`sub-hauler-646.18`): the six unused `raw_t audio_*` streams (1,424,640 B) leave the shipping `fxdata.txt` layout as the approved one-time append-only ABI exception; no runtime code referenced them. `.bin` files, manifest, `src/generated/audio.hpp` and `make gen-audio` remain archival and are not compiled into firmware or tests. `.text/.data/.bss` **29,618 / 16 / 1,649 B**; **62 B** hardware flash free. Host **264**, gen-check deterministic, targeted `test_boot` P. FX payload/image **667,863 / 672,000 B**, **1,425,152 B** below 2 MiB with **41 B** data alignment padding; `FX_DATA_PAGE=0xF5BF`, `FX_SAVE_PAGE=0xFFF0` unchanged. Every symbol through `txt_a_finish` keeps its offset; later symbols shift down by 1,424,640 B. No physical playthrough or speaker listening claimed. |

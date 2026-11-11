@@ -7,13 +7,3 @@ constexpr uint8_t HAULER_WIDTH  = 26;
 constexpr uint8_t HAULER_HEIGHT = 8;
 constexpr uint8_t HAULER_FRAMES = 4;
 constexpr bool    HAULER_MASKED = true;
-
-constexpr uint8_t LEVIATHAN_WIDTH  = 26;
-constexpr uint8_t LEVIATHAN_HEIGHT = 8;
-constexpr uint8_t LEVIATHAN_FRAMES = 4;
-constexpr bool    LEVIATHAN_MASKED = true;
-
-constexpr uint8_t MINNOW_WIDTH  = 26;
-constexpr uint8_t MINNOW_HEIGHT = 8;
-constexpr uint8_t MINNOW_FRAMES = 4;
-constexpr bool    MINNOW_MASKED = true;

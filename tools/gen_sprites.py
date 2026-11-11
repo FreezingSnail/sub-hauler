@@ -44,7 +44,7 @@ def pack_sheet(path, shades):
     if not match:
         raise ValueError(
             f"{path}: expected <symbol>_<width>x<height>.png, "
-            "for example hero_16x16.png"
+            "for example hauler_26x8.png"
         )
     if shades < 2 or shades > 4:
         raise ValueError("shades must be 2, 3, or 4")
