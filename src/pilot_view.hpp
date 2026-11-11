@@ -75,36 +75,33 @@ inline void fillLocal(uint8_t *buffer, int16_t left, int16_t top, bool mirror, i
     }
 }
 
-// HAULER: flat-deck freighter. The host reference shape mirrors the baked FX
-// sheet one-for-one: rows 0-1 deckhouse, a rounded flat deck, two cargo doors,
-// a stern thruster notch, and a bow mark.
+// HAULER: cutscene-style rounded pod. The host reference shape mirrors the
+// baked FX sheet one-for-one: stern fin, wheelhouse toward the bow, three
+// portholes, a stern thruster notch, and an amidships cargo hold that fills
+// with freight when loaded.
 inline void drawHauler(uint8_t *buffer, int16_t left, int16_t top, bool mirror, bool loaded) {
-    fillLocal(buffer, left, top, mirror, 10, 0, 12, 2, true);
-    fillLocal(buffer, left, top, mirror, 1, 2, 24, 1, true);
-    fillLocal(buffer, left, top, mirror, 0, 3, 26, 2, true);
-    fillLocal(buffer, left, top, mirror, 1, 5, 24, 1, true);
-    fillLocal(buffer, left, top, mirror, 2, 6, 22, 1, true);
-    fillLocal(buffer, left, top, mirror, 3, 7, 20, 1, true);
+    fillLocal(buffer, left, top, mirror, 14, 0, 4, 1, true);
+    fillLocal(buffer, left, top, mirror, 6, 1, 16, 1, true);
+    fillLocal(buffer, left, top, mirror, 2, 2, 2, 1, true);
+    fillLocal(buffer, left, top, mirror, 3, 2, 22, 1, true);
+    fillLocal(buffer, left, top, mirror, 1, 3, 25, 1, true);
+    fillLocal(buffer, left, top, mirror, 0, 4, 26, 1, true);
+    fillLocal(buffer, left, top, mirror, 0, 5, 26, 1, true);
+    fillLocal(buffer, left, top, mirror, 2, 6, 23, 1, true);
+    fillLocal(buffer, left, top, mirror, 5, 7, 17, 1, true);
 
-    fillLocal(buffer, left, top, mirror, 3, 3, 20, 1, false);
-    fillLocal(buffer, left, top, mirror, 12, 0, 1, 2, false);
-    fillLocal(buffer, left, top, mirror, 15, 0, 1, 2, false);
-    fillLocal(buffer, left, top, mirror, 18, 0, 1, 2, false);
+    fillLocal(buffer, left, top, mirror, 14, 1, 4, 1, false);
+    fillLocal(buffer, left, top, mirror, 9, 4, 1, 1, false);
+    fillLocal(buffer, left, top, mirror, 12, 4, 1, 1, false);
+    fillLocal(buffer, left, top, mirror, 15, 4, 1, 1, false);
+    fillLocal(buffer, left, top, mirror, 1, 4, 1, 1, false);
+    fillLocal(buffer, left, top, mirror, 8, 5, 6, 2, false);
 
-    fillLocal(buffer, left, top, mirror, 3, 4, 6, 3, false);
-    fillLocal(buffer, left, top, mirror, 4, 4, 4, 1, true);
-    fillLocal(buffer, left, top, mirror, 4, 6, 4, 1, true);
-    if (loaded)
-        fillLocal(buffer, left, top, mirror, 5, 4, 1, 3, true);
-
-    fillLocal(buffer, left, top, mirror, 11, 4, 6, 3, false);
-    fillLocal(buffer, left, top, mirror, 12, 4, 4, 1, true);
-    fillLocal(buffer, left, top, mirror, 12, 6, 4, 1, true);
-    if (loaded)
-        fillLocal(buffer, left, top, mirror, 13, 4, 1, 3, true);
-
-    fillLocal(buffer, left, top, mirror, 1, 4, 1, 2, false);
-    fillLocal(buffer, left, top, mirror, 23, 5, 2, 1, false);
+    if (loaded) {
+        fillLocal(buffer, left, top, mirror, 8, 5, 6, 2, true);
+        fillLocal(buffer, left, top, mirror, 8, 5, 1, 2, false);
+        fillLocal(buffer, left, top, mirror, 13, 5, 1, 2, false);
+    }
 }
 
 #endif   // !__AVR__
