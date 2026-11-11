@@ -15,7 +15,7 @@ All sixteen notes are filed under epic **sub-hauler-646**. Decision summary:
 | Note | Bead | Decision |
 | ---: | --- | --- |
 | 1 | sub-hauler-646.1 | Tides stay visible and always push; thrust fights the flow; upstream blocking stays off. |
-| 2 | sub-hauler-646.3 | All eight berths; short progression dialog; reuse the story pipeline. |
+| 2 | sub-hauler-646.3 | All eight berths; one native progression bark line; reuse existing FX strings. |
 | 3 | sub-hauler-646.4 | Improve the native station board; keep row semantics. |
 | 4 | sub-hauler-646.5 | Redraw the four HAULER frames in cutscene style; keep 26x8. |
 | 5 | sub-hauler-646.6 | Opening scene on New Voyage; skip on Continue; points to Benthos. |
@@ -34,6 +34,20 @@ All sixteen notes are filed under epic **sub-hauler-646**. Decision summary:
 Related work links: notes 13/14/16 share the canonical story sheet; notes 8/9
 share generated exploration terrain; notes 1/12 both touch thruster-era
 handling; note 18 depends on note 2.
+
+### Completed in this pass
+
+| Bead | Commit | Result |
+| --- | --- | --- |
+| 646.4 | `e90d33e` | Native dock board chrome; +302 B flash at the time. |
+| 646.14 | `31f3d67` | Survey bark outranks the inactive-berth repair notice. |
+| 646.16 | `40129ca` | Ending keeps network + thanks; stats card cut. |
+| 646.3 | `7b6b14a` | All-berth progression bark; −86 B flash via shared selector. |
+| 646.1 | `9f51022` | Tides stay visible/push after the thruster; no upstream block. |
+| 646.10 | `a56fc86` | Air 300 / blow 4 per user decision; first run leaves 18. |
+
+Integrated baseline after these six commits: **29,608 / 29,696 B flash**,
+**1,665 / 2,560 B static RAM**, **88 B flash free**, host **256/256**.
 
 ## 1. Tides after the thruster
 
@@ -93,14 +107,21 @@ giving a hint about the next story bit."
   or image pipeline.
 - Keep mandatory story decks, delivery decks and the ending higher priority.
 
-**Decision:** cover all eight berths. A short scene/card is preferred over a
-one-line bark. The bead must prove the save/flash/cart cost before shipping and
-define seen-state and replay behavior; deterministic derivation from saved
-campaign/tool bits is preferred over new mutable counters.
+**Decision (2026-11-10, clarified):** one native one-line dock bark at all
+eight berths, for example "BENTHOS HAS WORK" or "WRECK NEARBY". The line is
+selected from saved campaign/tool facts and replaces the station board's bottom
+hint row. No story scenes, art rows, pendingStory values, or seen flags. Reuse
+existing FX clue strings so the 41 B cart headroom is not consumed.
 
-**Filed:** sub-hauler-646.3. Investigation and implementation are one
-implement-verify loop with an early BLOCKED report if the data model cannot fit.
-Note 18 depends on this bead.
+**Cost note:** the earlier 64-scene story model needed +504 B flash (tables
++384 B, code +120 B) and was rejected. The bark is code-only and much smaller;
+its exact flash delta is measured by the bead.
+
+**Filed:** sub-hauler-646.3. **Done:** committed `7b6b14a`; all eight berths
+return a pure `campaign::dockBark` line and the station board draws it at
+`y=56`. The shared selector also replaced duplicate WORK clue logic, so flash
+fell 86 B to **29,608 / 29,696 B**. No new FX strings or story scenes. Note 18
+depends on this bead; its preview should show the bark lines.
 
 ## 3. Improve the dock menu visuals
 
@@ -430,10 +451,10 @@ beat images, and then the various text at each dock.. depends on 2."
 - Dock text does not exist yet (item 2).
 - `story/scenes.json` and `story/art.png` are the canonical sources.
 
-**Decision:** extend the existing story sketchbook as a read-only preview;
-defer any browser editing until note 2's data model exists. Keep it offline and
-dependency-free. If editing is later requested, export copyable JSON rather
-than writing canonical files.
+**Decision:** extend the existing story sketchbook as a read-only preview of
+the per-berth bark lines once note 2 lands. Keep it offline and dependency-free.
+If editing is later requested, export copyable JSON rather than writing
+canonical files.
 
 **Filed:** sub-hauler-646.17. Blocked by sub-hauler-646.3 (note 2).
 
