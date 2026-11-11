@@ -605,6 +605,7 @@
       "id": "DL",
       "name": "Hidden trench cove",
       "region": "deep",
+      "texture": "lens",
       "position": [
         36,
         78
@@ -1983,7 +1984,11 @@
       {"id": "trench-refuge-glass", "room": "O", "kind": "crystal", "offset": [-36, 44]},
       {"id": "deep-anchor-vent", "room": "D", "kind": "vent", "offset": [40, 50]},
       {"id": "glass-chimney", "room": "G", "kind": "crystal", "offset": [-34, 46]},
-      {"id": "jet-approach-vent", "room": "I", "kind": "vent", "offset": [40, 50]}
+      {"id": "jet-approach-vent", "room": "I", "kind": "vent", "offset": [40, 50]},
+      {"id": "cutter-cove-tender", "room": "W", "kind": "cutter-tender", "mount": "wall", "offset": [0, -34]},
+      {"id": "thruster-cove-pod", "room": "BR", "kind": "thruster-pod", "mount": "wall", "offset": [-54, -6]},
+      {"id": "seal-cove-workshop", "room": "CW", "kind": "workshop-lock", "mount": "wall", "offset": [0, -28]},
+      {"id": "lens-cove-array", "room": "DL", "kind": "trench-lens", "mount": "wall", "offset": [0, -36]}
     ]
   },
   "freight_timing": {

@@ -61,7 +61,18 @@ image also contains the offline scenery described below; crop tests preserve
 its native page/bit orientation across the entire world.
 
 `scenery` in `exploration.json` owns the decorative art version, deterministic
-seed and named landmark preferences (`room`, `kind`, pixel `offset`).
+seed and named landmark preferences (`room`, `kind`, pixel `offset`). Landmarks
+default to `mount: "water"` and sit on the curved cave floor; `mount: "wall"`
+etches the same hollow line art into the surrounding rock instead. The four
+equipment coves are small dead-end pockets whose water is protected route
+corridor, so each carries its own wall-etched wreck silhouette:
+`cutter-tender` at the Abandoned tender (`W`), `thruster-pod` at the Old relay
+compartment (`BR`), `workshop-lock` at the Sealed workshop (`CW`) and
+`trench-lens` at the Hidden trench cove (`DL`). A room may also name a
+`texture`; the override is scoped to that room's own pocket and swaps its
+ambient growths and wall markings without re-theming a neighbour or its region.
+The Hidden trench cove uses `texture: "lens"`: `lens-shard` wall growths plus
+concentric lens rings and facet arcs mark the lens cave.
 `tools/gen_scenery.py` adds region-specific rock markings and hollow background
 motifs during `make gen`: strata/coral/moorings, kelp/pumps, weathered plating and
 wreck machinery, and fractured basalt/crystals/vents. Scenery does not alter
@@ -69,9 +80,11 @@ collision tiles, chart cells, gates or pickups. Artwork stays outside a
 30-pixel route-centre corridor, station/spawn footprints and gate/pickup markers;
 dark wall markings stay three pixels inside solid rock. Larger motifs search
 near their authored room for a safe floor location, failing generation if no
-placement fits. Roots follow the actual curved floor; textures are clipped
-inside its silhouette. `docs/assets/exploration-scenery.json` is a generated inspection
-report, not another flashable image. All decoration is baked into the same
+placement fits. Wall-mounted motifs search the room's wall for a fully
+rock-clipped location and fail the same way. Roots follow the actual curved
+floor; textures are clipped inside its silhouette. `docs/assets/exploration-scenery.json` is a generated inspection
+report, not another flashable image. It records each landmark's `mount` and
+position. All decoration is baked into the same
 409,600-byte native section, with no runtime decoration arrays or draw calls.
 `tools/gen_settlements.py` then bakes piers, airlocks and pressure-room cutaways
 into the rock beside the four berths. Each settlement has four inhabited rooms,
@@ -130,7 +143,9 @@ or object array is copied into SRAM. Device code uses integer math only.
   the cutter. Every entry into the lowest region needs the seal; the return
   shaft additionally needs the thruster. Deep Anchor is the lowest settlement.
 - Four equipment coves hold the cutter, pressure seal, current thruster and
-  survey lens. The survey lens is required for the mandatory lower-right DEEP
+  survey lens. Each cove carries a distinct wall-etched landmark (cutting
+  tender, relay pod, workshop hatch, lens array); the Hidden trench cove also
+  uses the scoped `lens` wall texture. The survey lens is required for the mandatory lower-right DEEP
   RELAY expedition, where it reads the buried relay. Gameplay sonar was retired
   on 2026-10-28, so the lens does not change any reveal radius. There are no
   credit caches or purses.

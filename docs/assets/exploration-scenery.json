@@ -4,6 +4,7 @@
       "id": "harbor-tender",
       "room": "T",
       "kind": "tender",
+      "mount": "water",
       "x": 372,
       "y": 192
     },
@@ -11,6 +12,7 @@
       "id": "lantern-buoys",
       "room": "L",
       "kind": "buoy",
+      "mount": "water",
       "x": 708,
       "y": 192
     },
@@ -18,6 +20,7 @@
       "id": "mooring-anchor",
       "room": "M",
       "kind": "anchor",
+      "mount": "water",
       "x": 292,
       "y": 440
     },
@@ -25,6 +28,7 @@
       "id": "flooded-lock-winch",
       "room": "Q",
       "kind": "winch",
+      "mount": "water",
       "x": 660,
       "y": 480
     },
@@ -32,6 +36,7 @@
       "id": "cathedral-pump",
       "room": "K",
       "kind": "pump",
+      "mount": "water",
       "x": 1324,
       "y": 216
     },
@@ -39,6 +44,7 @@
       "id": "vent-gallery-pump",
       "room": "V",
       "kind": "pump",
+      "mount": "water",
       "x": 1396,
       "y": 440
     },
@@ -46,6 +52,7 @@
       "id": "pump-refuge",
       "room": "P",
       "kind": "pump",
+      "mount": "water",
       "x": 2180,
       "y": 224
     },
@@ -53,6 +60,7 @@
       "id": "relay-antenna",
       "room": "N",
       "kind": "relay",
+      "mount": "water",
       "x": 1740,
       "y": 464
     },
@@ -60,6 +68,7 @@
       "id": "broken-freighter",
       "room": "R",
       "kind": "wreck",
+      "mount": "water",
       "x": 1372,
       "y": 640
     },
@@ -67,6 +76,7 @@
       "id": "anchor-hall-crane",
       "room": "A",
       "kind": "crane",
+      "mount": "water",
       "x": 2196,
       "y": 848
     },
@@ -74,6 +84,7 @@
       "id": "freight-yard-crane",
       "room": "Y",
       "kind": "crane",
+      "mount": "water",
       "x": 2156,
       "y": 648
     },
@@ -81,6 +92,7 @@
       "id": "workshop-winch",
       "room": "Z",
       "kind": "winch",
+      "mount": "water",
       "x": 1316,
       "y": 752
     },
@@ -88,6 +100,7 @@
       "id": "lower-gantry-wreck",
       "room": "U",
       "kind": "wreck",
+      "mount": "water",
       "x": 1804,
       "y": 824
     },
@@ -95,6 +108,7 @@
       "id": "anchor-hall",
       "room": "A",
       "kind": "anchor",
+      "mount": "water",
       "x": 2236,
       "y": 832
     },
@@ -102,6 +116,7 @@
       "id": "trench-refuge-glass",
       "room": "O",
       "kind": "crystal",
+      "mount": "water",
       "x": 404,
       "y": 1008
     },
@@ -109,6 +124,7 @@
       "id": "deep-anchor-vent",
       "room": "D",
       "kind": "vent",
+      "mount": "water",
       "x": 404,
       "y": 1216
     },
@@ -116,6 +132,7 @@
       "id": "glass-chimney",
       "room": "G",
       "kind": "crystal",
+      "mount": "water",
       "x": 1020,
       "y": 1200
     },
@@ -123,18 +140,52 @@
       "id": "jet-approach-vent",
       "room": "I",
       "kind": "vent",
+      "mount": "water",
       "x": 1740,
       "y": 1160
+    },
+    {
+      "id": "cutter-cove-tender",
+      "room": "W",
+      "kind": "cutter-tender",
+      "mount": "wall",
+      "x": 136,
+      "y": 230
+    },
+    {
+      "id": "thruster-cove-pod",
+      "room": "BR",
+      "kind": "thruster-pod",
+      "mount": "wall",
+      "x": 1426,
+      "y": 42
+    },
+    {
+      "id": "seal-cove-workshop",
+      "room": "CW",
+      "kind": "workshop-lock",
+      "mount": "wall",
+      "x": 1176,
+      "y": 660
+    },
+    {
+      "id": "lens-cove-array",
+      "room": "DL",
+      "kind": "trench-lens",
+      "mount": "wall",
+      "x": 288,
+      "y": 588
     }
   ],
   "ambient": {
     "tide": 55,
     "kelp": 25,
     "works": 29,
-    "deep": 15
+    "deep": 15,
+    "lens": 4
   },
   "white_pixels": 10421,
-  "rock_pixels": 42652,
+  "rock_pixels": 43530,
   "settlements": [
     {
       "id": 0,

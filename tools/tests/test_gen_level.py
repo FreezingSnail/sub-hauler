@@ -9,6 +9,8 @@ import struct
 import sys
 import unittest
 
+from PIL import ImageFilter
+
 ROOT=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT/'tools'))
 import gen_level
@@ -136,6 +138,62 @@ class AuthoredLevelTest(unittest.TestCase):
         plain=copy.deepcopy(self.level)
         del plain.source['scenery']
         self.assertEqual(gen_scenery.decorate(plain,base,spines),(base,{}))
+
+    def test_equipment_coves_carry_distinct_wall_landmarks(self):
+        base=gen_level.base_terrain_bytes(self.level)
+        spines=gen_level.scenery_spines(self.level)
+        _,stats=gen_scenery.decorate(self.level,base,spines)
+        by_room={item['room']:item for item in stats['landmarks']}
+        expected={'W':'cutter-tender','BR':'thruster-pod','CW':'workshop-lock','DL':'trench-lens'}
+        rooms={r['id']:r for r in self.source['rooms']}
+        interior=gen_contours.solid_image(self.level.world.grid).filter(ImageFilter.MinFilter(7))
+        protected=gen_scenery.protection(self.level,spines)
+        seen=set()
+        for room_id,kind in expected.items():
+            item=by_room[room_id]
+            self.assertEqual(item['kind'],kind,room_id)
+            self.assertEqual(item['mount'],'wall',room_id)
+            self.assertNotIn(kind,seen,'each cove needs its own silhouette')
+            seen.add(kind)
+            cx,cy=(v*8 for v in rooms[room_id]['position'])
+            self.assertLessEqual(math.hypot(item['x']-cx,item['y']-cy),90,room_id)
+            for px,py in gen_scenery.motif(kind,0):
+                x,y=item['x']+px,item['y']+py
+                self.assertTrue(interior.getpixel((x,y)),f'{room_id} landmark must be etched inside rock')
+                self.assertFalse(protected.getpixel((x,y)),f'{room_id} landmark must clear the route corridor')
+        # The wall landmarks are new vocabulary, not reused region motifs.
+        self.assertTrue(seen.isdisjoint({'tender','wreck','relay','pump','crane','winch'}))
+
+    def test_lens_cave_texture_is_scoped_to_the_hidden_trench_cove(self):
+        dl=next(r for r in self.source['rooms'] if r['id']=='DL')
+        self.assertEqual(dl['texture'],'lens')
+        base=gen_level.base_terrain_bytes(self.level)
+        spines=gen_level.scenery_spines(self.level)
+        decorated,stats=gen_scenery.decorate(self.level,base,spines)
+        self.assertGreater(stats['ambient']['lens'],0)
+        for region in gen_scenery.REGIONS:
+            self.assertGreater(stats['ambient'][region],4,region)
+        # Removing the override must only change pixels in the room's pocket.
+        plain=copy.deepcopy(self.level)
+        next(r for r in plain.source['rooms'] if r['id']=='DL').pop('texture')
+        bare,_=gen_scenery.decorate(plain,base,spines)
+        cx,cy=(v*8 for v in dl['position'])
+        limit=(dl['radius']+gen_scenery.TEXTURE_RADIUS_TILES)*8+16
+        changed=0
+        for i,(a,b) in enumerate(zip(decorated,bare)):
+            delta=a^b
+            if not delta:continue
+            x,page=i%2560,i//2560
+            for bit in range(8):
+                if not delta&(1<<bit):continue
+                y=page*8+bit
+                self.assertLessEqual(math.hypot(x-cx,y-cy),limit,'lens texture leaked outside the cove')
+                changed+=1
+        self.assertGreater(changed,100)
+        bad=copy.deepcopy(self.source)
+        next(r for r in bad['rooms'] if r['id']=='DL')['texture']='bogus'
+        with self.assertRaisesRegex(ValueError,'texture'):
+            gen_scenery.decorate(gen_level.build(bad),base,spines)
 
     def test_service_berths_and_surveys_are_stable_generated_metadata(self):
         self.assertEqual([b.id for b in self.level.service_berths],[4,5,6,7])
