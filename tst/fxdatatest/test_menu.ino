@@ -41,7 +41,10 @@ void header(uint24_t title) {
     text::normal();
     text::at(station_view::kNameX, station_view::kHeaderY);
     text::print(title);
+    station_view::drawBerthIcon(static_cast<uint8_t>(state.docked));
     arduboy.drawFastHLine(0, station_view::kDividerY, 128, WHITE);
+    arduboy.drawFastVLine(0, static_cast<int16_t>(station_view::kDividerY - 2), 3, WHITE);
+    arduboy.drawFastVLine(127, static_cast<int16_t>(station_view::kDividerY - 2), 3, WHITE);
     station_view::drawStatus(state);
 }
 
@@ -56,11 +59,15 @@ void stationReference(uint8_t selected) {
         } else {
             text::normal();
         }
+        if (kind == station::kRowJob)
+            station_view::drawSummaryMark(y);
         text::at(station_view::kRowX, y);
         if (kind == station::kRowJob)
             text::print(station_view::nameFor(state.activeJob.to));
         else
             text::print(station_view::rowLabel(row, state));
+        if (row == selected && kind != station::kRowJob)
+            station_view::drawSelectionMark(y);
     }
     text::normal();
     text::at(station_view::kHintX, station_view::kHintY);
