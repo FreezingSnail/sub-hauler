@@ -206,6 +206,114 @@ inline NextStop nextStopAfter(const State &state, uint8_t completedMissionId) {
     return sealOwned(state) ? kNextStopBeacon : kNextStopSeal;
 }
 
+// Native station-board bark. One pure selection from saved campaign/tool facts
+// per berth: it names the next reachable step without adding story cards, art
+// rows or pendingStory values. Presentation maps the enum to shipped FX strings.
+enum DockBark : uint8_t {
+    kDockBarkNone = 0,
+    kDockBarkFirst,
+    kDockBarkBenthosLamps,
+    kDockBarkPumpSurvey,
+    kDockBarkPumpSource,
+    kDockBarkLiftSurvey,
+    kDockBarkLiftSource,
+    kDockBarkPumpPartReady,
+    kDockBarkLiftRestored,
+    kDockBarkBeaconNeedsSeal,
+    kDockBarkBeaconReady,
+    kDockBarkBeaconPlan,
+    kDockBarkBeaconLit,
+    kDockBarkNetworkOn,
+    kDockBarkDeepRelay,
+    kDockBarkNoWork,
+};
+
+// Shared post-LIFT chain for the four service/work berths. A missing seal is
+// named before the beacon, and the relay/home steps never appear early.
+inline DockBark dockBarkAfterLift(const State &state) {
+    if (!sealOwned(state))
+        return kDockBarkBeaconNeedsSeal;
+    if (!hasMilestone(state, kMilestoneBeacon))
+        return kDockBarkBeaconReady;
+    if (!hasMilestone(state, kMilestoneExpedition))
+        return kDockBarkDeepRelay;
+    if (!hasMilestone(state, kMilestoneHome))
+        return kDockBarkBeaconLit;
+    return kDockBarkNetworkOn;
+}
+
+// All eight berths return a helpful line. The four freight settlements keep the
+// proven WORK-board clue order; the four service/work sites reuse the same enum
+// so the station board and WORK board share one selector and one FX table.
+inline DockBark dockBark(const State &state, uint8_t berth) {
+    if (berth == kTidewall) {
+        if (missionCompleted(state, kHome))
+            return kDockBarkNetworkOn;
+        if (hasMilestone(state, kMilestoneFirst))
+            return kDockBarkBenthosLamps;
+        return kDockBarkFirst;
+    }
+    if (berth == kBenthos) {
+        if (!hasMilestone(state, kMilestoneFirst))
+            return kDockBarkNoWork;
+        if (!surveyRecorded(state, kPumpSurveyId))
+            return kDockBarkPumpSurvey;
+        if (!hasMilestone(state, kMilestonePump))
+            return kDockBarkPumpSource;
+        if (!surveyRecorded(state, kLiftSurveyId))
+            return kDockBarkLiftSurvey;
+        if (!hasMilestone(state, kMilestoneLift))
+            return kDockBarkLiftSource;
+        return kDockBarkLiftRestored;
+    }
+    if (berth == kCormorant) {
+        if (!hasMilestone(state, kMilestoneFirst))
+            return kDockBarkNoWork;
+        if (!surveyRecorded(state, kLiftSurveyId))
+            return kDockBarkLiftSurvey;
+        if (!surveyRecorded(state, kPumpSurveyId))
+            return kDockBarkPumpSurvey;
+        if (!hasMilestone(state, kMilestonePump))
+            return kDockBarkPumpPartReady;
+        if (!hasMilestone(state, kMilestoneLift))
+            return kDockBarkLiftSource;
+        if (!sealOwned(state))
+            return kDockBarkBeaconNeedsSeal;
+        return kDockBarkBeaconReady;
+    }
+    if (berth == kDeepAnchor) {
+        if (!hasMilestone(state, kMilestoneFirst))
+            return kDockBarkNoWork;
+        if (!hasMilestone(state, kMilestoneBeacon))
+            return kDockBarkBeaconPlan;
+        if (!hasMilestone(state, kMilestoneExpedition))
+            return kDockBarkDeepRelay;
+        if (!hasMilestone(state, kMilestoneHome))
+            return kDockBarkBeaconLit;
+        return kDockBarkNetworkOn;
+    }
+    if (berth == kPumpRefuge) {
+        if (!hasMilestone(state, kMilestonePump))
+            return kDockBarkPumpSource;
+        if (!surveyRecorded(state, kLiftSurveyId))
+            return kDockBarkLiftSurvey;
+        if (!hasMilestone(state, kMilestoneLift))
+            return kDockBarkLiftSource;
+        return dockBarkAfterLift(state);
+    }
+    if (berth == kLowerGantry || berth == kFreightYard) {
+        if (!hasMilestone(state, kMilestoneLift))
+            return kDockBarkLiftSource;
+        return dockBarkAfterLift(state);
+    }
+    if (berth == kDeepRelay) {
+        if (!hasMilestone(state, kMilestoneExpedition))
+            return kDockBarkDeepRelay;
+        return dockBarkAfterLift(state);
+    }
+    return kDockBarkNone;
+}
+
 // Prerequisites without the "not already complete" test. Completion flags are
 // deliberately independent of cargo; surveys can be recorded in any order.
 inline bool missionPrerequisites(uint8_t campaign, uint8_t surveys, uint8_t tools, uint8_t id) {

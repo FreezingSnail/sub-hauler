@@ -14,18 +14,19 @@
 // the draw path below uses the live row rules.
 
 #if defined(__AVR__)
-#include "panel_view.hpp"
+#include "common.hpp"
 #endif
 
 // Station board, 128x64. The layout is pure and host-checkable; the draw
 // function is device-only because it uses the external FX font.
 //
 // Header: settlement name.
-// Status: current air against the fixed 300-unit tank.
+// Status: current air against the fixed 270-unit tank.
 // Rows:   WORK/UNDOCK, or summary/WORK/UNDOCK when a contract is active.
 //         Service-only berths show UNDOCK only. One inverted selection bar.
 //         WORK opens the restoration board. B always undocks.
-// Hint:   A confirms the row and B always undocks. Contract acceptance
+// Bark:   one progression-appropriate line from saved campaign/tool facts.
+//         A still confirms the row and B always undocks. Contract acceptance
 //         auto-loads the four cargo units, so the active board needs no load
 //         row or screen.
 namespace station_view {
@@ -40,13 +41,14 @@ constexpr uint8_t kStatusX = 2;
 constexpr uint8_t kStatusY = 15;
 constexpr uint8_t kRowX = 4;
 // Three rows (summary/WORK/UNDOCK) must fit above the hint:
-// header/status end at y=21, rows are 22+7*row, and the hint starts at 57.
+// header/status end at y=21, rows are 22+7*row, and the bark starts at 56.
 constexpr uint8_t kRowY0 = 22;
 constexpr uint8_t kRowStep = 7;
 constexpr uint8_t kRowInsetY = 0;
 constexpr uint8_t kRowInvertH = 7;
 constexpr uint8_t kHintX = 3;
-constexpr uint8_t kHintY = 57;
+constexpr uint8_t kHintY = 56;   // 6x8 bark baseline; bottom row is 56..63
+constexpr uint8_t kHintChars = 20;
 constexpr uint8_t kArchivalOfferChars = 20;   // "DEEP ANCHOR 240"
 
 // Native console chrome. The header keeps the longest berth label
@@ -81,7 +83,8 @@ static_assert(station::kStationRowCount > 0, "station board needs at least one r
 static_assert(rowY(0) - kRowInsetY >= kStatusY + 7, "rows start below the status line");
 static_assert(rowY(static_cast<uint8_t>(station::kStationRowCount - 1)) + kRowInvertH <= kHintY, "last row clears the hint");
 static_assert(rowY(static_cast<uint8_t>(station::kActiveRowCount - 1)) + kRowInvertH <= kHintY, "active board clears the hint");
-static_assert(kHintY + 7 <= 64, "hint stays on screen");
+static_assert(kHintY + 8 <= 64, "bark stays on screen");
+static_assert(kHintX + kHintChars * 6 <= 128, "the longest bark fits inside 128 columns");
 static_assert(kRowX + kArchivalOfferChars * 6 <= 128, "archival offer text fits inside 128 columns");
 static_assert(kNameX + kNameChars * 6 <= kIconX, "berth names clear the header icon");
 static_assert(kIconX + kIconW <= 128, "header icon fits inside the display");
@@ -192,6 +195,36 @@ inline uint24_t rowLabel(uint8_t row, const game::State &state) {
     return 0;
 }
 
+// One shared bark table: the pure campaign selector chooses a bark for every
+// berth, and both the station board and the WORK clue read the same existing
+// FX string. Index 0 is deliberately empty so kDockBarkNone draws no row.
+static const uint32_t kDockBarkText[] PROGMEM = {
+    0,
+    txt_first_clue,
+    txt_benthos_lamps_on,
+    txt_pump_survey_clue,
+    txt_pump_source_clue,
+    txt_survey_lift_clue,
+    txt_lift_source_clue,
+    txt_pump_part_ready,
+    txt_lift_restored,
+    txt_beacon_needs_seal,
+    txt_beacon_ready,
+    txt_beacon_clue,
+    txt_beacon_lit,
+    txt_network_on,
+    txt_deep_relay,
+    txt_no_work,
+};
+constexpr uint8_t kDockBarkTextCount = static_cast<uint8_t>(sizeof(kDockBarkText) / sizeof(kDockBarkText[0]));
+
+inline uint24_t dockBarkText(campaign::DockBark bark) {
+    const uint8_t index = static_cast<uint8_t>(bark);
+    if (index >= kDockBarkTextCount)
+        return 0;
+    return static_cast<uint24_t>(pgm_read_dword(&kDockBarkText[index]));
+}
+
 // Berth silhouettes are 16x8 row-major bitmaps in program flash. The header
 // icon is native chrome, not a generated panel, and every berth has its own
 // silhouette so a dock reads as a place rather than a generic list.
@@ -300,7 +333,13 @@ inline void draw(const game::State &state, uint8_t selected) {
     }
     text::normal();
 
-    panel_view::drawHint7(station_hints, panelHint(state));
+    // One-line native bark: guidance for the next reachable step. It replaces
+    // the retired generated control hint; B still undocks and A still confirms.
+    const uint24_t bark = dockBarkText(campaign::dockBark(state, static_cast<uint8_t>(state.docked)));
+    if (bark != 0) {
+        text::at(kHintX, kHintY);
+        text::print(bark);
+    }
 }
 
 #endif   // __AVR__
