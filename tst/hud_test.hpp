@@ -80,4 +80,42 @@ inline void HudSuite(TestRunner &runner) {
         test.assertTrue(sealGate, "generated world has a seal gate");
         runner.add(test);
     }
+
+    {
+        Test test("a pending lift survey outranks the inactive-berth repair notice");
+        game::State state;
+        game::resetWorld(state);
+        state.campaign = campaign::kMilestoneFirst | campaign::kMilestonePump;
+        world::Survey survey;
+        bool liftSurvey = false;
+        for (uint8_t i = 0; i < world::surveyCount(); ++i) {
+            if (!world::surveyInfo(i, survey) || survey.id != world::SURVEY_LIFT)
+                continue;
+            liftSurvey = true;
+            break;
+        }
+        test.assertTrue(liftSurvey, "generated world has the Freight Yard lift survey");
+        if (liftSurvey) {
+            state.x = survey.pixel_x;
+            state.y = survey.pixel_y;
+            test.assertEqual(hud::noticeFor(state), hud::kNoticeNone,
+                             "an unrecorded nearby survey suppresses the lift repair line");
+        }
+        runner.add(test);
+    }
+
+    {
+        Test test("the lift repair notice survives once its survey is recorded");
+        game::State state;
+        game::resetWorld(state);
+        state.campaign = campaign::kMilestoneFirst | campaign::kMilestonePump;
+        state.surveys = campaign::kSurveyLift;
+        world::Berth berth;
+        test.assertTrue(world::berthInfo(world::BERTH_FREIGHT_YARD, berth), "generated Freight Yard berth");
+        state.x = berth.pixel_x;
+        state.y = berth.pixel_y;
+        test.assertEqual(hud::noticeFor(state), hud::kNoticeRepairLift,
+                         "no pending survey leaves the genuine lift repair line");
+        runner.add(test);
+    }
 }

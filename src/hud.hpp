@@ -84,6 +84,23 @@ enum Notice : uint8_t {
     kNoticeRepairLift,
 };
 
+// True while an unrecorded survey ring is inside the same slow-dwell window
+// exploration::update uses to record it. That ring is the actionable
+// interaction at its site, so the inactive service berth beside the Freight
+// Yard ring must not post its repair clue over it.
+inline bool pendingSurveyNear(const game::State &state) {
+    for (uint8_t i = 0; i < world::surveyCount(); ++i) {
+        world::Survey survey;
+        if (!world::surveyInfo(i, survey) || (state.surveys & (static_cast<uint8_t>(1u) << survey.id)))
+            continue;
+        const int16_t dx = static_cast<int16_t>(state.x - survey.pixel_x);
+        const int16_t dy = static_cast<int16_t>(state.y - survey.pixel_y);
+        if (dx >= -18 && dx <= 18 && dy >= -12 && dy <= 12)
+            return true;
+    }
+    return false;
+}
+
 // Pure notice selection shared by the device HUD and host tests. Discovery
 // notices win over context. Survey/cutting dwell prompts are deliberately not
 // selected; salvage and missing-equipment notices remain actionable.
@@ -118,8 +135,11 @@ inline uint8_t noticeFor(const game::State &state) {
             continue;
         const int16_t dx = static_cast<int16_t>(berth.pixel_x - state.x);
         const int16_t dy = static_cast<int16_t>(berth.pixel_y - state.y);
-        if (dx > -40 && dx < 40 && dy > -32 && dy < 32)
+        if (dx > -40 && dx < 40 && dy > -32 && dy < 32) {
+            if (pendingSurveyNear(state))
+                return kNoticeNone;
             return berth.milestone == 2 ? kNoticeRepairPump : kNoticeRepairLift;
+        }
     }
     return kNoticeNone;
 }
