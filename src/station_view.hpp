@@ -40,14 +40,17 @@ constexpr uint8_t kDividerY = 11;
 constexpr uint8_t kStatusX = 2;
 constexpr uint8_t kStatusY = 15;
 constexpr uint8_t kRowX = 4;
-// Three rows (summary/WORK/UNDOCK) must fit above the hint:
+// Three rows (summary/WORK/UNDOCK) must fit above the bark:
 // header/status end at y=21, rows are 22+7*row, and the bark starts at 56.
 constexpr uint8_t kRowY0 = 22;
 constexpr uint8_t kRowStep = 7;
 constexpr uint8_t kRowInsetY = 0;
 constexpr uint8_t kRowInvertH = 7;
 constexpr uint8_t kHintX = 3;
-constexpr uint8_t kHintY = 56;   // 6x8 bark baseline; bottom row is 56..63
+// The generated 7-px hint row remains archival cart ABI at y=57; the live
+// native bark uses the full 8-px bottom text cell at y=56.
+constexpr uint8_t kHintY = 57;
+constexpr uint8_t kBarkY = 56;
 constexpr uint8_t kHintChars = 20;
 constexpr uint8_t kArchivalOfferChars = 20;   // "DEEP ANCHOR 240"
 
@@ -81,9 +84,10 @@ constexpr uint8_t rowY(uint8_t row) {
 
 static_assert(station::kStationRowCount > 0, "station board needs at least one row");
 static_assert(rowY(0) - kRowInsetY >= kStatusY + 7, "rows start below the status line");
-static_assert(rowY(static_cast<uint8_t>(station::kStationRowCount - 1)) + kRowInvertH <= kHintY, "last row clears the hint");
-static_assert(rowY(static_cast<uint8_t>(station::kActiveRowCount - 1)) + kRowInvertH <= kHintY, "active board clears the hint");
-static_assert(kHintY + 8 <= 64, "bark stays on screen");
+static_assert(rowY(static_cast<uint8_t>(station::kStationRowCount - 1)) + kRowInvertH <= kBarkY, "last row clears the bark");
+static_assert(rowY(static_cast<uint8_t>(station::kActiveRowCount - 1)) + kRowInvertH <= kBarkY, "active board clears the bark");
+static_assert(kBarkY + 8 <= 64, "bark stays on screen");
+static_assert(kHintY + 7 <= 64, "archival hint row stays on screen");
 static_assert(kHintX + kHintChars * 6 <= 128, "the longest bark fits inside 128 columns");
 static_assert(kRowX + kArchivalOfferChars * 6 <= 128, "archival offer text fits inside 128 columns");
 static_assert(kNameX + kNameChars * 6 <= kIconX, "berth names clear the header icon");
@@ -337,7 +341,7 @@ inline void draw(const game::State &state, uint8_t selected) {
     // the retired generated control hint; B still undocks and A still confirms.
     const uint24_t bark = dockBarkText(campaign::dockBark(state, static_cast<uint8_t>(state.docked)));
     if (bark != 0) {
-        text::at(kHintX, kHintY);
+        text::at(kHintX, kBarkY);
         text::print(bark);
     }
 }
