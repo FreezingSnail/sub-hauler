@@ -310,7 +310,7 @@ static bool requestSave(SaveResume resume) {
 // HOME is paid and committed by the normal dock checkpoint before any card is
 // shown. The ending-presented flag is separate: a reload with HOME complete but
 // ending still zero resumes the HOME deck and ending cards without paying
-// again; Tidewall WORK replays the three ending cards after the flag commits.
+// again; Tidewall WORK replays the two ending cards after the flag commits.
 static bool endingPending() {
     return s_state.ending == 0 && campaign::missionCompleted(s_state, campaign::kHome);
 }

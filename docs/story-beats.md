@@ -96,6 +96,9 @@ four `story-handoffs-v1` scenes replace the old departure placeholders;
   variant.
 - HOME result cards are the ending prologue. The ending flag commit still
   controls replay after the cards.
+- The ending presentation is two fixed cards, lit network then thanks. The
+  retired voyage-stats panel remains declared in the FX layout so later flash
+  offsets stay stable, but no screen draws it.
 
 ## Generated outputs
 
