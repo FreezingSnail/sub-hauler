@@ -3,44 +3,22 @@
 
 
 #include "../src/ending_view.hpp"
-#include "../src/game.hpp"
 #include "test.hpp"
 
-// Pure homecoming card contract: exactly three cards, card order, and the stats
-// derived from saved counters. Device-only text layout is pinned by the
-// static_asserts in ending_view.hpp, which compile in this host build too.
+// Pure homecoming card contract: exactly two cards in network-then-thanks order.
+// The retired voyage-stats card is no longer part of the sequence. Device-only
+// panel layout is pinned by the static_asserts in ending_view.hpp, which compile
+// in this host build too.
 inline void EndingViewSuite(TestRunner &runner) {
     {
-        Test test("ending cards advance three times and then finish");
-        test.assertEqual(ending_view::kCardCount, 3, "three cards");
+        Test test("ending cards advance twice and then finish");
+        test.assertEqual(ending_view::kCardCount, 2, "two cards");
         uint8_t card = ending_view::kCardNetwork;
         test.assertEqual(card, 0, "network card first");
         card = ending_view::nextCard(card);
         test.assertEqual(card, ending_view::kCardThanks, "thanks card second");
-        card = ending_view::nextCard(card);
-        test.assertEqual(card, ending_view::kCardStats, "stats card third");
-        test.assertEqual(ending_view::nextCard(card), ending_view::kCardCount, "third card advances to finish");
-        runner.add(test);
-    }
-
-    {
-        Test test("ending stats derive from saved masks, counters and voyage clock");
-        test.assertEqual(ending_view::kCoveCount, exploration_data::PICKUP_COUNT, "cove count is generated");
-        test.assertEqual(ending_view::kCoveCount, 4, "four equipment coves");
-        game::State state;
-        game::reset(state);
-        test.assertEqual(ending_view::coveCount(state), 0, "no coves discovered");
-        state.pickups = 0x05;
-        test.assertEqual(ending_view::coveCount(state), 2, "two of four coves");
-        state.pickups = 0xFF;
-        test.assertEqual(ending_view::coveCount(state), 4, "retired pickup bits are clamped to four coves");
-        state.delivered = 5;
-        test.assertEqual(state.delivered, 5, "delivered jobs stay available to the stats card");
-        state.voyageTicks = 0;
-        test.assertEqual(ending_view::voyageSeconds(state), 0, "zero voyage time");
-        state.voyageTicks = 60u * 125u;
-        test.assertEqual(ending_view::voyageSeconds(state), 125, "voyage seconds derive from flight ticks");
+        test.assertEqual(ending_view::nextCard(card), ending_view::kCardCount, "thanks advances to finish");
+        test.assertEqual(ending_view::kCardCount, 2, "voyage stats no longer has a slot");
         runner.add(test);
     }
 }
-
