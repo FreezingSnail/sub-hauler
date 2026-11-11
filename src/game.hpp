@@ -42,7 +42,7 @@ constexpr int16_t kNeutralPerCargo = 10;  // neutral falls 10 per cargo unit
 constexpr int16_t kAirCapacity = 300;      // fixed integer air units at full tank
 constexpr uint16_t kAirDrainTicks = 150;   // 0.4 units/s -> one unit per 150 ticks
 
-constexpr uint8_t kBlowCarryStep = 3;       // 3.0 air units/s while blowing
+constexpr uint8_t kBlowCarryStep = 4;       // 4.0 air units/s while blowing
 constexpr uint8_t kBallastCarryStep = 18;   // 18 ballast units/s blow or flood
 constexpr uint8_t kRateTicks = 60;          // carry denominator for per-second rates
 
@@ -73,7 +73,7 @@ constexpr int16_t kDragDivisor = 50;
 constexpr int16_t kHardImpactSpeedQ8 = 16 * kQ8One;
 
 // A hard descending floor impact costs a fixed five air units. This is small
-// against the 300-unit tank, so ordinary soft bumps stay free while a real
+// against the 270-unit tank, so ordinary soft bumps stay free while a real
 // slam still bites. Side, ceiling and gate contacts never charge it.
 constexpr int16_t kHardFloorAirCost = 5;
 
@@ -283,7 +283,7 @@ inline void setCargo(State &state, int16_t cargo) {
     state.cargo = clampCargo(cargo);
 }
 
-// Fixed 300-unit tank.
+// Fixed 270-unit tank.
 inline int16_t airCapacity(const State &state) {
     (void)state;
     return kAirCapacity;

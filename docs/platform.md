@@ -56,10 +56,18 @@ chart-save variants are retired.
 
 The fixed build has no shop, currency, job payout, repeatable freight offer or
 credit cache. Air is a fixed 300-unit tank with free berth refill and free
-rescue. The station board is native (`WORK / UNDOCK`,
+rescue; blowing ballast costs 4 air units/s while flooding stays free. The
+station board is native (`WORK / UNDOCK`,
 `summary / WORK / UNDOCK`, or `UNDOCK` at a work/service berth) and WORK lists
 only story and survey rows. Mandatory story work cannot be abandoned. The generated shop/menu frames and text
 remain archival cart ABI and are never drawn.
+
+Air retune (2026-11-10, `sub-hauler-646.10`): the 300-unit tank and 4 air
+units/s blow cost are applied in `src/game.hpp`; flooding stays free and the
+18-unit/s ballast rate is unchanged. The relaxed Tidewall-to-Benthos FIRST host
+probe docks and delivers with **18 air** left, so the guard is a **5% reserve**
+rather than the former 20%. A 270-unit tank with the same blow cost arrives
+with 0 air and was rejected.
 
 Startup splash measurements and art provenance are in
 [startup-splashes.md](startup-splashes.md). The new FX section appends after

@@ -30,6 +30,15 @@ inline void runTicks(game::State &state, game::Input input, int ticks) {
 
 inline void GameSuite(TestRunner &runner) {
     {
+        Test test("fixed air tuning is a 300-unit tank and 4 air units/s blow");
+        test.assertEqual(game::kAirCapacity, 300, "tank holds 300 units");
+        test.assertEqual(game::kBlowCarryStep, 4, "blowing costs four air units per second");
+        test.assertEqual(game::kAirDrainTicks, 150, "passive drain stays one unit per 150 ticks");
+        test.assertEqual(game::kBallastCarryStep, 18, "ballast change rate stays 18 units/s");
+        runner.add(test);
+    }
+
+    {
         Test test("neutral trim follows cargo and reset starts neutral");
         test.assertEqual(game::neutralFor(-3), 70, "cargo below zero clamps");
         test.assertEqual(game::neutralFor(0), 70, "empty trim");
@@ -80,7 +89,7 @@ inline void GameSuite(TestRunner &runner) {
         const int16_t startY = state.y;
         runTicks(state, blowInput(), 60);
         test.assertEqual(state.ballast, 52, "18 ballast units blown in one second");
-        test.assertEqual(state.air, game::kAirCapacity - 3, "blow spends three air units");
+        test.assertEqual(state.air, game::kAirCapacity - 4, "blow spends four air units");
         test.assertTrue(state.vyQ8 < 0, "blowing accelerates upward");
         test.assertTrue(state.y < startY, "blowing rises");
         test.assertEqual(state.cargo, 0, "trim unchanged");
@@ -92,13 +101,13 @@ inline void GameSuite(TestRunner &runner) {
         game::State empty;
         game::reset(empty);
         runTicks(empty, blowInput(), 60);
-        test.assertEqual(empty.air, game::kAirCapacity - 3, "empty hold costs three air per second");
+        test.assertEqual(empty.air, game::kAirCapacity - 4, "empty hold costs four air per second");
 
         game::State loaded;
         game::reset(loaded);
         game::setCargo(loaded, 4);
         runTicks(loaded, blowInput(), 60);
-        test.assertEqual(loaded.air, game::kAirCapacity - 3, "full hold still costs three air per second");
+        test.assertEqual(loaded.air, game::kAirCapacity - 4, "full hold still costs four air per second");
 
         // The climb is slower under load because the up clamp drops from 20 to
         // 12 px/s, so the same held blow lasts longer and a long climb needs

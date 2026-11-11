@@ -21,7 +21,7 @@
 // function is device-only because it uses the external FX font.
 //
 // Header: settlement name.
-// Status: current air against the fixed 270-unit tank.
+// Status: current air against the fixed 300-unit tank.
 // Rows:   WORK/UNDOCK, or summary/WORK/UNDOCK when a contract is active.
 //         Service-only berths show UNDOCK only. One inverted selection bar.
 //         WORK opens the restoration board. B always undocks.

@@ -52,7 +52,7 @@ Vertical speed limits scale with cargo: down `20 + 2 x cargo` px/s (20 empty
 to 28 full), up `20 - 2 x cargo` px/s (20 empty to 12 full). A full hold
 therefore sinks faster and climbs more slowly.
 
-Blowing ballast costs a flat 3 air units per second for every load; flooding
+Blowing ballast costs a flat 4 air units per second for every load; flooding
 stays free. The tank stays 300 units with the unchanged passive drain. A heavy
 hold still spends more air over a climb: the lower up limit makes the ascent
 longer, and a long climb needs more re-flood/re-blow cycles to keep lifting,
