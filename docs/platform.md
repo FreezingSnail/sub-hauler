@@ -12,11 +12,11 @@ Keep dated measurements in the checkpoint table instead of copying them around.
 | MCU | ATmega32u4 |
 | Display | 128×64 SSD1306 OLED, native 1-bit |
 | Framebuffer | 1,024 B (`Arduboy2Base::sBuffer`) |
-| Cart | external FX flash; current `fxdata/fxdata.bin` image is 583,168 B; the unpadded 579,010 B payload is `fxdata/fxdata-data.bin`, with the 4,096 B save partition at `FX_SAVE_PAGE = 0xFFF0` |
+| Cart | external FX flash; current `fxdata/fxdata.bin` image is 642,048 B; the unpadded 637,779 B payload is `fxdata/fxdata-data.bin`, with the 4,096 B save partition at `FX_SAVE_PAGE = 0xFFF0` |
 | Display mode | native 1-bit via `Arduboy2Base` |
 | Logical frame | `FRAME(x)` = `x`; one image per frame |
 | Blitting | `Blit::draw` plus-mask blits into `sBuffer`; no OLED access |
-| Text | external 6x8 FX font via `src/text.hpp`; no built-in Arduboy font/Print path |
+| Text | baked 128x8 plus-mask FX stamps via `src/text.hpp`; production makes no font draw calls. The external 6x8 font and `print`/`number`/`character` remain reference-test-only and are garbage-collected from release flash |
 | Presentation | one `FX::display(CLEAR_BUFFER)` after update/render |
 | Frame rate | 60 fps (`arduboy.setFrameRate(60)`) |
 | Toolchain | arduino-cli 1.2.0; arduboy-homemade:avr 1.4.0; AVR-GCC 7.3.0-atmel3.6.1-arduino7; `-mrelax -mcall-prologues`; LTO |
@@ -45,16 +45,15 @@ SRAM remains capped at **1,700 B** and measured stack reserve must remain at
 least **600 B**. Prior task documents quoting a hard 29,000 B flash ceiling
 are superseded by this decision.
 
-Current fixed build (2026-11-11, after `sub-hauler-oad`): one configuration
+Current fixed build (2026-11-11, after `sub-hauler-2va`): one configuration
 always links the ATMlib2FX compact synth (`ATM_FX_COMPACT_LOOP=1`,
 `ATM_FX_COMPACT_RING=32`) over the six authored C1 streams. The whole image is
-**29,378 B flash / 1,665 B static RAM** (`.text/.data/.bss` **29,362 / 16 /
-1,649 B**), leaving **318 B** free under the 29,696 B hardware flash limit and
-**35 B** static headroom / **895 B** static free SRAM. The 29,000 B planning
-line remains advisory; the image is 378 B over it under the user's 2026-10-28
-hardware-ceiling acceptance. The developer `DEBUG=1` image is **29,688 B /
-1,666 B** after the NOCLIP text hint removal, leaving **8 B** free; it is not a
-shipping configuration. Build outputs are `build/arduino` / `dist/fx` and
+**27,792 B flash / 1,655 B static RAM** (`.text/.data/.bss` **27,784 / 8 /
+1,647 B**), leaving **1,904 B** free under the 29,696 B hardware flash limit and
+**45 B** static headroom / **905 B** static free SRAM. The 29,000 B planning
+line is now 1,208 B above the image. The developer `DEBUG=1` image is
+**28,102 B / 1,656 B**, leaving **1,594 B** free; it is not a shipping
+configuration. Build outputs are `build/arduino` / `dist/fx` and
 `build/arduino-mini` / `dist/mini`.
 Feature-profile, development, runtime-USB, streaming-backend and EEPROM
 chart-save variants are retired.
@@ -101,9 +100,9 @@ from nineteen shared animated scenes; consecutive text pages are allowed. The
 departure placeholders. The exact text, preview, trigger/replay/save contract
 and 57,316 B RLE cart blob are in [story-beats.md](story-beats.md); the blob
 appends after the chart hint and preserves every earlier offset and the 4 KiB
-save page. A 122 B cold story-metadata blob appends after the story decks, and
-the dock-bark address table ends the data layout before the save partition
-(`sub-hauler-oad`).
+save page. A 122 B cold story-metadata blob appends after the story decks; the
+baked `img_dock_barks`/`img_berth_names`/text stamp sheets follow the last
+shipped string (`sub-hauler-2va`).
 
 Campaign, voyage save and synth music are unconditional. The stack target
 remains 600 B.
@@ -310,6 +309,7 @@ current developer-only `DEBUG=1` image is documented in
 
 | Date | Flash | Static RAM | Toolchain / notes |
 | --- | --- | --- | --- |
+| 2026-11-11 | 27,792 B | 1,655 B | Baked runtime text stamps (`sub-hauler-2va`): every production label is a static 128x8 plus-mask FX image, so release code issues no `text::print`/`number`/`character`/`begin` call and `text::begin()` leaves the production boot path. `tools/gen_text_images.py` bakes the 6x8 glyph table into 83 two-frame `img_txt_*` rows (white/black, 3 px inset) plus `img_berth_names` (9), `img_dock_barks` (16), `img_row_labels` (4), `img_story_row` (18), `img_carry_row` (9) and `img_berth_work` (8) sheets; `gen_sprites` packs `fxdata/TextData.txt` with a two-byte header and 256 B frame stride. The retired `dockBarks` cart blob and `generated/dock_barks.hpp` are gone; `tools/dock_bark_table.py` is the shared bark order. Before `.text/.data/.bss` **29,130 / 16 / 1,649 B**, **29,146 B flash / 1,665 B static**, debug **29,456 B / 1,666 B**, FX payload/image **579,005 / 583,168 B**, `FX_DATA_PAGE=0xF71A`. After **27,792 B flash / 1,655 B static**, `.text/.data/.bss` **27,784 / 8 / 1,647 B** (−1,354 B flash, −10 B static), **1,904 B** hardware flash free, debug **28,102 B / 1,656 B**, FX payload/image **637,779 / 642,048 B** (+58,774/+58,880 B, 83 text rows + six sheets), `FX_DATA_PAGE=0xF634`, `FX_SAVE_PAGE=0xFFF0` unchanged at the 4 KiB save tail. The external 6x8 font and `print`/`number`/`character` stay for reference tests only; no font-renderer symbol remains in the release ELF. `make gen-check` deterministic; host **262**, tooling **169**, docs **33** + preview **8**; all 15 default device suites P plus save-chain, runtime-page and flight. No physical playthrough claimed. |
 | 2026-11-11 | 29,146 B | 1,665 B | Redundant berth air readout removal (`sub-hauler-39u`): berth service always refills to capacity, so the station board no longer draws the tank gauge or the `AIR <current>/<capacity>` status line. Removed `drawAirGauge`/`drawStatus`, their layout constants and static asserts, and the now-unreferenced `txt_air_status = 'AIR '` declaration (the HUD keeps `txt_air`). Before `.text/.data/.bss` **29,362 / 16 / 1,649 B**, **29,378 B flash / 1,665 B static**, debug **29,688 B / 1,666 B**, FX payload/image **579,010 / 583,168 B**, `FX_DATA_PAGE=0xF71A`. After **29,146 B flash / 1,665 B static**, `.text/.data/.bss` **29,130 / 16 / 1,649 B**, **550 B** hardware flash free, debug **29,456 B / 1,666 B**, FX payload/image **579,005 / 583,168 B** (−5 B payload, image unchanged), `FX_DATA_PAGE=0xF71A` and `FX_SAVE_PAGE=0xFFF0` unchanged; later FX symbols shift down **5 B**. `make gen-check` deterministic; host **262**, tooling **161**, docs **33** + preview **8**; targeted `test_boot` and `test_menu` (**29** pixel cases) pass; Mini **29,146 / 1,665 B**. No physical playthrough claimed. |
 | 2026-11-11 | 29,378 B | 1,665 B | Cold cart tables and debug overlay trim (`sub-hauler-oad`): moved story metadata **122 B**, dock-bark address table **284 B** (32 B offsets + 252 B text) and berth icons **130 B** packed from program flash/stack tables to the FX cart; removed the DEBUG NOCLIP text hint. Before **29,644 B flash / 1,665 B static**, FX payload/image **578,474 / 582,656 B**, `FX_DATA_PAGE=0xF71C`, debug image **30,064 B / 1,666 B** (368 B over). After `.text/.data/.bss` **29,362 / 16 / 1,649 B**, **29,378 B flash / 1,665 B static**, **318 B** hardware flash free, FX payload/image **579,010 / 583,168 B** (+536/+512 B), `FX_DATA_PAGE=0xF71A`, `FX_SAVE_PAGE=0xFFF0` unchanged, debug **29,688 B / 1,666 B** (**8 B** free). `make gen-check` deterministic; host **262**, tooling **161**, docs **33** + preview **8**; targeted `test_boot`, `test_menu`, `test_story` (**10,760 µs** max) and `test_work` pass; Mini **29,378 / 1,665 B**. |
 | 2026-11-11 | 29,644 B | 1,665 B | Unused FX pack retirement (`sub-hauler-jxk`, user-approved one-time append-only ABI exception): retired **23 packed assets** (`worldTiles`, `worldChart`, `cargoBank`, `explorationObjects`; `hero`, `minnow`, `leviathan`; `panel_ending_stats`, `panel_pause_rescue`, `panel_pause_resume`, `title_keep`, `work_active`, `work_details`, `work_rows`, `hud_controls`, `shop_hints`, `shop_menu`, `station_hints`, `station_menu`, `story_beacon`, `story_first`, `story_lift`, `story_pump`) and **61 unreferenced packed strings**. Title sheets compacted from 30 to 8 (`title_menu`) and 5 to 1 (`title_replace`) frames; the HUD control stamp was removed and `hud_notices` compacted from 14 to 11 live frames, fixing `kNoticeFoundLens` selecting the former credits frame. Final symbol count **114 = 84 strings + 30 assets**, down from **198 = 145 strings + 53 assets**. Baseline `a040071` **29,652 B flash / 1,665 B static**, FX payload/image **672,205 / 676,352 B**, `FX_DATA_PAGE=0xF5AE`; final `.text/.data/.bss` **29,628 / 16 / 1,649 B**, **29,644 B flash / 1,665 B static**, **52 B** hardware flash free, FX payload/image **578,474 / 582,656 B**, `FX_DATA_PAGE=0xF71C`, `FX_SAVE_PAGE=0xFFF0` unchanged. Removed **93,731 B payload / 93,696 B cart image** and **8 B flash / 0 B static**; the three waves contributed **−11,009/−11,008**, **−82,133/−82,176** and **−589/−512 B**. Host **262**, tooling **158**, docs **33** + preview **8**, **15/15** device suites P, save-chain **680**, combined music **634**, runtime-page P, flight **842** frames **11,788 µs max**, zero 16 ms misses/audio errors, `make gen-check` deterministic, Mini **29,644 / 1,665 B**. No physical playthrough claimed. |
@@ -706,8 +706,8 @@ restart. The chart keeps the current flight cue playing (only the world pauses);
 chart water bursts call the foreground service hook between cart reads.
 `SH_CART_SERVICE()` calls `atm_fx_compact_service()` before cold world and
 large panel reads, after presentation and on idle frames, never inside the OLED
-transaction or ISR. `text::print` and panel bursts service the ring between
-reads so menu composition stays within the deadline.
+transaction or ISR. `text::stamp`/`stampFrame` and panel bursts service the ring
+between reads so menu composition stays within the deadline.
 
 The synth compiles with `ATM_FX_COMPACT_RING=32` (the largest authored record is
 28 B), `ATM_FX_COMPACT_LOOP=1`, and all native effects enabled. The library's

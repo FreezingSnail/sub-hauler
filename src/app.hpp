@@ -147,33 +147,33 @@ static inline bool justChord(uint8_t mask) {
 
 static chart::State s_chart;
 
-static void drawVoyageNotice(uint24_t label) {
+static void drawVoyageNotice(uint24_t image) {
     // The hint plate is not always black: hud::draw only clears it for an active
     // HUD notice. Clear the 128x9 row here so SAVED AT BERTH / UNSAVED FIND
     // notices hide terrain and remove any stale HUD hint underneath.
     cave::fillRect(Arduboy2Base::sBuffer, hud::kHintBackingX, hud::kHintBackingY, hud::kHintBackingW, hud::kHintBackingH, false);
-    text::normal();
     text::at(3, 56);
-    text::print(label);
+    text::stamp(image);
 }
 
-// Map the pure campaign next-stop rule to shipped FX strings. Reusing the
-// existing clue labels keeps the station notice, WORK rows and chart markers on
+// Map the pure campaign next-stop rule to baked FX stamps. Reusing the
+// existing clue images keeps the station notice, WORK rows and chart markers on
 // one source of truth without adding story cards or cart streams.
 static uint24_t nextStopLabel(campaign::NextStop stop) {
+    uint24_t label = 0;
     if (stop == campaign::kNextStopLiftSurvey)
-        return txt_lift_clue;
-    if (stop == campaign::kNextStopLiftSource)
-        return txt_lift_source_clue;
-    if (stop == campaign::kNextStopPumpSurvey)
-        return txt_pump_survey_clue;
-    if (stop == campaign::kNextStopPumpSource)
-        return txt_pump_source_clue;
-    if (stop == campaign::kNextStopSeal)
-        return txt_seal_rumor;
-    if (stop == campaign::kNextStopBeacon)
-        return txt_beacon_ready;
-    return 0;
+        label = img_txt_lift_clue;
+    else if (stop == campaign::kNextStopLiftSource)
+        label = img_txt_lift_source_clue;
+    else if (stop == campaign::kNextStopPumpSurvey)
+        label = img_txt_pump_survey_clue;
+    else if (stop == campaign::kNextStopPumpSource)
+        label = img_txt_pump_source_clue;
+    else if (stop == campaign::kNextStopSeal)
+        label = img_txt_seal_rumor;
+    else if (stop == campaign::kNextStopBeacon)
+        label = img_txt_beacon_ready;
+    return label;
 }
 
 // Only PUMP and LIFT decks post a next-stop notice. The board hint row is
@@ -198,9 +198,9 @@ static void drawPilot() {
     hud::draw(s_state);
     uint24_t notice = 0;
     if (s_savedNoticeTicks != 0)
-        notice = txt_saved_berth;
+        notice = img_txt_saved_berth;
     else if (s_voyageDirty && s_state.discoveryTicks != 0)
-        notice = txt_unsaved_find;
+        notice = img_txt_unsaved_find;
     if (notice)
         drawVoyageNotice(notice);
 }
@@ -975,7 +975,6 @@ template <typename Poll> static void applicationBootWith(Poll &poll) {
     voyage_save::FxStorage::begin();
     FX::setCursorRange(0, 32767);
     startup_view::run(poll);
-    text::begin();
     music::begin();
 
     resetRun();

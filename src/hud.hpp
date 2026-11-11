@@ -17,9 +17,9 @@
 //
 // Air is a top-left bar and ballast is a left-edge gauge with a neutral notch
 // tied to the current load. The bottom row is reserved for contextual notices;
-// with no notice the map stays visible. Labels come from the external FX text
-// section; there is no float, heap, or String. Placement keeps the 26x8 boat
-// (screen x ~44, y ~32) clear.
+// with no notice the map stays visible. The AIR label and every notice row are
+// baked 128x8 FX stamps; there is no float, heap, String or font draw call.
+// Placement keeps the 26x8 boat (screen x ~44, y ~32) clear.
 namespace hud {
 
 constexpr uint8_t kAirLabelX = 1;
@@ -155,10 +155,10 @@ inline void draw(const game::State &state) {
     cave::fillRect(Arduboy2Base::sBuffer, kTopBackingX, kTopBackingY, kTopBackingW, kTopBackingH, false);
     cave::fillRect(Arduboy2Base::sBuffer, kGaugeBackingX, kGaugeBackingY, kGaugeBackingW, kGaugeBackingH, false);
 
-    // Air bar: outline plus a white fill proportional to the tank.
-    text::normal();
+    // Air bar: outline plus a white fill proportional to the tank. The baked
+    // AIR stamp keeps its glyph inset at x=3.
     text::at(kAirLabelX, kAirLabelY);
-    text::print(txt_air);
+    text::stamp(img_txt_air);
     arduboy.drawRect(kAirX, kAirY, kAirW, kAirH, WHITE);
     const uint8_t airInnerW = static_cast<uint8_t>(kAirW - 2);
     const uint8_t airFill = static_cast<uint8_t>(static_cast<uint16_t>(state.air) * airInnerW / game::airCapacity(state));

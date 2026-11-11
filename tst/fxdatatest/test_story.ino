@@ -122,7 +122,7 @@ bool noticeBacking() {
     // stale HUD hint before the label lands.
     for (uint16_t i = 0; i < 1024; ++i)
         Arduboy2Base::sBuffer[i] = 0xFF;
-    drawVoyageNotice(txt_saved_berth);
+    drawVoyageNotice(img_txt_saved_berth);
     uint16_t ink = 0;
     const uint8_t labelEnd = static_cast<uint8_t>(3 + text::kCellWidth * 14);
     for (uint8_t y = hud::kHintBackingY; y < hud::kHintBackingY + hud::kHintBackingH; ++y) {

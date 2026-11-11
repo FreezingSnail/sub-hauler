@@ -6,11 +6,11 @@
 #include <ArduboyFX.h>
 #include "src/fxdata.h"
 #include "src/generated/campaign_sprites.hpp"
-#include "src/generated/dock_barks.hpp"
 #include "src/generated/music_regions.hpp"
 #include "src/generated/panel_sprites.hpp"
 #include "src/generated/pause_sprites.hpp"
 #include "src/generated/pilot_sprites.hpp"
+#include "src/generated/text_stamp_sprites.hpp"
 #include "src/generated/world.hpp"
 #include "src/generated/music.hpp"
 #include "src/generated/hud_sprites.hpp"
@@ -89,8 +89,18 @@ static_assert(storyBeats == txt_survey_chart_hint + sizeof("A CHART  B BACK"), "
 static_assert(storyMeta == storyBeats + STORY_BEAT_BYTES, "story metadata appends after the story deck blob");
 static_assert(txt_freight_yard == storyMeta + STORY_META_BYTES, "work-site labels append after the story metadata");
 static_assert(txt_deep_relay == txt_freight_yard + sizeof("FREIGHT YARD"), "relay label follows the Freight Yard label");
-static_assert(dockBarks == txt_deep_relay + sizeof("DEEP RELAY"), "dock bark table ends the data layout");
-static_assert(FX_DATA_BYTES == dockBarks + DOCK_BARK_BYTES, "FX image ends after the dock bark table");
+static_assert(img_berth_names == txt_deep_relay + sizeof("DEEP RELAY"), "baked text stamps append after the last shipped string");
+static_assert(img_berth_work == img_berth_names + spriteBytes(IMG_BERTH_NAMES_WIDTH, IMG_BERTH_NAMES_HEIGHT, IMG_BERTH_NAMES_FRAMES, IMG_BERTH_NAMES_MASKED), "berth-WORK header follows the berth-name sheet");
+static_assert(img_carry_row == img_berth_work + spriteBytes(IMG_BERTH_WORK_WIDTH, IMG_BERTH_WORK_HEIGHT, IMG_BERTH_WORK_FRAMES, IMG_BERTH_WORK_MASKED), "CARRY rows follow the berth-WORK sheet");
+static_assert(img_dock_barks == img_carry_row + spriteBytes(IMG_CARRY_ROW_WIDTH, IMG_CARRY_ROW_HEIGHT, IMG_CARRY_ROW_FRAMES, IMG_CARRY_ROW_MASKED), "bark sheet follows the CARRY rows");
+static_assert(img_row_labels == img_dock_barks + spriteBytes(IMG_DOCK_BARKS_WIDTH, IMG_DOCK_BARKS_HEIGHT, IMG_DOCK_BARKS_FRAMES, IMG_DOCK_BARKS_MASKED), "row labels follow the bark sheet");
+static_assert(img_story_row == img_row_labels + spriteBytes(IMG_ROW_LABELS_WIDTH, IMG_ROW_LABELS_HEIGHT, IMG_ROW_LABELS_FRAMES, IMG_ROW_LABELS_MASKED), "STORY rows follow the row labels");
+static_assert(img_txt_a_next == img_story_row + spriteBytes(IMG_STORY_ROW_WIDTH, IMG_STORY_ROW_HEIGHT, IMG_STORY_ROW_FRAMES, IMG_STORY_ROW_MASKED), "individual string stamps follow the STORY sheet");
+static_assert(IMG_BERTH_NAMES_FRAMES == 9 && IMG_BERTH_WORK_FRAMES == 8 && IMG_CARRY_ROW_FRAMES == 9 &&
+              IMG_DOCK_BARKS_FRAMES == 16 && IMG_ROW_LABELS_FRAMES == 4 && IMG_STORY_ROW_FRAMES == 18 &&
+              IMG_TXT_AIR_WIDTH == 128 && IMG_TXT_AIR_HEIGHT == 8 && IMG_TXT_AIR_FRAMES == 2 && IMG_TXT_AIR_MASKED,
+              "baked stamp sheets and two-frame string rows");
+static_assert(FX_DATA_BYTES == img_txt_yes_no + spriteBytes(IMG_TXT_YES_NO_WIDTH, IMG_TXT_YES_NO_HEIGHT, IMG_TXT_YES_NO_FRAMES, IMG_TXT_YES_NO_MASKED), "FX image ends after the last text stamp");
 static_assert(STORY_CARD_COUNT == 43 && STORY_IMAGE_CARD_COUNT == 21 && STORY_TEXT_CARD_COUNT == 22 && STORY_IMAGE_COUNT == 19 && STORY_FRAME_COUNT == 98, "source-backed story cards");
 static_assert(FX_SAVE_BYTES == 4096, "save partition is one 4 KiB erase block");
 static_assert(FX_SAVE_PAGE == 0xFFF0, "save partition is the last 16 cart pages");
@@ -156,18 +166,15 @@ void setup() {
     const uint8_t iconHeight = FX::readEnd();
     ok = ok && iconWidth == BERTH_ICONS_WIDTH && iconHeight == BERTH_ICONS_HEIGHT;
 
-    // Story metadata starts with scene 0's card count (none) and the dock bark
-    // table starts with offset 0, whose text begins with a NUL terminator.
+    // Story metadata starts with scene 0's card count (none). The first baked
+    // text sheet carries the generated 128x8 two-byte sprite header.
     FX::seekData(storyMeta);
     ok = (FX::readPendingUInt8() == 0) && ok;
     FX::readEnd();
-    FX::seekData(dockBarks);
-    const uint16_t firstBarkOffset = FX::readPendingUInt16();
-    FX::readEnd();
-    FX::seekData(dockBarks + 32);
-    const uint8_t firstBarkByte = FX::readPendingUInt8();
-    FX::readEnd();
-    ok = ok && firstBarkOffset == 0 && firstBarkByte == 0;
+    FX::seekData(img_berth_names);
+    const uint8_t stampWidth = FX::readPendingUInt8();
+    const uint8_t stampHeight = FX::readEnd();
+    ok = ok && stampWidth == 128 && stampHeight == 8;
 
     FX::seekData(sh_abyssal_glass);
     const uint8_t glassMagic = FX::readPendingUInt8();

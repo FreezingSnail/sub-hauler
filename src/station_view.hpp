@@ -4,8 +4,8 @@
 
 #include "game.hpp"
 #include "station.hpp"
-#include "generated/dock_barks.hpp"
 #include "generated/panel_sprites.hpp"
+#include "generated/text_layout.hpp"
 
 // The runtime station board is native: the row rules below own the live
 // WORK/UNDOCK and summary/WORK/UNDOCK shapes. The retired generated menu
@@ -16,7 +16,7 @@
 #endif
 
 // Station board, 128x64. The layout is pure and host-checkable; the draw
-// function is device-only because it uses the external FX font.
+// function is device-only because it reads baked FX text stamps.
 //
 // Header: settlement name.
 // Rows:   WORK/UNDOCK, or summary/WORK/UNDOCK when a contract is active.
@@ -80,54 +80,29 @@ static_assert(kSelectMarkX + kSelectMarkW <= 128, "selection marker stays inside
 #include "common.hpp"
 
 // Generated AVR settlement records carry position only (name is null), so the
-// station board owns the display names. Order matches the generated flash ABI.
-// An if-chain, not a switch: the seven labels would otherwise become a
-// RAM-resident CSWTCH table copied by the startup code. The appended Freight
-// Yard label fits the alignment padding before the save partition, so every
-// earlier FX offset and the save offset stay frozen.
-inline uint24_t nameFor(uint8_t id) {
-    if (id == 0)
-        return txt_tidewall;
-    if (id == 1)
-        return txt_benthos;
-    if (id == 2)
-        return txt_cormorant;
-    if (id == 3)
-        return txt_deep_anchor;
-    if (id == 4)
-        return txt_pump_refuge;
-    if (id == 5)
-        return txt_lower_gantry;
-    if (id == 6)
-        return txt_freight_yard;
-    if (id == 7)
-        return txt_deep_relay;
-    return txt_station;
+// station board owns the display names. Frame order matches the generated
+// `img_berth_names` stamp sheet: campaign::Berth enum order plus STATION.
+inline uint8_t nameFor(uint8_t id) {
+    if (id < campaign::kBerthCount)
+        return id;
+    return text_layout::kBerthNameFallback;
 }
 
-inline uint24_t rowLabel(uint8_t row, const game::State &state) {
+inline uint8_t rowLabel(uint8_t row, const game::State &state) {
     const station::RowKind kind = station::rowKind(row, state);
     if (kind == station::kRowWork)
-        return txt_work;
+        return text_layout::kRowLabelWork;
     if (kind == station::kRowUndock)
-        return txt_undock;
+        return text_layout::kRowLabelUndock;
     return 0;
 }
 
-// One shared bark table: the pure campaign selector chooses a bark for every
-// berth, and both the station board and the WORK clue read the same existing
-// FX string. The generated blob holds 16 little-endian uint16 offsets at
-// dockBarks, followed by NUL-terminated bark text. Index 0 is deliberately
-// empty so kDockBarkNone draws no row.
-inline uint24_t dockBarkText(campaign::DockBark bark) {
-    const uint8_t index = static_cast<uint8_t>(bark);
-    if (index == 0)
-        return 0;
-    uint8_t bytes[2];
-    cartService();
-    FX::readDataBytes(dockBarks + static_cast<uint24_t>(index) * 2, bytes, 2);
-    const uint16_t offset = static_cast<uint16_t>(bytes[0]) | (static_cast<uint16_t>(bytes[1]) << 8);
-    return dockBarks + 32 + offset;
+// One shared bark order: the pure campaign selector chooses a candidate, and
+// both the station board and the WORK clue stamp the same `img_dock_barks`
+// frame. Frame index is the raw campaign::DockBark value; index 0 means no
+// bark and is never drawn.
+inline uint8_t dockBarkFrame(campaign::DockBark bark) {
+    return static_cast<uint8_t>(bark);
 }
 
 // Berth silhouettes are 16x8 opaque icons packed by gen_sprites into the
@@ -139,9 +114,7 @@ inline void drawBerthIcon(uint8_t id) {
 }
 
 inline void drawHeader(const game::State &state) {
-    text::normal();
-    text::at(kNameX, kHeaderY);
-    text::print(nameFor(static_cast<uint8_t>(state.docked)));
+    text::stampFrame(img_berth_names, nameFor(static_cast<uint8_t>(state.docked)), kNameX, kHeaderY);
     drawBerthIcon(static_cast<uint8_t>(state.docked));
     arduboy.drawFastHLine(0, kDividerY, 128, WHITE);
     arduboy.drawFastVLine(0, static_cast<int16_t>(kDividerY - 2), 3, WHITE);
@@ -162,7 +135,7 @@ inline void drawSelectionMark(uint8_t y) {
     arduboy.fillRect(static_cast<int16_t>(kSelectMarkX + 2), static_cast<int16_t>(y + 3), 1, 1, BLACK);
 }
 
-// Native board: name, berth icon, live rows and the generated hint row. The
+// Native board: name, berth icon, live rows and the baked bark row. The
 // active summary shows only the destination; there is no payout.
 inline void draw(const game::State &state, uint8_t selected) {
     if (state.docked < 0)
@@ -175,31 +148,25 @@ inline void draw(const game::State &state, uint8_t selected) {
     for (uint8_t row = 0; row < rows; ++row) {
         const uint8_t y = rowY(row);
         const station::RowKind kind = station::rowKind(row, state);
-        if (row == selected && kind != station::kRowJob) {
+        const bool highlighted = row == selected && kind != station::kRowJob;
+        if (highlighted)
             arduboy.fillRect(0, static_cast<int16_t>(y - kRowInsetY), 128, kRowInvertH, WHITE);
-            text::inverted();
-        } else {
-            text::normal();
-        }
-        if (kind == station::kRowJob)
+        if (kind == station::kRowJob) {
             drawSummaryMark(y);
-        text::at(kRowX, y);
-        if (kind == station::kRowJob)
-            text::print(nameFor(state.activeJob.to));
-        else
-            text::print(rowLabel(row, state));
-        if (row == selected && kind != station::kRowJob)
+            text::stampFrame(img_berth_names, nameFor(state.activeJob.to), kRowX, y);
+        } else {
+            const uint8_t frame = static_cast<uint8_t>(rowLabel(row, state) + (highlighted ? text_layout::kRowLabelInvertedBase : 0));
+            text::stampFrame(img_row_labels, frame, kRowX, y);
+        }
+        if (highlighted)
             drawSelectionMark(y);
     }
-    text::normal();
 
-    // One-line native bark: guidance for the next reachable step. It replaces
+    // One-line baked bark: guidance for the next reachable step. It replaces
     // the retired generated control hint; B still undocks and A still confirms.
-    const uint24_t bark = dockBarkText(campaign::dockBark(state, static_cast<uint8_t>(state.docked)));
-    if (bark != 0) {
-        text::at(kHintX, kBarkY);
-        text::print(bark);
-    }
+    const uint8_t bark = dockBarkFrame(campaign::dockBark(state, static_cast<uint8_t>(state.docked)));
+    if (bark != campaign::kDockBarkNone)
+        text::stampFrame(img_dock_barks, bark, kHintX, kBarkY);
 }
 
 #endif   // __AVR__
