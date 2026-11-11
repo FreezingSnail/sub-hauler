@@ -25,7 +25,6 @@ enum TitleRow : uint8_t {
 };
 
 constexpr uint8_t kScreenW = 128;
-constexpr uint8_t kCenterIndent = 4;
 constexpr uint8_t kTitleY = 3;
 constexpr uint8_t kHullY = 12;
 constexpr uint8_t kRowY0 = 22;
@@ -34,18 +33,11 @@ constexpr uint8_t kRowInvertH = 8;
 constexpr uint8_t kStatusY = 48;
 constexpr uint8_t kHintY = 57;
 
-constexpr uint8_t kMenuTitleY = 8;
-constexpr uint8_t kMenuRowY0 = 24;
-constexpr uint8_t kMenuRowStep = 12;
-constexpr uint8_t kConfirmY = 24;
-
 static_assert(kTitleY + 7 <= kHullY, "title clears the hull line");
 static_assert(kHullY + 7 <= kRowY0, "hull clears the menu");
 static_assert(kRowY0 + kRowStep + kRowInvertH <= kStatusY, "two title rows clear status");
 static_assert(kStatusY + 7 <= kHintY, "status clears the hint");
 static_assert(kHintY + 7 <= 64, "hint stays on screen");
-static_assert(kMenuRowY0 + kMenuRowStep + kRowInvertH <= kHintY, "two prompt rows clear the hint");
-static_assert(kMenuRowY0 + 2 * kMenuRowStep + kRowInvertH <= kHintY, "music row clears the hint");
 
 inline bool continueAvailable(const voyage_flow::BootStatus &status) {
     return status.hasValid;
@@ -66,36 +58,6 @@ inline uint8_t previousRow(uint8_t selected, const voyage_flow::BootStatus &stat
 
 #if defined(__AVR__)
 #include "common.hpp"
-
-inline void centered(uint8_t y, uint24_t string) {
-    // Callers only use fixed strings of at most 20 characters. The 6 px cell
-    // and one leading space make the common labels visually centred.
-    text::at(kCenterIndent, y);
-    text::print(string);
-}
-
-// Branches, not a switch: the labels are 24-bit FX addresses and a CSWTCH
-// table would be copied to SRAM at startup.
-inline uint24_t statusLabel(const voyage_flow::BootStatus &status) {
-    if (status.state == voyage_flow::kBootValid)
-        return txt_save_ready;
-    if (status.state == voyage_flow::kBootCorrupt)
-        return txt_save_corrupt;
-    if (status.state == voyage_flow::kBootIncompatible)
-        return txt_save_incompatible;
-    return txt_no_save;
-}
-
-inline void menuRow(uint8_t y, uint24_t label, bool selected) {
-    if (selected) {
-        arduboy.fillRect(0, y - 1, 128, kRowInvertH, WHITE);
-        text::inverted();
-    } else {
-        text::normal();
-    }
-    text::at(kCenterIndent, y);
-    text::print(label);
-}
 
 // Baked title frames: boot state 0..3 x selected row 0..1, HAULER fixed. The
 // replace prompt exists only when a valid save is present, so it is one frame.

@@ -25,8 +25,6 @@ image_t font_6x8 = "../fxdata/fonts/font_6x8.png"
 // symbol shifts down; append new declarations instead of reordering.
 string txt_paused = 'PAUSED  A/B RESUME'
 string txt_air = 'AIR'
-string txt_thrust = 'L/R THRUST'
-string txt_trim = 'UP/DN TRIM'
 string txt_hauler = 'HAULER'
 string txt_air_status = 'AIR '
 string txt_tidewall = 'TIDEWALL'
@@ -63,13 +61,11 @@ raw_t explorationChart = "../fxdata/tables/exploration-chart.bin"
 string txt_found_cutter = 'CUTTER FOUND'
 string txt_found_seal = 'PRESSURE SEAL FOUND'
 string txt_found_thruster = 'THRUSTER FOUND'
-string txt_found_credits = 'CREDITS FOUND'
 string txt_found_lens = 'SURVEY LENS FOUND'
 string txt_need_cutter = 'NEED CUTTER'
 string txt_need_seal = 'NEED PRESSURE SEAL'
 string txt_need_thruster = 'NEED THRUSTER'
 string txt_salvage_hint = 'HOLD STILL TO SALVAGE'
-string txt_cut_hint = 'HOLD STILL TO CUT'
 string txt_cutter_rumor = 'CUTTER: WEST COVE'
 string txt_seal_rumor = 'SEAL: WEST WORKSHOP'
 
@@ -121,7 +117,6 @@ string txt_pump_part_ready = 'PUMP PART READY'
 string txt_beacon_clue = 'BEACON NEEDS PARTS'
 string txt_repair_pump = 'REPAIR PUMP FIRST'
 string txt_repair_lift = 'REPAIR LIFT FIRST'
-string txt_survey_hint = 'HOLD STILL TO SURVEY'
 string txt_survey_recorded = 'SURVEY RECORDED'
 
 // Lift/beacon/homecoming campaign slice (sub-hauler-7px.6). Appended after the
@@ -178,9 +173,10 @@ string txt_unsaved_find = 'UNSAVED FIND'
 string txt_story = 'STORY'
 string txt_work_accept_hint = 'A ACCEPT  B BACK'
 
-// Pilot HUD stamps (sub-hauler-7px.22 stage B): fixed AIR/CGO/control labels
-// and air/cargo/ballast outlines baked from the same 6x8 glyph table. Appended
-// after every shipped symbol so earlier FX offsets remain flash ABI.
+// Pilot HUD notice stamps (sub-hauler-7px.22 stage B): the fixed contextual
+// notice row baked from the same 6x8 glyph table. Appended after every shipped
+// symbol so earlier FX offsets remain flash ABI. The retired control row was
+// removed by sub-hauler-jxk.3 under the approved one-time ABI exception.
 include "HudSprites.txt"
 // Boot introduction appends after the shipped HUD section. The retired
 // station/shop MenuSprites include was removed by sub-hauler-jxk.2.

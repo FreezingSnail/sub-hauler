@@ -12,7 +12,7 @@ Keep dated measurements in the checkpoint table instead of copying them around.
 | MCU | ATmega32u4 |
 | Display | 128×64 SSD1306 OLED, native 1-bit |
 | Framebuffer | 1,024 B (`Arduboy2Base::sBuffer`) |
-| Cart | external FX flash; current `fxdata/fxdata.bin` image is 665,344 B; the unpadded 661,196 B payload is `fxdata/fxdata-data.bin`, with the 4,096 B save partition at `FX_SAVE_PAGE = 0xFFF0` |
+| Cart | external FX flash; current `fxdata/fxdata.bin` image is 582,656 B; the unpadded 578,474 B payload is `fxdata/fxdata-data.bin`, with the 4,096 B save partition at `FX_SAVE_PAGE = 0xFFF0` |
 | Display mode | native 1-bit via `Arduboy2Base` |
 | Logical frame | `FRAME(x)` = `x`; one image per frame |
 | Blitting | `Blit::draw` plus-mask blits into `sBuffer`; no OLED access |
@@ -45,13 +45,15 @@ SRAM remains capped at **1,700 B** and measured stack reserve must remain at
 least **600 B**. Prior task documents quoting a hard 29,000 B flash ceiling
 are superseded by this decision.
 
-Current fixed build (2026-11-09): one configuration always links the ATMlib2FX
-compact synth (`ATM_FX_COMPACT_LOOP=1`, `ATM_FX_COMPACT_RING=32`) over the six
-authored C1 streams. The whole image is **28,702 B flash / 1,650 B static RAM**
-(`.text/.data/.bss` **28,690 / 12 / 1,638 B**), leaving 994 B free under the
-29,696 B hardware flash limit and 50 B static headroom / 910 B static free SRAM.
-The 29,000 B planning line remains advisory; the image is 298 B under it. Build
-outputs are `build/arduino` / `dist/fx` and `build/arduino-mini` / `dist/mini`.
+Current fixed build (2026-11-11, after `sub-hauler-jxk`): one configuration
+always links the ATMlib2FX compact synth (`ATM_FX_COMPACT_LOOP=1`,
+`ATM_FX_COMPACT_RING=32`) over the six authored C1 streams. The whole image is
+**29,644 B flash / 1,665 B static RAM** (`.text/.data/.bss` **29,628 / 16 /
+1,649 B**), leaving **52 B** free under the 29,696 B hardware flash limit and
+**35 B** static headroom / **895 B** static free SRAM. The 29,000 B planning
+line remains advisory; the image is 644 B over it under the user's 2026-10-28
+hardware-ceiling acceptance. Build outputs are `build/arduino` / `dist/fx` and
+`build/arduino-mini` / `dist/mini`.
 Feature-profile, development, runtime-USB, streaming-backend and EEPROM
 chart-save variants are retired.
 
@@ -304,6 +306,7 @@ current developer-only `DEBUG=1` image is documented in
 
 | Date | Flash | Static RAM | Toolchain / notes |
 | --- | --- | --- | --- |
+| 2026-11-11 | 29,644 B | 1,665 B | Unused FX pack retirement (`sub-hauler-jxk`, user-approved one-time append-only ABI exception): retired **23 packed assets** (`worldTiles`, `worldChart`, `cargoBank`, `explorationObjects`; `hero`, `minnow`, `leviathan`; `panel_ending_stats`, `panel_pause_rescue`, `panel_pause_resume`, `title_keep`, `work_active`, `work_details`, `work_rows`, `hud_controls`, `shop_hints`, `shop_menu`, `station_hints`, `station_menu`, `story_beacon`, `story_first`, `story_lift`, `story_pump`) and **61 unreferenced packed strings**. Title sheets compacted from 30 to 8 (`title_menu`) and 5 to 1 (`title_replace`) frames; the HUD control stamp was removed and `hud_notices` compacted from 14 to 11 live frames, fixing `kNoticeFoundLens` selecting the former credits frame. Final symbol count **114 = 84 strings + 30 assets**, down from **198 = 145 strings + 53 assets**. Baseline `a040071` **29,652 B flash / 1,665 B static**, FX payload/image **672,205 / 676,352 B**, `FX_DATA_PAGE=0xF5AE`; final `.text/.data/.bss` **29,628 / 16 / 1,649 B**, **29,644 B flash / 1,665 B static**, **52 B** hardware flash free, FX payload/image **578,474 / 582,656 B**, `FX_DATA_PAGE=0xF71C`, `FX_SAVE_PAGE=0xFFF0` unchanged. Removed **93,731 B payload / 93,696 B cart image** and **8 B flash / 0 B static**; the three waves contributed **−11,009/−11,008**, **−82,133/−82,176** and **−589/−512 B**. Host **262**, tooling **158**, docs **33** + preview **8**, **15/15** device suites P, save-chain **680**, combined music **634**, runtime-page P, flight **842** frames **11,788 µs max**, zero 16 ms misses/audio errors, `make gen-check` deterministic, Mini **29,644 / 1,665 B**. No physical playthrough claimed. |
 | 2026-11-11 | 29,654 B | 1,665 B | Legacy cart table retirement (`sub-hauler-jxk.1`, approved one-time ABI exception): removed shipping `worldTiles`, `worldChart`, `cargoBank`, `hero`, `minnow`, `leviathan` and `explorationObjects`; HAULER is the only pilot sheet. Archival generators/outputs (`world.bin`, `cargo.bin`, `exploration-objects.bin`, `gen_cargo.py`, `gen_pilot.py`) remain but are not packed. `.text/.data/.bss` **29,638 / 16 / 1,649 B**; **42 B** hardware flash free. Host **264**, tooling **166**, gen-check deterministic, targeted `test_boot` P and `test_world` P. FX payload/image **661,196 / 665,344 B**, **11,009 B payload / 11,008 B image** smaller than the prior **672,205 / 676,352 B**; `FX_DATA_PAGE=0xF5D9`, `FX_SAVE_PAGE=0xFFF0` unchanged. No physical playthrough claimed. |
 | 2026-11-10 | 29,652 B | 1,665 B | Equipment-cove landmarks and lens-cave texture (`sub-hauler-646.8`, `.9`): the four equipment coves get distinct wall-etched wreck silhouettes (`cutter-tender` at `W`, `thruster-pod` at `BR`, `workshop-lock` at `CW`, `trench-lens` at `DL`) because their pocket water is protected route corridor; `DL` gains a scoped `texture: "lens"` override with `lens-shard` wall growths and concentric lens rings. Collision, chart, object stream, `level.hpp`, `exploration.hpp` and `fxdata.h` are byte-identical to the preceding image; only the **409,600 B** native terrain section changes. `.text/.data/.bss` **29,636 / 16 / 1,649 B**; **44 B** hardware flash free. Host **264**, tooling **159**, docs **33** + preview **8**; targeted `test_world` P; gen-check deterministic. FX payload/image **672,205 / 676,352 B**. No physical playthrough or human art review claimed. |
 | 2026-11-10 | 29,652 B | 1,665 B | Story beat wave (`sub-hauler-646.6`, `.12`, `.13`, `.15`): New Voyage opening deck (scene 17, RAM-only, skipped by Continue), unique `relay-briefing` and `home-departure` rows; DEEP RELAY result keeps `deep-relay`, HOME result keeps `home-lights`. Sheet **512×1216**, nineteen rows. `.text/.data/.bss` **29,636 / 16 / 1,649 B**; **44 B** hardware flash free. Host **264**, tooling **157**, docs **33** + preview **8**; targeted `test_story` P at **10,752 µs** max over 98 frame CRCs; gen-check deterministic. `make gen`: 17 scenes / 43 cards / 98 frames, story **61,365 B**; FX payload/image **672,205 / 676,352 B**, **1,420,800 B** below 2 MiB with **51 B** alignment padding; `storyBeats=0x095200`, `FX_DATA_PAGE=0xF5AE`, `FX_SAVE_PAGE=0xFFF0` unchanged. No physical playthrough or human art review claimed. |

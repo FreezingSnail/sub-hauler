@@ -75,9 +75,8 @@ static_assert(txt_saved_berth == pause_menu + spriteBytes(PAUSE_MENU_WIDTH, PAUS
 static_assert(txt_unsaved_find == txt_saved_berth + sizeof("SAVED AT BERTH"), "HUD unsaved notice follows saved notice");
 static_assert(txt_story == txt_unsaved_find + sizeof("UNSAVED FIND"), "WORK story label follows the HUD notices");
 static_assert(txt_work_accept_hint == txt_story + sizeof("STORY"), "WORK accept hint follows the story label");
-static_assert(hud_controls == txt_work_accept_hint + sizeof("A ACCEPT  B BACK"), "HUD stamps append after every shipped WORK label");
-static_assert(hud_notices == hud_controls + spriteBytes(HUD_CONTROLS_WIDTH, HUD_CONTROLS_HEIGHT, HUD_CONTROLS_FRAMES, HUD_CONTROLS_MASKED), "HUD notices follow the controls");
-static_assert(startup == hud_notices + spriteBytes(HUD_NOTICES_WIDTH, HUD_NOTICES_HEIGHT, HUD_NOTICES_FRAMES, HUD_NOTICES_MASKED), "startup appends after the HUD stamps");
+static_assert(hud_notices == txt_work_accept_hint + sizeof("A ACCEPT  B BACK"), "HUD notice stamps append after every shipped WORK label");
+static_assert(startup == hud_notices + spriteBytes(HUD_NOTICES_WIDTH, HUD_NOTICES_HEIGHT, HUD_NOTICES_FRAMES, HUD_NOTICES_MASKED), "startup appends after the HUD notice stamp");
 static_assert(STARTUP_FRAMES == 2 && !STARTUP_MASKED, "two opaque startup frames");
 static_assert(txt_pump_survey == startup + spriteBytes(STARTUP_WIDTH, STARTUP_HEIGHT, STARTUP_FRAMES, STARTUP_MASKED), "survey labels append after startup");
 static_assert(txt_lift_survey == txt_pump_survey + sizeof("PUMP SURVEY"), "lift survey follows the pump survey");

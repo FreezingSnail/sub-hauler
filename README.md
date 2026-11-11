@@ -42,29 +42,29 @@ are intrinsic restoration work. There is one shipping build; the developer-only
 
 | Image | Flash | Static RAM |
 | --- | ---: | ---: |
-| FX fixed build | 28,702 B | 1,650 B |
-| Mini fixed build | 28,702 B | 1,650 B |
+| FX fixed build | 29,644 B | 1,665 B |
+| Mini fixed build | 29,644 B | 1,665 B |
 
-The image leaves 994 B under the 29,696 B hardware flash limit and 50 B of
+The image leaves **52 B** under the 29,696 B hardware flash limit and **35 B** of
 static headroom under the 1,700 B ceiling. AVR `game::State` is 77 B. Measured
-stack reserves are **703 B** for the exact production save chain and **626 B**
+stack reserves are **680 B** for the exact production save chain and **634 B**
 for the combined music probe, both above the 600 B target. The fixed native
-suite passes **246** host tests and **155** tooling tests; all **15** default
+suite passes **262** host tests and **158** tooling tests; all **15** default
 device suites print `P`, and the flight probe covers **842** complete frames at
-**11.440 ms maximum**, zero 16 ms misses, **gap=1 tick**, and zero audio
+**11.788 ms maximum**, zero 16 ms misses, **gap=1 tick**, and zero audio
 underruns/errors. `make gen-check` is deterministic. The latest generation
-produces 16 scenes, 41 cards and 89 frames in a **57,023 B** story blob; the
-FX payload/image are **667,863 / 672,000 B**, leaving **1,425,152 B** below
-2 MiB. The six archival ADPCM streams are no longer in the shipping layout;
-their `.bin` files, manifest and descriptors remain archival evidence.
+produces 17 scenes, 43 cards and 98 frames in a **61,365 B** story blob; the
+FX payload/image are **578,474 / 582,656 B**. The six archival ADPCM streams are
+no longer in the shipping layout; their `.bin` files, manifest and descriptors
+remain archival evidence.
 
 All story prose now comes from one editable UTF-8 source,
 [`story/scenes.json`](story/scenes.json); artwork is edited as one Piskel sheet,
 [`story/art.png`](story/art.png). See the [editing instructions](story/README.md).
 The packer wraps and paginates prose
 automatically into as many native text cards as needed, so long handoffs keep
-their full destinations, seal location and dispatch motivation. The sixteen
-scenes produce 41 cards and 89 frames from 17 shared 128×64 art scenes,
+their full destinations, seal location and dispatch motivation. The seventeen
+scenes produce 43 cards and 98 frames from 19 shared 128×64 art scenes,
 including six departure briefings, both joint-restoration variants and the
 mandatory lower-right DEEP RELAY result. Four
 `story-handoffs-v1` bundles replace the old departure placeholders. Survey decks play when
@@ -74,8 +74,9 @@ resumes after a reload until the ending-presented flag is committed. See
 save/replay semantics.
 The latest motion pass retains the original sub artwork, a separated cable break, a moving
 freight carriage and reel, a sweeping beacon and visible water circulation.
-The older static restoration cards remain appended in the cart as historical
-flash ABI but are no longer drawn.
+The older static restoration cards stopped being drawn before `sub-hauler-jxk.2`
+removed them from the packed cart; their generator, source sheets and docs
+preview remain archival.
 
 [Level encoding and behavior](levels/README.md) documents the packed 1-bit
 collision/chart planes and little-endian object records.

@@ -46,12 +46,13 @@ unchanged. Temporal tests check exact steady-speed travel, complete slow pixel
 intervals, stable hull framing, both vertical directions, monotonic settling,
 negative projections and far-world Q4 bounds.
 
-HUD control/notice rows are generated from the existing font and appended to
-the FX layout. One 128 B row read replaces repeated glyph transactions; values
-and priority remain dynamic. Actual AVR pixel comparisons cover the controls
-over varied backgrounds and all fifteen notice frames. Existing scene CRCs
-match. The slower outline and full-panel stamp experiments were discarded. At
-the camera checkpoint, FX payload/image were **2,010,726 / 2,014,976 B**;
+HUD notice rows are generated from the existing font and appended to the FX
+layout. One 128 B row read replaces repeated glyph transactions; values and
+priority remain dynamic. Actual AVR pixel comparisons cover all eleven shipped
+notice frames over varied backgrounds. The retired control row and three
+never-selected notice frames were removed by `sub-hauler-jxk.3`. Existing scene
+CRCs match. The slower outline and full-panel stamp experiments were discarded.
+At the camera checkpoint, FX payload/image were **2,010,726 / 2,014,976 B**;
 earlier asset offsets and the 4 KiB save section remain intact. Current totals
 are in [startup-splashes.md](startup-splashes.md).
 
