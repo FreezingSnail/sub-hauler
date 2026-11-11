@@ -1,10 +1,12 @@
-// Independent live-font reference for the native station board. The reference
-// composes labels and bars natively; the candidate is station_view::draw with
-// the same generated bark row. Compare complete frames.
+// Independent baked-stamp reference for the native station board. The
+// reference chooses the generated berth-name / row-label / bark frames and
+// composes bars natively; the candidate is station_view::draw. Compare
+// complete frames.
 #include <Arduboy2.h>
 #include <ArduboyFX.h>
 #include "src/common.hpp"
 #include "src/station_view.hpp"
+#include "src/generated/text_layout.hpp"
 
 Arduboy2Base arduboy;
 
@@ -26,10 +28,8 @@ void background(uint8_t value) {
         Arduboy2Base::sBuffer[i] = value;
 }
 
-void header(uint24_t title) {
-    text::normal();
-    text::at(station_view::kNameX, station_view::kHeaderY);
-    text::print(title);
+void header(uint8_t frame) {
+    text::stampFrame(img_berth_names, frame, station_view::kNameX, station_view::kHeaderY);
     station_view::drawBerthIcon(static_cast<uint8_t>(state.docked));
     arduboy.drawFastHLine(0, station_view::kDividerY, 128, WHITE);
     arduboy.drawFastVLine(0, static_cast<int16_t>(station_view::kDividerY - 2), 3, WHITE);
@@ -37,29 +37,27 @@ void header(uint24_t title) {
 }
 
 void stationReference(uint8_t selected) {
-    header(station_view::nameFor(state.docked));
+    header(station_view::nameFor(static_cast<uint8_t>(state.docked)));
     for (uint8_t row = 0; row < station::rowCount(state); ++row) {
         const uint8_t y = station_view::rowY(row);
         const station::RowKind kind = station::rowKind(row, state);
-        if (row == selected && kind != station::kRowJob) {
+        const bool highlighted = row == selected && kind != station::kRowJob;
+        if (highlighted)
             arduboy.fillRect(0, y, 128, station_view::kRowInvertH, WHITE);
-            text::inverted();
-        } else {
-            text::normal();
-        }
-        if (kind == station::kRowJob)
+        if (kind == station::kRowJob) {
             station_view::drawSummaryMark(y);
-        text::at(station_view::kRowX, y);
-        if (kind == station::kRowJob)
-            text::print(station_view::nameFor(state.activeJob.to));
-        else
-            text::print(station_view::rowLabel(row, state));
-        if (row == selected && kind != station::kRowJob)
+            text::stampFrame(img_berth_names, station_view::nameFor(state.activeJob.to), station_view::kRowX, y);
+        } else {
+            const uint8_t frame = static_cast<uint8_t>(station_view::rowLabel(row, state) +
+                                                       (highlighted ? text_layout::kRowLabelInvertedBase : 0));
+            text::stampFrame(img_row_labels, frame, station_view::kRowX, y);
+        }
+        if (highlighted)
             station_view::drawSelectionMark(y);
     }
-    text::normal();
-    text::at(station_view::kHintX, station_view::kBarkY);
-    text::print(station_view::dockBarkText(campaign::dockBark(state, static_cast<uint8_t>(state.docked))));
+    const uint8_t bark = station_view::dockBarkFrame(campaign::dockBark(state, static_cast<uint8_t>(state.docked)));
+    if (bark != campaign::kDockBarkNone)
+        text::stampFrame(img_dock_barks, bark, station_view::kHintX, station_view::kBarkY);
 }
 
 bool stationCheck(uint8_t row, uint8_t pattern) {
@@ -78,7 +76,6 @@ void setup() {
     delay(100);
     FX::begin(FX_DATA_PAGE);
     FX::setCursorRange(0, 32767);
-    text::begin();
     bool ok = true;
     uint16_t checks = 0;
     game::resetWorld(state);

@@ -54,12 +54,6 @@ static_assert(kThanksFrom2Y + kGlyphH <= kThanksKeepY, "thanks rows do not overl
 
 #include "common.hpp"
 
-inline void hint(uint24_t label) {
-    text::normal();
-    text::at(3, kHintY);
-    text::print(label);
-}
-
 inline void draw(uint8_t card, const game::State &) {
     if (card == kCardThanks)
         panel_view::draw(panel_ending_thanks);

@@ -93,11 +93,11 @@ input. See
 - The OLED and cart share SPI. Cart reads happen in update/render, never during
   an OLED transaction. The canonical display contract is in `docs/platform.md`.
 - Static menu screens compose once per input edge and skip the OLED
-  transaction while idle. The native station board uses a 7 px row pitch, so the
-  selection bar is a raw `fillRect` and the glyphs draw with background
-  disabled (bg == fg); the Arduboy font cell is 8 px plus 1 px line spacing and
-  an opaque background would paint through the next row. The generated
-  station/shop frames stay archival cart ABI only; no screen selects them.
+  transaction while idle. The native station board uses a 7 px row pitch and a
+  raw `fillRect` selection bar; every label is a baked 128x8 plus-mask FX stamp
+  (`text::stamp`/`stampFrame`), so no font draw or per-glyph cart read runs at
+  runtime. The generated station/shop frames stay archival cart ABI only; no
+  screen selects them.
 - Greyscale is not a shipping path: normal builds are native 1-bit, and
   `FRAME(x)` is the logical frame (`x`). `Blit::draw` reads headerless
   page-major plus-mask bytes.

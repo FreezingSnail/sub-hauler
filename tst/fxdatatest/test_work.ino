@@ -37,7 +37,6 @@ void setup() {
     delay(100);
     FX::begin(FX_DATA_PAGE);
     FX::setCursorRange(0, 32767);
-    text::begin();
 
     bool ok = true;
     game::State state;

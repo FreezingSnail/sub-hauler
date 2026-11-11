@@ -8,6 +8,7 @@
 #include "jobs.hpp"
 #include "campaign.hpp"
 #include "generated/exploration.hpp"
+#include "generated/text_layout.hpp"
 
 #if defined(__AVR__)
 
@@ -18,7 +19,7 @@
 #endif
 
 // The single WORK board. Pure row rules stay host-testable; the device draw is
-// below the __AVR__ boundary because it uses the external FX font.
+// below the __AVR__ boundary because it stamps baked FX text images.
 //
 // Story restoration jobs are listed in stable mission order. There are no
 // offer rows, no detail step, no deadline, no clock and no reward.
@@ -136,87 +137,59 @@ inline EquipmentClue equipmentClue(const game::State &state) {
 
 #if defined(__AVR__)
 
-// Branches, not a switch: the story labels would emit a RAM-resident CSWTCH
-// table. Survey rows use their own labels and never load cargo.
-inline uint24_t missionLabel(uint8_t mission) {
-    if (mission == campaign::kFirst)
-        return txt_first;
-    if (mission == campaign::kPumpSurvey)
-        return txt_pump_survey;
-    if (mission == campaign::kPump)
-        return txt_pump;
-    if (mission == campaign::kLiftSurvey)
-        return txt_lift_survey;
-    if (mission == campaign::kLift)
-        return txt_lift;
-    if (mission == campaign::kBeacon)
-        return txt_beacon;
-    if (mission == campaign::kHome)
-        return txt_home;
-    if (mission == campaign::kExpedition)
-        return txt_deep_relay;
+// Frame index for the STORY/CARRY composite sheets. Mission ids 0..7 map
+// directly; the VIEW ENDING row uses the final frame (kWorkEnding is outside
+// the frozen mission ids).
+inline uint8_t missionFrame(uint8_t mission) {
     if (mission == campaign::kWorkEnding)
-        return txt_view_ending;
-    return 0;
+        return static_cast<uint8_t>(text_layout::kMissionFrames - 1);
+    return mission;
 }
 
 // One PROGMEM dispatch shared with the station bark. The pure clue order is
 // fixed by docs/progression.md and tested on the host, including the empty-row
-// board case.
-inline uint24_t clueLabel(Clue clue) {
-    return station_view::dockBarkText(clue);
+// board case. The frame index is the raw campaign::DockBark value.
+inline uint8_t clueFrame(Clue clue) {
+    return static_cast<uint8_t>(clue);
 }
 
-inline uint24_t equipmentLabel(EquipmentClue clue) {
+// Equipment leads are individual img_txt_* stamps; 0 means no lead.
+inline uint24_t equipmentImage(EquipmentClue clue) {
+    uint24_t image = 0;
     if (clue == kEquipmentCutter)
-        return txt_cutter_rumor;
-    if (clue == kEquipmentSeal)
-        return txt_seal_rumor;
-    return 0;
+        image = img_txt_cutter_rumor;
+    else if (clue == kEquipmentSeal)
+        image = img_txt_seal_rumor;
+    return image;
 }
 
+// Full-row string stamps are baked with their glyph origin at x=3 and draw at
+// the cursor's x. Sheets (berth names, barks, row labels and composites) take
+// their exact screen position in stampFrame().
 inline void drawHeader(const game::State &state) {
-    text::normal();
-    text::at(2, 2);
-    text::print(station_view::nameFor(static_cast<uint8_t>(state.docked)));
-    text::character(' ');
-    text::print(txt_work);
+    text::stampFrame(img_berth_work, static_cast<uint8_t>(state.docked), 2, 2);
     arduboy.drawFastHLine(0, 11, 128, WHITE);
 }
 
 inline void drawActive(const game::State &state) {
-    text::normal();
-    text::at(kRowX, kRowY0);
-    text::print(txt_carrying);
-    text::character(' ');
-    text::print(missionLabel(state.activeJob.mission));
+    text::stampFrame(img_carry_row, missionFrame(state.activeJob.mission), kRowX, kRowY0);
 
     text::at(kRowX, static_cast<uint8_t>(kRowY0 + kRowStep));
-    text::print(txt_deliver_to);
-    text::at(kRowX, static_cast<uint8_t>(kRowY0 + 2 * kRowStep));
-    text::print(station_view::nameFor(state.activeJob.to));
+    text::stamp(img_txt_deliver_to);
+    text::stampFrame(img_berth_names, state.activeJob.to, kRowX, static_cast<uint8_t>(kRowY0 + 2 * kRowStep));
 
-    const uint24_t clue = clueLabel(clueFor(state, static_cast<uint8_t>(state.docked)));
-    if (clue) {
-        text::at(kRowX, kClueY);
-        text::print(clue);
-    }
+    const uint8_t clue = clueFrame(clueFor(state, static_cast<uint8_t>(state.docked)));
+    if (clue != campaign::kDockBarkNone)
+        text::stampFrame(img_dock_barks, clue, kRowX, kClueY);
     text::at(3, kHintY);
-    text::print(txt_back_hint);
+    text::stamp(img_txt_back_hint);
 }
 
 inline void drawStoryRow(uint8_t y, const Row &row, bool selected) {
-    if (selected) {
+    if (selected)
         arduboy.fillRect(0, y, 128, kRowInvertH, WHITE);
-        text::inverted();
-    } else {
-        text::normal();
-    }
-    text::at(kRowX, y);
-    text::print(txt_story);
-    text::character(' ');
-    text::print(missionLabel(row.mission));
-    text::normal();
+    const uint8_t frame = static_cast<uint8_t>(missionFrame(row.mission) + (selected ? text_layout::kStoryRowInvertedBase : 0));
+    text::stampFrame(img_story_row, frame, kRowX, y);
 }
 
 inline void draw(const game::State &state, uint8_t selected) {
@@ -235,15 +208,16 @@ inline void draw(const game::State &state, uint8_t selected) {
         // A completed repair can empty this berth before the next branch is
         // ready. Keep the persistent clue and the equipment lead visible so a
         // revisit never dead-ends on the back hint alone.
-        const uint24_t clue = clueLabel(clueFor(state, static_cast<uint8_t>(state.docked)));
-        const uint24_t equipment = clue ? 0 : equipmentLabel(equipmentClue(state));
-        const uint24_t lead = clue ? clue : equipment;
-        if (lead) {
+        const uint8_t clue = clueFrame(clueFor(state, static_cast<uint8_t>(state.docked)));
+        const uint24_t equipment = clue != campaign::kDockBarkNone ? 0 : equipmentImage(equipmentClue(state));
+        if (clue != campaign::kDockBarkNone) {
+            text::stampFrame(img_dock_barks, clue, 3, kClueY);
+        } else if (equipment) {
             text::at(3, kClueY);
-            text::print(lead);
+            text::stamp(equipment);
         }
         text::at(3, kHintY);
-        text::print(txt_back_hint);
+        text::stamp(img_txt_back_hint);
         return;
     }
     if (selected >= count)
@@ -261,16 +235,20 @@ inline void draw(const game::State &state, uint8_t selected) {
             drawStoryRow(y, row, index == selected);
     }
 
-    const uint24_t clue = clueLabel(clueFor(state, static_cast<uint8_t>(state.docked)));
-    const uint24_t hint = clue ? clue : equipmentLabel(equipmentClue(state));
-    if (hint) {
-        text::at(3, kClueY);
-        text::print(hint);
+    const uint8_t clue = clueFrame(clueFor(state, static_cast<uint8_t>(state.docked)));
+    if (clue != campaign::kDockBarkNone) {
+        text::stampFrame(img_dock_barks, clue, 3, kClueY);
+    } else {
+        const uint24_t equipment = equipmentImage(equipmentClue(state));
+        if (equipment) {
+            text::at(3, kClueY);
+            text::stamp(equipment);
+        }
     }
 
     text::at(3, kHintY);
     const uint8_t mission = rowAt(state, selected).mission;
-    text::print(mission == campaign::kPumpSurvey || mission == campaign::kLiftSurvey ? txt_survey_chart_hint : txt_work_accept_hint);
+    text::stamp(mission == campaign::kPumpSurvey || mission == campaign::kLiftSurvey ? img_txt_survey_chart_hint : img_txt_work_accept_hint);
 }
 
 #endif   // __AVR__

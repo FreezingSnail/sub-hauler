@@ -239,7 +239,6 @@ void setup() {
     arduboy.setFrameRate(60);
     FX::begin(FX_DATA_PAGE);
     FX::setCursorRange(0, 32767);
-    text::begin();
     music::begin();
     resetRun();
     if (!music::enabled())

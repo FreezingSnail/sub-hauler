@@ -350,7 +350,6 @@ void setup() {
     delay(100);
     FX::begin(FX_DATA_PAGE, FX_SAVE_PAGE);
     FX::setCursorRange(0, 32767);
-    text::begin();
 
     const uint16_t reserve = measureStackReserve();
 

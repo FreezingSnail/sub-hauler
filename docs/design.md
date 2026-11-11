@@ -159,13 +159,14 @@ presentation is drawn natively; the baked shop frames remain archival cart ABI
 and are never drawn. See [menu-flash-design.md](menu-flash-design.md). Current
 cart and firmware totals are in [platform.md](platform.md).
 
-All device text uses the external 6x8 FX font; `src/text.hpp` owns
-`FX::setFont`/`drawString`/`drawNumber` and switches to `dcmInvert` for selected
-menu rows. Strings are deduplicated in `fxdata/fxdata.txt`. The firmware uses
-`Arduboy2Base`, so the inherited `Print`/built-in-font path is not instantiated
-and the old font symbols are absent from the ELF. The external font keeps the
-same 6x8 cell and layout constants, so station rows stay at 7 px pitch and
-128x64 clipping is unchanged.
+All device text uses baked 128x8 plus-mask FX stamps (`sub-hauler-2va`);
+`src/text.hpp` owns `text::stamp`/`stampFrame` and `Blit::draw`, and the
+external 6x8 font plus `print`/`number`/`character` remain only for reference
+tests. Strings stay deduplicated in `fxdata/fxdata.txt` as the generator
+source. The firmware uses `Arduboy2Base`, so the inherited `Print`/built-in-font
+path is never instantiated; release code also drops the external font renderer.
+Stamps keep the same 6x8 cell and layout constants, so station rows stay at
+7 px pitch and 128x64 clipping is unchanged.
 
 The generated 26x8 plus-mask sheet contains only the playable HAULER art after
 `sub-hauler-jxk.1`; the retired MINNOW/LEVIATHAN fills remain in
@@ -271,19 +272,20 @@ live on the FX cart instead of in a second program-flash copy:
   first-card indices, card frames and card kinds in one contiguous blob.
   `tools/gen_story_beats.py` emits it; `src/story_view.hpp` reads one byte at a
   time on AVR and keeps the `constexpr` arrays for host tests only.
-- Dock-bark address table (`fxdata/tables/dock-barks.bin`, 284 B): sixteen
-  little-endian `uint16` offsets followed by the NUL-terminated bark text.
-  `tools/gen_dock_barks.py` owns the bark -> FX string mapping and validates it
-  against `campaign::DockBark` order; the station board and WORK clue read the
-  cart blob on AVR.
+- Baked text stamps (`fxdata/TextData.txt`, 58,774 B payload): every runtime
+  label is a two-frame 128x8 plus-mask image. `tools/gen_text_images.py` owns
+  the 6x8 glyph raster; the shared bark order lives in
+  `tools/dock_bark_table.py`. `Blit::draw` reads the headerless frames directly,
+  so the station board and WORK clue spend no font draw calls or per-glyph cart
+  reads.
 - Berth icons (`images/panels/berth_icons_16x8.png`, 130 B packed): eight 16x8
   opaque silhouettes authored in `tools/gen_panels.py`, packed into the panel
   sprite sheet and drawn with one `Blit::draw`.
 
-The external 6x8 font is already cart-resident and unchanged. None of these
-adds static SRAM or a display-transaction cart read; the debug NOCLIP text hint
-was removed in the same pass, so the developer image now fits the hardware
-limit.
+The external 6x8 font is still cart-resident for reference tests but no release
+code references its renderer. These additions add no static SRAM or a
+display-transaction cart read; the debug NOCLIP text hint was removed in the
+`sub-hauler-oad` pass, so the developer image fits the hardware limit.
 
 ## Arduboy fit
 

@@ -213,11 +213,12 @@ raw_t storyMeta = "../fxdata/tables/story-meta.bin"
 string txt_freight_yard = 'FREIGHT YARD'
 string txt_deep_relay = 'DEEP RELAY'
 
-// Cold dock-bark address table (sub-hauler-oad): 16 little-endian uint16
-// offsets followed by NUL-terminated bark text. The station board and WORK clue
-// read it directly from the cart. Appended at the end of the data layout before
-// the save partition; earlier FX offsets remain flash ABI.
-raw_t dockBarks = "../fxdata/tables/dock-barks.bin"
+// Baked 128x8 plus-mask text stamps (sub-hauler-2va). Every runtime label is a
+// static image now: production makes no font draw calls and the external font
+// renderer is garbage-collected from release flash. Individual img_txt_* rows
+// and the berth-name, dock-bark, row-label, STORY/CARRY and berth-WORK sheets
+// are packed by gen_sprites with a two-byte header (256 B frame stride).
+include "TextData.txt"
 
 // Fresh voyage checkpoints (sub-hauler-7px.24). This marker is not an asset
 // declaration: it starts the cart save partition. One 4 KiB erase block holds

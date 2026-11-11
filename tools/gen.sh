@@ -17,6 +17,8 @@ python3 tools/gen_sprites.py --input images/campaign --output fxdata/CampaignSpr
 python3 tools/gen_sprites.py --input images/pause --output fxdata/PauseSprites.txt --header src/generated/pause_sprites.hpp --shades 2
 python3 tools/gen_hud.py --output images/hud --fxdata fxdata/fxdata.txt
 python3 tools/gen_sprites.py --input images/hud --output fxdata/HudSprites.txt --header src/generated/hud_sprites.hpp --shades 2
+python3 tools/gen_text_images.py --output images/text --layout src/generated/text_layout.hpp
+python3 tools/gen_sprites.py --input images/text --output fxdata/TextData.txt --header src/generated/text_stamp_sprites.hpp --shades 2
 python3 tools/gen_splash.py
 python3 tools/gen_sprites.py --input images/splash --output fxdata/SplashSprites.txt --header src/generated/splash_sprites.hpp --shades 2
 python3 tools/gen_story_beats.py
