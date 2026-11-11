@@ -50,6 +50,7 @@ handling; note 18 depends on note 2.
 | 646.7 | `43508c3` | 160 ms music fades on cue/dock/story/pause. |
 | 646.18 | `9fe0526` | Removed 1.42 MB archival ADPCM from shipping cart. |
 | 646.6/12/13/15 | `1b77cc9` | Opening Benthos scene; relay briefing and HOME departure art. |
+| 646.8/9 | `e1f4d39` | Four cove wall landmarks + lens-cave texture; collision unchanged. |
 
 Integrated baseline after the wave: **29,652 / 29,696 B flash (44 free)**,
 **1,665 / 2,560 B static RAM**, story blob **61,365 B**, cart
