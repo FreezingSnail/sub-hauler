@@ -1,4 +1,4 @@
-.PHONY: help full gen gen-check gen-audio build mini size size-line run debug save-migrate test test-tools docs-check fxtest fxtest-flight fxtest-build fxtest-run clean format music-viewer music-viewer-build render-world
+.PHONY: help full gen gen-check gen-audio build mini size size-line run debug save-migrate test test-tools docs-check editor fxtest fxtest-flight fxtest-build fxtest-run clean format music-viewer music-viewer-build render-world
 
 # ----------------------------------------------------------------------------
 # Project
@@ -76,11 +76,12 @@ REGION_OUTPUTS := src/generated/music_regions.hpp fxdata/tables/music-regions.bi
 MUSIC_OUTPUTS := $(addprefix fxdata/music/sh_,harbor_bubbles.bin kelp_drift.bin sonar_lullaby.bin abyssal_glass.bin tidepool_waltz.bin bubblejet_run.bin) fxdata/music/manifest.json
 STORY_BEAT_INPUTS := tools/gen_story_beats.py story/scenes.json story/art.png
 STORY_BEAT_OUTPUTS := fxdata/tables/story-beats.bin fxdata/tables/story-meta.bin src/generated/story_beats.hpp docs/assets/first-beat-animation/frames.js tst/fxdatatest/story_frame_crc.hpp docs/assets/story-cards.png docs/assets/story-cards.json
-DOCK_BARK_INPUTS := tools/gen_dock_barks.py tools/dock_bark_table.py src/campaign.hpp src/station_view.hpp src/text.hpp fxdata/fxdata.txt
+DOCK_BARK_INPUTS := tools/gen_dock_barks.py tools/gen_text_images.py story/dock_hints.json src/campaign.hpp src/station_view.hpp src/text.hpp fxdata/fxdata.txt
 DOCK_BARK_OUTPUTS := docs/assets/dock-barks.js
-TEXT_STAMP_INPUTS := tools/gen_text_images.py tools/dock_bark_table.py tools/gen_font.py tools/gen_panels.py src/campaign.hpp fxdata/fxdata.txt
+STORY_EDITOR_OUTPUTS := docs/assets/story-editor/schema.js docs/assets/story-editor/missions.js
+TEXT_STAMP_INPUTS := tools/gen_text_images.py story/dock_hints.json tools/gen_font.py tools/gen_panels.py src/campaign.hpp fxdata/fxdata.txt
 TEXT_STAMP_OUTPUTS := src/generated/text_layout.hpp fxdata/TextData.txt src/generated/text_stamp_sprites.hpp
-FX_INPUTS     := $(IMAGES) fxdata/fxdata.txt tools/gen.sh tools/gen_sprites.py \
+FX_INPUTS     := $(IMAGES) $(PILOT_IMAGES) fxdata/fxdata.txt tools/gen.sh tools/gen_sprites.py \
                  tools/gen_hud.py images/hud/*.png \
                  tools/gen_splash.py images/splash/source/snailware_64x64.png images/splash/*.png \
                  tools/gen_panels.py images/panels/*.png images/campaign/*.png images/pause/*.png \
@@ -123,6 +124,8 @@ gen-check:
 	@mkdir -p $(BUILD_DIR)/gen-check/story-beats
 	@cp $(STORY_BEAT_OUTPUTS) $(BUILD_DIR)/gen-check/story-beats/
 	@cp docs/assets/dock-barks.js $(BUILD_DIR)/gen-check/dock-barks.js
+	@mkdir -p $(BUILD_DIR)/gen-check/story-editor
+	@cp $(STORY_EDITOR_OUTPUTS) $(BUILD_DIR)/gen-check/story-editor/
 	@mkdir -p $(BUILD_DIR)/gen-check/text
 	@cp images/text/*.png $(BUILD_DIR)/gen-check/text/
 	@cp fxdata/TextData.txt $(BUILD_DIR)/gen-check/TextData.txt
@@ -144,6 +147,7 @@ gen-check:
 	@cp images/pilot/hauler_26x8.png $(BUILD_DIR)/gen-check/hauler_26x8.png
 	@cp fxdata/PilotSprites.txt $(BUILD_DIR)/gen-check/PilotSprites.txt
 	@cp src/generated/pilot_sprites.hpp $(BUILD_DIR)/gen-check/pilot_sprites.hpp
+	@cp src/generated/pilot_host.hpp $(BUILD_DIR)/gen-check/pilot_host.hpp
 	@cp fxdata/PanelSprites.txt $(BUILD_DIR)/gen-check/PanelSprites.txt
 	@cp src/generated/panel_sprites.hpp $(BUILD_DIR)/gen-check/panel_sprites.hpp
 	@cp fxdata/StorySprites.txt $(BUILD_DIR)/gen-check/StorySprites.txt
@@ -175,6 +179,7 @@ gen-check:
 	@cmp -s images/pilot/hauler_26x8.png $(BUILD_DIR)/gen-check/hauler_26x8.png || { echo "gen-check: hauler art changed" >&2; exit 1; }
 	@cmp -s fxdata/PilotSprites.txt $(BUILD_DIR)/gen-check/PilotSprites.txt || { echo "gen-check: pilot sprite include changed" >&2; exit 1; }
 	@cmp -s src/generated/pilot_sprites.hpp $(BUILD_DIR)/gen-check/pilot_sprites.hpp || { echo "gen-check: pilot sprite header changed" >&2; exit 1; }
+	@cmp -s src/generated/pilot_host.hpp $(BUILD_DIR)/gen-check/pilot_host.hpp || { echo "gen-check: pilot host art changed" >&2; exit 1; }
 	@cmp -s fxdata/PanelSprites.txt $(BUILD_DIR)/gen-check/PanelSprites.txt || { echo "gen-check: panel sprite include changed" >&2; exit 1; }
 	@cmp -s src/generated/panel_sprites.hpp $(BUILD_DIR)/gen-check/panel_sprites.hpp || { echo "gen-check: panel sprite header changed" >&2; exit 1; }
 	@cmp -s fxdata/StorySprites.txt $(BUILD_DIR)/gen-check/StorySprites.txt || { echo "gen-check: story sprite include changed" >&2; exit 1; }
@@ -221,6 +226,8 @@ gen-check:
 	@cmp -s docs/assets/story-cards.png $(BUILD_DIR)/gen-check/story-beats/story-cards.png || { echo "gen-check: story card sheet changed" >&2; exit 1; }
 	@cmp -s docs/assets/story-cards.json $(BUILD_DIR)/gen-check/story-beats/story-cards.json || { echo "gen-check: story card map changed" >&2; exit 1; }
 	@cmp -s docs/assets/dock-barks.js $(BUILD_DIR)/gen-check/dock-barks.js || { echo "gen-check: dock bark preview changed" >&2; exit 1; }
+	@cmp -s docs/assets/story-editor/schema.js $(BUILD_DIR)/gen-check/story-editor/schema.js || { echo "gen-check: story editor schema changed" >&2; exit 1; }
+	@cmp -s docs/assets/story-editor/missions.js $(BUILD_DIR)/gen-check/story-editor/missions.js || { echo "gen-check: story editor mission data changed" >&2; exit 1; }
 	@for file in images/text/*.png; do \
 		cmp -s "$$file" "$(BUILD_DIR)/gen-check/text/$${file##*/}" || { echo "gen-check: $$file changed" >&2; exit 1; }; \
 	done
@@ -317,7 +324,12 @@ test-tools:
 
 docs-check:
 	python3 tools/check_docs.py
-	node --test tools/tests/story_animation.test.cjs
+	node --check docs/assets/story-editor/editor.js
+	node --test tools/tests/story_animation.test.cjs tools/tests/story_editor.test.cjs
+
+editor:
+	@printf '%s\n' "Story editor: http://localhost:8000/docs/story-editor.html"
+	python3 -m http.server 8000
 
 # ----------------------------------------------------------------------------
 # Device tests (Ardens serial capture)
@@ -426,6 +438,7 @@ help:
 		'  make test       host C++ tests (g++, no device required)' \
 		'  make test-tools Python tooling unittest suite' \
 		'  make docs-check local links, active selectors and story-preview tests' \
+		'  make editor     serve the local story text editor on port 8000' \
 		'  make fxtest     compile and run device suites through Ardens' \
 		'  make fxtest-save-chain  exact production save-chain stack/audio probe' \
 		'  make fxtest-flight  complete-flight timing/coverage probe with active music' \

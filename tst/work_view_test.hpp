@@ -132,29 +132,29 @@ inline void WorkViewSuite(TestRunner &runner) {
         state.surveys = campaign::kSurveyPump;   // lift survey still missing
         test.assertTrue(dockAt(state, campaign::kBenthos), "Benthos docks");
         test.assertEqual(work_view::rowCount(state), 0, "PUMP leaves Benthos with no row until the lift survey");
-        test.assertEqual(work_view::clueFor(state, campaign::kBenthos), work_view::kClueLiftSurvey, "empty Benthos board names the Freight Yard survey");
+        test.assertEqual(work_view::clueFor(state), work_view::kCluePump, "empty Benthos board names the open lift");
 
         state.campaign = static_cast<uint8_t>(campaign::kMilestoneFirst | campaign::kMilestoneLift);
         state.surveys = campaign::kSurveyLift;   // pump survey still missing
         test.assertTrue(dockAt(state, campaign::kCormorant), "Cormorant docks");
         test.assertEqual(work_view::rowCount(state), 0, "LIFT leaves Cormorant with no row until the pump survey");
-        test.assertEqual(work_view::clueFor(state, campaign::kCormorant), work_view::kCluePumpSurvey, "empty Cormorant board names Pump Refuge");
+        test.assertEqual(work_view::clueFor(state), work_view::kClueLift, "empty Cormorant board names the open pump");
 
         state.campaign = static_cast<uint8_t>(campaign::kMilestoneFirst | campaign::kMilestonePump | campaign::kMilestoneLift);
         state.surveys = campaign::kSurveyMask;
         state.tools = 0;
         test.assertEqual(work_view::rowCount(state), 0, "both repairs still need the seal");
-        test.assertEqual(work_view::clueFor(state, campaign::kCormorant), work_view::kClueBeaconNeedsSeal, "empty board names the seal");
+        test.assertEqual(work_view::clueFor(state), work_view::kClueBoth, "empty board names the sealed stage");
         state.tools = exploration_data::SEAL;
-        test.assertEqual(work_view::clueFor(state, campaign::kCormorant), work_view::kClueBeaconReady, "seal completes the beacon lead");
+        test.assertEqual(work_view::clueFor(state), work_view::kClueSeal, "seal completes the beacon lead");
 
-        test.assertEqual(work_view::clueFor(state, campaign::kDeepAnchor), work_view::kClueBeaconPlan, "Deep Anchor introduces the joint plan before BEACON");
+        test.assertEqual(work_view::clueFor(state), work_view::kClueSeal, "Deep Anchor sees the same sealed stage");
         state.campaign |= campaign::kMilestoneBeacon;
-        test.assertEqual(work_view::clueFor(state, campaign::kDeepAnchor), work_view::kClueDeepRelay, "Deep Anchor advertises the mandatory relay");
+        test.assertEqual(work_view::clueFor(state), work_view::kClueCore, "Deep Anchor advertises the mandatory relay");
         state.campaign |= campaign::kMilestoneExpedition;
-        test.assertEqual(work_view::clueFor(state, campaign::kDeepAnchor), work_view::kClueBeaconLit, "Deep Anchor reports the lit beacon after the relay");
+        test.assertEqual(work_view::clueFor(state), work_view::kClueRelay, "Deep Anchor reports the lit beacon after the relay");
         state.campaign |= campaign::kMilestoneHome;
-        test.assertEqual(work_view::clueFor(state, campaign::kTidewall), work_view::kClueNetworkOn, "Tidewall reports the restored network");
+        test.assertEqual(work_view::clueFor(state), work_view::kClueHome, "Tidewall reports the restored network");
 
         game::State fresh;
         game::reset(fresh);

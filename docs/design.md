@@ -168,13 +168,17 @@ path is never instantiated; release code also drops the external font renderer.
 Stamps keep the same 6x8 cell and layout constants, so station rows stay at
 7 px pitch and 128x64 clipping is unchanged.
 
-The generated 26x8 plus-mask sheet contains only the playable HAULER art after
-`sub-hauler-jxk.1`; the retired MINNOW/LEVIATHAN fills remain in
-`tools/gen_pilot.py` as archival provenance. Title and pilot share the HAULER
-frames through `Blit::draw`, preserving mirroring, masking, and draw order.
-`tools/gen_sprites.py` packs them into a separate include appended after every
-shipped FX symbol. The multi-hull selector is retired, so only the HAULER
-sprite call is compiled into device code.
+The authored HAULER sheet is `images/pilot/hauler_26x8.png`: four 26-px-wide
+frames (right empty, right loaded, left empty, left loaded). `gen_pilot.py`
+validates the palette and mirroring, trims transparent rows, and writes a
+normalized sheet to `build/gen/pilot/`; `gen_sprites.py` packs it into a plus-mask
+include. Art may be taller than the fixed 26x8 collision hull and is
+bottom-aligned, so the mast extends above the hull box. Host pixel tests use
+`src/generated/pilot_host.hpp` from the same normalized pixels, keeping one art
+source. Title and pilot share the frames through `Blit::draw`. The retired
+MINNOW/LEVIATHAN fills remain in `tools/gen_pilot.py` as archival provenance and
+are not packed. The multi-hull selector is retired, so only the HAULER sprite
+call is compiled into device code.
 
 Both additions were append-only at the time. The shipped `cargoBank` and the
 legacy `worldTiles`/`worldChart` tables are no longer packed after
@@ -272,12 +276,12 @@ live on the FX cart instead of in a second program-flash copy:
   first-card indices, card frames and card kinds in one contiguous blob.
   `tools/gen_story_beats.py` emits it; `src/story_view.hpp` reads one byte at a
   time on AVR and keeps the `constexpr` arrays for host tests only.
-- Baked text stamps (`fxdata/TextData.txt`, 58,774 B payload): every runtime
+- Baked text stamps (`fxdata/TextData.txt`): every runtime
   label is a two-frame 128x8 plus-mask image. `tools/gen_text_images.py` owns
-  the 6x8 glyph raster; the shared bark order lives in
-  `tools/dock_bark_table.py`. `Blit::draw` reads the headerless frames directly,
-  so the station board and WORK clue spend no font draw calls or per-glyph cart
-  reads.
+  the 6x8 glyph raster; the per-berth hint matrix lives in
+  `story/dock_hints.json` and is baked into `img_dock_barks`. `Blit::draw` reads
+  the headerless frames directly, so the station board and WORK clue spend no
+  font draw calls or per-glyph cart reads.
 - Berth icons (`images/panels/berth_icons_16x8.png`, 130 B packed): eight 16x8
   opaque silhouettes authored in `tools/gen_panels.py`, packed into the panel
   sprite sheet and drawn with one `Blit::draw`.

@@ -6,6 +6,7 @@
     "tile_height": 64,
     "poses": 4,
     "rows": [
+      "opening-voyage",
       "tidewall-filters",
       "arrival",
       "grow-tanks",
@@ -18,13 +19,14 @@
       "lift-cable",
       "lift-delivery-cable",
       "lift-delivery-working",
+      "seal-workshop",
       "restoration-ready",
       "cormorant-core",
       "beacon-lit",
-      "deep-relay",
-      "home-lights",
       "relay-briefing",
-      "home-departure"
+      "deep-relay",
+      "home-departure",
+      "home-lights"
     ]
   },
   "scenes": [
@@ -33,12 +35,12 @@
       "cards": [
         {
           "kind": "image",
-          "art": "arrival"
+          "art": "opening-voyage"
         },
         {
           "kind": "text",
           "paragraphs": [
-            "Dock at Benthos ahead for work."
+            "you've almost arrived at benthos, make berth and investigate for some work"
           ]
         }
       ],
@@ -54,7 +56,7 @@
         {
           "kind": "text",
           "paragraphs": [
-            "Deep Anchor is quiet. Its pump and Freight Yard lift are broken. Benthos needs Tidewall filters."
+            "Benthos put in an order for some filters for the grow tanks, we depend on those tanks for food"
           ]
         }
       ],
@@ -106,7 +108,7 @@
         {
           "kind": "text",
           "paragraphs": [
-            "At Pump Refuge, you hold position beside the pump."
+            "At Pump Refuge, you hold position beside the pump and peer down."
           ]
         },
         {
@@ -116,7 +118,7 @@
         {
           "kind": "text",
           "paragraphs": [
-            "The impeller is cracked. Replacement impeller: collect at Cormorant."
+            "The impeller is cracked, perhaps cormorant will have a replacement."
           ]
         }
       ],
@@ -132,7 +134,7 @@
         {
           "kind": "text",
           "paragraphs": [
-            "Load the impeller inside the hull. Deliver to Pump Refuge. Fit it at the pump."
+            "A replacement Impeller is stored in the hull, be quick we need the tanks online."
           ]
         }
       ],
@@ -148,7 +150,7 @@
         {
           "kind": "text",
           "paragraphs": [
-            "The pump turns again. Water flows. Grow room lights come on. Pump Refuge opens as a service berth."
+            "Water flows as the kelp begins to sway once more, food wont be an issue for a while."
           ]
         }
       ],
@@ -164,7 +166,7 @@
         {
           "kind": "text",
           "paragraphs": [
-            "At Freight Yard, you hold position beside the lift."
+            "At the Freight Yard, you hold position beside the lift."
           ]
         },
         {
@@ -174,7 +176,7 @@
         {
           "kind": "text",
           "paragraphs": [
-            "The cable is ruined. Replacement cable: collect at Benthos."
+            "The cable is ruined. A new spool will need to be brought down as a replacement."
           ]
         }
       ],
@@ -190,7 +192,7 @@
         {
           "kind": "text",
           "paragraphs": [
-            "Benthos supplies the replacement cable. Deliver to Freight Yard. Fit the cable at the lift."
+            "Loaded with a replacement cable spool, head back to the lift and restore the workyard."
           ]
         }
       ],
@@ -206,7 +208,7 @@
         {
           "kind": "text",
           "paragraphs": [
-            "The Freight Yard lift runs again. Workshop lights come on. Lower Gantry opens as a service berth."
+            "The freight lift lowers materials down to the work yard, you can resupply at the lower gantry now."
           ]
         }
       ],
@@ -217,12 +219,12 @@
       "cards": [
         {
           "kind": "image",
-          "art": "restoration-ready"
+          "art": "seal-workshop"
         },
         {
           "kind": "text",
           "paragraphs": [
-            "Both repairs are done. The core can be finished at Cormorant. Pressure seal: West Workshop."
+            "We have some work from deep anchor, but your sub needs a new pressure seal to make the trip"
           ]
         }
       ],
@@ -238,7 +240,7 @@
         {
           "kind": "text",
           "paragraphs": [
-            "Both repairs are done. The seal is aboard. Collect the beacon core at Cormorant."
+            "The pressure seal has been installed, prepare to head to the depths."
           ]
         }
       ],
@@ -254,7 +256,7 @@
         {
           "kind": "text",
           "paragraphs": [
-            "The dive ahead reaches Deep Anchor. The sealed hull carries the core. Its signal is limited. The network still needs a physical dispatch."
+            "With the pressure hull installed, the new beacon is loaded as you head for the depths of deep anchor."
           ]
         }
       ],
@@ -270,7 +272,7 @@
         {
           "kind": "text",
           "paragraphs": [
-            "Deep Anchor lights its beacon. The capsule windows glow in the dark."
+            "Deep Anchor lights its beacon, as the berth is lit once more in the dark cold depths."
           ]
         }
       ],
@@ -286,7 +288,7 @@
         {
           "kind": "text",
           "paragraphs": [
-            "Beacon hears a call. Lens locates buried relay. Cutter clears rock. Seal holds pressure. Thruster beats current."
+            "This reading is strange but we have no means to investigate.  We need you to travel to the sight and see."
           ]
         }
       ],
@@ -302,7 +304,7 @@
         {
           "kind": "text",
           "paragraphs": [
-            "DEEP RELAY FOUND."
+            "As you peer out the window you see rusted ancient and mysterious remains of what looks to be a long lost portal.\nIt's not clear what the remains led to, perhaps you will never know.  you'll leave that up to deep anchor to solve"
           ]
         }
       ],
@@ -318,7 +320,7 @@
         {
           "kind": "text",
           "paragraphs": [
-            "Take survey records and supplies from Deep Anchor to Tidewall."
+            "With the survey records loaded, and a new mystery found you make way back to where the journey started."
           ]
         }
       ],
@@ -334,7 +336,7 @@
         {
           "kind": "text",
           "paragraphs": [
-            "Tidewall answers. They know your hull. The network is lit. You can keep exploring."
+            "Tidewall knows your hull as you pull into the berth.  However they know not of the mystery you bring to them."
           ]
         }
       ],

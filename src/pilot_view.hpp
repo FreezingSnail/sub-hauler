@@ -7,21 +7,25 @@
 #include "game.hpp"
 #include "pilot.hpp"
 
+#include "generated/pilot_sprites.hpp"
+
 #if defined(__AVR__)
 #include "common.hpp"
-#include "generated/pilot_sprites.hpp"
+#else
+#include "generated/pilot_host.hpp"
 #endif
 
-// Pilot view: pure screen mapping and the 26x8 baked HAULER silhouette.
+// Pilot view: pure screen mapping and the baked HAULER silhouette.
 //
 // The sub is drawn at world position minus the camera's whole-pixel origin, so
 // it slides with the terrain at single-pixel granularity. Collision semantics
-// still use game::State.x/y and the 26x8 hull in pilot.hpp.
+// still use game::State.x/y and the 26x8 hull in pilot.hpp. Art may be taller
+// than the hull; it is bottom-aligned so a mast extends above the collision box.
 //
 // The device reads fixed plus-mask art from FX (right/left x unloaded/loaded).
-// The host keeps the equivalent procedural shape so the permanent pixel tests
-// stay pure C++. The retired Minnow/Leviathan sheets remain archival FX ABI and
-// are never referenced by device code.
+// The host uses the same normalized pixels from generated/pilot_host.hpp, so
+// permanent pixel tests exercise the authored art. The retired
+// Minnow/Leviathan sheets remain archival and are never referenced.
 //
 // No Arduino headers on the host path: tests draw into a plain page-major
 // buffer and inspect exact pixels. Device code passes Arduboy2Base::sBuffer.
@@ -53,78 +57,62 @@ inline cave::Camera cameraForState(const game::State &state) {
     return camera;
 }
 
+static_assert(HAULER_WIDTH == game::kHullW, "pilot art width must match the collision hull");
+static_assert(HAULER_HEIGHT >= game::kHullH, "pilot art must cover the collision hull");
+static_assert(HAULER_FRAMES == 4, "pilot sheet must hold right/left x empty/loaded frames");
+
 inline bool visible(int16_t left, int16_t top) {
     return left < cave::VIEW_WIDTH && top < cave::VIEW_HEIGHT && static_cast<int16_t>(left + game::kHullW) > 0 && static_cast<int16_t>(top + game::kHullH) > 0;
 }
 
+inline bool visibleArt(int16_t left, int16_t top) {
+    return left < cave::VIEW_WIDTH && top < cave::VIEW_HEIGHT && static_cast<int16_t>(left + HAULER_WIDTH) > 0 && static_cast<int16_t>(top + HAULER_HEIGHT) > 0;
+}
+
+// The art is bottom-aligned to the 26x8 collision hull, so any extra height
+// (the HAULER mast) hangs above the hull box.
+constexpr int16_t kArtAboveHull = HAULER_HEIGHT - game::kHullH;
+
 #if !defined(__AVR__)
-// Local-to-screen fill. Local x is mirrored around the hull centre when the
-// boat faces left, so the deckhouse, doors, and facing marks flip as one.
-inline void fillLocal(uint8_t *buffer, int16_t left, int16_t top, bool mirror, int16_t x, int16_t y, int16_t width, int16_t height, bool color) {
-    for (int16_t dy = 0; dy < height; ++dy) {
-        for (int16_t dx = 0; dx < width; ++dx) {
-            const int16_t localX = static_cast<int16_t>(x + dx);
-            const int16_t screenLocalX = mirror ? static_cast<int16_t>(game::kHullW - 1 - localX) : localX;
-            const int16_t px = static_cast<int16_t>(left + screenLocalX);
-            const int16_t py = static_cast<int16_t>(top + y + dy);
-            if (color)
-                cave::setPixel(buffer, px, py);
-            else
-                cave::clearPixel(buffer, px, py);
+inline void drawHauler(uint8_t *buffer, int16_t left, int16_t top, uint8_t frame) {
+    for (uint8_t page = 0; page < HAULER_ART_PAGES; ++page) {
+        for (uint8_t x = 0; x < HAULER_WIDTH; ++x) {
+            const uint8_t data = haulerHostData[frame][page][x];
+            const uint8_t mask = haulerHostMask[frame][page][x];
+            for (uint8_t bit = 0; bit < 8; ++bit) {
+                const uint8_t y = static_cast<uint8_t>(page * 8 + bit);
+                if (y >= HAULER_HEIGHT)
+                    break;
+                if ((mask >> bit) & 1u) {
+                    if ((data >> bit) & 1u)
+                        cave::setPixel(buffer, static_cast<int16_t>(left + x), static_cast<int16_t>(top + y));
+                    else
+                        cave::clearPixel(buffer, static_cast<int16_t>(left + x), static_cast<int16_t>(top + y));
+                }
+            }
         }
     }
 }
-
-// HAULER: cutscene-style rounded pod. The host reference shape mirrors the
-// baked FX sheet one-for-one: stern fin, wheelhouse toward the bow, three
-// portholes, a stern thruster notch, and an amidships cargo hold that fills
-// with freight when loaded.
-inline void drawHauler(uint8_t *buffer, int16_t left, int16_t top, bool mirror, bool loaded) {
-    fillLocal(buffer, left, top, mirror, 14, 0, 4, 1, true);
-    fillLocal(buffer, left, top, mirror, 6, 1, 16, 1, true);
-    fillLocal(buffer, left, top, mirror, 2, 2, 2, 1, true);
-    fillLocal(buffer, left, top, mirror, 3, 2, 22, 1, true);
-    fillLocal(buffer, left, top, mirror, 1, 3, 25, 1, true);
-    fillLocal(buffer, left, top, mirror, 0, 4, 26, 1, true);
-    fillLocal(buffer, left, top, mirror, 0, 5, 26, 1, true);
-    fillLocal(buffer, left, top, mirror, 2, 6, 23, 1, true);
-    fillLocal(buffer, left, top, mirror, 5, 7, 17, 1, true);
-
-    fillLocal(buffer, left, top, mirror, 14, 1, 4, 1, false);
-    fillLocal(buffer, left, top, mirror, 9, 4, 1, 1, false);
-    fillLocal(buffer, left, top, mirror, 12, 4, 1, 1, false);
-    fillLocal(buffer, left, top, mirror, 15, 4, 1, 1, false);
-    fillLocal(buffer, left, top, mirror, 1, 4, 1, 1, false);
-    fillLocal(buffer, left, top, mirror, 8, 5, 6, 2, false);
-
-    if (loaded) {
-        fillLocal(buffer, left, top, mirror, 8, 5, 6, 2, true);
-        fillLocal(buffer, left, top, mirror, 8, 5, 1, 2, false);
-        fillLocal(buffer, left, top, mirror, 13, 5, 1, 2, false);
-    }
-}
-
 #endif   // !__AVR__
 
-// Draw the HAULER body at a footprint origin. Title and pilot share this exact
-// art, so the silhouette is identical wherever it appears. Nothing is drawn
-// outside local x 0..25, y 0..7.
+// Draw the HAULER body at the art origin. Title and pilot share this exact art,
+// so the silhouette is identical wherever it appears.
 inline void drawAt(uint8_t *buffer, int16_t left, int16_t top, bool mirror, bool loaded) {
+    const uint8_t frame = static_cast<uint8_t>((mirror ? 2 : 0) + (loaded ? 1 : 0));
 #if defined(__AVR__)
     (void)buffer;
-    const uint16_t frame = static_cast<uint16_t>((mirror ? 2 : 0) + (loaded ? 1 : 0));
     Blit::draw(left, top, HAULER_WIDTH, HAULER_HEIGHT, hauler + 2, frame, Blit::PLUSMASK);
 #else
-    drawHauler(buffer, left, top, mirror, loaded);
+    drawHauler(buffer, left, top, frame);
 #endif
 }
 
-// Draw the HAULER centred on the state position. The footprint is the 26x8
-// collision hull; the state hull byte is a frozen save field, not a selector.
+// Draw the HAULER with its 26x8 collision hull on the state position. The state
+// hull byte is a frozen save field, not a selector.
 inline void draw(uint8_t *buffer, const game::State &state, const cave::Camera &camera) {
     const int16_t left = static_cast<int16_t>(screenX(state, camera) - game::kHullHalfW);
-    const int16_t top = static_cast<int16_t>(screenY(state, camera) - game::kHullHalfH);
-    if (!visible(left, top))
+    const int16_t top = static_cast<int16_t>(screenY(state, camera) - game::kHullHalfH - kArtAboveHull);
+    if (!visibleArt(left, top))
         return;
 
     drawAt(buffer, left, top, state.facingLeft, state.cargo > 0);

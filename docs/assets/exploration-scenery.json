@@ -149,8 +149,8 @@
       "room": "W",
       "kind": "cutter-tender",
       "mount": "wall",
-      "x": 136,
-      "y": 230
+      "x": 92,
+      "y": 250
     },
     {
       "id": "thruster-cove-pod",
@@ -165,16 +165,16 @@
       "room": "CW",
       "kind": "workshop-lock",
       "mount": "wall",
-      "x": 1176,
-      "y": 660
+      "x": 1124,
+      "y": 688
     },
     {
       "id": "lens-cove-array",
       "room": "DL",
       "kind": "trench-lens",
       "mount": "wall",
-      "x": 288,
-      "y": 588
+      "x": 244,
+      "y": 620
     }
   ],
   "ambient": {
@@ -185,7 +185,7 @@
     "lens": 4
   },
   "white_pixels": 10421,
-  "rock_pixels": 43530,
+  "rock_pixels": 43591,
   "settlements": [
     {
       "id": 0,

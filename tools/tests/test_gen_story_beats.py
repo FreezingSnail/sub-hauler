@@ -23,7 +23,7 @@ class StoryBeatGenerationTest(unittest.TestCase):
         cls.layout = gen.build_layout(cls.document, gen.SOURCE)
         cls.blob = cls.layout["blob"]
         cls.frames = cls.layout["frames"]
-        cls.offsets = [int.from_bytes(cls.blob[index:index + 2], "little") for index in range(0, cls.frames * 2, 2)]
+        cls.offsets = [int.from_bytes(cls.blob[index:index + 3], "little") for index in range(0, cls.frames * 3, 3)]
 
     def frame(self, index):
         start = self.offsets[index]
@@ -35,14 +35,16 @@ class StoryBeatGenerationTest(unittest.TestCase):
         self.assertEqual(self.scenes[0]["name"], "opening-benthos")
         self.assertEqual(self.scenes[1]["name"], "first-departure")
         self.assertEqual(self.scenes[-1]["name"], "home-result")
-        self.assertEqual(self.document["art"]["rows"][0], "tidewall-filters")
+        image_order = [card["art"] for scene in self.scenes for card in scene["cards"] if card["kind"] == "image"]
+        self.assertEqual(self.document["art"]["rows"], image_order)
+        self.assertEqual(len(image_order), len(set(image_order)))
         reordered = dict(self.document, scenes=list(reversed(self.scenes)))
         self.assertEqual(gen.build_layout(reordered)["blob"], self.blob)
         self.assertEqual(len(self.scenes), 17)
         self.assertEqual(self.layout["image_cards"], 21)
         self.assertEqual(self.layout["text_cards"], 22)
-        self.assertEqual(self.layout["images"], 19)
-        self.assertEqual(self.frames, 98)
+        self.assertEqual(self.layout["images"], 21)
+        self.assertEqual(self.frames, 106)
 
     def test_card_kinds_come_from_source_not_alternation(self):
         for scene in self.layout["preview_scenes"]:
@@ -127,21 +129,18 @@ class StoryBeatGenerationTest(unittest.TestCase):
         with self.assertRaisesRegex(gen.StoryError, "frame count"):
             gen.build_layout(dict(self.document, scenes=[too_many_frames]), gen.SOURCE)
 
-    def test_review_narrative_corrections_are_in_the_source(self):
-        text = self.source_text.upper()
-        scene_text = {scene["name"]: " ".join(p for card in scene["cards"]
-                      if card["kind"] == "text" for p in card["paragraphs"]).upper()
-                      for scene in self.scenes}
-        first_result = scene_text["first-result"]
-        first_departure = scene_text["first-departure"]
-        self.assertIn("CORMORANT FREIGHT", first_result)
-        self.assertIn("FREIGHT YARD", first_departure)
-        self.assertIn("REPLACEMENT IMPELLER: COLLECT AT CORMORANT", text)
-        self.assertIn("REPLACEMENT CABLE: COLLECT AT BENTHOS", text)
-        self.assertIn("PRESSURE", text)
-        self.assertIn("WEST WORKSHOP", text)
-        self.assertIn("PHYSICAL", text)
-        self.assertIn("DISPATCH", text)
+    def test_every_source_paragraph_survives_pagination(self):
+        preview = {scene["id"]: scene for scene in self.layout["preview_scenes"]}
+        for scene in self.scenes:
+            pages = [card["copy"] for card in preview[scene["name"]]["cards"]
+                     if card["kind"] == "text"]
+            combined = " ".join(" ".join(copy.split()) for copy in pages)
+            for card in scene["cards"]:
+                if card["kind"] != "text":
+                    continue
+                for paragraph in card["paragraphs"]:
+                    expected = " ".join(gen.normalize_prose(paragraph, gen.SOURCE, scene["name"]).split())
+                    self.assertIn(expected, combined)
 
     def test_canonical_sheet_covers_every_referenced_image(self):
         rows = self.document["art"]["rows"]
@@ -163,8 +162,8 @@ class StoryBeatGenerationTest(unittest.TestCase):
         sheet.putpixel((0, y), 0 if sheet.getpixel((0, y)) else 255)
         layout = gen.build_layout(self.document, sheet_image=sheet)
         # Packed frame zero remains arrival, regardless of the editing-sheet row.
-        first = int.from_bytes(layout["blob"][:2], "little")
-        end = int.from_bytes(layout["blob"][2:4], "little")
+        first = int.from_bytes(layout["blob"][:3], "little")
+        end = int.from_bytes(layout["blob"][3:6], "little")
         before = gen.rle_decode(self.frame(0))
         after = gen.rle_decode(layout["blob"][first:end])
         self.assertEqual(after[0], before[0] ^ 1)
@@ -207,7 +206,7 @@ class StoryBeatGenerationTest(unittest.TestCase):
             gen.parse_source('{')
 
     def test_blob_offsets_and_frame_count_match_the_generated_header(self):
-        self.assertEqual(self.offsets[0], self.frames * 2)
+        self.assertEqual(self.offsets[0], self.frames * 3)
         self.assertEqual(self.offsets, sorted(self.offsets))
         self.assertLess(self.offsets[-1], len(self.blob) - gen.RLE_PAD)
         self.assertEqual((ROOT / "fxdata/tables/story-beats.bin").read_bytes(), self.blob)
@@ -284,8 +283,8 @@ class StoryBeatGenerationTest(unittest.TestCase):
         self.assertIn("STORY_CARD_COUNT = 43", header)
         self.assertIn("STORY_IMAGE_CARD_COUNT = 21", header)
         self.assertIn("STORY_TEXT_CARD_COUNT = 22", header)
-        self.assertIn("STORY_IMAGE_COUNT = 19", header)
-        self.assertIn("STORY_FRAME_COUNT = 98", header)
+        self.assertIn("STORY_IMAGE_COUNT = 21", header)
+        self.assertIn("STORY_FRAME_COUNT = 106", header)
         self.assertIn("STORY_SCENE_FIRST_RESULT = 1", header)
         self.assertIn("STORY_SCENE_HOME_DEPARTURE = 14", header)
         self.assertIn("STORY_SCENE_EXPEDITION_RESULT = 15", header)

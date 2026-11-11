@@ -222,12 +222,13 @@ inline void decode(uint24_t source, uint8_t *dest) {
     }
 }
 
-inline uint16_t frameOffset(uint8_t frame) {
-    uint8_t bytes[2];
-    const uint24_t address = storyBeats + static_cast<uint24_t>(frame) * 2;
+inline uint24_t frameOffset(uint8_t frame) {
+    uint8_t bytes[3];
+    const uint24_t address = storyBeats + static_cast<uint24_t>(frame) * 3;
     cartService();
-    FX::readDataBytes(address, bytes, 2);
-    return static_cast<uint16_t>(bytes[0]) | (static_cast<uint16_t>(bytes[1]) << 8);
+    FX::readDataBytes(address, bytes, 3);
+    return static_cast<uint24_t>(bytes[0]) | (static_cast<uint24_t>(bytes[1]) << 8) |
+           (static_cast<uint24_t>(bytes[2]) << 16);
 }
 
 inline void drawFrame(uint8_t frame) {

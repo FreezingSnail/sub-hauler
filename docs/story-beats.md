@@ -1,11 +1,16 @@
 # Story source, cards and handoffs — 2026-11-03
 
-The shipping story has two canonical editing sources:
+The local [story editor](story-editor.html) edits text in place and writes the
+canonical JSON through browser file handles. The shipping story sources are:
 
 - [`story/scenes.json`](../story/scenes.json): scene order, titles, paragraph
   text, image references and sprite-sheet row names.
+- [`story/missions.json`](../story/missions.json): mission summaries, sequence
+  intent and fixed scene grouping.
+- [`story/dock_hints.json`](../story/dock_hints.json): one berth hint at each
+  completion point.
 - [`story/art.png`](../story/art.png): one opaque black/white artwork sheet,
-  **512×1216 pixels**, with nineteen rows of four 128×64 animation poses.
+  **512×1344 pixels**, with twenty-one rows of four 128×64 animation poses.
 
 The [authoring instructions](../story/README.md) describe the JSON format and
 Piskel import/export settings. Pixelgen bundles remain historical provenance;
@@ -20,12 +25,12 @@ the generator reads the editable sheet directly, not those original frames.
    for every card in one image. [Its row map](assets/story-cards.json) identifies
    the scene and card on each row.
 
-The same sketchbook ends with a read-only dock-bark preview: every berth's
-station-board line at each saved progression checkpoint, drawn at the native
-6×8 bark row. `make gen` writes `docs/assets/dock-barks.js` from the shared
-`tools/dock_bark_table.py` mapping (validated against `campaign::DockBark`) and
-the shipped FX strings, then bakes the same order into the `img_dock_barks`
-stamp sheet. The page never writes a canonical source.
+The same sketchbook ends with a read-only dock-hint preview: every berth's
+station-board line at each saved completion point, drawn at the native 6×8 bark
+row. `story/dock_hints.json` is the human-editable source; `make gen` validates
+it against `campaign::Berth` and `campaign::DockPoint`, writes
+`docs/assets/dock-barks.js`, and bakes the same lines into the
+`img_dock_barks` FX stamp sheet. The page never writes a canonical source.
 
 The generator never overwrites the two canonical editing sources. Prose is
 stored as paragraph strings. It wraps on word boundaries at twenty columns,
@@ -78,11 +83,11 @@ The scene inventory is:
 | HOME departure | Physical survey records and return supplies loaded at Deep Anchor for Tidewall; unique loaded-sub art |
 | HOME result | Tidewall welcome and restored network |
 
-The current source produces **43 cards** (21 image, 22 text) and **98 frames**
-from **19 shared images**. The opening scene reuses `arrival`; the DEEP RELAY
-acceptance and HOME departure append the two new rows. DEEP RELAY departure and
-result no longer share an image, and HOME departure no longer reuses the
-PUMP-pickup cargo art. Text-only overflow creates adjacent pages rather than
+The current source produces **43 cards** (21 image, 22 text) and **106 frames**
+from **21 shared images**. The opening scene uses its own `opening-voyage` row;
+the DEEP RELAY acceptance and HOME departure append their own rows. DEEP RELAY
+departure and result no longer share an image, and HOME departure no longer
+reuses the PUMP-pickup cargo art. Text-only overflow creates adjacent pages rather than
 truncation. Shared images are still packed once. The `story-handoffs-v1`
 scenes replace the old departure placeholders; `beacon-descent` and
 `home-return` are omitted from the active blob, while `delivery-loading` and
@@ -117,7 +122,8 @@ scenes replace the old departure placeholders; `beacon-descent` and
 
 `make gen` writes:
 
-- `fxdata/tables/story-beats.bin` — packed RLE card frames and offset table;
+- `fxdata/tables/story-beats.bin` — packed RLE card frames and a little-endian
+  24-bit frame offset table;
 - `src/generated/story_beats.hpp` — scene/card counts, scene ids, card kinds,
   first-frame map and compatibility aliases;
 - `tst/fxdatatest/story_frame_crc.hpp` — device frame CRC reference;
@@ -222,11 +228,11 @@ remain archival evidence only.
 - HOME departure (ID 14) now uses the appended `home-departure` row (loaded sub
   leaving Deep Anchor); `delivery-loading` remains PUMP pickup only.
 
-The canonical sheet is **512×1216**, nineteen rows and 76 poses. The source
-produces **17 scenes, 43 cards** (21 image, 22 text) and **98 frames** from
-**19 shared images**. The packed story blob is **61,365 B**; the FX payload is
-**672,205 B** and the padded image is **676,352 B**, leaving **1,420,800 B**
-below 2 MiB. `storyBeats = 0x095200` and `FX_SAVE_PAGE = 0xFFF0` are unchanged.
+The canonical sheet is **512×1344**, twenty-one rows and 84 poses. The source
+produces **17 scenes, 43 cards** (21 image, 22 text) and **106 frames** from
+**21 shared images**. The packed story blob is **65,495 B**; the FX payload is
+**656,501 B** and the padded image is **660,736 B**, leaving **1,436,416 B**
+below 2 MiB. `storyBeats = 0x07E45A` and `FX_SAVE_PAGE = 0xFFF0` are unchanged.
 
 Fresh checks: `make gen-check` deterministic; host **264/264**, tooling
 **157/157**, docs links/selectors and **8** browser preview tests pass.
@@ -236,3 +242,22 @@ Continue skip and cold reload with a **10,752 µs** maximum. FX firmware is
 generated with pixelgen, `check`/`replay` matched, and the two rows plus the
 opening deck have native-size previews under `build/worker-story/`. Human art
 review and a physical playthrough are not claimed.
+
+## 24-bit frame offsets — 2026-11-11
+
+The refreshed art and prose pushed the packed deck past the 16-bit offset
+ceiling (67,330 B before padding). `fxdata/tables/story-beats.bin` now starts
+with **106 little-endian 24-bit frame offsets** (318 B) followed by the RLE
+frames; `story_view::frameOffset` reads three bytes and returns `uint24_t`.
+The blob is **67,468 B** including the 32 B RLE pad. Canonical inputs remain
+`story/scenes.json` and `story/art.png`.
+
+`make gen` output: **17 scenes, 43 cards** (21 image, 22 text), **106 frames**
+from **21 shared images**. FX payload/image are **658,682 / 662,784 B**,
+**1,434,368 B** below 2 MiB; `storyBeats = 0x07E52A`,
+`storyMeta = 0x08ECB6`, `FX_DATA_PAGE = 0xF5E3` and
+`FX_SAVE_PAGE = 0xFFF0` unchanged. `make gen-check` is deterministic; host
+**264/264**, tooling **181/181** and docs **18/18** Node tests pass.
+`test_boot` and `test_story` pass; `test_story` decodes all **106** frame CRCs
+with a **10,772 µs** maximum. FX and Mini firmware are **27,784 B flash /
+1,655 B static**. Human art review and a physical playthrough are not claimed.

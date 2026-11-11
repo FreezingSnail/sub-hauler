@@ -1,3 +1,4 @@
+import copy
 import re
 import sys
 import unittest
@@ -8,7 +9,6 @@ from PIL import Image
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "tools"))
 import gen_text_images as gen
-from dock_bark_table import DOCK_BARK_TEXT
 
 
 class TextStampGenerationTest(unittest.TestCase):
@@ -16,6 +16,7 @@ class TextStampGenerationTest(unittest.TestCase):
     def setUpClass(cls):
         cls.strings = gen.load_strings(gen.FXDATA)
         cls.campaign = gen.CAMPAIGN.read_text(encoding="utf-8")
+        cls.dock_hints = gen.load_dock_hints()
         cls.rows, cls.layout = gen.build()
 
     def image(self, name):
@@ -65,15 +66,15 @@ class TextStampGenerationTest(unittest.TestCase):
             gen.stamp_image(self.strings["txt_station"], 0).tobytes(),
         )
 
-    def test_dock_barks_share_the_bark_table(self):
+    def test_dock_barks_share_the_json_matrix(self):
         image = self.image("img_dock_barks")
-        self.assertEqual(image.width // 128, len(DOCK_BARK_TEXT))
-        for index, (_name, symbol) in enumerate(DOCK_BARK_TEXT):
-            text = "" if symbol is None else self.strings[symbol]
+        texts = [""] + gen.dock_hint_texts(self.campaign, self.dock_hints)
+        self.assertEqual(image.width // 128, len(texts))
+        for index, text in enumerate(texts):
             self.assertEqual(
                 image.crop((index * 128, 0, (index + 1) * 128, 8)).tobytes(),
                 gen.stamp_image(text, 0).tobytes(),
-                symbol,
+                index,
             )
 
     def test_row_story_carry_and_work_composites(self):
@@ -113,10 +114,25 @@ class TextStampGenerationTest(unittest.TestCase):
                 gen.stamp_image(text + " WORK", 0).tobytes(),
             )
 
+    def test_dock_hint_validation_allows_duplicates_and_rejects_overlong_lines(self):
+        duplicate = copy.deepcopy(self.dock_hints)
+        duplicate["berths"]["benthos"]["fresh"] = duplicate["berths"]["tidewall"]["fresh"]
+        texts = gen.dock_hint_texts(self.campaign, duplicate)
+        self.assertEqual(len(texts), 72)
+        self.assertEqual(texts.count(duplicate["berths"]["tidewall"]["fresh"]), 2)
+
+        overlong = copy.deepcopy(self.dock_hints)
+        overlong["berths"]["tidewall"]["fresh"] = "X" * 21
+        with self.assertRaises(ValueError):
+            gen.dock_hint_texts(self.campaign, overlong)
+
     def test_layout_constants_track_the_generated_frames(self):
         counts = {name: image.width // 128 for name, image in self.rows}
         self.assertIn("kBerthNameFrames = {}".format(counts["img_berth_names"]), self.layout)
         self.assertIn("kDockBarkFrames = {}".format(counts["img_dock_barks"]), self.layout)
+        self.assertIn("kDockBarkBerths = 8", self.layout)
+        self.assertIn("kDockBarkPoints = 9", self.layout)
+        self.assertIn("constexpr uint8_t dockBarkFrame", self.layout)
         self.assertIn("kRowLabelFrames = {}".format(counts["img_row_labels"]), self.layout)
         self.assertIn("kStoryRowFrames = {}".format(counts["img_story_row"]), self.layout)
         self.assertIn("kMissionFrames = {}".format(len(gen.MISSION_STRINGS)), self.layout)

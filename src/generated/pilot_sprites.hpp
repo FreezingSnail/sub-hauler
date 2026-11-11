@@ -4,6 +4,6 @@
 #include <stdint.h>
 
 constexpr uint8_t HAULER_WIDTH  = 26;
-constexpr uint8_t HAULER_HEIGHT = 8;
+constexpr uint8_t HAULER_HEIGHT = 12;
 constexpr uint8_t HAULER_FRAMES = 4;
 constexpr bool    HAULER_MASKED = true;

@@ -8,8 +8,9 @@
 #include "generated/text_layout.hpp"
 
 // The runtime station board is native: the row rules below own the live
-// WORK/UNDOCK and summary/WORK/UNDOCK shapes. The retired generated menu
-// frames and hint rows are no longer packed (sub-hauler-jxk.2).
+// WORK/UNDOCK and summary/WORK/UNDOCK shapes. Story/dock_hints.json supplies
+// one unique pre-rendered line per berth at every campaign::DockPoint; the
+// retired generated menu frames are no longer packed (sub-hauler-jxk.2).
 
 #if defined(__AVR__)
 #include "common.hpp"
@@ -74,6 +75,8 @@ static_assert(kIconX + kIconW <= 128, "header icon fits inside the display");
 static_assert(kIconY + kIconH <= kDividerY, "header icon stays above the divider");
 static_assert(kSummaryMarkX + kSummaryMarkW <= kRowX, "summary marker leaves the row label clear");
 static_assert(kSelectMarkX + kSelectMarkW <= 128, "selection marker stays inside the display");
+static_assert(text_layout::kDockBarkBerths == campaign::kBerthCount, "dock hints cover every berth");
+static_assert(text_layout::kDockBarkPoints == campaign::kDockPointCount, "dock hints cover every progression point");
 
 #if defined(__AVR__)
 
@@ -97,12 +100,11 @@ inline uint8_t rowLabel(uint8_t row, const game::State &state) {
     return 0;
 }
 
-// One shared bark order: the pure campaign selector chooses a candidate, and
-// both the station board and the WORK clue stamp the same `img_dock_barks`
-// frame. Frame index is the raw campaign::DockBark value; index 0 means no
-// bark and is never drawn.
-inline uint8_t dockBarkFrame(campaign::DockBark bark) {
-    return static_cast<uint8_t>(bark);
+// One shared bark order: the pure campaign selector chooses the progression
+// point, and both the station board and the WORK clue stamp the matching
+// berth frame. Frame 0 is empty; every valid berth/point owns a unique frame.
+inline uint8_t dockBarkFrame(uint8_t berth, campaign::DockPoint point) {
+    return text_layout::dockBarkFrame(berth, static_cast<uint8_t>(point));
 }
 
 // Berth silhouettes are 16x8 opaque icons packed by gen_sprites into the
@@ -162,10 +164,11 @@ inline void draw(const game::State &state, uint8_t selected) {
             drawSelectionMark(y);
     }
 
-    // One-line baked bark: guidance for the next reachable step. It replaces
-    // the retired generated control hint; B still undocks and A still confirms.
-    const uint8_t bark = dockBarkFrame(campaign::dockBark(state, static_cast<uint8_t>(state.docked)));
-    if (bark != campaign::kDockBarkNone)
+    // One-line baked bark: this berth's unique copy at the current progression
+    // point. It replaces the retired generated control hint; B still undocks
+    // and A still confirms.
+    const uint8_t bark = dockBarkFrame(static_cast<uint8_t>(state.docked), campaign::dockPoint(state));
+    if (bark != 0)
         text::stampFrame(img_dock_barks, bark, kHintX, kBarkY);
 }
 

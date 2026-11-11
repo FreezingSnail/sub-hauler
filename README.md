@@ -53,18 +53,21 @@ suite passes **262** host tests and **158** tooling tests; all **15** default
 device suites print `P`, and the flight probe covers **842** complete frames at
 **11.788 ms maximum**, zero 16 ms misses, **gap=1 tick**, and zero audio
 underruns/errors. `make gen-check` is deterministic. The latest generation
-produces 17 scenes, 43 cards and 98 frames in a **61,365 B** story blob; the
-FX payload/image are **578,474 / 582,656 B**. The six archival ADPCM streams are
+produces 17 scenes, 43 cards and 106 frames in a **67,468 B** story blob; the
+FX payload/image are **658,682 / 662,784 B**. The six archival ADPCM streams are
 no longer in the shipping layout; their `.bin` files, manifest and descriptors
 remain archival evidence.
 
-All story prose now comes from one editable UTF-8 source,
-[`story/scenes.json`](story/scenes.json); artwork is edited as one Piskel sheet,
-[`story/art.png`](story/art.png). See the [editing instructions](story/README.md).
-The packer wraps and paginates prose
+Story prose comes from editable UTF-8 JSON:
+[`story/scenes.json`](story/scenes.json) for scene text and
+[`story/missions.json`](story/missions.json) for mission descriptions. Dock
+hints live in [`story/dock_hints.json`](story/dock_hints.json); artwork is one
+Piskel sheet, [`story/art.png`](story/art.png). Use the local
+[story editor](docs/story-editor.html) for text-only edits, or follow the
+[editing instructions](story/README.md). The packer wraps and paginates prose
 automatically into as many native text cards as needed, so long handoffs keep
 their full destinations, seal location and dispatch motivation. The seventeen
-scenes produce 43 cards and 98 frames from 19 shared 128×64 art scenes,
+scenes produce 43 cards and 106 frames from 21 shared 128×64 art scenes,
 including six departure briefings, both joint-restoration variants and the
 mandatory lower-right DEEP RELAY result. Four
 `story-handoffs-v1` bundles replace the old departure placeholders. Survey decks play when
@@ -86,15 +89,16 @@ is the guide’s labeled in-game overview, and the
 [music-region map](docs/assets/exploration-world-music-2026-11-09.png) highlights
 which travel cue plays in each area. A 41,544-byte payload prefix precedes the unchanged 409,600 B
 native terrain section; later music, menu, splash, story and save sections make
-the current payload/image **667,863 / 672,000 B** (**1,425,152 B** below 2 MiB).
+the current payload/image **658,682 / 662,784 B** (**1,434,368 B** below 2 MiB).
 The six sampled IMA ADPCM streams were removed from the shipping cart
 (`sub-hauler-646.18`); `make gen-audio` and the `fxdata/music/adpcm/` files stay
 as archival evidence and are not compiled into firmware or tests.
 
 Normal startup shows Snailware for about 1 s, then the Sub-hauler game splash.
-The splash waits indefinitely for a fresh button press; a button held to skip
-the logo must be released first, and its release is consumed before menu input.
-See the [splash preview and measurements](docs/startup-splashes.md).
+The title/menu music plays through the introduction and continues into the
+title. The splash waits indefinitely for a fresh button press; a button held to
+skip the logo must be released first, and its release is consumed before menu
+input. See the [splash preview and measurements](docs/startup-splashes.md).
 
 Gameplay sonar and its upgrade are removed, and so are the shop, currency and
 repeatable freight. The station board is drawn natively: `WORK / UNDOCK`
@@ -203,10 +207,15 @@ Build outputs are `build/arduino` / `dist/fx` for FX and
 - `src/render.hpp` — 1-bit drawing. Add scenes, HUD, and animation here.
 - `sub-hauler.ino` — release entry only (`ARDUBOY_NO_USB`, `setup`, `loop`).
 - `src/app.hpp` — shared hardware init, boot presentation, state and frame operations.
+- `story/scenes.json`, `story/missions.json`, `story/dock_hints.json` — story,
+  mission and berth-hint text. Use `make editor` or edit the JSON, then run
+  `make gen`.
+- `story/art.png` — canonical Piskel story-art sheet.
 - `images/<section>/<symbol>_<W>x<H>.png` — authored sprites. Add a file in the
   matching source directory, run `make gen`.
-- `images/pilot/*.png` — generated fixed-hull sheets; edit `tools/gen_pilot.py`,
-  not the PNGs.
+- `images/pilot/hauler_26x8.png` — authored HAULER sheet: four 26-px-wide
+  frames. The generator trims transparent rows and bottom-aligns the art to the
+  fixed 26x8 collision hull. Do not edit the generated files in `build/gen/`.
 - `fxdata/fxdata.txt` — ordered flash layout. Append new `image_t`/`raw_t`/
   `string` entries; order is ABI.
 
@@ -223,8 +232,11 @@ Blit::draw(x, y, HAULER_WIDTH, HAULER_HEIGHT, ::hauler + 2, FRAME(frame),
 ```
 
 The fixed pilot sheet uses the same contract from `fxdata/PilotSprites.txt`
-(`hauler`; four frames). The retired MINNOW/LEVIATHAN sheets are no longer
-generated or packed. UI text uses `FX::setFont(font_6x8, dcmWhite)` plus
+(`hauler`; four frames). `tools/gen_pilot.py` normalizes the authored
+`images/pilot/hauler_26x8.png`, writes the packed sheet source under
+`build/gen/pilot/`, and emits `src/generated/pilot_host.hpp` so host pixel tests
+draw the same art. The retired MINNOW/LEVIATHAN sheets are not generated or
+packed. UI text uses `FX::setFont(font_6x8, dcmWhite)` plus
 `FX::drawString`/`drawNumber` through `src/text.hpp`; selected rows switch to
 `dcmInvert`.
 
@@ -277,7 +289,7 @@ src/fxdata.h        generated mirror of fxdata/fxdata.h
 src/generated/      generated sprite/legacy-world/active-level/object constants
 fxdata/             fxdata.txt, Sprites.txt, PilotSprites.txt, packed .bin, fxdata.h
 levels/             authored exploration JSON and binary format contract
-images/pilot/       generated fixed-hull pilot sheets
+images/pilot/       authored HAULER pilot sheet; build/gen/pilot/ is generated
 fxdata/fonts/       generated external 6x8 text font
 tst/                host tests + device suite
 tools/              gen.sh, gen_sprites.py, gen_font.py, gen_pilot.py, fxdata-build.py, tests

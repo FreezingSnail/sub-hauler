@@ -92,6 +92,44 @@ inline void CampaignViewSuite(TestRunner &runner) {
     }
 
     {
+        Test test("a pending survey hides its inactive work-site mooring");
+        world::Berth berth;
+        test.assertTrue(world::berthInfo(world::BERTH_FREIGHT_YARD, berth), "generated Freight Yard berth");
+        game::State state;
+        game::reset(state);
+        const cave::Camera camera = cave::cameraCenteredAtPixel(berth.pixel_x, berth.pixel_y);
+        clear(a);
+        campaign_view::drawServiceBerths(a, state, camera);
+        test.assertEqual(lit(a), 0, "the unrecorded lift survey site shows no mooring");
+        state.surveys = campaign::kSurveyLift;
+        clear(b);
+        campaign_view::drawServiceBerths(b, state, camera);
+        test.assertTrue(lit(b) > 0, "recording the survey restores the inactive mooring clue");
+        runner.add(test);
+    }
+
+    {
+        Test test("the Deep Relay wreck has no inactive mooring");
+        world::Berth berth;
+        test.assertTrue(world::berthInfo(world::BERTH_DEEP_RELAY, berth), "generated Deep Relay berth");
+        game::State state;
+        game::reset(state);
+        const cave::Camera camera = cave::cameraCenteredAtPixel(berth.pixel_x, berth.pixel_y);
+        clear(a);
+        campaign_view::drawServiceBerths(a, state, camera);
+        test.assertEqual(lit(a), 0, "the burial site draws no berth clue");
+        state.campaign = campaign::kMilestoneBeacon;
+        clear(a);
+        campaign_view::drawServiceBerths(a, state, camera);
+        test.assertEqual(lit(a), 0, "the beacon alone still leaves the wreck bare");
+        state.campaign |= campaign::kMilestoneExpedition;
+        clear(b);
+        campaign_view::drawServiceBerths(b, state, camera);
+        test.assertTrue(lit(b) > 0, "the completed expedition opens the Deep Relay berth");
+        runner.add(test);
+    }
+
+    {
         Test test("pump restoration activates the Pump Refuge mooring and flow cue");
         world::Berth berth;
         test.assertTrue(world::serviceBerthInfo(0, berth), "generated Pump Refuge");

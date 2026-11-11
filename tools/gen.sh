@@ -5,8 +5,8 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 python3 tools/gen_font.py --output fxdata/fonts/font_6x8.png
-python3 tools/gen_pilot.py --output images/pilot
-python3 tools/gen_sprites.py --input images/pilot --output fxdata/PilotSprites.txt --header src/generated/pilot_sprites.hpp --shades 2
+python3 tools/gen_pilot.py
+python3 tools/gen_sprites.py --input build/gen/pilot --output fxdata/PilotSprites.txt --header src/generated/pilot_sprites.hpp --shades 2
 python3 tools/gen_world.py
 python3 tools/gen_level.py
 python3 tools/gen_music_regions.py
@@ -23,6 +23,7 @@ python3 tools/gen_splash.py
 python3 tools/gen_sprites.py --input images/splash --output fxdata/SplashSprites.txt --header src/generated/splash_sprites.hpp --shades 2
 python3 tools/gen_story_beats.py
 python3 tools/gen_dock_barks.py
+python3 tools/gen_story_editor.py
 python3 tools/gen_cargo.py
 python3 tools/gen_music.py
 # Streaming-audio reference PCM and ADPCM are archival comparison evidence, not

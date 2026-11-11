@@ -54,7 +54,7 @@ inline void PilotViewSuite(TestRunner &runner) {
     }
 
     {
-        Test test("HAULER silhouette stays inside the 26x8 collision footprint");
+        Test test("HAULER art stays inside the generated sprite box");
         constexpr uint16_t kBufferBytes = cave::VIEW_WIDTH * cave::VIEW_HEIGHT / 8;
         uint8_t buffer[kBufferBytes];
         for (uint16_t i = 0; i < kBufferBytes; ++i)
@@ -66,7 +66,7 @@ inline void PilotViewSuite(TestRunner &runner) {
         pilot_view::draw(buffer, state, camera);
 
         const int16_t left = static_cast<int16_t>(pilot_view::screenX(state, camera) - game::kHullHalfW);
-        const int16_t top = static_cast<int16_t>(pilot_view::screenY(state, camera) - game::kHullHalfH);
+        const int16_t top = static_cast<int16_t>(pilot_view::screenY(state, camera) - game::kHullHalfH - pilot_view::kArtAboveHull);
 
         uint16_t whitePixels = 0;
         int16_t minX = cave::VIEW_WIDTH;
@@ -87,15 +87,16 @@ inline void PilotViewSuite(TestRunner &runner) {
                     minY = y;
                 if (y > maxY)
                     maxY = y;
-                if (x < left || x >= static_cast<int16_t>(left + game::kHullW) || y < top || y >= static_cast<int16_t>(top + game::kHullH))
+                if (x < left || x >= static_cast<int16_t>(left + HAULER_WIDTH) || y < top || y >= static_cast<int16_t>(top + HAULER_HEIGHT))
                     outside = true;
             }
         }
 
         test.assertTrue(whitePixels > 60, "HAULER has a solid body");
-        test.assertTrue(!outside, "HAULER stays in the collision box");
-        test.assertEqual(maxX - minX + 1, static_cast<int16_t>(game::kHullW), "HAULER art width");
-        test.assertEqual(maxY - minY + 1, static_cast<int16_t>(game::kHullH), "HAULER art height");
+        test.assertTrue(!outside, "HAULER stays in the art box");
+        test.assertEqual(maxX - minX + 1, static_cast<int16_t>(HAULER_WIDTH), "HAULER art width");
+        test.assertEqual(maxY - minY + 1, static_cast<int16_t>(HAULER_HEIGHT), "HAULER art height");
+        test.assertEqual(maxY, static_cast<int16_t>(top + HAULER_HEIGHT - 1), "HAULER art reaches the hull baseline");
         runner.add(test);
     }
 
@@ -115,7 +116,8 @@ inline void PilotViewSuite(TestRunner &runner) {
         game::resetWorld(state);
         const cave::Camera camera = pilot_view::cameraForState(state);
         const int16_t left = static_cast<int16_t>(pilot_view::screenX(state, camera) - game::kHullHalfW);
-        const int16_t top = static_cast<int16_t>(pilot_view::screenY(state, camera) - game::kHullHalfH);
+        const int16_t top = static_cast<int16_t>(pilot_view::screenY(state, camera) - game::kHullHalfH - pilot_view::kArtAboveHull);
+        const int16_t hullTop = static_cast<int16_t>(top + pilot_view::kArtAboveHull);
 
         pilot_view::draw(empty, state, camera);
         state.cargo = 2;
@@ -141,12 +143,12 @@ inline void PilotViewSuite(TestRunner &runner) {
                 loadedWhite = static_cast<uint16_t>(loadedWhite + l);
                 if (e != l) {
                     ++stripePixels;
-                    test.assertTrue(x >= left && x < left + game::kHullW && y >= top && y < top + game::kHullH, "HAULER stripe stays inside");
+                    test.assertTrue(x >= left && x < left + HAULER_WIDTH && y >= top && y < top + HAULER_HEIGHT, "HAULER stripe stays inside the art box");
                 }
                 if (e != m)
                     ++mirroredDiff;
 
-                if (y >= top && y < top + 2) {
+                if (y >= hullTop && y < hullTop + 2) {
                     if (e != 0) {
                         if (x < left + game::kHullHalfW)
                             ++topLeftMass;

@@ -344,6 +344,13 @@ inline void StationSuite(TestRunner &runner) {
         test.assertTrue(station_view::kIconX + station_view::kIconW <= 128, "header icon fits inside 128 columns");
         test.assertTrue(station_view::kIconY + station_view::kIconH <= station_view::kDividerY, "header icon clears the divider");
         test.assertTrue(station_view::kSelectMarkX + station_view::kSelectMarkW <= 128, "selection cursor stays on screen");
+        for (uint8_t berth = 0; berth < campaign::kBerthCount; ++berth) {
+            for (uint8_t point = 0; point < campaign::kDockPointCount; ++point) {
+                const uint8_t frame = text_layout::dockBarkFrame(berth, point);
+                test.assertTrue(frame != 0, "every berth/point owns a bark frame");
+                test.assertEqual(frame, static_cast<uint8_t>(1 + berth * campaign::kDockPointCount + point), "bark frame is berth-major");
+            }
+        }
         runner.add(test);
     }
 }

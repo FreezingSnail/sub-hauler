@@ -1,0 +1,140 @@
+{
+  "schema": 1,
+  "points": [
+    {
+      "id": "fresh",
+      "label": "FRESH",
+      "facts": "No milestone recorded; Tidewall's filter run is the only work."
+    },
+    {
+      "id": "first",
+      "label": "FIRST",
+      "facts": "FIRST delivered; both repairs are open, neither is complete."
+    },
+    {
+      "id": "pump",
+      "label": "PUMP",
+      "facts": "PUMP complete and LIFT still open; the lift survey may or may not be recorded."
+    },
+    {
+      "id": "lift",
+      "label": "LIFT",
+      "facts": "LIFT complete and PUMP still open; the pump survey may or may not be recorded."
+    },
+    {
+      "id": "both",
+      "label": "BOTH",
+      "facts": "Both repairs complete; the pressure seal is still missing."
+    },
+    {
+      "id": "seal",
+      "label": "SEAL",
+      "facts": "Both repairs complete and the pressure seal is owned; BEACON is next."
+    },
+    {
+      "id": "core",
+      "label": "CORE",
+      "facts": "BEACON delivered; the beacon core is lit and DEEP RELAY is next."
+    },
+    {
+      "id": "relay",
+      "label": "RELAY",
+      "facts": "DEEP RELAY recovered; HOME is next."
+    },
+    {
+      "id": "home",
+      "label": "HOME",
+      "facts": "HOME delivered; the four-station network is restored."
+    }
+  ],
+  "berths": {
+    "tidewall": {
+      "fresh": "I HEAR THERE IS WORK",
+      "first": "BENTHOS HAS WORK",
+      "pump": "A WRECK IS NEAR",
+      "lift": "LIFT CRANE MOVES",
+      "both": "YOU NEED A CUTTER",
+      "seal": "CHECK CORMORANT",
+      "core": "SEARCH THE DEPTHS",
+      "relay": "ANY NEWS FROM BELOW",
+      "home": "WHAT A MYSTERY EH"
+    },
+    "benthos": {
+      "fresh": "TIDEWALL HAS FILTERS",
+      "first": "WE HAVE SOME WORK",
+      "pump": "CHECK CORMORANT",
+      "lift": "PUMP AWAITS REPAIR",
+      "both": "SEARCH A WRECK ABOVE",
+      "seal": "HEAD DEEPER",
+      "core": "I HEARD OF A WRECK",
+      "relay": "ODDITY IN THE DEPTHS",
+      "home": "YOU SAVED OUR SKINS"
+    },
+    "cormorant": {
+      "fresh": "TIDEWALL HAS WORK",
+      "first": "HEAD TO SHALLOWS",
+      "pump": "LIFT AWAITS REPAIR",
+      "lift": "CHECK BENTHOS",
+      "both": "SEARCH WEST FOR SEAL",
+      "seal": "WE HAVE WORK",
+      "core": "BLOW THE BALAST ",
+      "relay": "HEAD TO DEEP ANCHOR",
+      "home": "A FINE CAPTIAN "
+    },
+    "deep_anchor": {
+      "fresh": "TRY TIDEWALL ",
+      "first": "NOTHING DOWN HERE",
+      "pump": "HEAD UP TO SHALLOWS",
+      "lift": "BEACON NEEDS PUMP",
+      "both": "HOW DID YOU GET HERE",
+      "seal": "ITS TOO DARK HERE",
+      "core": "LOOK FOR THE CAVE",
+      "relay": "ALERT THE OTHERS",
+      "home": "GOOD WORK DOWN HERE"
+    },
+    "pump_refuge": {
+      "fresh": "MOORING INACTIVE",
+      "first": "CHECK CORMORANT",
+      "pump": "PUMP REFUGE OPEN",
+      "lift": "PUMP: CORMORANT",
+      "both": "SEAL NEEDED STILL",
+      "seal": "DEEP A NEEDS HELP",
+      "core": "WATER FLOWING WELL",
+      "relay": "HOW YOU DOING TODAY",
+      "home": "PUMP HUMS ALONG"
+    },
+    "lower_gantry": {
+      "fresh": "GANTRY INACTIVE",
+      "first": "FIX THE GANTRY",
+      "pump": "GANTRY WAITS LIFT",
+      "lift": "GANTRY OPEN",
+      "both": "SEAL STILL MISSING",
+      "seal": "WE BUILT A BEACON",
+      "core": "NO WORK HERE",
+      "relay": "SHES WORKING FINE",
+      "home": "THANKS FOR THE HELP"
+    },
+    "freight_yard": {
+      "fresh": "YARD INACTIVE",
+      "first": "CHECK BENTHOS",
+      "pump": "YARD WAITS CABLE",
+      "lift": "YARD OPEN",
+      "both": "SEAL: FIND WORKSHOP",
+      "seal": "HEAD TO CORMORANT",
+      "core": "HOWS THE SUB RUNNING",
+      "relay": "HOW ABOUT SOME PAINT",
+      "home": "YARD HUMS ALONG"
+    },
+    "deep_relay": {
+      "fresh": "RELAY SLEEPS DEEP",
+      "first": "RELAY SLEEPS DEEP",
+      "pump": "RELAY SLEEPS DEEP",
+      "lift": "RELAY SLEEPS DEEP",
+      "both": "RELAY SLEEPS DEEP",
+      "seal": "RELAY SLEEPS DEEP",
+      "core": "RELAY SLEEPS DEEP",
+      "relay": "AN OMMINOUS FEELING",
+      "home": "AN OMMINOUS FEELING"
+    }
+  }
+}

@@ -486,6 +486,11 @@ canonical files.
 section 9 previews all eight checkpoints × eight berths at native size, with a
 generator parity test and no duplicated prose.
 
+**Follow-up 2026-11-11:** `docs/story-editor.html` adds the text-only editor.
+It keeps the fixed scene/card count, shows image cards beside their text
+fields, previews the station board beside each hint cell, and writes the
+canonical JSON through the browser File System Access API.
+
 ## Cross-cutting constraints
 
 - One fixed shipping build; no new feature selectors.

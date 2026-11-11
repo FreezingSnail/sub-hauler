@@ -22,11 +22,11 @@ Keep dated measurements in the checkpoint table instead of copying them around.
 | Toolchain | arduino-cli 1.2.0; arduboy-homemade:avr 1.4.0; AVR-GCC 7.3.0-atmel3.6.1-arduino7; `-mrelax -mcall-prologues`; LTO |
 | Math | integer/fixed-point only; no `float`/`double` |
 
-Story art checkpoint (2026-11-10, story beat wave): the New Voyage opening
-reuses the arrival row, DEEP RELAY acceptance has a unique beacon-console
-illustration, DEEP RELAY result keeps the wreck row, and HOME departure has a
-unique loaded-sub row. The source sheet is 512×1216 with nineteen rows. See the
-dated checkpoint table for current resource figures.
+Story art checkpoint: the New Voyage opening uses its own `opening-voyage`
+row, DEEP RELAY acceptance has a unique beacon-console illustration, DEEP RELAY
+result keeps the wreck row, and HOME departure has a unique loaded-sub row. The
+source sheet is 512×1344 with twenty-one rows. See the dated checkpoint table
+for current resource figures.
 
 ## Resource budgets
 
@@ -88,14 +88,16 @@ walks one pixel at a time, so the faster clamp cannot tunnel through rock.
 
 Startup splash measurements and art provenance are in
 [startup-splashes.md](startup-splashes.md). The new FX section appends after
-all shipped menus. `story/scenes.json` is the single editable UTF-8 source for
-scene order, prose and named image rows. `story/art.png` is the canonical
-512×1216 Piskel sheet (nineteen rows of four 128×64 poses); retained pixelgen
+all shipped menus. `story/scenes.json` is the editable UTF-8 source for scene
+order, prose and named image rows; `story/missions.json` owns mission copy and
+`story/dock_hints.json` owns per-berth hints. `story/art.png` is the canonical
+512×1344 Piskel sheet (twenty-one rows of four 128×64 poses); retained pixelgen
 bundles are provenance only. The canonical sources produce seventeen scenes:
 seven result/survey decks, six departures, two joint-restoration variants, one
 DEEP RELAY result and the New Voyage opening. Automatic pagination emits
-forty-three cards (twenty-one image, twenty-two text) and ninety-eight frames
-from nineteen shared animated scenes; consecutive text pages are allowed. The
+forty-three cards (twenty-one image, twenty-two text) and one hundred six
+frames from twenty-one shared animated scenes; consecutive text pages are
+allowed. The
 `story-handoffs-v1` scenes replace the old
 departure placeholders. The exact text, preview, trigger/replay/save contract
 and 57,316 B RLE cart blob are in [story-beats.md](story-beats.md); the blob
@@ -309,6 +311,7 @@ current developer-only `DEBUG=1` image is documented in
 
 | Date | Flash | Static RAM | Toolchain / notes |
 | --- | --- | --- | --- |
+| 2026-11-11 | 27,784 B | 1,655 B | Story deck 24-bit frame offsets: refreshed `story/art.png` and `story/scenes.json` produced **106 frames** whose combined RLE payload plus the old two-byte offset table exceeded the 65,535 B ceiling. `story-beats.bin` now begins with 106 little-endian three-byte frame offsets (318 B), and `story_view::frameOffset` reads three bytes and returns `uint24_t`. `STORY_BEAT_BYTES` is 32-bit. Final story blob **67,468 B**; `.text/.data/.bss` **27,776 / 8 / 1,647 B**, **1,912 B** hardware flash free. `make gen` 17 scenes / 43 cards / 106 frames / 21 images; FX payload/image **658,682 / 662,784 B**, **1,434,368 B** below 2 MiB; `storyBeats=0x07E52A`, `storyMeta=0x08ECB6`, `FX_DATA_PAGE=0xF5E3`, `FX_SAVE_PAGE=0xFFF0` unchanged. `make gen-check` deterministic; host **264**, tooling **181**, docs **18**; all **15/15** default device suites print `P`, with `test_story` decoding **106** frame CRCs at **10,772 µs** max; Mini **27,784 / 1,655 B**. No physical playthrough or human art review claimed. |
 | 2026-11-11 | 27,792 B | 1,655 B | Baked runtime text stamps (`sub-hauler-2va`): every production label is a static 128x8 plus-mask FX image, so release code issues no `text::print`/`number`/`character`/`begin` call and `text::begin()` leaves the production boot path. `tools/gen_text_images.py` bakes the 6x8 glyph table into 83 two-frame `img_txt_*` rows (white/black, 3 px inset) plus `img_berth_names` (9), `img_dock_barks` (16), `img_row_labels` (4), `img_story_row` (18), `img_carry_row` (9) and `img_berth_work` (8) sheets; `gen_sprites` packs `fxdata/TextData.txt` with a two-byte header and 256 B frame stride. The retired `dockBarks` cart blob and `generated/dock_barks.hpp` are gone; `tools/dock_bark_table.py` is the shared bark order. Before `.text/.data/.bss` **29,130 / 16 / 1,649 B**, **29,146 B flash / 1,665 B static**, debug **29,456 B / 1,666 B**, FX payload/image **579,005 / 583,168 B**, `FX_DATA_PAGE=0xF71A`. After **27,792 B flash / 1,655 B static**, `.text/.data/.bss` **27,784 / 8 / 1,647 B** (−1,354 B flash, −10 B static), **1,904 B** hardware flash free, debug **28,102 B / 1,656 B**, FX payload/image **637,779 / 642,048 B** (+58,774/+58,880 B, 83 text rows + six sheets), `FX_DATA_PAGE=0xF634`, `FX_SAVE_PAGE=0xFFF0` unchanged at the 4 KiB save tail. The external 6x8 font and `print`/`number`/`character` stay for reference tests only; no font-renderer symbol remains in the release ELF. `make gen-check` deterministic; host **262**, tooling **169**, docs **33** + preview **8**; all 15 default device suites P plus save-chain, runtime-page and flight. No physical playthrough claimed. |
 | 2026-11-11 | 29,146 B | 1,665 B | Redundant berth air readout removal (`sub-hauler-39u`): berth service always refills to capacity, so the station board no longer draws the tank gauge or the `AIR <current>/<capacity>` status line. Removed `drawAirGauge`/`drawStatus`, their layout constants and static asserts, and the now-unreferenced `txt_air_status = 'AIR '` declaration (the HUD keeps `txt_air`). Before `.text/.data/.bss` **29,362 / 16 / 1,649 B**, **29,378 B flash / 1,665 B static**, debug **29,688 B / 1,666 B**, FX payload/image **579,010 / 583,168 B**, `FX_DATA_PAGE=0xF71A`. After **29,146 B flash / 1,665 B static**, `.text/.data/.bss` **29,130 / 16 / 1,649 B**, **550 B** hardware flash free, debug **29,456 B / 1,666 B**, FX payload/image **579,005 / 583,168 B** (−5 B payload, image unchanged), `FX_DATA_PAGE=0xF71A` and `FX_SAVE_PAGE=0xFFF0` unchanged; later FX symbols shift down **5 B**. `make gen-check` deterministic; host **262**, tooling **161**, docs **33** + preview **8**; targeted `test_boot` and `test_menu` (**29** pixel cases) pass; Mini **29,146 / 1,665 B**. No physical playthrough claimed. |
 | 2026-11-11 | 29,378 B | 1,665 B | Cold cart tables and debug overlay trim (`sub-hauler-oad`): moved story metadata **122 B**, dock-bark address table **284 B** (32 B offsets + 252 B text) and berth icons **130 B** packed from program flash/stack tables to the FX cart; removed the DEBUG NOCLIP text hint. Before **29,644 B flash / 1,665 B static**, FX payload/image **578,474 / 582,656 B**, `FX_DATA_PAGE=0xF71C`, debug image **30,064 B / 1,666 B** (368 B over). After `.text/.data/.bss` **29,362 / 16 / 1,649 B**, **29,378 B flash / 1,665 B static**, **318 B** hardware flash free, FX payload/image **579,010 / 583,168 B** (+536/+512 B), `FX_DATA_PAGE=0xF71A`, `FX_SAVE_PAGE=0xFFF0` unchanged, debug **29,688 B / 1,666 B** (**8 B** free). `make gen-check` deterministic; host **262**, tooling **161**, docs **33** + preview **8**; targeted `test_boot`, `test_menu`, `test_story` (**10,760 µs** max) and `test_work` pass; Mini **29,378 / 1,665 B**. |

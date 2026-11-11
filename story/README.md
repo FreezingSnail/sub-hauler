@@ -1,9 +1,22 @@
 # Editing story cards
 
-Edit these two source files, then run `make gen`:
+Edit these source files, then run `make gen`:
 
 - [scenes.json](scenes.json): story text, scene/card order and named artwork rows.
+- [missions.json](missions.json): mission summaries, sequence intent and scene groups.
 - [art.png](art.png): the canonical artwork sheet for Piskel.
+- [dock_hints.json](dock_hints.json): one station/WORK hint line per berth at
+  each `campaign::DockPoint` (fresh through home). Keep every line at 20
+  characters or fewer; duplicate lines are allowed.
+
+Use the local [story editor](../docs/story-editor.html) for text-only edits:
+open the repository root or this `story` folder, edit scene text, mission copy
+and dock hints beside the native previews, then save and run `make gen`. The
+editor writes only these JSON files; scene/card counts and image rows are fixed.
+The dock-hint grid is campaign-wide: rows are berths and columns are completion
+points, so it is not filtered by the selected scene.
+Chrome/Edge desktop can save in place through the File System Access API;
+other browsers load files and download the edited JSON.
 
 Generation reads these files and never rewrites them. The retained pixelgen
 bundles under `assets/pixelgen/` document the original artwork; edits to those
@@ -11,22 +24,22 @@ old frame PNGs no longer affect the game.
 
 ## Piskel artwork
 
-The sheet is **512×1216 pixels**, arranged as **four columns × nineteen rows**.
+The sheet is **512×1344 pixels**, arranged as **four columns × 21 rows**.
 Every cell is **128×64 pixels**. Each row is one illustration, and its columns
 are animation poses 0, 1, 2 and 3. The game shows each pose for 300 ms.
 
 Open `art.png` as a full image to edit the entire sheet, or import it as a
 sprite sheet using frame width **128**, frame height **64**, and zero spacing
-or margins. This creates 76 frames in row order. When exporting those frames,
+or margins. This creates 84 frames in row order. When exporting those frames,
 use PNG sprite-sheet export with **four columns**, scale **1×**, no spacing,
-and no padding. Replace `story/art.png`; retain its 512×1216 dimensions.
+and no padding. Replace `story/art.png`; retain its 512×1344 dimensions.
 
 Use only opaque **#000000** and **#ffffff**. Piskel's RGB/RGBA PNG exports are
 accepted; transparency and intermediate colors are rejected rather than
 silently changed. Do not add labels, guides or borders inside the sheet.
 
 The `art.rows` array in `scenes.json` names rows from top to bottom. For example,
-row zero is `tidewall-filters`; its pixels are y=0 through y=63. Pose zero occupies
+row zero is `opening-voyage`; its pixels are y=0 through y=63. Pose zero occupies
 x=0 through x=127, pose one x=128 through x=255, and so on. Keep this row order
 when exporting. To add a new illustration, append a name and a complete row of
 four poses together. Do not rearrange the existing names without moving their
@@ -39,26 +52,24 @@ lift branches remain playable in either order. Rows are:
 
 | Rows (counting from 1) | Beat |
 | --- | --- |
-| 1 | Tidewall departure: filters |
-| 2–4 | Benthos arrival, grow tanks, repair request |
-| 5–6 | Pump survey |
-| 7–8 | Impeller pickup and restored water |
-| 9–10 | Lift survey |
-| 11–12 | Cable pickup and working lift |
-| 13 | Both repairs complete (shared by the two seal variants) |
-| 14–15 | Beacon core pickup and Deep Anchor beacon |
-| 16 | Deep Relay wreck, found by the survey lens |
-| 17 | Tidewall homecoming lights |
-| 18 | DEEP RELAY briefing: beacon call and console |
-| 19 | HOME departure: loaded sub leaving Deep Anchor |
+| 1–2 | Opening voyage and Tidewall departure: filters |
+| 3–5 | Benthos arrival, grow tanks, repair request |
+| 6–7 | Pump survey |
+| 8–9 | Impeller pickup and restored water |
+| 10–11 | Lift survey |
+| 12–13 | Cable pickup and working lift |
+| 14–15 | Both repairs complete: seal missing and seal held variants |
+| 16–17 | Beacon core pickup and Deep Anchor beacon |
+| 18–19 | DEEP RELAY briefing and wreck |
+| 20–21 | HOME departure and Tidewall homecoming lights |
 
 The complete generated card sheet follows the same narrative sequence, with
 text pages between the illustrations. Both alternative seal variants are
 included for inspection; the game chooses one according to seal ownership.
-The opening instruction is the first card: it reuses the `arrival` row and
-points the player to Benthos. DEEP RELAY follows BEACON and precedes HOME.
+The opening instruction uses its own `opening-voyage` row and points the player
+to Benthos. DEEP RELAY follows BEACON and precedes HOME.
 DEEP RELAY acceptance uses the briefing row, the site result keeps the wreck
-row, and HOME departure uses its own loaded-sub row; PUMP pickup remains the
+row, and HOME departure uses its own underwater travel row; PUMP pickup remains the
 only user of `delivery-loading`.
 
 ## JSON text
