@@ -5,6 +5,10 @@
 #include "campaign.hpp"
 #include "generated/story_beats.hpp"
 
+#if defined(__AVR__)
+#include "common.hpp"
+#endif
+
 // Story scenes generated from story/scenes.json. Card kinds come from
 // the generated source map, not image/text alternation: a scene may contain any
 // number of consecutive text pages after automatic pagination. Scene ids 8..14
@@ -64,11 +68,22 @@ static_assert(kSceneOpening == 17, "opening deck appends after every existing sc
 static_assert(STORY_CARD_COUNT <= 0xFF, "card ids fit the pending-scene metadata");
 static_assert(STORY_FRAME_COUNT <= 0xFF, "frame ids fit one-byte card metadata");
 
+#if defined(__AVR__)
+// Story metadata is cold and lives on the FX cart. One-byte reads keep SRAM
+// flat and avoid a program-flash mirror of the four lookup tables.
+inline uint8_t metaByte(uint24_t address) {
+    uint8_t value;
+    cartService();
+    FX::readDataBytes(address, &value, 1);
+    return value;
+}
+#endif
+
 inline uint8_t sceneCards(uint8_t scene) {
     if (scene > STORY_SCENE_MAX)
         return 0;
 #if defined(__AVR__)
-    return pgm_read_byte(&STORY_SCENE_CARDS[scene]);
+    return metaByte(storyMeta + STORY_META_SCENE_CARDS + scene);
 #else
     return STORY_SCENE_CARDS[scene];
 #endif
@@ -78,7 +93,7 @@ inline uint8_t sceneFirstCard(uint8_t scene) {
     if (scene > STORY_SCENE_MAX)
         return 0;
 #if defined(__AVR__)
-    return pgm_read_byte(&STORY_SCENE_FIRST_CARD[scene]);
+    return metaByte(storyMeta + STORY_META_SCENE_FIRST + scene);
 #else
     return STORY_SCENE_FIRST_CARD[scene];
 #endif
@@ -89,7 +104,7 @@ inline uint8_t cardFrame(uint8_t scene, uint8_t card) {
         return 0;
     const uint8_t index = static_cast<uint8_t>(sceneFirstCard(scene) + card);
 #if defined(__AVR__)
-    return pgm_read_byte(&STORY_CARD_FRAME[index]);
+    return metaByte(storyMeta + STORY_META_CARD_FRAME + index);
 #else
     return STORY_CARD_FRAME[index];
 #endif
@@ -113,7 +128,7 @@ inline uint8_t cardKind(uint8_t scene, uint8_t card) {
         return STORY_KIND_TEXT;
     const uint8_t index = static_cast<uint8_t>(sceneFirstCard(scene) + card);
 #if defined(__AVR__)
-    return pgm_read_byte(&STORY_CARD_KIND[index]);
+    return metaByte(storyMeta + STORY_META_CARD_KIND + index);
 #else
     return STORY_CARD_KIND[index];
 #endif
@@ -173,8 +188,6 @@ inline uint8_t cardForNewSurvey(uint8_t before, uint8_t after) {
 }
 
 #if defined(__AVR__)
-
-#include "common.hpp"
 
 // The RLE control byte uses its high bit for a repeated byte and its low seven
 // bits for a count minus one. Literal tokens hold count minus one bytes.

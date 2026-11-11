@@ -22,8 +22,10 @@ the generator reads the editable sheet directly, not those original frames.
 
 The same sketchbook ends with a read-only dock-bark preview: every berth's
 station-board line at each saved progression checkpoint, drawn at the native
-6×8 bark row. `make gen` writes `docs/assets/dock-barks.js` from the C++
-selector and the shipped FX strings; the page never writes a canonical source.
+6×8 bark row. `make gen` writes `docs/assets/dock-barks.js` from the
+generator's `campaign::DockBark`-validated mapping and the shipped FX strings;
+the same run writes the cold cart address table. The page never writes a
+canonical source.
 
 The generator never overwrites the two canonical editing sources. Prose is
 stored as paragraph strings. It wraps on word boundaries at twenty columns,

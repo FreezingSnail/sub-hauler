@@ -6,6 +6,7 @@
 #include <ArduboyFX.h>
 #include "src/fxdata.h"
 #include "src/generated/campaign_sprites.hpp"
+#include "src/generated/dock_barks.hpp"
 #include "src/generated/music_regions.hpp"
 #include "src/generated/panel_sprites.hpp"
 #include "src/generated/pause_sprites.hpp"
@@ -55,7 +56,8 @@ static_assert(txt_sub_hauler == explorationTerrain + NATIVE_TERRAIN_BYTES, "voya
 constexpr uint24_t spriteBytes(uint8_t width, uint8_t height, uint8_t frames, bool masked) {
     return static_cast<uint24_t>(2) + static_cast<uint24_t>(width) * ((height + 7) / 8) * frames * (masked ? 2 : 1);
 }
-static_assert(panel_abandon_confirm == txt_a_next + sizeof("A NEXT"), "story panels append after the retained ending labels");
+static_assert(berth_icons == txt_a_next + sizeof("A NEXT"), "berth icon sheet is the first packed panel sprite");
+static_assert(panel_abandon_confirm == berth_icons + spriteBytes(BERTH_ICONS_WIDTH, BERTH_ICONS_HEIGHT, BERTH_ICONS_FRAMES, BERTH_ICONS_MASKED), "story panels append after the berth icons");
 static_assert(panel_ending_network == panel_abandon_confirm + spriteBytes(PANEL_ABANDON_CONFIRM_WIDTH, PANEL_ABANDON_CONFIRM_HEIGHT, PANEL_ABANDON_CONFIRM_FRAMES, PANEL_ABANDON_CONFIRM_MASKED), "ending network follows the first prompt");
 static_assert(panel_ending_thanks == panel_ending_network + spriteBytes(PANEL_ENDING_NETWORK_WIDTH, PANEL_ENDING_NETWORK_HEIGHT, PANEL_ENDING_NETWORK_FRAMES, PANEL_ENDING_NETWORK_MASKED), "ending thanks follow the network card");
 static_assert(panel_rescue_confirm == panel_ending_thanks + spriteBytes(PANEL_ENDING_THANKS_WIDTH, PANEL_ENDING_THANKS_HEIGHT, PANEL_ENDING_THANKS_FRAMES, PANEL_ENDING_THANKS_MASKED), "rescue confirmation follows the ending cards");
@@ -82,9 +84,11 @@ static_assert(txt_pump_survey == startup + spriteBytes(STARTUP_WIDTH, STARTUP_HE
 static_assert(txt_lift_survey == txt_pump_survey + sizeof("PUMP SURVEY"), "lift survey follows the pump survey");
 static_assert(txt_survey_chart_hint == txt_lift_survey + sizeof("LIFT SURVEY"), "chart hint follows the survey labels");
 static_assert(storyBeats == txt_survey_chart_hint + sizeof("A CHART  B BACK"), "story decks append after the chart hint");
-static_assert(txt_freight_yard == storyBeats + STORY_BEAT_BYTES, "work-site labels append after the story deck blob");
+static_assert(storyMeta == storyBeats + STORY_BEAT_BYTES, "story metadata appends after the story deck blob");
+static_assert(txt_freight_yard == storyMeta + STORY_META_BYTES, "work-site labels append after the story metadata");
 static_assert(txt_deep_relay == txt_freight_yard + sizeof("FREIGHT YARD"), "relay label follows the Freight Yard label");
-static_assert(FX_DATA_BYTES == txt_deep_relay + sizeof("DEEP RELAY"), "FX image ends after the appended labels");
+static_assert(dockBarks == txt_deep_relay + sizeof("DEEP RELAY"), "dock bark table ends the data layout");
+static_assert(FX_DATA_BYTES == dockBarks + DOCK_BARK_BYTES, "FX image ends after the dock bark table");
 static_assert(STORY_CARD_COUNT == 43 && STORY_IMAGE_CARD_COUNT == 21 && STORY_TEXT_CARD_COUNT == 22 && STORY_IMAGE_COUNT == 19 && STORY_FRAME_COUNT == 98, "source-backed story cards");
 static_assert(FX_SAVE_BYTES == 4096, "save partition is one 4 KiB erase block");
 static_assert(FX_SAVE_PAGE == 0xFFF0, "save partition is the last 16 cart pages");
@@ -143,6 +147,25 @@ void setup() {
     const uint8_t sonarMagic = FX::readPendingUInt8();
     FX::readEnd();
     ok = ok && harborMagic == 0xC1 && kelpMagic == 0xC1 && sonarMagic == 0xC1;
+
+    // Berth icons are the first packed panel sprite: 16x8, eight frames.
+    FX::seekData(berth_icons);
+    const uint8_t iconWidth = FX::readPendingUInt8();
+    const uint8_t iconHeight = FX::readEnd();
+    ok = ok && iconWidth == BERTH_ICONS_WIDTH && iconHeight == BERTH_ICONS_HEIGHT;
+
+    // Story metadata starts with scene 0's card count (none) and the dock bark
+    // table starts with offset 0, whose text begins with a NUL terminator.
+    FX::seekData(storyMeta);
+    ok = (FX::readPendingUInt8() == 0) && ok;
+    FX::readEnd();
+    FX::seekData(dockBarks);
+    const uint16_t firstBarkOffset = FX::readPendingUInt16();
+    FX::readEnd();
+    FX::seekData(dockBarks + 32);
+    const uint8_t firstBarkByte = FX::readPendingUInt8();
+    FX::readEnd();
+    ok = ok && firstBarkOffset == 0 && firstBarkByte == 0;
 
     FX::seekData(sh_abyssal_glass);
     const uint8_t glassMagic = FX::readPendingUInt8();

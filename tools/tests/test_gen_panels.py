@@ -16,15 +16,26 @@ class StoryPanelGenerationTest(unittest.TestCase):
         cls.campaign = gen_panels.campaign_panels()
         cls.story = gen_panels.story_panels(cls.strings)
         cls.preview = gen_panels.story_preview(cls.strings)
+        cls.berth_icons = gen_panels.berth_icon_sheet()
 
     def test_every_panel_name_is_unique_and_every_row_fits(self):
-        names = [name for name, _image in self.panels + self.titles]
+        names = [name for name, _image in self.panels + self.titles + [self.berth_icons]]
         self.assertEqual(len(names), len(set(names)))
         for name, image in self.panels:
             self.assertEqual(image.size, (128, 64), name)
         for name, image in self.campaign:
             self.assertEqual(image.mode, "RGBA", name)
             self.assertGreater(image.getbbox()[2], 0, name)
+
+    def test_berth_icons_are_one_opaque_16x8_sheet(self):
+        name, image = self.berth_icons
+        self.assertEqual(name, "berth_icons_16x8")
+        self.assertEqual(image.size, (16 * 8, 8))
+        self.assertEqual(image.mode, "RGBA")
+        self.assertEqual(set(image.getdata()), {gen_panels.BG_COLOR, gen_panels.TEXT_COLOR})
+        for index in range(8):
+            crop = image.crop((index * 16, 0, (index + 1) * 16, 8))
+            self.assertGreater(crop.getbbox()[2], 0, index)
 
     def test_retired_panels_are_not_emitted(self):
         names = {name for name, _image in self.panels}

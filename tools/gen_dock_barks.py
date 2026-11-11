@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
-"""Generate the read-only dock-bark preview data for the story sketchbook.
+"""Generate the dock-bark preview data and the cold AVR address table.
 
 The preview owns no shipping prose. It reads the berth and ``DockBark`` order
-from ``src/campaign.hpp``, the bark -> FX string table from
-``src/station_view.hpp`` and every line from ``fxdata/fxdata.txt``. The saved
-progression checkpoints below mirror ``campaign::dockBark``; the host campaign
-tests pin the runtime selector to the same observable transitions.
+from ``src/campaign.hpp``, the bark -> FX string mapping below (validated
+against that enum) and every line from ``fxdata/fxdata.txt``. The saved
+progression checkpoints mirror ``campaign::dockBark``; the host campaign tests
+pin the runtime selector to the same observable transitions.
 
-Output:
+Outputs:
   docs/assets/dock-barks.js
+  fxdata/tables/dock-barks.bin
+  src/generated/dock_barks.hpp
 """
 
 from __future__ import annotations
@@ -16,6 +18,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import struct
 import sys
 from pathlib import Path
 
@@ -25,6 +28,8 @@ STATION_VIEW = ROOT / "src/station_view.hpp"
 TEXT = ROOT / "src/text.hpp"
 FXDATA = ROOT / "fxdata/fxdata.txt"
 OUTPUT = ROOT / "docs/assets/dock-barks.js"
+BARK_OUTPUT = ROOT / "fxdata/tables/dock-barks.bin"
+HEADER = ROOT / "src/generated/dock_barks.hpp"
 
 SOURCES = (
     "src/campaign.hpp",
@@ -103,6 +108,27 @@ STATES = (
     },
 )
 
+# Explicit bark -> shipped FX string mapping, in campaign::DockBark order. The
+# AVR station board reads this table from the cart; index 0 is the empty bark.
+DOCK_BARK_TEXT = (
+    ("kDockBarkNone", None),
+    ("kDockBarkFirst", "txt_first_clue"),
+    ("kDockBarkBenthosLamps", "txt_benthos_lamps_on"),
+    ("kDockBarkPumpSurvey", "txt_pump_survey_clue"),
+    ("kDockBarkPumpSource", "txt_pump_source_clue"),
+    ("kDockBarkLiftSurvey", "txt_survey_lift_clue"),
+    ("kDockBarkLiftSource", "txt_lift_source_clue"),
+    ("kDockBarkPumpPartReady", "txt_pump_part_ready"),
+    ("kDockBarkLiftRestored", "txt_lift_restored"),
+    ("kDockBarkBeaconNeedsSeal", "txt_beacon_needs_seal"),
+    ("kDockBarkBeaconReady", "txt_beacon_ready"),
+    ("kDockBarkBeaconPlan", "txt_beacon_clue"),
+    ("kDockBarkBeaconLit", "txt_beacon_lit"),
+    ("kDockBarkNetworkOn", "txt_network_on"),
+    ("kDockBarkDeepRelay", "txt_deep_relay"),
+    ("kDockBarkNoWork", "txt_no_work"),
+)
+
 LAYOUT_CONSTANTS = (
     "kNameX",
     "kHeaderY",
@@ -130,15 +156,20 @@ def parse_enum(text: str, name: str, source: Path) -> list[str]:
     return names
 
 
-def parse_bark_table(text: str, source: Path) -> list[str | None]:
-    """Return the bark table indexed by campaign::DockBark."""
-    match = re.search(r"kDockBarkText\s*\[\s*\]\s*PROGMEM\s*=\s*\{(.*?)\};", text, re.S)
-    if not match:
-        raise DockBarkError("{}: missing kDockBarkText table".format(source))
-    entries = re.findall(r"\b(?:0|txt_[A-Za-z0-9_]+)\b", match.group(1))
-    if not entries or entries[0] != "0":
-        raise DockBarkError("{}: kDockBarkText index 0 must be the empty bark".format(source))
-    return [None if entry == "0" else entry for entry in entries]
+def bark_table(campaign_text: str) -> list[str | None]:
+    """Validate the explicit bark table against campaign::DockBark order."""
+    enum_names = parse_enum(campaign_text, "DockBark", CAMPAIGN)
+    table_names = [name for name, _symbol in DOCK_BARK_TEXT]
+    if enum_names != table_names:
+        raise DockBarkError(
+            "DOCK_BARK_TEXT order does not match campaign::DockBark: {} != {}".format(
+                table_names, enum_names
+            )
+        )
+    symbols = [symbol for _name, symbol in DOCK_BARK_TEXT]
+    if symbols[0] is not None:
+        raise DockBarkError("DOCK_BARK_TEXT index 0 must be the empty bark")
+    return symbols
 
 
 def parse_fx_strings(text: str, source: Path) -> dict[str, str]:
@@ -258,7 +289,7 @@ def build_document() -> dict:
 
     dock_barks = parse_enum(campaign_text, "DockBark", CAMPAIGN)
     berths = parse_enum(campaign_text, "Berth", CAMPAIGN)
-    bark_symbols = parse_bark_table(station_text, STATION_VIEW)
+    bark_symbols = bark_table(campaign_text)
     strings = parse_fx_strings(fxdata_text, FXDATA)
     layout = parse_layout(station_text)
     cell_width = parse_uint8(text_text, "kCellWidth", TEXT)
@@ -323,18 +354,61 @@ def render(document: dict) -> str:
     return header + "globalThis.DockBarks = " + json.dumps(document, indent=2, ensure_ascii=True) + ";\n"
 
 
+def build_blob() -> bytes:
+    """32 B offset header (16 uint16) followed by NUL-terminated bark text."""
+    strings = parse_fx_strings(FXDATA.read_text(encoding="utf-8"), FXDATA)
+    entries = []
+    for _name, symbol in DOCK_BARK_TEXT:
+        text = "" if symbol is None else strings[symbol]
+        entries.append(text.encode("ascii") + b"\0")
+    text = bytearray()
+    offsets = []
+    for entry in entries:
+        offsets.append(len(text))
+        text += entry
+    header = b"".join(struct.pack("<H", offset) for offset in offsets)
+    if len(header) != 32:
+        raise DockBarkError("dock bark header is {} B, expected 32 B".format(len(header)))
+    if len(text) > 0xFFFF - len(header):
+        raise DockBarkError("dock bark text is too large for one next offset")
+    return header + bytes(text)
+
+
+def render_header(blob_size: int) -> str:
+    return (
+        "// Generated by tools/gen_dock_barks.py. Do not edit.\n"
+        "#pragma once\n\n"
+        "#include <stdint.h>\n\n"
+        "constexpr uint8_t DOCK_BARK_COUNT = {};\n"
+        "constexpr uint16_t DOCK_BARK_BYTES = {};\n"
+    ).format(len(DOCK_BARK_TEXT), blob_size)
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--check", action="store_true", help="fail if the committed output is stale")
     args = parser.parse_args(argv)
     output = render(build_document())
+    blob = build_blob()
+    header = render_header(len(blob))
     if args.check:
+        stale = False
         if not OUTPUT.exists() or OUTPUT.read_text(encoding="utf-8") != output:
             print("gen_dock_barks: {} is stale; run make gen".format(OUTPUT), file=sys.stderr)
-            return 1
-        return 0
+            stale = True
+        if not BARK_OUTPUT.exists() or BARK_OUTPUT.read_bytes() != blob:
+            print("gen_dock_barks: {} is stale; run make gen".format(BARK_OUTPUT), file=sys.stderr)
+            stale = True
+        if not HEADER.exists() or HEADER.read_text(encoding="utf-8") != header:
+            print("gen_dock_barks: {} is stale; run make gen".format(HEADER), file=sys.stderr)
+            stale = True
+        return 1 if stale else 0
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     OUTPUT.write_text(output, encoding="utf-8")
+    BARK_OUTPUT.parent.mkdir(parents=True, exist_ok=True)
+    BARK_OUTPUT.write_bytes(blob)
+    HEADER.parent.mkdir(parents=True, exist_ok=True)
+    HEADER.write_text(header, encoding="utf-8")
     return 0
 
 

@@ -262,18 +262,39 @@ static delta is only +3 B because the removed `game::State` offsets most of that
 32 B. 60 fps is not device-measured here; Ardens is unavailable, so the
 checkpoint records build/static evidence only.
 
+## Cold cart tables (2026-11-11)
+
+Program flash is the tight budget, so cold lookup tables that are read rarely
+live on the FX cart instead of in a second program-flash copy:
+
+- Story metadata (`fxdata/tables/story-meta.bin`, 122 B): scene card counts,
+  first-card indices, card frames and card kinds in one contiguous blob.
+  `tools/gen_story_beats.py` emits it; `src/story_view.hpp` reads one byte at a
+  time on AVR and keeps the `constexpr` arrays for host tests only.
+- Dock-bark address table (`fxdata/tables/dock-barks.bin`, 284 B): sixteen
+  little-endian `uint16` offsets followed by the NUL-terminated bark text.
+  `tools/gen_dock_barks.py` owns the bark -> FX string mapping and validates it
+  against `campaign::DockBark` order; the station board and WORK clue read the
+  cart blob on AVR.
+- Berth icons (`images/panels/berth_icons_16x8.png`, 130 B packed): eight 16x8
+  opaque silhouettes authored in `tools/gen_panels.py`, packed into the panel
+  sprite sheet and drawn with one `Blit::draw`.
+
+The external 6x8 font is already cart-resident and unchanged. None of these
+adds static SRAM or a display-transaction cart read; the debug NOCLIP text hint
+was removed in the same pass, so the developer image now fits the hardware
+limit.
+
 ## Arduboy fit
 
 From `docs/platform.md`:
 
 - 128×64 SSD1306, 1,024 B framebuffer.
-- 2,560 B SRAM; **910 B** static free in the current full image.
-- 29,696 B flash; current full image **28,702 B flash / 1,650 B static RAM**
-  (994 B flash free, 50 B static headroom under the 1,700 B planning ceiling;
-  combined music probe **626 B** and production save chain **703 B** against a
-  600 B target).
-- AVR `game::State` is **77 B**; the compact generated metadata is 88 B PROGMEM; the 128 B cave atlas
-  stays in fast program flash.
+- 2,560 B SRAM; **895 B** static free in the current full image.
+- 29,696 B flash; current full image **29,378 B flash / 1,665 B static RAM**
+  (318 B flash free, 35 B static headroom under the 1,700 B planning ceiling).
+- AVR `game::State` is **77 B**; the compact generated world metadata is 88 B
+  PROGMEM; the 128 B cave atlas stays in fast program flash.
 - No floats, no heap in device code, no cart reads during display.
 
 The archival `cargoBank` generator output is no longer packed into external FX

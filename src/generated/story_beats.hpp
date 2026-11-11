@@ -41,13 +41,16 @@ constexpr uint8_t STORY_SCENE_EXPEDITION_RESULT = 15;
 constexpr uint8_t STORY_SCENE_EXPEDITION_DEPARTURE = 16;
 constexpr uint8_t STORY_SCENE_OPENING = 17;
 
-#if defined(__AVR__)
-#include <avr/pgmspace.h>
-const uint8_t STORY_SCENE_CARDS[STORY_SCENE_COUNT] PROGMEM = {0, 6, 4, 2, 4, 2, 2, 2, 2, 2, 2, 2, 2, 3, 2, 2, 2, 2};
-const uint8_t STORY_SCENE_FIRST_CARD[STORY_SCENE_COUNT] PROGMEM = {0, 0, 6, 10, 12, 16, 18, 20, 22, 24, 26, 28, 30, 32, 35, 37, 39, 41};
-const uint8_t STORY_CARD_FRAME[STORY_CARD_COUNT] PROGMEM = {0, 4, 5, 9, 10, 14, 15, 19, 20, 24, 25, 29, 30, 34, 35, 39, 40, 44, 45, 49, 50, 54, 55, 59, 60, 64, 65, 69, 70, 74, 70, 75, 76, 80, 81, 82, 86, 87, 91, 92, 96, 0, 97};
-const uint8_t STORY_CARD_KIND[STORY_CARD_COUNT] PROGMEM = {0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1};
-#else
+// Story metadata byte offsets inside fxdata/tables/story-meta.bin:
+// SCENE_CARDS, SCENE_FIRST_CARD, CARD_FRAME, CARD_KIND. The AVR build reads
+// this table from the FX cart, so no program-flash copy is linked.
+constexpr uint16_t STORY_META_SCENE_CARDS = 0;
+constexpr uint16_t STORY_META_SCENE_FIRST = STORY_META_SCENE_CARDS + STORY_SCENE_COUNT;
+constexpr uint16_t STORY_META_CARD_FRAME = STORY_META_SCENE_FIRST + STORY_SCENE_COUNT;
+constexpr uint16_t STORY_META_CARD_KIND = STORY_META_CARD_FRAME + STORY_CARD_COUNT;
+constexpr uint16_t STORY_META_BYTES = STORY_META_CARD_KIND + STORY_CARD_COUNT;
+
+#if !defined(__AVR__)
 constexpr uint8_t STORY_SCENE_CARDS[STORY_SCENE_COUNT] = {0, 6, 4, 2, 4, 2, 2, 2, 2, 2, 2, 2, 2, 3, 2, 2, 2, 2};
 constexpr uint8_t STORY_SCENE_FIRST_CARD[STORY_SCENE_COUNT] = {0, 0, 6, 10, 12, 16, 18, 20, 22, 24, 26, 28, 30, 32, 35, 37, 39, 41};
 constexpr uint8_t STORY_CARD_FRAME[STORY_CARD_COUNT] = {0, 4, 5, 9, 10, 14, 15, 19, 20, 24, 25, 29, 30, 34, 35, 39, 40, 44, 45, 49, 50, 54, 55, 59, 60, 64, 65, 69, 70, 74, 70, 75, 76, 80, 81, 82, 86, 87, 91, 92, 96, 0, 97};

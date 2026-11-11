@@ -3,6 +3,11 @@
 
 #include <stdint.h>
 
+constexpr uint8_t BERTH_ICONS_WIDTH  = 16;
+constexpr uint8_t BERTH_ICONS_HEIGHT = 8;
+constexpr uint8_t BERTH_ICONS_FRAMES = 8;
+constexpr bool    BERTH_ICONS_MASKED = false;
+
 constexpr uint8_t PANEL_ABANDON_CONFIRM_WIDTH  = 128;
 constexpr uint8_t PANEL_ABANDON_CONFIRM_HEIGHT = 64;
 constexpr uint8_t PANEL_ABANDON_CONFIRM_FRAMES = 1;
