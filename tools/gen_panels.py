@@ -31,27 +31,6 @@ BG_COLOR = (0, 0, 0, 255)
 CLEAR = (0, 0, 0, 0)
 
 STRING_RE = re.compile(r"^string\s+(?P<name>[A-Za-z_][A-Za-z0-9_]*)\s*=\s*'(?P<text>[^']*)'", re.M)
-MISSION_BLOCK_RE = re.compile(r"kMissions\[kMissionCount\]\s*=\s*\{(?P<body>.*?)\};", re.M | re.S)
-MISSION_ENTRY_RE = re.compile(r"\{\s*(?P<from>\w+)\s*,\s*(?P<to>\w+)\s*,\s*true\s*,")
-PICKUP_COUNT_RE = re.compile(r"constexpr\s+uint8_t\s+GATE_COUNT\s*=\s*\d+\s*,\s*PICKUP_COUNT\s*=\s*(\d+)\s*;")
-
-# Cargo missions in kMissions order. The route pair is read from campaign.hpp;
-# only the label/purpose symbol names and the generated panel stem stay here.
-MISSIONS = (
-    ("kFirst", "first", "txt_first", "txt_first_purpose"),
-    ("kPump", "pump", "txt_pump", "txt_pump_purpose"),
-    ("kLift", "lift", "txt_lift", "txt_lift_purpose"),
-    ("kBeacon", "beacon", "txt_beacon", "txt_beacon_purpose"),
-    ("kHome", "home", "txt_home", "txt_home_purpose"),
-)
-BERTH_NAMES = {
-    "kTidewall": "txt_tidewall",
-    "kBenthos": "txt_benthos",
-    "kCormorant": "txt_cormorant",
-    "kDeepAnchor": "txt_deep_anchor",
-    "kPumpRefuge": "txt_pump_refuge",
-    "kFreightYard": "txt_freight_yard",
-}
 
 # The game font intentionally keeps only the glyphs its text used before the
 # story panels. The standard Arduboy 5x7 question mark is needed by the two
@@ -67,29 +46,6 @@ EXTRA_GLYPHS = {
 def load_strings(path):
     text = Path(path).read_text(encoding="utf-8")
     return {match.group("name"): match.group("text") for match in STRING_RE.finditer(text)}
-
-
-def load_routes(campaign_path):
-    """Return the five cargo mission (from, to) berth pairs in mission order."""
-    text = Path(campaign_path).read_text(encoding="utf-8")
-    block = MISSION_BLOCK_RE.search(text)
-    if not block:
-        raise ValueError("campaign.hpp: kMissions table not found")
-    entries = MISSION_ENTRY_RE.findall(block.group("body"))
-    if len(entries) < len(MISSIONS):
-        raise ValueError("campaign.hpp: expected {} frozen cargo missions, found {}".format(len(MISSIONS), len(entries)))
-    # The appended optional expedition has no archival panel frame; only the
-    # first five frozen cargo panels are returned here.
-    return entries[:len(MISSIONS)]
-
-
-def load_pickup_count(exploration_path):
-    """Read the generated equipment-cove count for the ending denominator."""
-    text = Path(exploration_path).read_text(encoding="utf-8")
-    match = PICKUP_COUNT_RE.search(text)
-    if not match:
-        raise ValueError("exploration.hpp: PICKUP_COUNT not found")
-    return int(match.group(1))
 
 
 def glyph_columns(char):
@@ -451,15 +407,12 @@ def confirm(strings, title, body, y_body, y_line):
     return image
 
 
-def panels(strings, cove_count):
+def panels(strings):
     rows = [
         ("panel_ending_network_128x64", ending_network(strings)),
         ("panel_ending_thanks_128x64", ending_thanks(strings)),
-        ("panel_ending_stats_128x64", ending_stats(strings, cove_count)),
         ("panel_save_retry_128x64", prompt(strings, "txt_save_failed", ("txt_retry", "txt_continue_unsaved"), "txt_save_hint", 0)),
         ("panel_save_continue_128x64", prompt(strings, "txt_save_failed", ("txt_retry", "txt_continue_unsaved"), "txt_save_hint", 1)),
-        ("panel_pause_resume_128x64", prompt(strings, "txt_paused", ("txt_resume", "txt_rescue"), "txt_pause_hint", 0)),
-        ("panel_pause_rescue_128x64", prompt(strings, "txt_paused", ("txt_resume", "txt_rescue"), "txt_pause_hint", 1)),
         ("panel_rescue_confirm_128x64", confirm(strings, "txt_back_last_berth", "txt_unsaved_lost", 24, 38)),
         ("panel_abandon_confirm_128x64", confirm(strings, "txt_abandon_job", "txt_yes_no", 24, 24)),
     ]
@@ -526,29 +479,14 @@ STATUS_STRINGS = (
     "txt_save_ready",
     "txt_save_corrupt",
     "txt_save_incompatible",
-    "txt_save_unreadable",
 )
-HULL_STRINGS = ("txt_minnow", "txt_hauler", "txt_leviathan")
 TITLE_ROWS = ("txt_continue", "txt_new_voyage")
 
 
-def ending_stats(strings, cove_count):
-    """Static labels; the saved time, cove and job values overlay natively."""
-    image = Image.new("RGBA", SIZE, BG_COLOR)
-    draw_text(image, 4, 2, checked_text(strings, "txt_voyage_stats"))
-    add_divider(image, 12)
-    draw_text(image, 4, 16, checked_text(strings, "txt_time"))
-    draw_text(image, 4, 28, checked_text(strings, "txt_coves"))
-    draw_text(image, 46, 28, "/{}".format(cove_count))
-    draw_text(image, 4, 40, checked_text(strings, "txt_jobs"))
-    draw_text(image, 3, 56, checked_text(strings, "txt_a_finish"))
-    return image
-
-
-def title_menu_frame(strings, status, hull, selected):
+def title_menu_frame(strings, status, selected):
     image = Image.new("RGBA", SIZE, BG_COLOR)
     draw_text(image, 4, 3, checked_text(strings, "txt_sub_hauler"))
-    draw_text(image, 4, 12, checked_text(strings, HULL_STRINGS[hull]))
+    draw_text(image, 4, 12, checked_text(strings, "txt_hauler"))
     for index, row in enumerate(TITLE_ROWS):
         y = 22 + index * 9
         if index == selected:
@@ -564,27 +502,19 @@ def title_menu_frame(strings, status, hull, selected):
 
 
 def title_panels(strings):
-    """One frame per status x hull x selected menu row, plus both confirmations."""
-    menu = Image.new("RGBA", (128 * 30, 64), BG_COLOR)
-    for status in range(5):
-        for hull in range(3):
-            for selected in range(2):
-                frame = title_menu_frame(strings, status, hull, selected)
-                menu.paste(frame, (128 * (status * 6 + hull * 2 + selected), 0))
-    replace = Image.new("RGBA", (128 * 5, 64), BG_COLOR)
-    for status in range(5):
-        frame = Image.new("RGBA", SIZE, BG_COLOR)
-        draw_text(frame, 4, 24, checked_text(strings, "txt_replace_voyage"))
-        draw_text(frame, 4, 36, checked_text(strings, STATUS_STRINGS[status]))
-        draw_text(frame, 4, 48, checked_text(strings, "txt_yes_no"))
-        replace.paste(frame, (128 * status, 0))
-    keep = Image.new("RGBA", SIZE, BG_COLOR)
-    draw_text(keep, 4, 24, checked_text(strings, "txt_keep_chart"))
-    draw_text(keep, 4, 36, checked_text(strings, "txt_yes_no"))
+    """Eight menu frames (four boot states x two rows) and one replace prompt."""
+    menu = Image.new("RGBA", (128 * 8, 64), BG_COLOR)
+    for status in range(len(STATUS_STRINGS)):
+        for selected in range(len(TITLE_ROWS)):
+            frame = title_menu_frame(strings, status, selected)
+            menu.paste(frame, (128 * (status * 2 + selected), 0))
+    replace = Image.new("RGBA", SIZE, BG_COLOR)
+    draw_text(replace, 4, 24, checked_text(strings, "txt_replace_voyage"))
+    draw_text(replace, 4, 36, checked_text(strings, "txt_save_ready"))
+    draw_text(replace, 4, 48, checked_text(strings, "txt_yes_no"))
     return [
         ("title_menu_128x64", menu),
         ("title_replace_128x64", replace),
-        ("title_keep_128x64", keep),
     ]
 
 
@@ -626,57 +556,6 @@ def campaign_panels():
     ]
 
 
-def work_detail(strings, index):
-    """A WORK detail is fully static: label, purpose and A/B hint."""
-    _enum, _stem, label, purpose = MISSIONS[index]
-    image = Image.new("RGBA", SIZE, BG_COLOR)
-    draw_text(image, 4, 4, checked_text(strings, label))
-    draw_text(image, 4, 18, checked_text(strings, purpose))
-    draw_text(image, 3, 56, checked_text(strings, "txt_load_hint"))
-    return image
-
-
-def work_active(strings, routes, index):
-    """Carrying summary as one strip; the station header stays native text."""
-    _enum, _stem, label, _purpose = MISSIONS[index]
-    _from_name, to_name = routes[index]
-    image = Image.new("RGBA", (128, 44), BG_COLOR)
-    draw_text(image, 4, 0, "{} {}".format(checked_text(strings, "txt_carrying"), checked_text(strings, label)))
-    draw_text(image, 4, 9, checked_text(strings, "txt_deliver_to"))
-    draw_text(image, 4, 18, checked_text(strings, BERTH_NAMES[to_name]))
-    draw_text(image, 3, 36, checked_text(strings, "txt_back_hint"))
-    return image
-
-
-def work_row(text):
-    """One 256x8 sheet: frame 0 normal, frame 1 selected inverted row."""
-    image = Image.new("RGBA", (256, 8), BG_COLOR)
-    draw_text(image, 4, 0, text)
-    for x in range(128, 256):
-        for y in range(8):
-            image.putpixel((x, y), TEXT_COLOR)
-    draw_text(image, 132, 1, text, BG_COLOR)
-    return image
-
-
-def work_panels(strings, routes):
-    """Three sheets in kMissions order (then VIEW ENDING for the row sheet)."""
-    details = Image.new("RGBA", (128 * 5, 64), BG_COLOR)
-    actives = Image.new("RGBA", (128 * 5, 44), BG_COLOR)
-    rows = Image.new("RGBA", (128 * 12, 8), BG_COLOR)
-    for index, (_enum, _stem, label, _purpose) in enumerate(MISSIONS):
-        details.paste(work_detail(strings, index), (128 * index, 0))
-        actives.paste(work_active(strings, routes, index), (128 * index, 0))
-        rows.paste(work_row(checked_text(strings, label)), (128 * index * 2, 0))
-    # VIEW ENDING has no detail/active page (A opens the cards).
-    rows.paste(work_row(checked_text(strings, "txt_view_ending")), (128 * 10, 0))
-    return [
-        ("work_details_128x64", details),
-        ("work_active_128x44", actives),
-        ("work_rows_128x8", rows),
-    ]
-
-
 def write_dir(directory, rows):
     directory = Path(directory)
     directory.mkdir(parents=True, exist_ok=True)
@@ -699,25 +578,24 @@ def main(argv=None):
     parser.add_argument("--story", default="images/story")
     parser.add_argument("--preview", default="docs/assets/story-flourishes-preview.png")
     parser.add_argument("--fxdata", default="fxdata/fxdata.txt")
-    parser.add_argument("--campaign-src", default="src/campaign.hpp")
-    parser.add_argument("--exploration", default="src/generated/exploration.hpp")
     args = parser.parse_args(argv)
     strings = load_strings(args.fxdata)
-    routes = load_routes(args.campaign_src)
-    cove_count = load_pickup_count(args.exploration)
-    panel_rows = panels(strings, cove_count) + work_panels(strings, routes) + title_panels(strings)
+    panel_rows = panels(strings) + title_panels(strings)
     story_rows = story_panels(strings)
+    campaign_rows = campaign_panels()
+    pause_rows = pause_panels(strings)
     write_dir(args.panels, panel_rows)
-    write_dir(args.campaign, campaign_panels())
-    write_dir(args.pause, pause_panels(strings))
+    write_dir(args.campaign, campaign_rows)
+    write_dir(args.pause, pause_rows)
     write_dir(args.story, story_rows)
     Path(args.preview).parent.mkdir(parents=True, exist_ok=True)
     preview = story_preview(strings)
     preview.save(args.preview)
     preview.resize((preview.width * 4, preview.height * 4), Image.Resampling.NEAREST).save(
         Path(args.preview).with_name(Path(args.preview).stem + "-4x.png"))
+    frames = 6
     print("gen_panels: wrote {} panels, {} story cards, {} campaign sprites and {} pause frames".format(
-        len(panel_rows), len(story_rows), len(campaign_panels()), 6))
+        len(panel_rows), len(story_rows), len(campaign_rows), frames))
 
 
 if __name__ == "__main__":

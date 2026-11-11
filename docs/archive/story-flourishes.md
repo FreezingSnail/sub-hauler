@@ -1,8 +1,9 @@
 # Story flourishes — 2026-10-29
 
 > **Historical record — archived 2026-10-30.** Superseded by the finalized seven-beat animated decks in
-> [story-beats.md](../story-beats.md) (2026-10-30). The four static cards and the
-> ending thanks card remain in the cart as flash ABI but are no longer drawn.
+> [story-beats.md](../story-beats.md) (2026-10-30). The four static cards stopped
+> being drawn; `sub-hauler-jxk.2` later removed them from the packed cart while
+> keeping the generator, source sheets and docs preview archival.
 
 Five brief restoration beats make the existing campaign milestones feel human.
 They add presentation only: no new missions, tools, choices, save fields or

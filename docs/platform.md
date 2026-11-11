@@ -60,8 +60,9 @@ credit cache. Air is a fixed 300-unit tank with free berth refill and free
 rescue; blowing ballast costs 4 air units/s while flooding stays free. The
 station board is native (`WORK / UNDOCK`,
 `summary / WORK / UNDOCK`, or `UNDOCK` at a work/service berth) and WORK lists
-only story and survey rows. Mandatory story work cannot be abandoned. The generated shop/menu frames and text
-remain archival cart ABI and are never drawn.
+only story and survey rows. Mandatory story work cannot be abandoned. The
+generated station/shop menu frames and their menu-only text were removed from
+the cart by `sub-hauler-jxk.2`; no frame or label is packed or drawn.
 
 Air retune (2026-11-10, `sub-hauler-646.10`): the 300-unit tank and 4 air
 units/s blow cost are applied in `src/game.hpp`; flooding stays free and the

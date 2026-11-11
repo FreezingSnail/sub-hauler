@@ -11,30 +11,14 @@ class StoryPanelGenerationTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.strings = gen_panels.load_strings(ROOT / "fxdata/fxdata.txt")
-        cls.routes = gen_panels.load_routes(ROOT / "src/campaign.hpp")
-        cls.coves = gen_panels.load_pickup_count(ROOT / "src/generated/exploration.hpp")
-        cls.panels = gen_panels.panels(cls.strings, cls.coves)
-        cls.work = gen_panels.work_panels(cls.strings, cls.routes)
+        cls.panels = gen_panels.panels(cls.strings)
         cls.titles = gen_panels.title_panels(cls.strings)
         cls.campaign = gen_panels.campaign_panels()
         cls.story = gen_panels.story_panels(cls.strings)
         cls.preview = gen_panels.story_preview(cls.strings)
 
-    def test_campaign_routes_match_the_frozen_mission_order(self):
-        self.assertEqual(
-            self.routes,
-            [
-                ("kTidewall", "kBenthos"),
-                ("kCormorant", "kPumpRefuge"),
-                ("kBenthos", "kFreightYard"),
-                ("kCormorant", "kDeepAnchor"),
-                ("kDeepAnchor", "kTidewall"),
-            ],
-        )
-        self.assertEqual(self.coves, 4)
-
     def test_every_panel_name_is_unique_and_every_row_fits(self):
-        names = [name for name, _image in self.panels + self.work + self.titles]
+        names = [name for name, _image in self.panels + self.titles]
         self.assertEqual(len(names), len(set(names)))
         for name, image in self.panels:
             self.assertEqual(image.size, (128, 64), name)
@@ -42,27 +26,23 @@ class StoryPanelGenerationTest(unittest.TestCase):
             self.assertEqual(image.mode, "RGBA", name)
             self.assertGreater(image.getbbox()[2], 0, name)
 
-    def test_work_sheets_use_frozen_frame_counts(self):
-        sheets = dict(self.work)
-        self.assertEqual(sheets["work_details_128x64"].size, (128 * 5, 64))
-        self.assertEqual(sheets["work_active_128x44"].size, (128 * 5, 44))
-        self.assertEqual(sheets["work_rows_128x8"].size, (128 * 12, 8))
-        rows = sheets["work_rows_128x8"]
-        for index, (_enum, _stem, label, _purpose) in enumerate(gen_panels.MISSIONS):
-            expected = gen_panels.work_row(self.strings[label])
-            self.assertEqual(rows.crop((128 * index * 2, 0, 128 * (index * 2 + 2), 8)).tobytes(),
-                             expected.tobytes(), "WORK row {} is label-only".format(label))
+    def test_retired_panels_are_not_emitted(self):
+        names = {name for name, _image in self.panels}
+        for retired in (
+            "panel_ending_stats_128x64",
+            "panel_pause_resume_128x64",
+            "panel_pause_rescue_128x64",
+            "title_keep_128x64",
+            "work_details_128x64",
+            "work_active_128x44",
+            "work_rows_128x8",
+        ):
+            self.assertNotIn(retired, names)
 
-    def test_ending_stats_denominator_uses_the_generated_cove_count(self):
-        current = dict(self.panels)["panel_ending_stats_128x64"]
-        other = dict(gen_panels.panels(self.strings, self.coves + 1))["panel_ending_stats_128x64"]
-        self.assertNotEqual(current.tobytes(), other.tobytes())
-
-    def test_title_sheets_cover_status_hull_and_selection(self):
+    def test_title_sheets_cover_boot_state_and_selection(self):
         sheets = dict(self.titles)
-        self.assertEqual(sheets["title_menu_128x64"].size, (128 * 30, 64))
-        self.assertEqual(sheets["title_replace_128x64"].size, (128 * 5, 64))
-        self.assertEqual(sheets["title_keep_128x64"].size, (128, 64))
+        self.assertEqual(sheets["title_menu_128x64"].size, (128 * 8, 64))
+        self.assertEqual(sheets["title_replace_128x64"].size, (128, 64))
 
     def test_restoration_sprites_are_masked_and_non_empty(self):
         for name, image in self.campaign:

@@ -13,10 +13,11 @@ after adding the boot introduction are in [startup-splashes.md](startup-splashes
 **Runtime status, 2026-11-01:** the station board is drawn natively from
 `src/station_view.hpp` (`WORK / UNDOCK`, `summary / WORK / UNDOCK`, or
 `UNDOCK` at a work/service berth). The generated station and shop frames and hint
-rows remain shipped cart ABI only: the shop has no runtime screen, WORK lists
-only story and survey rows, and no draw path selects the baked shop panels or
-credit captions. Generation still reproduces those pixels byte-for-byte so
-flash offsets stay stable.
+rows were shipped cart ABI only: the shop had no runtime screen, WORK lists only
+story and survey rows, and no draw path selected the baked shop panels or
+credit captions. `sub-hauler-jxk.2` retired that generation and removed the
+frames and menu-only text from the cart, so no station/shop pixels are packed
+today.
 
 ## Verified result
 
@@ -37,8 +38,9 @@ The selected design used **30 station frames, 32 complete shop frames and ten
 7-pixel hint rows**. Prices/MAX, levels, names and selection bars were baked;
 live balances, health/capacities and job summaries remained overlays. The shop
 used 12-pixel row spacing. Existing station information and action order were
-preserved. Those frames are archival cart ABI today: the runtime board is
-native and selects none of them. Hint rendering reuses the existing clipped
+preserved. Those frames were archival cart ABI until `sub-hauler-jxk.2` retired
+and removed them: the runtime board is native and selects none of them. Hint
+rendering reused the existing clipped
 blitter; this saved
 98 B against the first custom hint-shifter candidate and removes its scratch
 buffer. The cart image is **2,079,744 B**, leaving 17,408 B under 2 MiB; its
@@ -64,8 +66,8 @@ are **616 B** combined music and **691 B** production save chain. The 842-frame
 flight probe measures **12.376 ms max / 8.355 ms mean**, zero 16 ms misses and
 zero audio errors/underruns; the synth service gap is 1 tick.
 
-The generated preview `build/menu-preview/menu-contact.png` (written by
-`tools/gen_menu.py` during `make gen`) includes
+The generated preview `build/menu-preview/menu-contact.png` (written by the
+now-retired `tools/gen_menu.py` during `make gen`) included
 illustrative live overlays. Automated device pixels and offline visual review
 are verified; no interactive GUI playthrough is claimed. Source and generated
 artifacts remain uncommitted because Git metadata is read-only.
@@ -103,10 +105,10 @@ rows directly and never selects these panels.
 
 ## One-row shop (archival cart ABI)
 
-- The shipped shop art has AIR TANK only, with 4 air levels x 1 selection = 4
+- The shipped shop art had AIR TANK only, with 4 air levels x 1 selection = 4
   frames baking the label, level, price/MAX and selected bar. The shop was
-  removed from the runtime on 2026-11-01; these frames and their text remain
-  cart ABI and are never drawn.
+  removed from the runtime on 2026-11-01; `sub-hauler-jxk.2` later removed these
+  frames and their menu-only text from the cart, where they are never drawn.
 - Hull plates were removed with hull strength on 2026-10-29.
 
 ## Resource and correctness checks

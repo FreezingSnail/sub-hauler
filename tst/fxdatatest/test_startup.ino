@@ -35,11 +35,12 @@ void setup() {
         ++cases;
     }
     // Title and replacement panels changed readers to recover program flash.
-    // The fixed build always selects the HAULER column (hull 1) from the baked
-    // status x hull x row sheet, so compare those frames only.
-    for (uint8_t statusIndex = 0; statusIndex < 5; ++statusIndex) {
+    // The compact title sheet has four boot states x two selected rows with
+    // HAULER fixed; the replace prompt is one frame because it only exists when
+    // a valid save is present.
+    for (uint8_t statusIndex = 0; statusIndex < 4; ++statusIndex) {
         for (uint8_t selected = 0; selected < 2; ++selected) {
-            const uint16_t frame = static_cast<uint16_t>(statusIndex * 6u + 1u * 2u + selected);
+            const uint16_t frame = static_cast<uint16_t>(statusIndex * 2u + selected);
             background(0xA5);
             Blit::draw(0, 0, TITLE_MENU_WIDTH, TITLE_MENU_HEIGHT, title_menu + 2, frame, Blit::OVERWRITE);
             const uint16_t expected = checksum();
@@ -51,17 +52,15 @@ void setup() {
             ++cases;
         }
     }
-    for (uint8_t frame = 0; frame < TITLE_REPLACE_FRAMES; ++frame) {
-        background(0xA5);
-        Blit::draw(0, 0, TITLE_REPLACE_WIDTH, TITLE_REPLACE_HEIGHT, title_replace + 2, frame, Blit::OVERWRITE);
-        const uint16_t expected = checksum();
-        voyage_flow::BootStatus status = {};
-        status.state = static_cast<voyage_flow::BootState>(frame);
-        background(0x5A);
-        voyage_view::drawTitle(status, 0, voyage_view::kTitleConfirmReplace);
-        ok = (checksum() == expected) && ok;
-        ++cases;
-    }
+    background(0xA5);
+    Blit::draw(0, 0, TITLE_REPLACE_WIDTH, TITLE_REPLACE_HEIGHT, title_replace + 2, 0, Blit::OVERWRITE);
+    const uint16_t replaceExpected = checksum();
+    voyage_flow::BootStatus replaceStatus = {};
+    replaceStatus.state = voyage_flow::kBootValid;
+    background(0x5A);
+    voyage_view::drawTitle(replaceStatus, 0, voyage_view::kTitleConfirmReplace);
+    ok = (checksum() == replaceExpected) && ok;
+    ++cases;
     // Drive the production startup sequence without a physical button. The
     // script holds A through the logo, releases it, waits on the game splash,
     // then gives one fresh press. It proves the held logo input cannot skip the

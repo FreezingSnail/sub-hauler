@@ -13,25 +13,10 @@ constexpr uint8_t PANEL_ENDING_NETWORK_HEIGHT = 64;
 constexpr uint8_t PANEL_ENDING_NETWORK_FRAMES = 1;
 constexpr bool    PANEL_ENDING_NETWORK_MASKED = false;
 
-constexpr uint8_t PANEL_ENDING_STATS_WIDTH  = 128;
-constexpr uint8_t PANEL_ENDING_STATS_HEIGHT = 64;
-constexpr uint8_t PANEL_ENDING_STATS_FRAMES = 1;
-constexpr bool    PANEL_ENDING_STATS_MASKED = false;
-
 constexpr uint8_t PANEL_ENDING_THANKS_WIDTH  = 128;
 constexpr uint8_t PANEL_ENDING_THANKS_HEIGHT = 64;
 constexpr uint8_t PANEL_ENDING_THANKS_FRAMES = 1;
 constexpr bool    PANEL_ENDING_THANKS_MASKED = false;
-
-constexpr uint8_t PANEL_PAUSE_RESCUE_WIDTH  = 128;
-constexpr uint8_t PANEL_PAUSE_RESCUE_HEIGHT = 64;
-constexpr uint8_t PANEL_PAUSE_RESCUE_FRAMES = 1;
-constexpr bool    PANEL_PAUSE_RESCUE_MASKED = false;
-
-constexpr uint8_t PANEL_PAUSE_RESUME_WIDTH  = 128;
-constexpr uint8_t PANEL_PAUSE_RESUME_HEIGHT = 64;
-constexpr uint8_t PANEL_PAUSE_RESUME_FRAMES = 1;
-constexpr bool    PANEL_PAUSE_RESUME_MASKED = false;
 
 constexpr uint8_t PANEL_RESCUE_CONFIRM_WIDTH  = 128;
 constexpr uint8_t PANEL_RESCUE_CONFIRM_HEIGHT = 64;
@@ -48,32 +33,12 @@ constexpr uint8_t PANEL_SAVE_RETRY_HEIGHT = 64;
 constexpr uint8_t PANEL_SAVE_RETRY_FRAMES = 1;
 constexpr bool    PANEL_SAVE_RETRY_MASKED = false;
 
-constexpr uint8_t TITLE_KEEP_WIDTH  = 128;
-constexpr uint8_t TITLE_KEEP_HEIGHT = 64;
-constexpr uint8_t TITLE_KEEP_FRAMES = 1;
-constexpr bool    TITLE_KEEP_MASKED = false;
-
 constexpr uint8_t TITLE_MENU_WIDTH  = 128;
 constexpr uint8_t TITLE_MENU_HEIGHT = 64;
-constexpr uint8_t TITLE_MENU_FRAMES = 30;
+constexpr uint8_t TITLE_MENU_FRAMES = 8;
 constexpr bool    TITLE_MENU_MASKED = false;
 
 constexpr uint8_t TITLE_REPLACE_WIDTH  = 128;
 constexpr uint8_t TITLE_REPLACE_HEIGHT = 64;
-constexpr uint8_t TITLE_REPLACE_FRAMES = 5;
+constexpr uint8_t TITLE_REPLACE_FRAMES = 1;
 constexpr bool    TITLE_REPLACE_MASKED = false;
-
-constexpr uint8_t WORK_ACTIVE_WIDTH  = 128;
-constexpr uint8_t WORK_ACTIVE_HEIGHT = 44;
-constexpr uint8_t WORK_ACTIVE_FRAMES = 5;
-constexpr bool    WORK_ACTIVE_MASKED = false;
-
-constexpr uint8_t WORK_DETAILS_WIDTH  = 128;
-constexpr uint8_t WORK_DETAILS_HEIGHT = 64;
-constexpr uint8_t WORK_DETAILS_FRAMES = 5;
-constexpr bool    WORK_DETAILS_MASKED = false;
-
-constexpr uint8_t WORK_ROWS_WIDTH  = 128;
-constexpr uint8_t WORK_ROWS_HEIGHT = 8;
-constexpr uint8_t WORK_ROWS_FRAMES = 12;
-constexpr bool    WORK_ROWS_MASKED = false;
