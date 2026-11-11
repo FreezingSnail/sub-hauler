@@ -69,6 +69,11 @@ These are the invariants that change code behavior:
 - **FX image**: `fxdata/fxdata.bin` is the only flashable cart image; table
   blobs are sections inside it.
 
+- **24-bit label returns**: when a function selects an FX address/`txt_*`/`img_*`
+  or another 24-bit constant across branches, assign it to a local once and use a
+  single `return` at the end; prefer `if`/`else if`. Repeated `return <24-bit>;`
+  sites emit duplicate 3-byte constant loads. Eight-bit enum selectors are exempt.
+
 ## Worker protocol
 
 One task = one implement-verify loop. Run the exact verification commands for
