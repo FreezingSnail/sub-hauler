@@ -145,6 +145,18 @@ inline void drawSurveyTargets(uint8_t *buffer, const game::State &state, uint8_t
             continue;
         drawDestinationMark(buffer, cellX, cellY);
     }
+    // Optional late expedition: after the beacon is restored, mark the
+    // lower-right Deep Relay work site until the expedition completes.
+    if (campaign::hasMilestone(state, campaign::kMilestoneBeacon) &&
+        !campaign::missionCompleted(state, campaign::kExpedition)) {
+        world::Berth relay;
+        if (world::berthInfo(world::BERTH_DEEP_RELAY, relay)) {
+            int16_t cellX;
+            int16_t cellY;
+            if (chart::cellFromPixels(relay.pixel_x, relay.pixel_y, cellX, cellY))
+                drawDestinationMark(buffer, cellX, cellY);
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -207,12 +219,12 @@ inline void drawDestination(uint8_t *buffer, const game::State &gameState, uint8
         return;
     if ((blinkPhase & kBlinkMask) != 0)
         return;
-    world::Settlement settlement;
-    if (!world::settlementInfo(gameState.activeJob.to, settlement))
+    world::Berth berth;
+    if (!world::berthInfo(gameState.activeJob.to, berth))
         return;
     int16_t cellX;
     int16_t cellY;
-    if (!chart::cellFromPixels(settlement.pixel_x, settlement.pixel_y, cellX, cellY))
+    if (!chart::cellFromPixels(berth.pixel_x, berth.pixel_y, cellX, cellY))
         return;
     drawDestinationMark(buffer, cellX, cellY);
 }

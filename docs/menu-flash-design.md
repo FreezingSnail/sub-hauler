@@ -11,8 +11,8 @@ The menu/backend measurements below are historical checkpoints. Current totals
 after adding the boot introduction are in [startup-splashes.md](startup-splashes.md).
 
 **Runtime status, 2026-11-01:** the station board is drawn natively from
-`src/station_view.hpp` (`WORK / UNDOCK`, `summary / ABANDON / WORK / UNDOCK`, or
-`UNDOCK` at a service berth). The generated station and shop frames and hint
+`src/station_view.hpp` (`WORK / UNDOCK`, `summary / WORK / UNDOCK`, or
+`UNDOCK` at a work/service berth). The generated station and shop frames and hint
 rows remain shipped cart ABI only: the shop has no runtime screen, WORK lists
 only story and survey rows, and no draw path selects the baked shop panels or
 credit captions. Generation still reproduces those pixels byte-for-byte so

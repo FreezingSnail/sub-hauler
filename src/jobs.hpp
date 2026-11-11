@@ -22,7 +22,7 @@ enum DeliveryResult : uint8_t {
 };
 
 // True only for the most recent failed delivery, so the station board can show
-// its one-line SHORT note. Accepting or abandoning clears it.
+// its one-line SHORT note. A fresh acceptance clears it.
 inline bool deliveryFailed(const State &state) {
     return state.lastDelivery == kDeliveryFailed;
 }
@@ -38,19 +38,6 @@ inline void clearActive(State &state) {
 inline void countDelivered(State &state) {
     if (state.delivered != 0xFFFFu)
         ++state.delivered;
-}
-
-// Abandon the active contract: clear the job and hold. A campaign mission
-// remains available at its source.
-inline bool abandon(State &state) {
-    if (state.docked < 0 || !game::hasActiveJob(state))
-        return false;
-
-    clearActive(state);
-    game::setCargo(state, 0);
-    state.ballast = static_cast<uint8_t>(game::neutralForNormalized(state.cargo));
-    state.lastDelivery = kDeliveryNone;
-    return true;
 }
 
 // Delivery is only evaluated at the active contract's destination. Docking at

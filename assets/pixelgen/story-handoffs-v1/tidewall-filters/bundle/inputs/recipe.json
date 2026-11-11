@@ -1,0 +1,83 @@
+{
+  "schema_version": "pixelgen.motion/1",
+  "recipe_id": "story-handoffs-v1-tidewall-filters",
+  "revision": 3,
+  "canvas": {
+    "width": 128,
+    "height": 64,
+    "depth": 1
+  },
+  "background": {
+    "path": "background.png",
+    "sha256": "1b75694df9cb0ca18de20b682d61d2af6f49e8de9931d732073fcca0e725577e"
+  },
+  "master_seed": 73101,
+  "phases": [
+    {
+      "phase_id": "pose-0",
+      "duration_ms": 300
+    },
+    {
+      "phase_id": "pose-1",
+      "duration_ms": 300
+    },
+    {
+      "phase_id": "pose-2",
+      "duration_ms": 300
+    },
+    {
+      "phase_id": "pose-3",
+      "duration_ms": 300
+    }
+  ],
+  "layers": [
+    {
+      "layer_id": "pleated-filter-pair",
+      "role": "part",
+      "z": 10,
+      "source": {
+        "path": "pleated-filter-pair.png",
+        "sha256": "f7fc763cb7e0959c872079f96bfcbe4cb2f573dd66a6ea496dca2a7eba4249f1"
+      },
+      "matte": {
+        "path": "pleated-filter-pair-matte.png",
+        "sha256": "51a728627fa4b1a5430009467cb73d1cc5d624ea131b95d10e8f48c7b2a5cc70"
+      },
+      "origin": {
+        "x": 93,
+        "y": 19
+      },
+      "track": [
+        {
+          "translate": {
+            "x": 0,
+            "y": 0
+          },
+          "turn_16ths": 0
+        },
+        {
+          "translate": {
+            "x": 0,
+            "y": 2
+          },
+          "turn_16ths": 0
+        },
+        {
+          "translate": {
+            "x": 0,
+            "y": 4
+          },
+          "turn_16ths": 0
+        },
+        {
+          "translate": {
+            "x": -1,
+            "y": 2
+          },
+          "turn_16ths": 0
+        }
+      ],
+      "clip": "error"
+    }
+  ]
+}

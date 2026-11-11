@@ -21,9 +21,18 @@ class MusicRegionTableTest(unittest.TestCase):
         self.assertIn("uint16_t kCenterX", header)
         self.assertIn("303", header)
 
-    def test_regions_are_eight_rooms_each(self):
+    def test_all_four_cues_have_rooms(self):
         for region in range(4):
-            self.assertEqual(sum(1 for row in self.rows if row[0] == region), 8)
+            self.assertGreater(sum(1 for row in self.rows if row[0] == region), 0)
+
+    def test_pressure_boundary_uses_the_works_cue(self):
+        row = next(row for row in self.rows if row[1] == 187 and row[2] == 102)
+        self.assertEqual(row[0], gen_music_regions.REGION_IDS["works"])
+
+    def test_gate_cut_regions_are_clean_and_readable(self):
+        is_open = gen_music_regions.open_water()
+        for region, cells in gen_music_regions.components(self.plane, is_open):
+            self.assertGreaterEqual(len(cells), gen_music_regions.MIN_REGION_TILES)
 
     def test_room_centres_and_radii_stay_inside_the_generated_bounds(self):
         width, height = self.source["dimensions"]

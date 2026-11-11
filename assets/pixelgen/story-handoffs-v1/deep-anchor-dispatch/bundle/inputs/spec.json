@@ -1,0 +1,206 @@
+{
+  "anchor_prompt": null,
+  "frames": [
+    {
+      "candidate": null,
+      "duration_ms": 300,
+      "frame_id": "pose-0",
+      "phase": "pose-0",
+      "seed": 73105,
+      "source": {
+        "encoded_bytes": null,
+        "format": "png",
+        "height": null,
+        "opaque": true,
+        "path": "inputs/frames/000.png",
+        "sha256": "06f2480a171f9d82789557a328e6e16d931d337405b00011a19c74d4b701d9f2",
+        "width": null
+      }
+    },
+    {
+      "candidate": null,
+      "duration_ms": 300,
+      "frame_id": "pose-1",
+      "phase": "pose-1",
+      "seed": 73106,
+      "source": {
+        "encoded_bytes": null,
+        "format": "png",
+        "height": null,
+        "opaque": true,
+        "path": "inputs/frames/001.png",
+        "sha256": "468bdc967e21167643a7c90300f0fcb30c8cdc5f0465201e84015f205caf6577",
+        "width": null
+      }
+    },
+    {
+      "candidate": null,
+      "duration_ms": 300,
+      "frame_id": "pose-2",
+      "phase": "pose-2",
+      "seed": 73107,
+      "source": {
+        "encoded_bytes": null,
+        "format": "png",
+        "height": null,
+        "opaque": true,
+        "path": "inputs/frames/002.png",
+        "sha256": "c13392f38a429030441da4f85ba0f4f1ca14f77b931a7928e6785850bb68af2b",
+        "width": null
+      }
+    },
+    {
+      "candidate": null,
+      "duration_ms": 300,
+      "frame_id": "pose-3",
+      "phase": "pose-3",
+      "seed": 73108,
+      "source": {
+        "encoded_bytes": null,
+        "format": "png",
+        "height": null,
+        "opaque": true,
+        "path": "inputs/frames/003.png",
+        "sha256": "30373188f7c66baeadfb67380067e74c8d36864d2f8948db4fd5c6285935f4e9",
+        "width": null
+      }
+    }
+  ],
+  "layout": null,
+  "layout_id": null,
+  "mask": {
+    "height": 64,
+    "kind": "png",
+    "path": "inputs/mask.png",
+    "rectangles": [
+      {
+        "height": 1,
+        "width": 35,
+        "x": 83,
+        "y": 21
+      },
+      {
+        "height": 1,
+        "width": 35,
+        "x": 83,
+        "y": 22
+      },
+      {
+        "height": 1,
+        "width": 36,
+        "x": 82,
+        "y": 23
+      },
+      {
+        "height": 1,
+        "width": 36,
+        "x": 82,
+        "y": 24
+      },
+      {
+        "height": 1,
+        "width": 36,
+        "x": 82,
+        "y": 25
+      },
+      {
+        "height": 1,
+        "width": 36,
+        "x": 82,
+        "y": 26
+      },
+      {
+        "height": 1,
+        "width": 36,
+        "x": 82,
+        "y": 27
+      },
+      {
+        "height": 1,
+        "width": 36,
+        "x": 82,
+        "y": 28
+      },
+      {
+        "height": 1,
+        "width": 36,
+        "x": 82,
+        "y": 29
+      },
+      {
+        "height": 1,
+        "width": 36,
+        "x": 82,
+        "y": 30
+      },
+      {
+        "height": 1,
+        "width": 36,
+        "x": 82,
+        "y": 31
+      },
+      {
+        "height": 1,
+        "width": 36,
+        "x": 82,
+        "y": 32
+      },
+      {
+        "height": 1,
+        "width": 36,
+        "x": 82,
+        "y": 33
+      },
+      {
+        "height": 1,
+        "width": 36,
+        "x": 82,
+        "y": 34
+      },
+      {
+        "height": 1,
+        "width": 36,
+        "x": 82,
+        "y": 35
+      },
+      {
+        "height": 1,
+        "width": 36,
+        "x": 82,
+        "y": 36
+      },
+      {
+        "height": 1,
+        "width": 36,
+        "x": 82,
+        "y": 37
+      },
+      {
+        "height": 1,
+        "width": 36,
+        "x": 82,
+        "y": 38
+      },
+      {
+        "height": 1,
+        "width": 35,
+        "x": 83,
+        "y": 39
+      },
+      {
+        "height": 1,
+        "width": 35,
+        "x": 83,
+        "y": 40
+      }
+    ],
+    "sha256": "046db0fa19ac6f601d8beb053575524aa295b55b7e5f8548316bd6deb3b3d04e",
+    "width": 128
+  },
+  "master_seed": 73105,
+  "mode": "assemble",
+  "model": null,
+  "schema_version": "pixelgen.animation/1",
+  "spec_id": "story-handoffs-v1-deep-anchor-dispatch",
+  "tail": null
+}

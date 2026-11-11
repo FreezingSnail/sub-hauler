@@ -72,27 +72,45 @@ def export_settlements(native: Image.Image, output: Path) -> None:
     print(f'render-world: {output / "game-world-settlements.png"} (four wall settlements)')
 
 
-def export(input_path: Path, output: Path) -> None:
-    output.mkdir(parents=True, exist_ok=True)
-    native = Image.open(input_path).convert("1")
-    if native.size != (2560, 1280):
-        raise ValueError("expected a 2560x1280 native world panorama")
-    native.save(output / "game-world-native.png", optimize=True)
-    export_regions(native, output)
-    export_settlements(native, output)
-    source = json.loads((ROOT / "levels/exploration.json").read_text())
-    objects = (ROOT / "fxdata/tables/exploration-objects.bin").read_bytes()
+MUSIC_REGIONS = (
+    (65, 105, "LANTERN REACHES", "SONAR LULLABY", "#2f76a8"),
+    (1450, 105, "KELP GALLERIES", "KELP DRIFT", "#3b7f58"),
+    (1496, 488, "BROKEN WORKS", "BUBBLEJET RUN", "#a25c1f"),
+    (664, 1024, "GLASS TRENCH", "ABYSSAL GLASS", "#74509d"),
+)
+MUSIC_TINT = ((47, 118, 168), (59, 127, 88), (162, 92, 31), (116, 80, 157))
+
+
+def music_water(native: Image.Image) -> Image.Image:
+    """Tint only open water with the baked cleaned cue-region plane."""
+    plane = (ROOT / "fxdata/tables/music-regions.bin").read_bytes()
+    if len(plane) != 320 * 160:
+        raise ValueError("expected a 320x160 music-region plane")
+    region = Image.frombytes("L", (320, 160), plane).resize(native.size, Image.Resampling.NEAREST)
+    tint = Image.merge("RGB", [region.point(list(channel) + [0] * (256 - len(channel)))
+                               for channel in zip(*MUSIC_TINT)])
+    water = native.convert("L").point(lambda value: 255 if value == 0 else 0)
+    # Keep the tint dark enough for the white terrain and labels to stay readable.
+    shade = Image.new("RGB", native.size, "#102532")
+    tint = Image.blend(shade, tint, 0.78)
+    return Image.composite(tint, native.convert("RGB"), water)
+
+
+def build_overview(native: Image.Image, source, objects: bytes, music: bool) -> Image.Image:
     if objects[:4] != b"SHL2" or objects[6:8] != bytes((7, 5)):
         raise ValueError("unsupported exploration object records")
     gate_count, pickup_count = objects[4:6]
     gate_stride, pickup_stride = objects[6:8]
-    header, footer = 120, 130
+    header, footer = 120, 230 if music else 130
     canvas = Image.new("RGB", (native.width, native.height + header + footer), "#102532")
-    canvas.paste(native.convert("RGB"), (0, header))
+    canvas.paste(music_water(native) if music else native.convert("RGB"), (0, header))
     draw = ImageDraw.Draw(canvas)
     ink, muted = "#e4efea", "#9bb8c3"
-    draw.text((40, 20), "SUB-HAULER / ACTUAL GAME WORLD", font=font(34, True), fill=ink)
-    draw.text((40, 70), "Native cave, station, gate, pickup and hazard renderers · all secrets shown · new-run state", font=font(21), fill=muted)
+    draw.text((40, 20), "SUB-HAULER / MUSIC REGIONS" if music else "SUB-HAULER / ACTUAL GAME WORLD", font=font(34, True), fill=ink)
+    subtitle = ("Travel regions highlighted by song · berth-board overrides in the key · all secrets shown · new-run state"
+                if music else
+                "Native cave, station, gate, pickup and current renderers · all secrets shown · new-run state")
+    draw.text((40, 70), subtitle, font=font(21), fill=muted)
     draw.text((native.width - 40, 32), "2560 × 1280 game pixels", font=font(22, True), fill=ink, anchor="ra")
     f_label, f_small = font(19, True), font(15)
 
@@ -122,12 +140,12 @@ def export(input_path: Path, output: Path) -> None:
         draw.text((x, by + 5), text, font=f_label, fill="#20574f", anchor="ma")
         draw.ellipse((x - 5, y + header - 5, x + 5, y + header + 5), outline="#178169", width=2)
 
-    gate_colors = {1: "#b97a15", 2: "#8255b2", 4: "#13819c", 6: "#8255b2"}
+    gate_styles = {0: ("#13819c", "TIDE"), 1: ("#b97a15", "C"), 2: ("#8255b2", "P"),
+                   4: ("#13819c", "T"), 6: ("#8255b2", "P+T")}
     for i in range(gate_count):
         x, y, w, h, required = struct.unpack_from("<HHBBB", objects, 8 + i * 7)
-        color = gate_colors[required]
+        color, tag = gate_styles.get(required, ("#b97a15", f"0x{required:02X}"))
         draw.rectangle((x - 2, y + header - 2, x + w + 2, y + header + h + 2), outline=color, width=3)
-        tag = {1: "C", 2: "P", 4: "T", 6: "P+T"}[required]
         tw = draw.textlength(tag, font=f_small) + 10
         cx, cy = x + w / 2, y + header + h / 2
         draw.rounded_rectangle((cx - tw / 2, cy - 12, cx + tw / 2, cy + 12), radius=4, fill=color)
@@ -135,8 +153,8 @@ def export(input_path: Path, output: Path) -> None:
 
     names = {1: "SALVAGE CUTTER", 2: "PRESSURE SEAL", 3: "CURRENT THRUSTER",
              6: "SURVEY LENS"}
-    subtitle = {1: "opens grates", 2: "opens deep water", 3: "opens opposing jets",
-                6: "larger sonar reveal"}
+    subtitle = {1: "opens grates", 2: "opens deep water", 3: "disables every tide",
+                6: "reads the buried relay"}
     for i in range(pickup_count):
         offset = 8 + gate_count * gate_stride + i * pickup_stride
         x, y, kind = struct.unpack_from("<HHB", objects, offset)
@@ -148,20 +166,64 @@ def export(input_path: Path, output: Path) -> None:
     for x in range(0, native.width, 24):
         draw.line((x, pressure_y, x + 11, pressure_y), fill="#a88cc2", width=2)
     draw.text((native.width - 35, pressure_y - 25), "HIGH PRESSURE BELOW · SEAL REQUIRED", font=font(17, True), fill="#78549b", anchor="ra", stroke_width=3, stroke_fill="white")
-    regions = [(65, 105, "LANTERN REACHES"), (1450, 105, "KELP GALLERIES"),
-               (1496, 488, "BROKEN WORKS"), (664, 1024, "GLASS TRENCH")]
-    for x, y, text in regions:
-        draw.text((x, y + header), text, font=font(22, True), fill="#58737c", stroke_width=3, stroke_fill="white")
+    if music:
+        for x, y, title, song, color in MUSIC_REGIONS:
+            draw.text((x, y + header), title, font=font(22, True), fill="#24333a",
+                      stroke_width=3, stroke_fill="white")
+            tw = draw.textlength(song, font=f_label) + 24
+            by = y + header + 29
+            draw.rounded_rectangle((x, by, x + tw, by + 31), radius=5, fill="#f8fcfa",
+                                   outline=color, width=2)
+            draw.text((x + 12, by + 5), song, font=f_label, fill=color)
+    else:
+        regions = [(65, 105, "LANTERN REACHES"), (1450, 105, "KELP GALLERIES"),
+                   (1496, 488, "BROKEN WORKS"), (664, 1024, "GLASS TRENCH")]
+        for x, y, text in regions:
+            draw.text((x, y + header), text, font=font(22, True), fill="#58737c",
+                      stroke_width=3, stroke_fill="white")
 
     y = header + native.height + 22
-    draw.text((40, y), "GATE KEY", font=font(19, True), fill=ink)
-    for x, color, text in [(220, "#e5af4d", "C · Cutter"), (520, "#c4a0e7", "P · Pressure seal"),
-                           (930, "#69d4df", "T · Thruster"), (1270, "#c4a0e7", "P+T · Both tools")]:
-        draw.rectangle((x, y + 3, x + 18, y + 21), fill=color)
-        draw.text((x + 30, y), text, font=font(20), fill=ink)
-    draw.text((40, y + 48), "The companion native PNG preserves the game's exact 1-bit pixels; this overview adds labels and colored object markers.", font=font(18), fill=muted)
-    canvas.save(output / "game-world.png", optimize=True)
-    print(f"render-world: {output / 'game-world.png'} ({canvas.width}x{canvas.height})")
+    if music:
+        draw.text((40, y), "MUSIC KEY", font=font(19, True), fill=ink)
+        for x, (color, song, region) in zip((220, 820, 1420, 2020), (
+                ("#4b91c4", "SONAR LULLABY", "LANTERN REACHES"),
+                ("#5baa78", "KELP DRIFT", "KELP GALLERIES"),
+                ("#d08a3c", "BUBBLEJET RUN", "BROKEN WORKS"),
+                ("#a47bd4", "ABYSSAL GLASS", "GLASS TRENCH"))):
+            draw.rectangle((x, y + 3, x + 18, y + 21), fill=color)
+            draw.text((x + 30, y), f"{song} · {region}", font=font(18), fill=ink)
+        draw.text((40, y + 70), "BERTH BOARDS · TITLE / NEW VOYAGE & TIDEWALL: HARBOR BUBBLES · BENTHOS / CORMORANT: HARBOR BUBBLES UNTIL REPAIRED, THEN TIDEPOOL WALTZ", font=font(17), fill=ink)
+        draw.text((40, y + 96), "DEEP ANCHOR: ABYSSAL GLASS UNTIL BEACON, THEN TIDEPOOL WALTZ · RESTORED SERVICE BERTHS + PUMP / LIFT / BEACON / ENDING: TIDEPOOL WALTZ", font=font(17), fill=ink)
+        draw.text((40, y + 140), "GATE KEY", font=font(19, True), fill=ink)
+        for x, color, text in [(220, "#e5af4d", "C · Cutter"), (520, "#c4a0e7", "P · Pressure seal"),
+                               (930, "#69d4df", "TIDE · Thruster current")]:
+            draw.rectangle((x, y + 143, x + 18, y + 161), fill=color)
+            draw.text((x + 30, y + 140), text, font=font(20), fill=ink)
+        draw.text((40, y + 182), "Travel cues come from the cleaned nearest-room music plane; berth-board cues override travel music. The native PNG keeps the exact 1-bit pixels.", font=font(17), fill=muted)
+    else:
+        draw.text((40, y), "GATE KEY", font=font(19, True), fill=ink)
+        for x, color, text in [(220, "#e5af4d", "C · Cutter"), (520, "#c4a0e7", "P · Pressure seal"),
+                               (930, "#69d4df", "TIDE · Thruster current")]:
+            draw.rectangle((x, y + 3, x + 18, y + 21), fill=color)
+            draw.text((x + 30, y), text, font=font(20), fill=ink)
+        draw.text((40, y + 48), "The companion native PNG preserves the game's exact 1-bit pixels; this overview adds labels and colored object markers.", font=font(18), fill=muted)
+    return canvas
+
+
+def export(input_path: Path, output: Path) -> None:
+    output.mkdir(parents=True, exist_ok=True)
+    native = Image.open(input_path).convert("1")
+    if native.size != (2560, 1280):
+        raise ValueError("expected a 2560x1280 native world panorama")
+    native.save(output / "game-world-native.png", optimize=True)
+    export_regions(native, output)
+    export_settlements(native, output)
+    source = json.loads((ROOT / "levels/exploration.json").read_text())
+    objects = (ROOT / "fxdata/tables/exploration-objects.bin").read_bytes()
+    for music, name in ((False, "game-world.png"), (True, "game-world-music.png")):
+        canvas = build_overview(native, source, objects, music)
+        canvas.save(output / name, optimize=True)
+        print(f"render-world: {output / name} ({canvas.width}x{canvas.height})")
     print(f"render-world: {output / 'game-world-native.png'} ({native.width}x{native.height}, 1-bit)")
 
 

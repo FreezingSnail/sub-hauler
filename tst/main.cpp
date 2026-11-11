@@ -7,6 +7,8 @@
 #include "game_test.hpp"
 #include "music_logic_test.hpp"
 #include "pause_test.hpp"
+#include "hud_test.hpp"
+#include "startup_test.hpp"
 #include "pixel_layer_test.hpp"
 #include "pilot_view_test.hpp"
 #include "roster_test.hpp"
@@ -44,6 +46,8 @@ int main() {
     CollisionSuite(runner);
     CameraMotionSuite(runner);
     PauseSuite(runner);
+    HudSuite(runner);
+    StartupSuite(runner);
     GameSuite(runner);
     MusicLogicSuite(runner);
     PilotViewSuite(runner);

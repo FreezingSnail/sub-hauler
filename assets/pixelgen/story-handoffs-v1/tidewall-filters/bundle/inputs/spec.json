@@ -1,0 +1,200 @@
+{
+  "anchor_prompt": null,
+  "frames": [
+    {
+      "candidate": null,
+      "duration_ms": 300,
+      "frame_id": "pose-0",
+      "phase": "pose-0",
+      "seed": 73101,
+      "source": {
+        "encoded_bytes": null,
+        "format": "png",
+        "height": null,
+        "opaque": true,
+        "path": "inputs/frames/000.png",
+        "sha256": "e231cf03503fcfee4a52e38e30fa8a512ada9a8497f2c33ad33525d89b946f83",
+        "width": null
+      }
+    },
+    {
+      "candidate": null,
+      "duration_ms": 300,
+      "frame_id": "pose-1",
+      "phase": "pose-1",
+      "seed": 73102,
+      "source": {
+        "encoded_bytes": null,
+        "format": "png",
+        "height": null,
+        "opaque": true,
+        "path": "inputs/frames/001.png",
+        "sha256": "75c671240131d09c0d2c701a9eeeed062d580b4d10d783276f8501f9fa3512eb",
+        "width": null
+      }
+    },
+    {
+      "candidate": null,
+      "duration_ms": 300,
+      "frame_id": "pose-2",
+      "phase": "pose-2",
+      "seed": 73103,
+      "source": {
+        "encoded_bytes": null,
+        "format": "png",
+        "height": null,
+        "opaque": true,
+        "path": "inputs/frames/002.png",
+        "sha256": "3ec62476231196bcb37f8fee5e0ffb5270dd1d1c09ea9cfbe9e68a24102c529d",
+        "width": null
+      }
+    },
+    {
+      "candidate": null,
+      "duration_ms": 300,
+      "frame_id": "pose-3",
+      "phase": "pose-3",
+      "seed": 73104,
+      "source": {
+        "encoded_bytes": null,
+        "format": "png",
+        "height": null,
+        "opaque": true,
+        "path": "inputs/frames/003.png",
+        "sha256": "6d72a380ed66aa9850f912a84a71c690f00b4c9847c3cd9452176c28ad44e849",
+        "width": null
+      }
+    }
+  ],
+  "layout": null,
+  "layout_id": null,
+  "mask": {
+    "height": 64,
+    "kind": "png",
+    "path": "inputs/mask.png",
+    "rectangles": [
+      {
+        "height": 1,
+        "width": 27,
+        "x": 93,
+        "y": 19
+      },
+      {
+        "height": 1,
+        "width": 27,
+        "x": 93,
+        "y": 20
+      },
+      {
+        "height": 1,
+        "width": 28,
+        "x": 92,
+        "y": 21
+      },
+      {
+        "height": 1,
+        "width": 28,
+        "x": 92,
+        "y": 22
+      },
+      {
+        "height": 1,
+        "width": 28,
+        "x": 92,
+        "y": 23
+      },
+      {
+        "height": 1,
+        "width": 28,
+        "x": 92,
+        "y": 24
+      },
+      {
+        "height": 1,
+        "width": 28,
+        "x": 92,
+        "y": 25
+      },
+      {
+        "height": 1,
+        "width": 28,
+        "x": 92,
+        "y": 26
+      },
+      {
+        "height": 1,
+        "width": 28,
+        "x": 92,
+        "y": 27
+      },
+      {
+        "height": 1,
+        "width": 28,
+        "x": 92,
+        "y": 28
+      },
+      {
+        "height": 1,
+        "width": 28,
+        "x": 92,
+        "y": 29
+      },
+      {
+        "height": 1,
+        "width": 28,
+        "x": 92,
+        "y": 30
+      },
+      {
+        "height": 1,
+        "width": 28,
+        "x": 92,
+        "y": 31
+      },
+      {
+        "height": 1,
+        "width": 28,
+        "x": 92,
+        "y": 32
+      },
+      {
+        "height": 1,
+        "width": 28,
+        "x": 92,
+        "y": 33
+      },
+      {
+        "height": 1,
+        "width": 28,
+        "x": 92,
+        "y": 34
+      },
+      {
+        "height": 1,
+        "width": 28,
+        "x": 92,
+        "y": 35
+      },
+      {
+        "height": 1,
+        "width": 27,
+        "x": 93,
+        "y": 36
+      },
+      {
+        "height": 1,
+        "width": 27,
+        "x": 93,
+        "y": 37
+      }
+    ],
+    "sha256": "8ecfbc5c80ad67b3578c13dd7ec31eb7c8760d184a20b9fdde9d098ffbe8a84c",
+    "width": 128
+  },
+  "master_seed": 73101,
+  "mode": "assemble",
+  "model": null,
+  "schema_version": "pixelgen.animation/1",
+  "spec_id": "story-handoffs-v1-tidewall-filters",
+  "tail": null
+}

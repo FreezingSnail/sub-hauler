@@ -172,7 +172,10 @@ inline void setCue(uint8_t cue) {
         s_flight.currentCue = cue;
         return;
     }
-    if (cue == s_flight.currentCue && backend::active()) {
+    // Cue policy can select the new identity before reaching this boundary.
+    // Only skip a restart if the synth itself is already playing that stream.
+    if (cue == s_flight.currentCue && backend::active() &&
+        atm_fx_compact_state.stream_base == backend::cueOffset(cue)) {
         applyBackendPause();
         return;
     }

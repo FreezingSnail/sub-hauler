@@ -35,17 +35,21 @@ void setup() {
         ++cases;
     }
     // Title and replacement panels changed readers to recover program flash.
-    // Compare every generated variant, including the reserved status frame.
-    for (uint8_t frame = 0; frame < TITLE_MENU_FRAMES; ++frame) {
-        background(0xA5);
-        Blit::draw(0, 0, TITLE_MENU_WIDTH, TITLE_MENU_HEIGHT, title_menu + 2, frame, Blit::OVERWRITE);
-        const uint16_t expected = checksum();
-        voyage_flow::BootStatus status = {};
-        status.state = static_cast<voyage_flow::BootState>(frame / 6);
-        background(0x5A);
-        voyage_view::drawTitle(status, frame % 2, (frame % 6) / 2, voyage_view::kTitleMenu);
-        ok = (checksum() == expected) && ok;
-        ++cases;
+    // The fixed build always selects the HAULER column (hull 1) from the baked
+    // status x hull x row sheet, so compare those frames only.
+    for (uint8_t statusIndex = 0; statusIndex < 5; ++statusIndex) {
+        for (uint8_t selected = 0; selected < 2; ++selected) {
+            const uint16_t frame = static_cast<uint16_t>(statusIndex * 6u + 1u * 2u + selected);
+            background(0xA5);
+            Blit::draw(0, 0, TITLE_MENU_WIDTH, TITLE_MENU_HEIGHT, title_menu + 2, frame, Blit::OVERWRITE);
+            const uint16_t expected = checksum();
+            voyage_flow::BootStatus status = {};
+            status.state = static_cast<voyage_flow::BootState>(statusIndex);
+            background(0x5A);
+            voyage_view::drawTitle(status, selected, voyage_view::kTitleMenu);
+            ok = (checksum() == expected) && ok;
+            ++cases;
+        }
     }
     for (uint8_t frame = 0; frame < TITLE_REPLACE_FRAMES; ++frame) {
         background(0xA5);
@@ -54,16 +58,38 @@ void setup() {
         voyage_flow::BootStatus status = {};
         status.state = static_cast<voyage_flow::BootState>(frame);
         background(0x5A);
-        voyage_view::drawTitle(status, 0, 0, voyage_view::kTitleConfirmReplace);
+        voyage_view::drawTitle(status, 0, voyage_view::kTitleConfirmReplace);
         ok = (checksum() == expected) && ok;
         ++cases;
     }
-    const uint32_t started = millis();
-    startup_view::show();
-    const uint32_t elapsed = millis() - started;
-    ok = elapsed >= 3250 && elapsed < 4000 && ok;
+    // Drive the production startup sequence without a physical button. The
+    // script holds A through the logo, releases it, waits on the game splash,
+    // then gives one fresh press. It proves the held logo input cannot skip the
+    // splash and that the fresh release is consumed before returning.
+    struct ScriptedPoll {
+        uint16_t ticks = 0;
+        uint16_t held = 0;
+        uint8_t buttons() const {
+            if (ticks < 64)
+                return A_BUTTON;   // held through and just past the logo
+            if (ticks < 160)
+                return 0;          // released; splash must keep waiting
+            if (ticks < 162)
+                return A_BUTTON;   // fresh press
+            return 0;
+        }
+        void delay() {
+            ++ticks;
+        }
+        void waitNoButtons() {
+            ++held;
+        }
+    } poll;
+    startup_view::run(poll);
+    ok = poll.ticks >= 160 && poll.held == 1 && ok;
     Serial.print(F("startup pixels=")); Serial.print(cases);
-    Serial.print(F(" elapsed_ms=")); Serial.println(elapsed);
+    Serial.print(F(" startup_ticks=")); Serial.print(poll.ticks);
+    Serial.print(F(" releases=")); Serial.println(poll.held);
     Serial.println(ok ? F("P") : F("F"));
 }
 

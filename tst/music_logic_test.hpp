@@ -58,6 +58,41 @@ inline void MusicLogicSuite(TestRunner &runner) {
     }
 
     {
+        Test test("station boards follow each restoration milestone");
+        const uint8_t pump = campaign::kMilestonePump;
+        const uint8_t lift = campaign::kMilestoneLift;
+        const uint8_t beacon = campaign::kMilestoneBeacon;
+        test.assertEqual(music_logic::stationCue(campaign::kTidewall, 0), music_logic::kHarbor, "Tidewall before repairs");
+        test.assertEqual(music_logic::stationCue(campaign::kTidewall, pump | lift | beacon), music_logic::kHarbor, "Tidewall after repairs");
+        test.assertEqual(music_logic::stationCue(campaign::kBenthos, 0), music_logic::kHarbor, "Benthos before pump");
+        test.assertEqual(music_logic::stationCue(campaign::kBenthos, campaign::kMilestoneFirst), music_logic::kHarbor, "FIRST alone does not restore Benthos");
+        test.assertEqual(music_logic::stationCue(campaign::kBenthos, pump), music_logic::kTidepool, "Benthos after pump");
+        test.assertEqual(music_logic::stationCue(campaign::kCormorant, 0), music_logic::kHarbor, "Cormorant before lift");
+        test.assertEqual(music_logic::stationCue(campaign::kCormorant, pump), music_logic::kHarbor, "pump alone does not restore Cormorant");
+        test.assertEqual(music_logic::stationCue(campaign::kCormorant, lift), music_logic::kTidepool, "Cormorant after lift");
+        test.assertEqual(music_logic::stationCue(campaign::kDeepAnchor, 0), music_logic::kAbyssal, "Deep Anchor before beacon");
+        test.assertEqual(music_logic::stationCue(campaign::kDeepAnchor, pump | lift), music_logic::kAbyssal, "Deep Anchor stays abyssal until beacon");
+        test.assertEqual(music_logic::stationCue(campaign::kDeepAnchor, beacon), music_logic::kTidepool, "Deep Anchor after beacon");
+        test.assertEqual(music_logic::stationCue(campaign::kPumpRefuge, 0), music_logic::kTidepool, "Pump Refuge service berth");
+        test.assertEqual(music_logic::stationCue(campaign::kLowerGantry, 0), music_logic::kTidepool, "Lower Gantry service berth");
+        test.assertEqual(music_logic::stationCue(0xFF, 0), music_logic::kHarbor, "undocked fallback keeps the harbor cue");
+        runner.add(test);
+    }
+
+    {
+        Test test("delivery decks switch to tidepool but surveys and FIRST do not");
+        test.assertEqual(music_logic::deliveryStoryCue(story_view::kCardPump), music_logic::kTidepool, "PUMP deck");
+        test.assertEqual(music_logic::deliveryStoryCue(story_view::kCardLift), music_logic::kTidepool, "LIFT deck");
+        test.assertEqual(music_logic::deliveryStoryCue(story_view::kCardBeacon), music_logic::kTidepool, "BEACON deck");
+        test.assertEqual(music_logic::deliveryStoryCue(story_view::kCardFirst), music_logic::kCueNone, "FIRST keeps its path");
+        test.assertEqual(music_logic::deliveryStoryCue(story_view::kCardPumpSurvey), music_logic::kCueNone, "Pump survey keeps its path");
+        test.assertEqual(music_logic::deliveryStoryCue(story_view::kCardLiftSurvey), music_logic::kCueNone, "Lift survey keeps its path");
+        test.assertEqual(music_logic::deliveryStoryCue(story_view::kCardHome), music_logic::kCueNone, "HOME keeps the ending path");
+        test.assertEqual(music_logic::deliveryStoryCue(story_view::kCardNone), music_logic::kCueNone, "no pending deck");
+        runner.add(test);
+    }
+
+    {
         Test test("sampling a passage is deterministic from different prior regions");
         const int16_t passageX = 53 * 8 + 4;   // authored Tidewall-Lantern passage
         const int16_t passageY = 14 * 8 + 4;

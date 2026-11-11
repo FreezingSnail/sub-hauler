@@ -1,4 +1,4 @@
-.PHONY: help full gen gen-check gen-audio build mini size size-line run debug test test-tools docs-check fxtest fxtest-flight fxtest-build fxtest-run clean format music-viewer music-viewer-build render-world
+.PHONY: help full gen gen-check gen-audio build mini size size-line run debug save-migrate test test-tools docs-check fxtest fxtest-flight fxtest-build fxtest-run clean format music-viewer music-viewer-build render-world
 
 # ----------------------------------------------------------------------------
 # Project
@@ -12,9 +12,15 @@ FQBN          ?= arduboy-homemade:avr:arduboy-fx
 MINI_FQBN     ?= arduboy-homemade:avr:arduboy-mini
 
 # One fixed game configuration. Dependencies below are tool/board inputs, not
-# gameplay variants.
-BUILD_DIR     ?= build/arduino
-DIST_DIR      ?= dist/fx
+# gameplay variants. DEBUG=1 is the developer-only map-inspection image; it
+# uses isolated output directories so release objects are never reused.
+DEBUG         ?= 0
+ifneq ($(filter-out 0 1,$(DEBUG)),)
+$(error DEBUG must be 0 or 1)
+endif
+DEBUG_FLAGS   := $(if $(filter 1,$(DEBUG)),-DSH_DEV_MODE=1)
+BUILD_DIR     ?= $(if $(filter 1,$(DEBUG)),build/debug,build/arduino)
+DIST_DIR      ?= $(if $(filter 1,$(DEBUG)),dist/debug,dist/fx)
 MINI_BUILD_DIR ?= build/arduino-mini
 MINI_DIST_DIR ?= dist/mini
 FXTEST_BUILD_DIR ?= build/fxtest
@@ -48,7 +54,7 @@ RELAX_FLAGS   ?= -mrelax -mcall-prologues
 MUSIC_CPP_FLAGS := -DATM_FX_COMPACT_LOOP=1 -DATM_FX_COMPACT_RING=32
 MUSIC_C_FLAGS   := -DATM_FX_COMPACT_LOOP=1 -DATM_FX_COMPACT_RING=32
 MUSIC_LIB       := --library "$(ATMLIB2FX_ROOT)"
-CPP_EXTRA_FLAGS := $(RELAX_FLAGS) $(MUSIC_CPP_FLAGS)
+CPP_EXTRA_FLAGS := $(RELAX_FLAGS) $(DEBUG_FLAGS) $(MUSIC_CPP_FLAGS)
 C_EXTRA_FLAGS   := -mrelax $(MUSIC_C_FLAGS)
 SIZE_FLAGS    ?= --build-property compiler.cpp.extra_flags="$(CPP_EXTRA_FLAGS)" \
                  --build-property compiler.c.extra_flags="$(C_EXTRA_FLAGS)" \
@@ -68,8 +74,8 @@ MUSIC_SOURCES := music/catalog.json $(wildcard music/*/song.json)
 ADPCM_BINS    := $(addprefix fxdata/music/adpcm/,harbor_bubbles.bin kelp_drift.bin sonar_lullaby.bin abyssal_glass.bin tidepool_waltz.bin bubblejet_run.bin)
 REGION_OUTPUTS := src/generated/music_regions.hpp fxdata/tables/music-regions.bin
 MUSIC_OUTPUTS := $(addprefix fxdata/music/sh_,harbor_bubbles.bin kelp_drift.bin sonar_lullaby.bin abyssal_glass.bin tidepool_waltz.bin bubblejet_run.bin) fxdata/music/manifest.json
-STORY_BEAT_INPUTS := tools/gen_story_beats.py docs/story-sketchbook.html docs/assets/first-beat-animation/frames.js $(wildcard docs/assets/first-beat-animation/all-beats-v3/*-[0-3].png)
-STORY_BEAT_OUTPUTS := fxdata/tables/story-beats.bin src/generated/story_beats.hpp
+STORY_BEAT_INPUTS := tools/gen_story_beats.py story/scenes.json story/art.png
+STORY_BEAT_OUTPUTS := fxdata/tables/story-beats.bin src/generated/story_beats.hpp docs/assets/first-beat-animation/frames.js tst/fxdatatest/story_frame_crc.hpp docs/assets/story-cards.png docs/assets/story-cards.json
 FX_INPUTS     := $(IMAGES) fxdata/fxdata.txt tools/gen.sh tools/gen_sprites.py \
                  tools/gen_hud.py images/hud/*.png \
                  tools/gen_menu.py src/station_view.hpp images/menu/*.png \
@@ -215,6 +221,10 @@ gen-check:
 	@cmp -s docs/assets/story-flourishes-preview-4x.png $(BUILD_DIR)/gen-check/story-preview-4x.png || { echo "gen-check: story 4x preview changed" >&2; exit 1; }
 	@cmp -s fxdata/tables/story-beats.bin $(BUILD_DIR)/gen-check/story-beats/story-beats.bin || { echo "gen-check: story beat blob changed" >&2; exit 1; }
 	@cmp -s src/generated/story_beats.hpp $(BUILD_DIR)/gen-check/story-beats/story_beats.hpp || { echo "gen-check: story beat header changed" >&2; exit 1; }
+	@cmp -s docs/assets/first-beat-animation/frames.js $(BUILD_DIR)/gen-check/story-beats/frames.js || { echo "gen-check: story preview frame map changed" >&2; exit 1; }
+	@cmp -s tst/fxdatatest/story_frame_crc.hpp $(BUILD_DIR)/gen-check/story-beats/story_frame_crc.hpp || { echo "gen-check: story device CRC reference changed" >&2; exit 1; }
+	@cmp -s docs/assets/story-cards.png $(BUILD_DIR)/gen-check/story-beats/story-cards.png || { echo "gen-check: story card sheet changed" >&2; exit 1; }
+	@cmp -s docs/assets/story-cards.json $(BUILD_DIR)/gen-check/story-beats/story-cards.json || { echo "gen-check: story card map changed" >&2; exit 1; }
 	@echo "gen-check: generated artifacts are deterministic"
 
 # Generation is a prerequisite of the firmware build, so a missing or stale
@@ -255,9 +265,14 @@ run: build
 	@test -f "$(FXDATA_BIN)" || { echo "run: FX image missing at $(FXDATA_BIN); run make gen" >&2; exit 1; }
 	"$(ARDENS)" display=ssd1306 fxport=d1 file="$(ELF)" file="$(FXDATA_BIN)"
 
-debug: build
-	@test -x "$(ARDENS)" || { echo "debug: Ardens not found at $(ARDENS); set ARDENS=/path/to/Ardens" >&2; exit 1; }
-	"$(ARDENS)" display=ssd1306 fxport=d1 file="$(ELF)" file="$(FXDATA_BIN)"
+debug:
+	$(MAKE) --no-print-directory run DEBUG=1
+
+# Ardens keys saves by a hash of the program and cart. Copy an existing save
+# under the current image's key without changing its payload or the source.
+save-migrate: build
+	@test -n "$(SAVE)" || { echo "save-migrate: set SAVE=/path/to/absim_*.save" >&2; exit 1; }
+	python3 tools/ardens_save.py migrate --save "$(SAVE)" --hex "$(DIST_DIR)/$(SKETCH).ino.hex" --fxdata "$(FXDATA_BIN)"
 
 # ----------------------------------------------------------------------------
 # Host tests
@@ -281,6 +296,9 @@ render-world:
 	$(CXX) -std=c++17 -O2 -Wall -Wextra -Isrc tools/render_world.cpp -o $(WORLD_RENDER_DIR)/render-world
 	$(WORLD_RENDER_DIR)/render-world fxdata/tables/exploration-terrain.bin $(WORLD_RENDER_DIR)/world.pbm
 	python3 tools/render_world.py --input $(WORLD_RENDER_DIR)/world.pbm --output-dir $(WORLD_RENDER_DIR)
+	cp $(WORLD_RENDER_DIR)/game-world.png docs/assets/exploration-world-2026-11-09.png
+	cp $(WORLD_RENDER_DIR)/game-world-music.png docs/assets/exploration-world-music-2026-11-09.png
+	cp $(WORLD_RENDER_DIR)/game-world-native.png docs/assets/exploration-world-native-2026-11-09.png
 
 TEST_OUT      := build/tests/host
 TEST_SOURCES  := tst/main.cpp
@@ -358,7 +376,7 @@ fxtest-run:
 			stage="$(FXTEST_BUILD_DIR)/$$name"; \
 			cp -f "$(FXDATA_BIN)" "$$stage/fxdata.bin"; \
 			ms="$(FXTEST_MS)"; \
-			case "$$name" in test_startup|test_save_chain) \
+			case "$$name" in test_startup|test_save_chain|test_story) \
 				if [ "$$ms" -lt 8000 ]; then ms=8000; fi ;; \
 			esac; \
 			echo "=== $$name ==="; \
@@ -399,7 +417,9 @@ help:
 		'  make mini       compile the fixed Arduboy Mini firmware into dist/mini/' \
 		'  make size       whole-image flash/RAM report' \
 		'  make run        build, then launch Ardens with the ELF + FX image' \
-		'  make render-world export the native world and annotated PNG overview' \
+		'  make debug      build the developer no-clip image and launch Ardens (DEBUG=1)' \
+		'  make save-migrate SAVE=...  copy an Ardens save to the current image hash' \
+		'  make render-world export the native world, annotated overview and music map' \
 		'  make music-viewer audition the underwater tracks in the ATMlib2FX jukebox' \
 		'  make test       host C++ tests (g++, no device required)' \
 		'  make test-tools Python tooling unittest suite' \
@@ -410,4 +430,4 @@ help:
 		'  make fxtest-save-runtime-page  emulator-only runtime page probe (erases alternate page)' \
 		'  make clean      remove build/ and dist/' \
 		'' \
-		'Overrides: SKETCH, FQBN, MINI_FQBN, ARDUINO_CLI, ARDENS, FXTEST_ONLY, FXTEST_MS, CXX.'
+		'Overrides: DEBUG=0|1, SAVE, SKETCH, FQBN, MINI_FQBN, ARDUINO_CLI, ARDENS, FXTEST_ONLY, FXTEST_MS, CXX.'

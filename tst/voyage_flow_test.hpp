@@ -9,10 +9,12 @@
 #include "../src/campaign.hpp"
 #include "../src/game.hpp"
 #include "../src/jobs.hpp"
+#include "../src/station.hpp"
 #include "../src/voyage_flow.hpp"
 #include "../src/world.hpp"
 #include "test.hpp"
 #include "voyage_save_test.hpp"
+#include "world_test.hpp"
 
 namespace voyage_flow_test {
 
@@ -67,8 +69,220 @@ inline void VoyageFlowSuite(TestRunner &runner) {
     }
 
     {
-        Test test("Continue restores the intermediate berth and loaded campaign contract");
-        Fixture source;
+        Test test("a new voyage enters free flight beside the home gantry");
+        FakeStorage storage(0xFF);
+        Fixture fresh;
+        voyage_flow::CheckpointCache cache;
+        test.assertEqual(voyage_flow::startNewVoyage(fresh.state
+                                                     ,
+                                                     fresh.chart
+                                                     ,
+                                                     storage
+                                                     ,
+                                                     cache),
+                         voyage_save::kSaved,
+                         "new voyage saves");
+        test.assertEqual(fresh.state.docked, static_cast<int8_t>(-1), "new voyage starts undocked");
+        test.assertEqual(fresh.state.x, world::SPAWN_SUB_X, "new voyage spawn x");
+        test.assertEqual(fresh.state.y, world::SPAWN_SUB_Y, "new voyage spawn y");
+        test.assertEqual(fresh.state.cameraXQ4, game::cameraTargetXQ4(fresh.state), "spawn camera x is snapped");
+        test.assertEqual(fresh.state.cameraYQ4, game::cameraTargetYQ4(fresh.state), "spawn camera y is snapped");
+
+        uint8_t nearby = 0;
+        test.assertTrue(!station::nearestDock(fresh.state, nearby), "spawn is outside the dock ring");
+        world::Settlement home;
+        test.assertTrue(world::settlementInfo(campaign::kTidewall, home), "home settlement metadata");
+        test.assertTrue(fresh.state.x < home.pixel_x, "spawn sits left of the gantry");
+        test.assertTrue(home.pixel_x - fresh.state.x <= 2 * station::kDockRadius, "spawn stays beside the gantry");
+
+        // Continue must still restore the berth checkpoint, not the free-flight
+        // presentation state, so the cache CRC is the docked record. Check it
+        // before any flight step advances the serialized voyage clock.
+        game::State docked = fresh.state;
+        docked.docked = static_cast<int8_t>(campaign::kTidewall);
+        test.assertEqual(cache.valid, 1, "new voyage records a checkpoint baseline");
+        test.assertEqual(cache.crc, voyage_save::checkpointCrc(docked, fresh.chart), "baseline is the docked checkpoint");
+
+        world_test::FakeWorld fake;
+        test.assertTrue(!station::stepFlight(fresh.state, game::Input{false, false, false, false}, fake), "an idle spawn never docks");
+        test.assertEqual(fresh.state.docked, static_cast<int8_t>(-1), "spawn remains in free flight");
+        Fixture restored;
+        restored.reset();
+        test.assertEqual(restored.load(storage), voyage_save::kLoaded, "Continue loads the new voyage checkpoint");
+        test.assertEqual(restored.state.docked, campaign::kTidewall, "Continue restores the Tidewall berth");
+        test.assertEqual(restored.state.x, home.pixel_x, "Continue restores the berth x");
+        test.assertEqual(restored.state.y, home.pixel_y, "Continue restores the berth y");
+        runner.add(test);
+    }
+
+    {
+        Test test("redundant checkpoint writes skip only when the encoded checkpoint is unchanged");
+        FakeStorage storage(0xFF);
+        Fixture fixture;
+        setValidPayload(fixture);
+        voyage_flow::CheckpointCache cache;
+        test.assertEqual(cache.valid, 0, "cache starts invalid");
+        const uint16_t expectedCrc = voyage_save::checkpointCrc(fixture.state, fixture.chart);
+
+        test.assertEqual(voyage_flow::saveCheckpointIfChanged(fixture.state
+                                                              ,
+                                                              fixture.chart
+                                                              ,
+                                                              storage
+                                                              ,
+                                                              cache),
+                         voyage_save::kSaved,
+                         "first save writes");
+        test.assertEqual(storage.eraseOps, 1, "first save erases the single block");
+        test.assertEqual(storage.pageOps, 2, "first save programs two pages");
+        test.assertEqual(cache.valid, 1, "first save records a baseline");
+        test.assertEqual(cache.crc, expectedCrc, "baseline is the pure checkpoint CRC");
+        test.assertEqual(expectedCrc, readU16(storage, voyage_save::kSlotOffset + voyage_save::kCrcOffset), "pure CRC equals the encoded slot CRC");
+
+        storage.resetCounters();
+        test.assertEqual(voyage_flow::saveCheckpointIfChanged(fixture.state
+                                                              ,
+                                                              fixture.chart
+                                                              ,
+                                                              storage
+                                                              ,
+                                                              cache),
+                         voyage_save::kSaved,
+                         "identical checkpoint reports success");
+        test.assertEqual(storage.eraseOps, 0, "identical checkpoint skips the block erase");
+        test.assertEqual(storage.pageOps, 0, "identical checkpoint skips page programs");
+        test.assertEqual(storage.pageBytes, 0, "identical checkpoint programs no bytes");
+        test.assertEqual(voyage_save::inspect(storage).status, voyage_save::kSlotValid, "skipped cart record stays valid");
+
+        // Each serialized field family must break the match: voyage ticks,
+        // the pending deck, chart discovery and campaign progress.
+        fixture.state.voyageTicks = static_cast<uint32_t>(fixture.state.voyageTicks + 1u);
+        storage.resetCounters();
+        test.assertEqual(voyage_flow::saveCheckpointIfChanged(fixture.state
+                                                              ,
+                                                              fixture.chart
+                                                              ,
+                                                              storage
+                                                              ,
+                                                              cache),
+                         voyage_save::kSaved,
+                         "changed voyage ticks save");
+        test.assertEqual(storage.eraseOps, 1, "changed voyage ticks erase");
+        test.assertEqual(storage.pageOps, 2, "changed voyage ticks program two pages");
+
+        fixture.state.pendingStory = 1;
+        storage.resetCounters();
+        test.assertEqual(voyage_flow::saveCheckpointIfChanged(fixture.state
+                                                              ,
+                                                              fixture.chart
+                                                              ,
+                                                              storage
+                                                              ,
+                                                              cache),
+                         voyage_save::kSaved,
+                         "changed pending deck saves");
+        test.assertEqual(storage.eraseOps, 1, "changed pending deck erase");
+
+        fixture.chart.explored[7] = static_cast<uint8_t>(fixture.chart.explored[7] ^ 0x01u);
+        storage.resetCounters();
+        test.assertEqual(voyage_flow::saveCheckpointIfChanged(fixture.state
+                                                              ,
+                                                              fixture.chart
+                                                              ,
+                                                              storage
+                                                              ,
+                                                              cache),
+                         voyage_save::kSaved,
+                         "changed chart saves");
+        test.assertEqual(storage.eraseOps, 1, "changed chart erase");
+
+        fixture.state.surveys = campaign::kSurveyPump;
+        storage.resetCounters();
+        test.assertEqual(voyage_flow::saveCheckpointIfChanged(fixture.state
+                                                              ,
+                                                              fixture.chart
+                                                              ,
+                                                              storage
+                                                              ,
+                                                              cache),
+                         voyage_save::kSaved,
+                         "changed campaign progress saves");
+        test.assertEqual(storage.eraseOps, 1, "changed campaign progress erase");
+
+        // A failed write must not leave the cache claiming the new state.
+        fixture.state.delivered = static_cast<uint16_t>(fixture.state.delivered + 1u);
+        storage.resetCounters();
+        storage.failedAt = 0;
+        test.assertEqual(voyage_flow::saveCheckpointIfChanged(fixture.state
+                                                              ,
+                                                              fixture.chart
+                                                              ,
+                                                              storage
+                                                              ,
+                                                              cache),
+                         voyage_save::kWriteFailed,
+                         "failed write reports failure");
+        test.assertEqual(cache.valid, 0, "failed write invalidates the cache");
+
+        storage.resetCounters();
+        storage.failedAt = kNoFault;
+        test.assertEqual(voyage_flow::saveCheckpointIfChanged(fixture.state
+                                                              ,
+                                                              fixture.chart
+                                                              ,
+                                                              storage
+                                                              ,
+                                                              cache),
+                         voyage_save::kSaved,
+                         "retry after failure writes");
+        test.assertEqual(storage.eraseOps, 1, "retry after failure erases");
+        test.assertEqual(storage.pageOps, 2, "retry after failure programs");
+
+        // A successful Continue load is itself a baseline: immediately saving
+        // the restored state is redundant.
+        Fixture restored;
+        restored.reset();
+        storage.resetCounters();
+        test.assertEqual(voyage_flow::loadCheckpoint(restored.state
+                                                     ,
+                                                     restored.chart
+                                                     ,
+                                                     storage
+                                                     ,
+                                                     cache),
+                         voyage_save::kLoaded,
+                         "Continue loads the committed checkpoint");
+        test.assertEqual(cache.valid, 1, "load records a baseline");
+        storage.resetCounters();
+        test.assertEqual(voyage_flow::saveCheckpointIfChanged(restored.state
+                                                              ,
+                                                              restored.chart
+                                                              ,
+                                                              storage
+                                                              ,
+                                                              cache),
+                         voyage_save::kSaved,
+                         "save of the loaded checkpoint reports success");
+        test.assertEqual(storage.eraseOps, 0, "save of the loaded checkpoint skips the erase");
+        test.assertEqual(storage.pageOps, 0, "save of the loaded checkpoint skips pages");
+
+        // A failed load must not leave a stale baseline.
+        storage.bytes[voyage_save::kSlotOffset] = 0x00;
+        test.assertEqual(voyage_flow::loadCheckpoint(restored.state
+                                                     ,
+                                                     restored.chart
+                                                     ,
+                                                     storage
+                                                     ,
+                                                     cache),
+                         voyage_save::kCorruptSave,
+                         "torn slot is rejected");
+        test.assertEqual(cache.valid, 0, "failed load invalidates the cache");
+        runner.add(test);
+    }
+
+    {
+        Test test("Continue restores the intermediate berth and loaded campaign contract");        Fixture source;
         test.assertTrue(makeFirstAtIntermediate(source), "valid loaded checkpoint at Cormorant");
         FakeStorage storage(0xFF);
         test.assertEqual(source.save(storage), voyage_save::kSaved, "intermediate checkpoint saves");

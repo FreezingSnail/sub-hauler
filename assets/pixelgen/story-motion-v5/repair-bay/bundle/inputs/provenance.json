@@ -1,0 +1,134 @@
+{
+  "assets": [
+    {
+      "height": 64,
+      "path": "background.png",
+      "role": "background",
+      "sha256": "1052a71fa3893e80353380bd2b8f9e907eeb2bddd61b6f9422d71fc0e59dec34",
+      "width": 128
+    },
+    {
+      "height": 24,
+      "path": "layers/lift-hook-matte.png",
+      "role": "layer:lift-hook:matte",
+      "sha256": "75e693b1a00a2e502e371c751f8f777c1f52c05d66f52a359f161aece0bf422a",
+      "width": 11
+    },
+    {
+      "height": 24,
+      "path": "layers/lift-hook.png",
+      "role": "layer:lift-hook:source",
+      "sha256": "73abdfbc3ff3444e4b7e3774fa0d8fa16a1199ee717deff6d97c9eb2165dfddf",
+      "width": 11
+    }
+  ],
+  "background": {
+    "path": "background.png",
+    "sha256": "1052a71fa3893e80353380bd2b8f9e907eeb2bddd61b6f9422d71fc0e59dec34"
+  },
+  "canvas": {
+    "depth": 1,
+    "height": 64,
+    "width": 128
+  },
+  "expected_mask_sha256": null,
+  "format": "pixelgen.motion.provenance/1",
+  "frame_sha256": [
+    "e171494c2362a218c3d9f5a928bb8dcbf34556653b08aa5aa8e0c8d1768ea5a8",
+    "9060a34a0605ee359e41ea24cbd7066f2f966a91144e7cc0d8bb5f54b91f922f",
+    "fd4aa7cd09d9bbe8e35825adf287f7be0dbce744b3bacf268cd722af54b500fe",
+    "c450ab2f090ab442f9ebbe03a1d4ce61d38e0e65a0b17a9f440add4dc551663a"
+  ],
+  "layers": [
+    {
+      "clip": "error",
+      "layer_id": "lift-hook",
+      "matte": {
+        "path": "layers/lift-hook-matte.png",
+        "sha256": "75e693b1a00a2e502e371c751f8f777c1f52c05d66f52a359f161aece0bf422a"
+      },
+      "motion_bounds": null,
+      "origin": {
+        "x": 107,
+        "y": 17
+      },
+      "pivot": null,
+      "poses": {},
+      "role": "part",
+      "source": {
+        "path": "layers/lift-hook.png",
+        "sha256": "73abdfbc3ff3444e4b7e3774fa0d8fa16a1199ee717deff6d97c9eb2165dfddf"
+      },
+      "track": [
+        {
+          "pose": null,
+          "translate": {
+            "x": 0,
+            "y": 0
+          },
+          "turn_16ths": 0,
+          "visible": true
+        },
+        {
+          "pose": null,
+          "translate": {
+            "x": 1,
+            "y": 0
+          },
+          "turn_16ths": 0,
+          "visible": true
+        },
+        {
+          "pose": null,
+          "translate": {
+            "x": 0,
+            "y": 1
+          },
+          "turn_16ths": 0,
+          "visible": true
+        },
+        {
+          "pose": null,
+          "translate": {
+            "x": -1,
+            "y": 0
+          },
+          "turn_16ths": 0,
+          "visible": true
+        }
+      ],
+      "z": 10
+    }
+  ],
+  "layout": null,
+  "layout_id": null,
+  "mask_pixels": 323,
+  "mask_sha256": "54c559dc9ea92df7619578c4b031f838a24f6a65d8bb07e1130b7dacb25e4430",
+  "master_seed": 4108,
+  "phases": [
+    {
+      "duration_ms": 300,
+      "phase_id": "pose-0",
+      "seed": 4108
+    },
+    {
+      "duration_ms": 300,
+      "phase_id": "pose-1",
+      "seed": 4109
+    },
+    {
+      "duration_ms": 300,
+      "phase_id": "pose-2",
+      "seed": 4110
+    },
+    {
+      "duration_ms": 300,
+      "phase_id": "pose-3",
+      "seed": 4111
+    }
+  ],
+  "recipe_id": "story-v5-repair-bay",
+  "recipe_sha256": "36a217ec938eb428f121fee6259e91785bd4e110eb3d26abda91084210fca95c",
+  "renderer": "pixelgen.motion/1",
+  "revision": 2
+}

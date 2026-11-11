@@ -33,15 +33,33 @@ void setup() {
     ok = world::berthInfo(world::BERTH_LOWER_GANTRY, berth) && ok;
     ok = ok && berth.milestone == 4 && berth.pixel_x == 1776 && berth.pixel_y == 808;
     ok = ok && berth.pixel_y < exploration_data::PRESSURE_Y;
-    ok = ok && world::berthCount() == 6 && world::serviceBerthCount() == 2 && !world::berthInfo(6, berth);
+    ok = world::berthInfo(world::BERTH_FREIGHT_YARD, berth) && ok;
+    ok = ok && berth.milestone == 4 && berth.pixel_x == 2168 && berth.pixel_y == 616;
+    ok = world::berthInfo(world::BERTH_DEEP_RELAY, berth) && ok;
+    ok = ok && berth.milestone == 32 && berth.pixel_x == 1992 && berth.pixel_y == 1224;
+    ok = ok && world::berthCount() == 8 && world::serviceBerthCount() == 4 && !world::berthInfo(8, berth);
     world::Survey survey;
     ok = world::surveyInfo(0, survey) && ok;
     ok = ok && survey.id == world::SURVEY_PUMP && survey.pixel_x == 2192 && survey.pixel_y == 176;
     ok = ok && world::surveyInfo(1, survey) && survey.id == world::SURVEY_LIFT;
     ok = ok && world::surveyCount() == 2 && !world::surveyInfo(2, survey);
     world::Current current;
-    ok = world::currentInfo(0, current) && ok;
-    ok = ok && current.w == 32 && current.h == 16 && current.ax_q8 == 4096 && current.ay_q8 == 0;
+    bool wideCurrent = false;
+    bool gatedCurrent = false;
+    for (uint8_t id = 0; id < world::CURRENT_COUNT; ++id) {
+        ok = world::currentInfo(id, current) && ok;
+        wideCurrent = wideCurrent || current.w > world::CURRENT_WIDTH_PX || current.h > world::CURRENT_HEIGHT_PX;
+        gatedCurrent = gatedCurrent || world::currentGated(id);
+        ok = ok && (current.ax_q8 != 0 || current.ay_q8 != 0);
+        // Currents now span the common passage cross-section, so the exact
+        // authored width/height and all four edge tiles are no longer fixed.
+        // The centre is still navigable water for every zone.
+        ok = ok && !world::tileSolid(tables,
+                                     (current.x + current.w / 2) / world::TILE_PIXELS,
+                                     (current.y + current.h / 2) / world::TILE_PIXELS) && ok;
+    }
+    ok = ok && wideCurrent;
+    ok = ok && gatedCurrent;
     ok = ok && !world::currentInfo(world::CURRENT_COUNT, current);
     FX::seekData(explorationObjects);
     for (uint16_t i = 0; i < exploration_data::OBJECT_BYTES; ++i)

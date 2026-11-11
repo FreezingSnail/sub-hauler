@@ -1,0 +1,229 @@
+{
+  "assets": [
+    {
+      "license": null,
+      "path": "inputs/config.json",
+      "pixel_sha256": null,
+      "role": "config",
+      "sha256": "887b05dc40de21602ee7dfac659e48750ad9deaa94bb8028e3a1c41d677ca830",
+      "source": null
+    }
+  ],
+  "backend": {
+    "backend": "mflux",
+    "backend_version": "0.24.0",
+    "model_revision": "7ee1b3aa8178a1240050490072196a57da2bf2a9",
+    "python_version": "3.14.10",
+    "runtime": "mflux-generate-flux2",
+    "runtime_version": "0.24.0",
+    "unknown": {},
+    "weight_hashes": []
+  },
+  "environment": {
+    "core_lock_sha256": "21d731c34e8abfc6f3bab153e5b9d407ac16d02fb9a36b85704aa3c667b905c6",
+    "hardware": "arm64",
+    "os": "Darwin 25.6.0",
+    "python_version": "3.14.10",
+    "runtime_lock_sha256": "0b2a7dd5a28eb40f4b7b85111d1cb3050b9aba3b873b0e1d7976da258c652f4a",
+    "runtime_python_version": "3.14.10",
+    "uv_version": "uv 0.13.6 (Homebrew 2026-10-26 aarch64-apple-darwin)"
+  },
+  "failure": null,
+  "final": {
+    "license": null,
+    "path": "final.png",
+    "pixel_sha256": "8531a79a9392e59c59e3dabf38df35bb24ade65363266b17eebe69e50b16b7fb",
+    "role": "final",
+    "sha256": "8f37c899e9f15ce14fa5b8ff43ca9405c6233521f06802824f2fc097c326cf4a",
+    "source": null
+  },
+  "layout": null,
+  "mode": "generate",
+  "preview": {
+    "license": null,
+    "path": "preview.png",
+    "pixel_sha256": "b2fed47f6d0a04985513d09b7fa5c64be6943a5bbf78c621d28a18f576814241",
+    "role": "preview",
+    "sha256": "cd653ca643b5c45913217b192171c5497c9718199e504297901446024e561347",
+    "source": null
+  },
+  "reproducibility": {
+    "conversion_replay": "not-performed",
+    "fresh_generation": "not-attempted"
+  },
+  "request": {
+    "guidance": null,
+    "height": 512,
+    "layout": null,
+    "layout_id": null,
+    "model": {
+      "name": "Runpod/FLUX.2-klein-4B-mflux-4bit",
+      "revision": "7ee1b3aa8178a1240050490072196a57da2bf2a9",
+      "source": null,
+      "weight_hashes": []
+    },
+    "prompt": "one-point perspective interior of a dark undersea grow room, aisle receding to a distant vanishing point, two large glass cultivation tanks on the left and right filled with broad-leaf plants and simple roots, glass reflections and selective stipple, overhead pipes and conduits converging, bright riveted floor mass in the lower right, large black negative spaces, selective Bayer dithering only in shadows and glass, high contrast black and white, no lettering, no text, no words, no numbers, no watermark, no signature, no logo",
+    "prompt_template": "pixel art, 1-bit monochrome, crisp shapes, no lettering, no text: {prompt}",
+    "scheduler": null,
+    "schema_version": "1.0",
+    "seed": 1004,
+    "steps": 4,
+    "tail": {
+      "quantization": {
+        "bayer_matrix": [
+          [
+            0,
+            8,
+            2,
+            10
+          ],
+          [
+            12,
+            4,
+            14,
+            6
+          ],
+          [
+            3,
+            11,
+            1,
+            9
+          ],
+          [
+            15,
+            7,
+            13,
+            5
+          ]
+        ],
+        "mode": "bayer",
+        "origin_x": 0,
+        "origin_y": 0,
+        "threshold": 128
+      },
+      "resample": {
+        "mode": "nearest",
+        "target_height": 64,
+        "target_width": 128
+      }
+    },
+    "width": 1024
+  },
+  "resolved_generation": {
+    "defaults": {
+      "backend_command": "mflux-generate-flux2",
+      "base_model": null,
+      "controlnet_image_path": null,
+      "controlnet_strength": null,
+      "created_at": "2026-11-01T21:33:53.240689",
+      "depth_image_path": null,
+      "generation_time_seconds": 23.38,
+      "guidance": 1.0,
+      "image_path": null,
+      "image_paths": null,
+      "lora_paths": null,
+      "lora_scales": null,
+      "masked_image_path": null,
+      "mflux_version": "0.24.0",
+      "model": "black-forest-labs/FLUX.2-klein-4B",
+      "model_path": "/Users/connorfranc/code/arduboy/pixelgen/out/models/flux2-klein-4b",
+      "model_revision": "7ee1b3aa8178a1240050490072196a57da2bf2a9",
+      "negative_prompt": null,
+      "precision": "mlx.core.bfloat16",
+      "prompt": "pixel art, 1-bit monochrome, crisp shapes, no lettering, no text: one-point perspective interior of a dark undersea grow room, aisle receding to a distant vanishing point, two large glass cultivation tanks on the left and right filled with broad-leaf plants and simple roots, glass reflections and selective stipple, overhead pipes and conduits converging, bright riveted floor mass in the lower right, large black negative spaces, selective Bayer dithering only in shadows and glass, high contrast black and white, no lettering, no text, no words, no numbers, no watermark, no signature, no logo",
+      "quantize": 4,
+      "redux_image_paths": null,
+      "redux_image_strengths": null,
+      "runtime_python_version": "3.14.10",
+      "scheduler": "flow_match_euler_discrete",
+      "scheduler_source": "mflux 0.24.0 flux2_generate.py hardcodes it",
+      "seed": 1004,
+      "sidecar": {
+        "base_model": null,
+        "controlnet_image_path": null,
+        "controlnet_strength": null,
+        "created_at": "2026-11-01T21:33:53.240689",
+        "depth_image_path": null,
+        "generation_time_seconds": 23.38,
+        "guidance": 1.0,
+        "height": 512,
+        "image_path": null,
+        "image_paths": null,
+        "image_strength": null,
+        "lora_paths": null,
+        "lora_scales": null,
+        "masked_image_path": null,
+        "mflux_version": "0.24.0",
+        "model": "black-forest-labs/FLUX.2-klein-4B",
+        "model_path": "/Users/connorfranc/code/arduboy/pixelgen/out/models/flux2-klein-4b",
+        "negative_prompt": null,
+        "precision": "mlx.core.bfloat16",
+        "prompt": "pixel art, 1-bit monochrome, crisp shapes, no lettering, no text: one-point perspective interior of a dark undersea grow room, aisle receding to a distant vanishing point, two large glass cultivation tanks on the left and right filled with broad-leaf plants and simple roots, glass reflections and selective stipple, overhead pipes and conduits converging, bright riveted floor mass in the lower right, large black negative spaces, selective Bayer dithering only in shadows and glass, high contrast black and white, no lettering, no text, no words, no numbers, no watermark, no signature, no logo",
+        "quantize": 4,
+        "redux_image_paths": null,
+        "redux_image_strengths": null,
+        "seed": 1004,
+        "steps": 4,
+        "width": 1024
+      },
+      "sidecar_sha256": "bfb9ec8e3fb41f7687af8c6ab348c042973c001d6f9b2927c31cde9e6a08dfb8",
+      "user_prompt": "one-point perspective interior of a dark undersea grow room, aisle receding to a distant vanishing point, two large glass cultivation tanks on the left and right filled with broad-leaf plants and simple roots, glass reflections and selective stipple, overhead pipes and conduits converging, bright riveted floor mass in the lower right, large black negative spaces, selective Bayer dithering only in shadows and glass, high contrast black and white, no lettering, no text, no words, no numbers, no watermark, no signature, no logo"
+    },
+    "guidance": 1.0,
+    "height": 512,
+    "prompt_template": "pixel art, 1-bit monochrome, crisp shapes, no lettering, no text: {prompt}",
+    "scheduler": "flow_match_euler_discrete",
+    "steps": 4,
+    "unknown": [],
+    "width": 1024
+  },
+  "run_id": "generate-88dda5b3c792f5af",
+  "schema_version": "1.0",
+  "source": {
+    "license": null,
+    "path": "source.png",
+    "pixel_sha256": "229dedef47538d61266941fe95ca4e16f52765b78c723b19837e067de8303494",
+    "role": "source",
+    "sha256": "9b2f39e0f0a5e1444bc2f6ec16ee3a8f1c67b9a1d9e793031c404f4a657c4605",
+    "source": null
+  },
+  "tail": {
+    "quantization": {
+      "bayer_matrix": [
+        [
+          0,
+          8,
+          2,
+          10
+        ],
+        [
+          12,
+          4,
+          14,
+          6
+        ],
+        [
+          3,
+          11,
+          1,
+          9
+        ],
+        [
+          15,
+          7,
+          13,
+          5
+        ]
+      ],
+      "mode": "bayer",
+      "origin_x": 0,
+      "origin_y": 0,
+      "threshold": 128
+    },
+    "resample": {
+      "mode": "nearest",
+      "target_height": 64,
+      "target_width": 128
+    }
+  }
+}

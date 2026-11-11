@@ -1,0 +1,104 @@
+{
+  "schema_version": "pixelgen.motion/1",
+  "recipe_id": "story-v4-lift-delivery-cable",
+  "revision": 1,
+  "canvas": {
+    "width": 128,
+    "height": 64,
+    "depth": 1
+  },
+  "background": {
+    "path": "background.png",
+    "sha256": "6ff611c9d5f72f53c50e5f93a1fc4cabf9061dd677393edb1c14c2d4178ad9dc"
+  },
+  "master_seed": 4136,
+  "phases": [
+    {
+      "phase_id": "pose-0",
+      "duration_ms": 300
+    },
+    {
+      "phase_id": "pose-1",
+      "duration_ms": 300
+    },
+    {
+      "phase_id": "pose-2",
+      "duration_ms": 300
+    },
+    {
+      "phase_id": "pose-3",
+      "duration_ms": 300
+    }
+  ],
+  "layers": [
+    {
+      "layer_id": "reel-rim",
+      "role": "static",
+      "z": 10,
+      "source": {
+        "path": "layers/reel-rim.png",
+        "sha256": "3fa48cbeccfe71bf9783367c83d7100b427d60aa52b9f3c05803f7022fcd839b"
+      },
+      "matte": {
+        "path": "layers/reel-rim-matte.png",
+        "sha256": "5e41d56704dbef5320ddc94379a7e8e0586a797ba7e69fd0e1fd99cf543962f9"
+      },
+      "origin": {
+        "x": 26,
+        "y": 22
+      }
+    },
+    {
+      "layer_id": "reel-spokes",
+      "role": "part",
+      "z": 20,
+      "source": {
+        "path": "layers/reel-spokes.png",
+        "sha256": "92b19010fa1b1a78aecf7e01db06948095de9dcd5687bdc00b3075fa726dbd67"
+      },
+      "matte": {
+        "path": "layers/reel-spokes-matte.png",
+        "sha256": "92b19010fa1b1a78aecf7e01db06948095de9dcd5687bdc00b3075fa726dbd67"
+      },
+      "origin": {
+        "x": 31,
+        "y": 27
+      },
+      "track": [
+        {
+          "translate": {
+            "x": 0,
+            "y": 0
+          },
+          "turn_16ths": 0
+        },
+        {
+          "translate": {
+            "x": 0,
+            "y": 0
+          },
+          "turn_16ths": 1
+        },
+        {
+          "translate": {
+            "x": 0,
+            "y": 0
+          },
+          "turn_16ths": 2
+        },
+        {
+          "translate": {
+            "x": 0,
+            "y": 0
+          },
+          "turn_16ths": 3
+        }
+      ],
+      "clip": "error",
+      "pivot": {
+        "x": 37,
+        "y": 33
+      }
+    }
+  ]
+}

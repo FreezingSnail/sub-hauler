@@ -1,0 +1,280 @@
+{
+  "assets": [
+    {
+      "height": 64,
+      "path": "background.png",
+      "role": "background",
+      "sha256": "fd4c838c88dc43374be48f4fe0da2783fe06e988a3f45e5a808a1df26639dff0",
+      "width": 128
+    },
+    {
+      "height": 5,
+      "path": "layers/bubble-0-matte.png",
+      "role": "layer:bubble-0:matte",
+      "sha256": "f71596d08b54af5b0d40285c1b6ad0aabdac8160c0929eb6eee76dd85755740e",
+      "width": 5
+    },
+    {
+      "height": 5,
+      "path": "layers/bubble-0.png",
+      "role": "layer:bubble-0:source",
+      "sha256": "12c754398b8f352f4899b3620c8fad335cf1f689d26d774d592c94c897b4c882",
+      "width": 5
+    },
+    {
+      "height": 4,
+      "path": "layers/bubble-1-matte.png",
+      "role": "layer:bubble-1:matte",
+      "sha256": "91b5a5911ee6352f7085211559250d811cd0884139fd94088089d557cbc636c5",
+      "width": 4
+    },
+    {
+      "height": 4,
+      "path": "layers/bubble-1.png",
+      "role": "layer:bubble-1:source",
+      "sha256": "8753d3956f0be0693573b49dd12e0dd10f984c7d2d593e85a576b388014b2596",
+      "width": 4
+    },
+    {
+      "height": 25,
+      "path": "layers/pressure-hull-matte.png",
+      "role": "layer:pressure-hull:matte",
+      "sha256": "3a86ec2ccc63d7782ebc655f6f2acd1bc7b0154594901db63c3757bcfa15f635",
+      "width": 64
+    },
+    {
+      "height": 25,
+      "path": "layers/pressure-hull.png",
+      "role": "layer:pressure-hull:source",
+      "sha256": "0ab62e97255aa2abdd2687e90d6fdef6c73af00a1a781c6de5eff3fe61c7dbab",
+      "width": 64
+    }
+  ],
+  "background": {
+    "path": "background.png",
+    "sha256": "fd4c838c88dc43374be48f4fe0da2783fe06e988a3f45e5a808a1df26639dff0"
+  },
+  "canvas": {
+    "depth": 1,
+    "height": 64,
+    "width": 128
+  },
+  "expected_mask_sha256": null,
+  "format": "pixelgen.motion.provenance/1",
+  "frame_sha256": [
+    "cd04ea03e07e72486aa7b74ef605be0fa097881e85dc0823e0440fcd3a2ce41c",
+    "23dc486c4d6a8183bb564d8c97d5b2b882c3016430e84d3e6978d49c141e7fcb",
+    "34ed22edd7972120c4a45a39ce44db772d081e62a4fbc511629bd055150671bd",
+    "5e95c840156444fe0abb711e323174dcf68c9df32aaf786bdae3ce17bb4f0a2a"
+  ],
+  "layers": [
+    {
+      "clip": "error",
+      "layer_id": "pressure-hull",
+      "matte": {
+        "path": "layers/pressure-hull-matte.png",
+        "sha256": "3a86ec2ccc63d7782ebc655f6f2acd1bc7b0154594901db63c3757bcfa15f635"
+      },
+      "motion_bounds": null,
+      "origin": {
+        "x": 9,
+        "y": 10
+      },
+      "pivot": null,
+      "poses": {},
+      "role": "part",
+      "source": {
+        "path": "layers/pressure-hull.png",
+        "sha256": "0ab62e97255aa2abdd2687e90d6fdef6c73af00a1a781c6de5eff3fe61c7dbab"
+      },
+      "track": [
+        {
+          "pose": null,
+          "translate": {
+            "x": 0,
+            "y": 0
+          },
+          "turn_16ths": 0,
+          "visible": true
+        },
+        {
+          "pose": null,
+          "translate": {
+            "x": 0,
+            "y": -1
+          },
+          "turn_16ths": 0,
+          "visible": true
+        },
+        {
+          "pose": null,
+          "translate": {
+            "x": 0,
+            "y": 0
+          },
+          "turn_16ths": 0,
+          "visible": true
+        },
+        {
+          "pose": null,
+          "translate": {
+            "x": 0,
+            "y": 1
+          },
+          "turn_16ths": 0,
+          "visible": true
+        }
+      ],
+      "z": 10
+    },
+    {
+      "clip": "error",
+      "layer_id": "bubble-0",
+      "matte": {
+        "path": "layers/bubble-0-matte.png",
+        "sha256": "f71596d08b54af5b0d40285c1b6ad0aabdac8160c0929eb6eee76dd85755740e"
+      },
+      "motion_bounds": null,
+      "origin": {
+        "x": 7,
+        "y": 39
+      },
+      "pivot": null,
+      "poses": {},
+      "role": "part",
+      "source": {
+        "path": "layers/bubble-0.png",
+        "sha256": "12c754398b8f352f4899b3620c8fad335cf1f689d26d774d592c94c897b4c882"
+      },
+      "track": [
+        {
+          "pose": null,
+          "translate": {
+            "x": 0,
+            "y": 0
+          },
+          "turn_16ths": 0,
+          "visible": true
+        },
+        {
+          "pose": null,
+          "translate": {
+            "x": 1,
+            "y": -3
+          },
+          "turn_16ths": 0,
+          "visible": true
+        },
+        {
+          "pose": null,
+          "translate": {
+            "x": 0,
+            "y": -6
+          },
+          "turn_16ths": 0,
+          "visible": true
+        },
+        {
+          "pose": null,
+          "translate": {
+            "x": 1,
+            "y": -9
+          },
+          "turn_16ths": 0,
+          "visible": true
+        }
+      ],
+      "z": 20
+    },
+    {
+      "clip": "error",
+      "layer_id": "bubble-1",
+      "matte": {
+        "path": "layers/bubble-1-matte.png",
+        "sha256": "91b5a5911ee6352f7085211559250d811cd0884139fd94088089d557cbc636c5"
+      },
+      "motion_bounds": null,
+      "origin": {
+        "x": 81,
+        "y": 20
+      },
+      "pivot": null,
+      "poses": {},
+      "role": "part",
+      "source": {
+        "path": "layers/bubble-1.png",
+        "sha256": "8753d3956f0be0693573b49dd12e0dd10f984c7d2d593e85a576b388014b2596"
+      },
+      "track": [
+        {
+          "pose": null,
+          "translate": {
+            "x": 1,
+            "y": -3
+          },
+          "turn_16ths": 0,
+          "visible": true
+        },
+        {
+          "pose": null,
+          "translate": {
+            "x": 0,
+            "y": -6
+          },
+          "turn_16ths": 0,
+          "visible": true
+        },
+        {
+          "pose": null,
+          "translate": {
+            "x": 1,
+            "y": -9
+          },
+          "turn_16ths": 0,
+          "visible": true
+        },
+        {
+          "pose": null,
+          "translate": {
+            "x": 0,
+            "y": 0
+          },
+          "turn_16ths": 0,
+          "visible": true
+        }
+      ],
+      "z": 30
+    }
+  ],
+  "layout": null,
+  "layout_id": null,
+  "mask_pixels": 1818,
+  "mask_sha256": "a2eeb6273256d4cc6bd696f4ed86c0d3703bc0edf7bf81d2c8d429780c76a204",
+  "master_seed": 4100,
+  "phases": [
+    {
+      "duration_ms": 300,
+      "phase_id": "pose-0",
+      "seed": 4100
+    },
+    {
+      "duration_ms": 300,
+      "phase_id": "pose-1",
+      "seed": 4101
+    },
+    {
+      "duration_ms": 300,
+      "phase_id": "pose-2",
+      "seed": 4102
+    },
+    {
+      "duration_ms": 300,
+      "phase_id": "pose-3",
+      "seed": 4103
+    }
+  ],
+  "recipe_id": "story-v4-arrival",
+  "recipe_sha256": "a16d97bd815f169717d4b74ec7d14caf7aac8a25070cf39a5305b11ecd2ca8b9",
+  "renderer": "pixelgen.motion/1",
+  "revision": 1
+}

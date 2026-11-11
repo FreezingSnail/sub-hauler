@@ -459,6 +459,7 @@
       "id": "H",
       "name": "Pressure Boundary",
       "region": "deep",
+      "music_region": "works",
       "position": [
         187,
         102
@@ -605,8 +606,8 @@
       "name": "Hidden trench cove",
       "region": "deep",
       "position": [
-        22,
-        139
+        36,
+        78
       ],
       "radius": 4,
       "pickup": {
@@ -1269,7 +1270,7 @@
     {
       "from": "O",
       "to": "D",
-      "radius": 3.7,
+      "radius": 4.5,
       "via": [
         [
           34,
@@ -1279,6 +1280,15 @@
           51,
           135
         ]
+      ],
+      "caverns": [
+        {
+          "at": 0.55,
+          "radii": [
+            10,
+            7
+          ]
+        }
       ]
     },
     {
@@ -1405,6 +1415,7 @@
       "requires": [
         "thruster"
       ],
+      "gate_required": [],
       "via": [
         [
           123,
@@ -1415,16 +1426,41 @@
     {
       "from": "O",
       "to": "DL",
-      "radius": 2.8,
+      "radius": 2.2,
       "via": [
-        [
-          20,
-          125
-        ],
-        [
-          13,
-          134
-        ]
+        [36, 116],
+        [35, 110],
+        [32, 106],
+        [28, 108],
+        [24, 104],
+        [20, 108],
+        [16, 104],
+        [12, 108],
+        [8, 104],
+        [8, 100],
+        [12, 98],
+        [16, 100],
+        [20, 96],
+        [24, 100],
+        [28, 96],
+        [32, 100],
+        [34, 96],
+        [34, 92],
+        [30, 90],
+        [26, 92],
+        [22, 88],
+        [18, 92],
+        [14, 88],
+        [10, 92],
+        [8, 88],
+        [8, 84],
+        [12, 82],
+        [16, 84],
+        [20, 80],
+        [24, 84],
+        [28, 80],
+        [32, 84],
+        [34, 80]
       ]
     },
     {
@@ -1434,6 +1470,7 @@
       "requires": [
         "thruster"
       ],
+      "gate_required": [],
       "via": [
         [
           229,
@@ -1516,6 +1553,7 @@
       "requires": [
         "thruster"
       ],
+      "gate_required": [],
       "via": [
         [
           224,
@@ -1541,6 +1579,9 @@
       "requires": [
         "seal",
         "thruster"
+      ],
+      "gate_required": [
+        "seal"
       ],
       "via": [
         [
@@ -1965,6 +2006,22 @@
       "room": "U",
       "dock": [222, 101],
       "milestone": "lift"
+    },
+    {
+      "id": 6,
+      "name": "Freight Yard",
+      "symbol": "FREIGHT_YARD",
+      "room": "Y",
+      "dock": [271, 77],
+      "milestone": "lift"
+    },
+    {
+      "id": 7,
+      "name": "Deep Relay",
+      "symbol": "DEEP_RELAY",
+      "room": "DC",
+      "dock": [249, 153],
+      "milestone": "expedition"
     }
   ],
   "surveys": [
@@ -1981,6 +2038,58 @@
       "symbol": "LIFT",
       "room": "Y",
       "position": [272, 79]
+    }
+  ],
+  "currents": [
+    {
+      "name": "Cormorant tide",
+      "x": 1744,
+      "y": 507,
+      "w": 96,
+      "h": 8,
+      "dir": "y-",
+      "fixed": true,
+      "requires": ["thruster"]
+    },
+    {
+      "name": "Return shaft gate tide",
+      "x": 642,
+      "y": 832,
+      "w": 8,
+      "h": 96,
+      "dir": "x+",
+      "fixed": true,
+      "requires": ["thruster"]
+    },
+    {
+      "name": "Return shaft descent tide",
+      "x": 552,
+      "y": 784,
+      "w": 136,
+      "h": 8,
+      "dir": "y-",
+      "fixed": true,
+      "requires": ["thruster"]
+    },
+    {
+      "name": "Basalt descent tide",
+      "x": 941,
+      "y": 1071,
+      "w": 96,
+      "h": 8,
+      "dir": "y-",
+      "fixed": true,
+      "requires": ["thruster"]
+    },
+    {
+      "name": "Jet approach tide",
+      "x": 1852,
+      "y": 1038,
+      "w": 8,
+      "h": 96,
+      "dir": "x-",
+      "fixed": true,
+      "requires": ["thruster"]
     }
   ]
 }

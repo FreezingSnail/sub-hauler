@@ -191,8 +191,8 @@ inline bool spawnExplored(const State &state, const chart::State &chart) {
 
 inline bool checkpointMatches(const State &a, const State &b) {
     if (a.docked != b.docked || a.campaign != b.campaign || a.surveys != b.surveys || a.tools != b.tools || a.pickups != b.pickups ||
-        a.openGates != b.openGates || a.seenGates != b.seenGates || a.ending != b.ending || a.voyageTicks != b.voyageTicks || a.delivered != b.delivered || a.rescues != b.rescues ||
-        a.cargo != b.cargo)
+        a.openGates != b.openGates || a.seenGates != b.seenGates || a.ending != b.ending || a.pendingStory != b.pendingStory || a.voyageTicks != b.voyageTicks ||
+        a.delivered != b.delivered || a.rescues != b.rescues || a.cargo != b.cargo)
         return false;
     if (a.hullClass != b.hullClass)
         return false;
@@ -254,7 +254,7 @@ inline void setValidPayload(Fixture &fixture) {
     fixture.state.voyageTicks = 0x12345678u;
     fixture.state.delivered = 0x0102;
     fixture.state.rescues = 0x0304;
-    fixture.state.hullClass = static_cast<uint8_t>(roster::kLeviathan);
+    fixture.state.hullClass = static_cast<uint8_t>(roster::kHauler);
 }
 
 inline bool makeFirstJob(Fixture &fixture) {
@@ -278,8 +278,10 @@ inline void VoyageSaveSuite(TestRunner &runner) {
         test.assertEqual(voyage_save::kPayloadCapacity, 495, "payload capacity");
         test.assertEqual(voyage_save::kCommitOffset, 511, "commit byte offset");
         test.assertEqual(voyage_save::kPageBytes, 256, "flash page");
-        test.assertEqual(voyage_save::kScalarBytes, 24, "scalar payload width");
-        test.assertEqual(voyage_save::kPayloadBytes, static_cast<uint16_t>(24 + world::CHART_BYTES), "payload width follows chart bit");
+        test.assertEqual(voyage_save::kPendingStoryMax, story_view::kSceneMax, "pending scene ids match the frozen decks and handoffs");
+        test.assertEqual(voyage_save::kPendingStoryNone, story_view::kCardNone, "zero is the no-deck value");
+        test.assertEqual(voyage_save::kScalarBytes, 25, "scalar payload width");
+        test.assertEqual(voyage_save::kPayloadBytes, static_cast<uint16_t>(25 + world::CHART_BYTES), "payload width follows chart bit");
         for (uint8_t berth = 0; berth < campaign::kBerthCount; ++berth) {
             world::Berth info;
             test.assertTrue(world::berthInfo(berth, info), "every valid campaign berth has generated metadata");
@@ -312,6 +314,64 @@ inline void VoyageSaveSuite(TestRunner &runner) {
         test.assertTrue(checkpointMatches(restored.state, fixture.state), "all saved fields round-trip");
         test.assertEqual(restored.state.cargo, 0, "no active job means no cargo");
         test.assertTrue(chartEmpty(restored.chart), "empty chart round-trips");
+        runner.add(test);
+    }
+
+    {
+        Test test("legacy Minnow/Leviathan checkpoints normalize to HAULER and keep progress");
+        const uint16_t payload = static_cast<uint16_t>(voyage_save::kSlotOffset + voyage_save::kPayloadOffset);
+        for (uint8_t legacy = 0; legacy <= 2; legacy += 2) {
+            FakeStorage storage(0xFF);
+            Fixture source;
+            setValidPayload(source);
+            test.assertEqual(source.save(storage), voyage_save::kSaved, "baseline legacy save");
+
+            // Rewrite only the frozen hull byte and re-sign, as a schema-8 cart
+            // checkpoint written by the retired selector would contain.
+            storage.bytes[payload + voyage_save::kFieldHullClass] = legacy;
+            refreshCrc(storage);
+            test.assertEqual(voyage_save::inspect(storage).status, voyage_save::kSlotValid, "legacy hull id still validates");
+
+            Fixture restored;
+            restored.reset();
+            restored.state.delivered = 4242;
+            test.assertEqual(restored.load(storage), voyage_save::kLoaded, "legacy hull id still loads");
+            test.assertEqual(restored.state.hullClass, static_cast<uint8_t>(roster::kHauler), "legacy hull id normalizes to HAULER");
+
+            State expected = source.state;
+            expected.hullClass = static_cast<uint8_t>(roster::kHauler);
+            test.assertTrue(checkpointMatches(restored.state, expected), "all voyage progress survives normalization");
+        }
+
+        // A live legacy id is also accepted for a deliberate rewrite and the
+        // new commit always stores HAULER.
+        Fixture source;
+        setValidPayload(source);
+        source.state.hullClass = 2;
+        FakeStorage storage(0xFF);
+        test.assertEqual(source.save(storage), voyage_save::kSaved, "legacy live state writes");
+        test.assertEqual(storage.bytes[payload + voyage_save::kFieldHullClass], roster::kHauler, "save always writes HAULER");
+        runner.add(test);
+    }
+
+    {
+        Test test("unknown hull ids above the frozen range remain corrupt");
+        const uint16_t payload = static_cast<uint16_t>(voyage_save::kSlotOffset + voyage_save::kPayloadOffset);
+        FakeStorage storage(0xFF);
+        Fixture source;
+        setValidPayload(source);
+        test.assertEqual(source.save(storage), voyage_save::kSaved, "baseline save");
+
+        storage.bytes[payload + voyage_save::kFieldHullClass] = 3;
+        refreshCrc(storage);
+        test.assertEqual(voyage_save::inspect(storage).status, voyage_save::kSlotCorrupt, "unknown hull id is corrupt");
+
+        Fixture probe;
+        probe.reset();
+        probe.state.delivered = 4242;
+        const State before = probe.state;
+        test.assertEqual(probe.load(storage), voyage_save::kCorruptSave, "unknown hull id never loads");
+        test.assertTrue(checkpointMatches(probe.state, before), "rejected load leaves live state untouched");
         runner.add(test);
     }
 
@@ -379,7 +439,7 @@ inline void VoyageSaveSuite(TestRunner &runner) {
         test.assertTrue(allBytesAre(storage, static_cast<uint16_t>(base + 8), static_cast<uint16_t>(base + 11), 0xFF), "retired sequence bytes stay erased");
 
         test.assertEqual(storage.bytes[payload + 0], campaign::kTidewall, "berth offset 0");
-        test.assertEqual(storage.bytes[payload + 1], roster::kLeviathan, "hull class offset 1");
+        test.assertEqual(storage.bytes[payload + 1], roster::kHauler, "hull class offset 1 always writes HAULER");
         test.assertEqual(storage.bytes[payload + 2], voyage_save::toolsMask(), "tools offset 2");
         test.assertEqual(storage.bytes[payload + 3], static_cast<uint8_t>(voyage_save::pickupsMask() & 0xA5u), "pickups offset 3");
         test.assertEqual(readU16(storage, static_cast<uint16_t>(payload + 4)), static_cast<uint16_t>(voyage_save::gatesMask() & 0x155u), "open gates offset 4");
@@ -395,8 +455,58 @@ inline void VoyageSaveSuite(TestRunner &runner) {
         test.assertEqual(readU16(storage, static_cast<uint16_t>(payload + 19)), 0x0102, "delivered offset 19");
         test.assertEqual(readU16(storage, static_cast<uint16_t>(payload + 21)), 0x0304, "rescues offset 21");
         test.assertEqual(storage.bytes[payload + 23], 0, "ending offset 23");
+        test.assertEqual(storage.bytes[payload + 24], 0, "pending story offset 24");
         for (uint16_t i = 0; i < world::CHART_BYTES; ++i)
             test.assertEqual(storage.bytes[payload + voyage_save::kScalarBytes + i], fixture.chart.explored[i], "chart follows scalar bytes");
+        runner.add(test);
+    }
+
+    {
+        Test test("pending story deck round-trips and clears on a new voyage");
+        FakeStorage storage(0xFF);
+        Fixture fixture;
+        setValidPayload(fixture);
+        fixture.state.pendingStory = story_view::kHandoffJointMissing;
+        test.assertEqual(fixture.save(storage), voyage_save::kSaved, "pending handoff checkpoint saves");
+        test.assertEqual(voyage_save::inspect(storage).status, voyage_save::kSlotValid, "pending handoff checkpoint is valid");
+
+        Fixture restored;
+        restored.reset();
+        test.assertEqual(restored.load(storage), voyage_save::kLoaded, "pending handoff checkpoint loads");
+        test.assertEqual(restored.state.pendingStory, story_view::kHandoffJointMissing, "pending handoff round-trips");
+
+        Fixture fresh;
+        test.assertEqual(fresh.newVoyage(storage), voyage_save::kSaved, "new voyage clears the pending deck");
+        Fixture replacement;
+        replacement.reset();
+        replacement.state.pendingStory = story_view::kCardBeacon;
+        test.assertEqual(replacement.load(storage), voyage_save::kLoaded, "replacement checkpoint loads");
+        test.assertEqual(replacement.state.pendingStory, story_view::kCardNone, "new voyage writes no pending deck");
+        runner.add(test);
+    }
+
+    {
+        Test test("out-of-range pending story is rejected on save and load");
+        Fixture bad;
+        setValidPayload(bad);
+        bad.state.pendingStory = static_cast<uint8_t>(story_view::kSceneMax + 1);
+        FakeStorage rejected(0xFF);
+        rejected.resetCounters();
+        test.assertEqual(bad.save(rejected), voyage_save::kInvalidState, "invalid pending deck is not saved");
+        test.assertEqual(rejected.pageBytes, 0, "invalid pending deck writes nothing");
+
+        FakeStorage storage(0xFF);
+        Fixture source;
+        setValidPayload(source);
+        test.assertEqual(source.save(storage), voyage_save::kSaved, "valid baseline saves");
+        storage.bytes[voyage_save::kSlotOffset + voyage_save::kPayloadOffset + voyage_save::kFieldPendingStory] = 0xFF;
+        refreshCrc(storage);
+        test.assertEqual(voyage_save::inspect(storage).status, voyage_save::kSlotCorrupt, "invalid pending deck is semantically corrupt");
+        Fixture probe;
+        probe.reset();
+        probe.state.delivered = 4242;
+        test.assertEqual(probe.load(storage), voyage_save::kCorruptSave, "invalid pending deck is not loaded");
+        test.assertEqual(probe.state.delivered, 4242, "rejected pending deck leaves live state untouched");
         runner.add(test);
     }
 
@@ -498,6 +608,12 @@ inline void VoyageSaveSuite(TestRunner &runner) {
             storage.bytes[voyage_save::kSlotOffset + voyage_save::kSchemaOffset] = 6;
             test.assertEqual(voyage_save::inspect(storage).status, voyage_save::kSlotIncompatible, "schema 6 is incompatible");
             test.assertEqual(probe.load(storage), voyage_save::kIncompatibleSave, "schema 6 is never migrated or partially applied");
+        }
+        {
+            FakeStorage storage = base;
+            storage.bytes[voyage_save::kSlotOffset + voyage_save::kSchemaOffset] = 7;
+            test.assertEqual(voyage_save::inspect(storage).status, voyage_save::kSlotIncompatible, "schema 7 is incompatible with schema 8");
+            test.assertEqual(probe.load(storage), voyage_save::kIncompatibleSave, "schema 7 is never migrated or partially applied");
         }
         {
             FakeStorage storage = base;
@@ -734,6 +850,58 @@ inline void VoyageSaveSuite(TestRunner &runner) {
     }
 
     {
+        Test test("pre-linear in-flight HOME checkpoints load and complete without weakening new HOME");
+        Fixture fixture;
+        fixture.state.docked = static_cast<int8_t>(campaign::kDeepAnchor);
+        fixture.state.campaign = static_cast<uint8_t>(campaign::kMilestoneFirst | campaign::kMilestonePump | campaign::kMilestoneLift | campaign::kMilestoneBeacon);
+        fixture.state.tools = exploration_data::SEAL;
+        fixture.state.activeJob.kind = game::kJobKindCampaign;
+        fixture.state.activeJob.mission = campaign::kHome;
+        fixture.state.activeJob.from = campaign::kDeepAnchor;
+        fixture.state.activeJob.to = campaign::kTidewall;
+        fixture.state.activeJob.crates = game::kJobCrates;
+        fixture.state.cargo = game::kJobCrates;
+        fixture.state.delivered = 4;
+        FakeStorage storage(0xFF);
+        storage.resetCounters();
+        test.assertEqual(fixture.save(storage), voyage_save::kSaved, "legacy in-flight HOME saves");
+        test.assertEqual(storage.eraseOps, 1, "legacy save uses the normal transaction");
+
+        Fixture loaded;
+        loaded.reset();
+        test.assertEqual(loaded.load(storage), voyage_save::kLoaded, "legacy in-flight HOME loads");
+        test.assertEqual(loaded.state.activeJob.mission, campaign::kHome, "HOME job survives");
+        test.assertEqual(loaded.state.campaign, fixture.state.campaign, "campaign mask survives");
+        test.assertTrue(campaign::activeJobValid(loaded.state), "loaded legacy job passes current invariants");
+        test.assertTrue((loaded.state.campaign & campaign::kMilestoneExpedition) == 0, "the loaded save has not fabricated DEEP RELAY");
+        test.assertTrue(campaign::missionCompleted(loaded.state, campaign::kHome) == false, "HOME is still pending");
+        test.assertTrue(travelTo(loaded.state, campaign::kTidewall), "legacy dispatch reaches Tidewall");
+        test.assertEqual(loaded.state.lastDelivery, jobs::kDeliveryDelivered, "legacy dispatch completes");
+        test.assertTrue(campaign::missionCompleted(loaded.state, campaign::kHome), "legacy HOME milestone set");
+        test.assertEqual(loaded.state.delivered, 5, "legacy delivery count advances once");
+        test.assertTrue(campaign::stateValid(loaded.state), "completed legacy HOME remains checkpoint-valid");
+
+        Fixture completedLegacy;
+        completedLegacy.reset();
+        completedLegacy.state.docked = static_cast<int8_t>(campaign::kTidewall);
+        completedLegacy.state.campaign = static_cast<uint8_t>(campaign::kMilestoneFirst | campaign::kMilestonePump | campaign::kMilestoneLift | campaign::kMilestoneBeacon | campaign::kMilestoneHome);
+        completedLegacy.state.delivered = 5;
+        test.assertEqual(completedLegacy.save(storage), voyage_save::kSaved, "legacy completed HOME without EXPEDITION saves");
+        test.assertTrue(campaign::missionCompleted(completedLegacy.state, campaign::kHome), "legacy ending state is preserved");
+
+        Fixture modern;
+        modern.reset();
+        modern.state.docked = static_cast<int8_t>(campaign::kDeepAnchor);
+        modern.state.campaign = static_cast<uint8_t>(campaign::kMilestoneFirst | campaign::kMilestonePump | campaign::kMilestoneLift | campaign::kMilestoneBeacon);
+        modern.state.tools = static_cast<uint8_t>(exploration_data::CUTTER | exploration_data::SEAL | exploration_data::THRUSTER | exploration_data::LENS);
+        test.assertTrue(!campaign::accept(modern.state, campaign::kHome), "new HOME cannot be accepted before DEEP RELAY");
+        modern.state.campaign |= campaign::kMilestoneExpedition;
+        test.assertTrue(campaign::accept(modern.state, campaign::kHome), "new HOME accepts after DEEP RELAY");
+        test.assertEqual(modern.save(storage), voyage_save::kSaved, "new post-relay HOME checkpoint saves");
+        runner.add(test);
+    }
+
+    {
         Test test("invalid state combinations are rejected before any storage write");
         Fixture base;
         setValidPayload(base);
@@ -803,7 +971,7 @@ inline void VoyageSaveSuite(TestRunner &runner) {
         expected |= voyage_save::kSignatureExploration;
         test.assertEqual(voyage_save::kProfileSignature, expected, "profile signature bits");
         test.assertEqual(voyage_save::kProfileSignature, 0x61, "shop bit is retired");
-        test.assertEqual(voyage_save::kPayloadBytes, 280, "chart profile payload is 280 B");
+        test.assertEqual(voyage_save::kPayloadBytes, 281, "chart profile payload is 281 B");
         test.assertEqual(voyage_save::kChartBytes, world::CHART_BYTES, "chart bytes are part of the payload");
 
         FakeStorage storage(0xFF);
@@ -833,7 +1001,7 @@ inline void VoyageSaveSuite(TestRunner &runner) {
         Fixture source;
         setValidPayload(source);
         test.assertEqual(source.save(storage), voyage_save::kSaved, "valid baseline");
-        storage.bytes[voyage_save::kSlotOffset + voyage_save::kPayloadOffset + 1] ^= 0x01;
+        storage.bytes[voyage_save::kSlotOffset + voyage_save::kPayloadOffset + voyage_save::kFieldHullClass] = 3;
         refreshCrc(storage);
         probe.reset();
         probe.state.delivered = 4242;

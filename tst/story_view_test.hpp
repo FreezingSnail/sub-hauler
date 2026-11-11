@@ -4,9 +4,10 @@
 
 #include "../src/story_view.hpp"
 
-// Pure seven-beat deck selection and layout. The dock transition supplies the
+// Pure story scene selection and layout. The dock transition supplies the
 // milestone mask before and after delivery; the in-world survey dwell supplies
-// the survey mask. No story cursor is serialized.
+// the survey mask. Card kinds and text pages come from generated source
+// metadata, so no story cursor is serialized.
 inline void StoryViewSuite(TestRunner &runner) {
     {
         Test test("story decks map each new cargo milestone once");
@@ -50,33 +51,94 @@ inline void StoryViewSuite(TestRunner &runner) {
     }
 
     {
-        Test test("seven alternating decks total thirty cards and seventy-five frames");
-        test.assertEqual(story_view::cardCount(story_view::kCardFirst), 6, "FIRST has three image/text pairs");
-        test.assertEqual(story_view::cardCount(story_view::kCardPumpSurvey), 4, "survey and delivery beats have two pairs");
-        test.assertEqual(story_view::cardCount(story_view::kCardHome), 4, "HOME has two pairs");
-        test.assertEqual(story_view::cardCount(story_view::kCardNone), 0, "no deck");
-        test.assertEqual(story_view::cardCount(story_view::kCardCount + 1), 0, "unknown deck");
+        Test test("story scenes use generated card kinds and a frozen frame map");
+        test.assertEqual(story_view::kCardCount, 7, "seven beat decks are frozen");
+        test.assertEqual(story_view::kHandoffCount, 8, "six cargo departures plus two joint variants");
+        test.assertEqual(story_view::kSceneExpedition, 15, "existing relay result keeps its scene id");
+        test.assertEqual(story_view::kSceneMax, 16, "relay briefing appends after all existing scenes");
+        test.assertEqual(story_view::cardCount(story_view::kSceneFirst), 6, "FIRST keeps three image/text pairs");
+        test.assertEqual(story_view::cardCount(story_view::kSceneNone), 0, "no scene");
+        test.assertEqual(story_view::cardCount(story_view::kSceneMax + 1), 0, "unknown scene");
 
         uint8_t cards = 0;
-        uint8_t images = 0;
-        uint8_t frames = 0;
-        for (uint8_t beat = story_view::kCardFirst; beat <= story_view::kCardCount; ++beat) {
-            const uint8_t count = story_view::cardCount(beat);
+        uint8_t imageCards = 0;
+        uint8_t textCards = 0;
+        for (uint8_t scene = story_view::kSceneFirst; scene <= story_view::kSceneMax; ++scene) {
+            const uint8_t count = story_view::cardCount(scene);
             cards = static_cast<uint8_t>(cards + count);
-            test.assertEqual(story_view::cardStart(beat), static_cast<uint8_t>(cards - count), "deck starts are contiguous");
+            test.assertTrue(count > 0, "every scene has cards");
+            test.assertTrue(story_view::isImageCard(scene, 0), "every scene starts with an illustration");
+            uint8_t text = 0;
             for (uint8_t card = 0; card < count; ++card) {
-                const uint8_t global = story_view::globalCard(beat, card);
-                const bool image = story_view::isImageCard(global);
-                test.assertEqual(image, (card & 1u) == 0, "every deck alternates image/text");
-                test.assertEqual(story_view::firstFrameFor(beat, card), frames, "frame layout is contiguous");
-                images = static_cast<uint8_t>(images + (image ? 1 : 0));
-                frames = static_cast<uint8_t>(frames + (image ? 4 : 1));
+                const uint8_t kind = story_view::cardKind(scene, card);
+                test.assertTrue(kind == STORY_KIND_IMAGE || kind == STORY_KIND_TEXT, "card kind is image or text");
+                if (kind == STORY_KIND_IMAGE)
+                    ++imageCards;
+                else
+                    ++textCards;
+            }
+            for (uint8_t card = 1; card < count; ++card) {
+                if (!story_view::isImageCard(scene, card))
+                    ++text;
+            }
+            test.assertTrue(text > 0, "every scene has prose");
+        }
+        test.assertEqual(cards, STORY_CARD_COUNT, "generated card count");
+        test.assertEqual(imageCards, STORY_IMAGE_CARD_COUNT, "generated image-card count");
+        test.assertEqual(textCards, STORY_TEXT_CARD_COUNT, "generated text-card count");
+
+        // Consecutive text pages are legal source output, not a malformed deck.
+        bool consecutiveText = false;
+        for (uint8_t scene = story_view::kSceneFirst; scene <= story_view::kSceneMax; ++scene) {
+            const uint8_t count = story_view::cardCount(scene);
+            for (uint8_t card = 1; card + 1 < count; ++card) {
+                if (!story_view::isImageCard(scene, card) && !story_view::isImageCard(scene, card + 1))
+                    consecutiveText = true;
             }
         }
-        test.assertEqual(cards, STORY_BEAT_CARDS, "generated card count");
-        test.assertEqual(images, STORY_BEAT_IMAGES, "generated image count");
-        test.assertEqual(frames, STORY_BEAT_FRAMES, "generated frame count");
-        test.assertEqual(story_view::firstFrame(STORY_BEAT_CARDS - 1) + 1, STORY_BEAT_FRAMES, "last card owns the last frame");
+        test.assertTrue(consecutiveText, "pagination emits consecutive text pages where needed");
+
+        bool seen[STORY_FRAME_COUNT] = {};
+        for (uint8_t scene = story_view::kSceneFirst; scene <= story_view::kSceneMax; ++scene) {
+            for (uint8_t card = 0; card < story_view::cardCount(scene); ++card) {
+                const bool image = story_view::isImageCard(scene, card);
+                const uint8_t first = story_view::firstFrameFor(scene, card);
+                for (uint8_t phase = 0; phase < (image ? 4 : 1); ++phase) {
+                    const uint8_t frame = static_cast<uint8_t>(first + phase);
+                    test.assertTrue(frame < STORY_FRAME_COUNT, "card frame is inside the blob");
+                    // Reused loading/restoration art intentionally shares poses.
+                    if (!image)
+                        test.assertTrue(!seen[frame], "each text frame has one owning card");
+                    seen[frame] = true;
+                }
+            }
+        }
+        bool allFrames = true;
+        for (uint8_t frame = 0; frame < STORY_FRAME_COUNT; ++frame)
+            allFrames = allFrames && seen[frame];
+        test.assertTrue(allFrames, "all generated frames are addressed");
+        test.assertEqual(STORY_BEAT_IMAGES, STORY_IMAGE_COUNT, "compatibility image alias");
+        test.assertTrue(STORY_BEAT_MAX_CARDS >= 6, "scene card budget is generated");
+        runner.add(test);
+    }
+
+    {
+        Test test("cargo acceptance selects the six departure handoffs");
+        test.assertEqual(story_view::handoffForMission(campaign::kFirst), story_view::kHandoffFirst, "FIRST departure");
+        test.assertEqual(story_view::handoffForMission(campaign::kPump), story_view::kHandoffPump, "PUMP pickup");
+        test.assertEqual(story_view::handoffForMission(campaign::kLift), story_view::kHandoffLift, "LIFT pickup");
+        test.assertEqual(story_view::handoffForMission(campaign::kBeacon), story_view::kHandoffBeacon, "BEACON departure");
+        test.assertEqual(story_view::handoffForMission(campaign::kHome), story_view::kHandoffHome, "HOME departure");
+        test.assertEqual(story_view::handoffForMission(campaign::kExpedition), story_view::kHandoffExpedition, "DEEP RELAY departure");
+        test.assertEqual(story_view::handoffForMission(campaign::kPumpSurvey), story_view::kSceneNone, "survey is not cargo");
+        test.assertEqual(story_view::handoffForMission(campaign::kLiftSurvey), story_view::kSceneNone, "survey is not cargo");
+
+        test.assertEqual(story_view::jointHandoff(false), story_view::kHandoffJointMissing, "joint scene names the missing seal");
+        test.assertEqual(story_view::jointHandoff(true), story_view::kHandoffJointReady, "joint scene directs core collection");
+        test.assertTrue(story_view::validScene(story_view::kHandoffHome), "last handoff is a valid saved scene");
+        test.assertTrue(story_view::validScene(story_view::kHandoffExpedition), "expedition briefing is a valid saved scene");
+        test.assertTrue(!story_view::validScene(story_view::kSceneMax + 1), "unknown saved scene is rejected");
+        test.assertTrue(!story_view::validScene(0xFF), "wide unknown scene is rejected");
         runner.add(test);
     }
 }

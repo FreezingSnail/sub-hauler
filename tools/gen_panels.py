@@ -49,6 +49,8 @@ BERTH_NAMES = {
     "kBenthos": "txt_benthos",
     "kCormorant": "txt_cormorant",
     "kDeepAnchor": "txt_deep_anchor",
+    "kPumpRefuge": "txt_pump_refuge",
+    "kFreightYard": "txt_freight_yard",
 }
 
 # The game font intentionally keeps only the glyphs its text used before the
@@ -74,9 +76,11 @@ def load_routes(campaign_path):
     if not block:
         raise ValueError("campaign.hpp: kMissions table not found")
     entries = MISSION_ENTRY_RE.findall(block.group("body"))
-    if len(entries) != len(MISSIONS):
-        raise ValueError("campaign.hpp: expected {} cargo missions, found {}".format(len(MISSIONS), len(entries)))
-    return entries
+    if len(entries) < len(MISSIONS):
+        raise ValueError("campaign.hpp: expected {} frozen cargo missions, found {}".format(len(MISSIONS), len(entries)))
+    # The appended optional expedition has no archival panel frame; only the
+    # first five frozen cargo panels are returned here.
+    return entries[:len(MISSIONS)]
 
 
 def load_pickup_count(exploration_path):

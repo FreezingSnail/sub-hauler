@@ -35,7 +35,7 @@ def frames(root=ROOT):
     game.paste(ship, (38, 30), ship)
     for x, y in ((29, 34), (23, 29), (18, 39)):
         pen.rectangle((x, y, x + 2, y + 2), outline="white")
-    draw_text(game, 7, 56, "A RESTORATION VOYAGE")
+    draw_text(game, 7, 56, "PRESS A TO START")
     return brand, game
 
 

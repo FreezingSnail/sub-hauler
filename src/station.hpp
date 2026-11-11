@@ -44,33 +44,32 @@ constexpr uint8_t kUndockCooldown = 1;
 // the no-job board posts no separate freight rows:
 //
 //   no job:       WORK UNDOCK          (service-only berth: UNDOCK)
-//   active:       [summary] ABANDON WORK UNDOCK
+//   active:       [summary] WORK UNDOCK
 //
-// Only selectable rows participate in wrap-around; the summary row is inert.
-// Acceptance auto-loads the contract hold, so there is no LOAD row.
+// Mandatory story work cannot be voluntarily abandoned, so the active board
+// has no ABANDON row or confirmation. Only selectable rows participate in
+// wrap-around; the summary row is inert. Acceptance auto-loads the contract
+// hold, so there is no LOAD row either.
 constexpr uint8_t kWorkRow = 0;
 constexpr uint8_t kUndockRow = 1;
 constexpr uint8_t kStationRowCount = 2;
 constexpr uint8_t kFirstRow = 0;
 
 constexpr uint8_t kActiveSummaryRow = 0;
-constexpr uint8_t kAbandonRow = 1;
-constexpr uint8_t kActiveWorkRow = 2;
-constexpr uint8_t kActiveUndockRow = 3;
-constexpr uint8_t kActiveRowCount = 4;
+constexpr uint8_t kActiveWorkRow = 1;
+constexpr uint8_t kActiveUndockRow = 2;
+constexpr uint8_t kActiveRowCount = 3;
 
 enum RowKind : uint8_t {
     kRowWork,
     kRowUndock,
-    kRowJob,
-    kRowAbandon
+    kRowJob
 };
 
 enum Action : uint8_t {
     kActionNone,
     kActionUndocked,
-    kActionWork,
-    kActionAbandoned
+    kActionWork
 };
 
 inline bool jobActive(const State &state) {
@@ -95,8 +94,6 @@ inline RowKind rowKind(uint8_t row, const State &state) {
     if (jobActive(state)) {
         if (row == kActiveSummaryRow)
             return kRowJob;
-        if (row == kAbandonRow)
-            return kRowAbandon;
         if (row == kActiveWorkRow)
             return kRowWork;
         return kRowUndock;
@@ -107,8 +104,8 @@ inline RowKind rowKind(uint8_t row, const State &state) {
 }
 
 // First selectable row for a freshly docked boat. The no-job board starts on
-// WORK; an active contract starts on the safe UNDOCK row, never on ABANDON or
-// WORK. The sketch intercepts ABANDON for its own confirmation.
+// WORK; an active contract starts on the safe UNDOCK row, so WORK stays
+// deliberate while travel never starts by accident.
 inline uint8_t initialRow(const State &state) {
     if (serviceBerth(state))
         return kFirstRow;
@@ -118,13 +115,12 @@ inline uint8_t initialRow(const State &state) {
 }
 
 // First row in the selection cycle. The active board keeps its inert summary
-// row out of the cycle but still allows UNDOCK to be the initial selection, so
-// ABANDON stays reachable but never accidental.
+// row out of the cycle, so only WORK and UNDOCK are selectable.
 inline uint8_t firstSelectable(const State &state) {
     if (serviceBerth(state))
         return kFirstRow;
     if (jobActive(state))
-        return kAbandonRow;
+        return kActiveWorkRow;
     return kFirstRow;
 }
 
@@ -132,7 +128,7 @@ inline uint8_t selectableCount(const State &state) {
     if (serviceBerth(state))
         return 1;
     if (jobActive(state))
-        return static_cast<uint8_t>(kActiveRowCount - kAbandonRow);
+        return 2;
     (void)state;
     return kStationRowCount;
 }
@@ -227,10 +223,10 @@ inline bool dock(State &state) {
     state.vyQ8 = 0;
 
     service(state);
-    // Freight berths resolve a contract ending here. Service-only berths
-    // refill and save but never trade.
-    if (campaign::freightBerth(settlementId))
-        jobs::onDock(state, settlementId);
+    // Any berth may resolve the matching repair delivery: Pump Refuge and
+    // Freight Yard are work sites, not trade posts. A non-matching berth leaves
+    // the active contract untouched.
+    jobs::onDock(state, settlementId);
     return true;
 }
 
@@ -253,17 +249,19 @@ inline bool undock(State &state) {
 // travel time, air drain, and ballast valves do not advance while the station
 // screen is showing. Returns true only on the frame that docked. The ring
 // latch is resolved inside dock() after the step, so an exit frame and a
-// re-entry frame behave the same as a direct dock() call.
-template <typename Reader> inline bool stepFlight(State &state, const Input &input, Reader &reader, const world::TileCache *cache = nullptr) {
+// re-entry frame behave the same as a direct dock() call. `collide=false` and
+// `speedScale` are the developer inspection path and are never used by the
+// release build.
+template <typename Reader> inline bool stepFlight(State &state, const Input &input, Reader &reader, const world::TileCache *cache = nullptr, bool collide = true, uint8_t speedScale = 1) {
     if (state.docked >= 0)
         return false;
 
-    game::stepWorld(state, input, reader, cache);
+    game::stepWorld(state, input, reader, cache, collide, speedScale);
     return dock(state);
 }
 
-// A confirms the selected row. ABANDON clears the contract, WORK opens the
-// restoration board (the sketch owns it), and UNDOCK leaves the station.
+// A confirms the selected row. WORK opens the restoration board (the sketch
+// owns it) and UNDOCK leaves the station. Story work has no abandonment path.
 inline Action activate(uint8_t selected, State &state) {
     if (state.docked < 0 || selected >= rowCount(state))
         return kActionNone;
@@ -273,8 +271,6 @@ inline Action activate(uint8_t selected, State &state) {
         return kActionWork;
     case kRowUndock:
         return undock(state) ? kActionUndocked : kActionNone;
-    case kRowAbandon:
-        return jobs::abandon(state) ? kActionAbandoned : kActionNone;
     case kRowJob:
         return kActionNone;
     default:

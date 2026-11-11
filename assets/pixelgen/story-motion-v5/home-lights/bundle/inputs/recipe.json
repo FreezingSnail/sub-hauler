@@ -1,0 +1,358 @@
+{
+  "schema_version": "pixelgen.motion/1",
+  "recipe_id": "story-v5-home-lights",
+  "revision": 2,
+  "canvas": {
+    "width": 128,
+    "height": 64,
+    "depth": 1
+  },
+  "background": {
+    "path": "background.png",
+    "sha256": "0a10599b94fe3761dc6a61773dad861cf85f84d334e333bb672907db8e58009d"
+  },
+  "master_seed": 4156,
+  "phases": [
+    {
+      "phase_id": "pose-0",
+      "duration_ms": 300
+    },
+    {
+      "phase_id": "pose-1",
+      "duration_ms": 300
+    },
+    {
+      "phase_id": "pose-2",
+      "duration_ms": 300
+    },
+    {
+      "phase_id": "pose-3",
+      "duration_ms": 300
+    }
+  ],
+  "layers": [
+    {
+      "layer_id": "original-pressure-hull",
+      "role": "part",
+      "z": 10,
+      "source": {
+        "path": "layers/original-pressure-hull.png",
+        "sha256": "40576fc045d323ff18c1e945bc89ec88a8b8b8e9df93e12f44bdc40f9291415b"
+      },
+      "matte": {
+        "path": "layers/original-pressure-hull-matte.png",
+        "sha256": "394ba4a4ed0fe4aff04602b0659580705a88d5148533e7bc5053c99c399144a8"
+      },
+      "origin": {
+        "x": 9,
+        "y": 9
+      },
+      "track": [
+        {
+          "translate": {
+            "x": 0,
+            "y": 0
+          },
+          "turn_16ths": 0
+        },
+        {
+          "translate": {
+            "x": 0,
+            "y": -1
+          },
+          "turn_16ths": 0
+        },
+        {
+          "translate": {
+            "x": 0,
+            "y": 0
+          },
+          "turn_16ths": 0
+        },
+        {
+          "translate": {
+            "x": 0,
+            "y": 1
+          },
+          "turn_16ths": 0
+        }
+      ],
+      "clip": "error"
+    },
+    {
+      "layer_id": "foreground-bollard",
+      "role": "static",
+      "z": 20,
+      "source": {
+        "path": "layers/foreground-bollard.png",
+        "sha256": "972c4d3827202344190f7790b4dcb42b17097c59a37c72088ee11e2f64998913"
+      },
+      "matte": {
+        "path": "layers/foreground-bollard-matte.png",
+        "sha256": "abb42f404673a9ad75f1f89537c5c2287f87fc7e6debf10e8f2f8dd5174dd6aa"
+      },
+      "origin": {
+        "x": 0,
+        "y": 28
+      }
+    },
+    {
+      "layer_id": "bubble-0",
+      "role": "part",
+      "z": 30,
+      "source": {
+        "path": "layers/bubble-0.png",
+        "sha256": "12c754398b8f352f4899b3620c8fad335cf1f689d26d774d592c94c897b4c882"
+      },
+      "matte": {
+        "path": "layers/bubble-0-matte.png",
+        "sha256": "f71596d08b54af5b0d40285c1b6ad0aabdac8160c0929eb6eee76dd85755740e"
+      },
+      "origin": {
+        "x": 82,
+        "y": 18
+      },
+      "track": [
+        {
+          "translate": {
+            "x": 0,
+            "y": 0
+          },
+          "turn_16ths": 0
+        },
+        {
+          "translate": {
+            "x": 1,
+            "y": -3
+          },
+          "turn_16ths": 0
+        },
+        {
+          "translate": {
+            "x": 0,
+            "y": -6
+          },
+          "turn_16ths": 0
+        },
+        {
+          "translate": {
+            "x": 1,
+            "y": -9
+          },
+          "turn_16ths": 0
+        }
+      ],
+      "clip": "error"
+    },
+    {
+      "layer_id": "bubble-1",
+      "role": "part",
+      "z": 40,
+      "source": {
+        "path": "layers/bubble-1.png",
+        "sha256": "8753d3956f0be0693573b49dd12e0dd10f984c7d2d593e85a576b388014b2596"
+      },
+      "matte": {
+        "path": "layers/bubble-1-matte.png",
+        "sha256": "91b5a5911ee6352f7085211559250d811cd0884139fd94088089d557cbc636c5"
+      },
+      "origin": {
+        "x": 20,
+        "y": 55
+      },
+      "track": [
+        {
+          "translate": {
+            "x": 1,
+            "y": -3
+          },
+          "turn_16ths": 0
+        },
+        {
+          "translate": {
+            "x": 0,
+            "y": -6
+          },
+          "turn_16ths": 0
+        },
+        {
+          "translate": {
+            "x": 1,
+            "y": -9
+          },
+          "turn_16ths": 0
+        },
+        {
+          "translate": {
+            "x": 0,
+            "y": 0
+          },
+          "turn_16ths": 0
+        }
+      ],
+      "clip": "error"
+    },
+    {
+      "layer_id": "window-0",
+      "role": "part",
+      "z": 50,
+      "source": {
+        "path": "layers/window-0.png",
+        "sha256": "1c0681cb2aa0f16bfaf22a312eeedac5da7a52f9a831f45064df552d60b93e0a"
+      },
+      "matte": {
+        "path": "layers/window-0-matte.png",
+        "sha256": "1c0681cb2aa0f16bfaf22a312eeedac5da7a52f9a831f45064df552d60b93e0a"
+      },
+      "origin": {
+        "x": 89,
+        "y": 40
+      },
+      "track": [
+        {
+          "pose": "lit"
+        },
+        {
+          "pose": "lit"
+        },
+        {
+          "pose": "lit"
+        },
+        {
+          "pose": "dark"
+        }
+      ],
+      "clip": "error",
+      "poses": {
+        "lit": {
+          "source": {
+            "path": "layers/window-0-lit.png",
+            "sha256": "1c0681cb2aa0f16bfaf22a312eeedac5da7a52f9a831f45064df552d60b93e0a"
+          },
+          "matte": {
+            "path": "layers/window-0-matte.png",
+            "sha256": "1c0681cb2aa0f16bfaf22a312eeedac5da7a52f9a831f45064df552d60b93e0a"
+          }
+        },
+        "dark": {
+          "source": {
+            "path": "layers/window-0-dark.png",
+            "sha256": "93ba6446386da3d194d9d19c7a8c15ac28c9aa00d13f8db3cbdd49fbcc5e6583"
+          },
+          "matte": {
+            "path": "layers/window-0-matte.png",
+            "sha256": "1c0681cb2aa0f16bfaf22a312eeedac5da7a52f9a831f45064df552d60b93e0a"
+          }
+        }
+      }
+    },
+    {
+      "layer_id": "window-1",
+      "role": "part",
+      "z": 60,
+      "source": {
+        "path": "layers/window-1.png",
+        "sha256": "1c0681cb2aa0f16bfaf22a312eeedac5da7a52f9a831f45064df552d60b93e0a"
+      },
+      "matte": {
+        "path": "layers/window-1-matte.png",
+        "sha256": "1c0681cb2aa0f16bfaf22a312eeedac5da7a52f9a831f45064df552d60b93e0a"
+      },
+      "origin": {
+        "x": 102,
+        "y": 35
+      },
+      "track": [
+        {
+          "pose": "lit"
+        },
+        {
+          "pose": "lit"
+        },
+        {
+          "pose": "dark"
+        },
+        {
+          "pose": "lit"
+        }
+      ],
+      "clip": "error",
+      "poses": {
+        "lit": {
+          "source": {
+            "path": "layers/window-1-lit.png",
+            "sha256": "1c0681cb2aa0f16bfaf22a312eeedac5da7a52f9a831f45064df552d60b93e0a"
+          },
+          "matte": {
+            "path": "layers/window-1-matte.png",
+            "sha256": "1c0681cb2aa0f16bfaf22a312eeedac5da7a52f9a831f45064df552d60b93e0a"
+          }
+        },
+        "dark": {
+          "source": {
+            "path": "layers/window-1-dark.png",
+            "sha256": "93ba6446386da3d194d9d19c7a8c15ac28c9aa00d13f8db3cbdd49fbcc5e6583"
+          },
+          "matte": {
+            "path": "layers/window-1-matte.png",
+            "sha256": "1c0681cb2aa0f16bfaf22a312eeedac5da7a52f9a831f45064df552d60b93e0a"
+          }
+        }
+      }
+    },
+    {
+      "layer_id": "window-2",
+      "role": "part",
+      "z": 70,
+      "source": {
+        "path": "layers/window-2.png",
+        "sha256": "1c0681cb2aa0f16bfaf22a312eeedac5da7a52f9a831f45064df552d60b93e0a"
+      },
+      "matte": {
+        "path": "layers/window-2-matte.png",
+        "sha256": "1c0681cb2aa0f16bfaf22a312eeedac5da7a52f9a831f45064df552d60b93e0a"
+      },
+      "origin": {
+        "x": 116,
+        "y": 43
+      },
+      "track": [
+        {
+          "pose": "lit"
+        },
+        {
+          "pose": "dark"
+        },
+        {
+          "pose": "lit"
+        },
+        {
+          "pose": "lit"
+        }
+      ],
+      "clip": "error",
+      "poses": {
+        "lit": {
+          "source": {
+            "path": "layers/window-2-lit.png",
+            "sha256": "1c0681cb2aa0f16bfaf22a312eeedac5da7a52f9a831f45064df552d60b93e0a"
+          },
+          "matte": {
+            "path": "layers/window-2-matte.png",
+            "sha256": "1c0681cb2aa0f16bfaf22a312eeedac5da7a52f9a831f45064df552d60b93e0a"
+          }
+        },
+        "dark": {
+          "source": {
+            "path": "layers/window-2-dark.png",
+            "sha256": "93ba6446386da3d194d9d19c7a8c15ac28c9aa00d13f8db3cbdd49fbcc5e6583"
+          },
+          "matte": {
+            "path": "layers/window-2-matte.png",
+            "sha256": "1c0681cb2aa0f16bfaf22a312eeedac5da7a52f9a831f45064df552d60b93e0a"
+          }
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,280 @@
+{
+  "assets": [
+    {
+      "height": 64,
+      "path": "background.png",
+      "role": "background",
+      "sha256": "2ccfb01e70d3328a315c41053f83474860cc9f5d013248e2212b13b6e56a1256",
+      "width": 128
+    },
+    {
+      "height": 5,
+      "path": "layers/bubble-0-matte.png",
+      "role": "layer:bubble-0:matte",
+      "sha256": "f71596d08b54af5b0d40285c1b6ad0aabdac8160c0929eb6eee76dd85755740e",
+      "width": 5
+    },
+    {
+      "height": 5,
+      "path": "layers/bubble-0.png",
+      "role": "layer:bubble-0:source",
+      "sha256": "12c754398b8f352f4899b3620c8fad335cf1f689d26d774d592c94c897b4c882",
+      "width": 5
+    },
+    {
+      "height": 4,
+      "path": "layers/bubble-1-matte.png",
+      "role": "layer:bubble-1:matte",
+      "sha256": "91b5a5911ee6352f7085211559250d811cd0884139fd94088089d557cbc636c5",
+      "width": 4
+    },
+    {
+      "height": 4,
+      "path": "layers/bubble-1.png",
+      "role": "layer:bubble-1:source",
+      "sha256": "8753d3956f0be0693573b49dd12e0dd10f984c7d2d593e85a576b388014b2596",
+      "width": 4
+    },
+    {
+      "height": 18,
+      "path": "layers/original-pressure-hull-matte.png",
+      "role": "layer:original-pressure-hull:matte",
+      "sha256": "1ee2e5b8b641f81374ca9c33456b0966036833c0088777cdc11685cc3ad53d4c",
+      "width": 54
+    },
+    {
+      "height": 18,
+      "path": "layers/original-pressure-hull.png",
+      "role": "layer:original-pressure-hull:source",
+      "sha256": "d81cd4e85f71472f061660ad3d138e8fad45af1e4f18906b0ce55f154d9d82f6",
+      "width": 54
+    }
+  ],
+  "background": {
+    "path": "background.png",
+    "sha256": "2ccfb01e70d3328a315c41053f83474860cc9f5d013248e2212b13b6e56a1256"
+  },
+  "canvas": {
+    "depth": 1,
+    "height": 64,
+    "width": 128
+  },
+  "expected_mask_sha256": null,
+  "format": "pixelgen.motion.provenance/1",
+  "frame_sha256": [
+    "569677d70e13b5ad984768d6ea6a1e8472a3507c0ea979f169b038b852b0a0c7",
+    "638d99543ba5dd8882d60183ff8afcc5d9d2ac6ff7d2b4330661777ba22e9b24",
+    "9b623d335e507986fd6bb0cc87264d0d0efedc5a8ae1a748420c271f39e72614",
+    "f8ceb44723c23c3db2a3d3d54319e17cc91e1a053ae310d2f658eb7b392f2d34"
+  ],
+  "layers": [
+    {
+      "clip": "error",
+      "layer_id": "original-pressure-hull",
+      "matte": {
+        "path": "layers/original-pressure-hull-matte.png",
+        "sha256": "1ee2e5b8b641f81374ca9c33456b0966036833c0088777cdc11685cc3ad53d4c"
+      },
+      "motion_bounds": null,
+      "origin": {
+        "x": 10,
+        "y": 10
+      },
+      "pivot": null,
+      "poses": {},
+      "role": "part",
+      "source": {
+        "path": "layers/original-pressure-hull.png",
+        "sha256": "d81cd4e85f71472f061660ad3d138e8fad45af1e4f18906b0ce55f154d9d82f6"
+      },
+      "track": [
+        {
+          "pose": null,
+          "translate": {
+            "x": 0,
+            "y": 0
+          },
+          "turn_16ths": 0,
+          "visible": true
+        },
+        {
+          "pose": null,
+          "translate": {
+            "x": 0,
+            "y": -1
+          },
+          "turn_16ths": 0,
+          "visible": true
+        },
+        {
+          "pose": null,
+          "translate": {
+            "x": 0,
+            "y": 0
+          },
+          "turn_16ths": 0,
+          "visible": true
+        },
+        {
+          "pose": null,
+          "translate": {
+            "x": 0,
+            "y": 1
+          },
+          "turn_16ths": 0,
+          "visible": true
+        }
+      ],
+      "z": 10
+    },
+    {
+      "clip": "error",
+      "layer_id": "bubble-0",
+      "matte": {
+        "path": "layers/bubble-0-matte.png",
+        "sha256": "f71596d08b54af5b0d40285c1b6ad0aabdac8160c0929eb6eee76dd85755740e"
+      },
+      "motion_bounds": null,
+      "origin": {
+        "x": 67,
+        "y": 27
+      },
+      "pivot": null,
+      "poses": {},
+      "role": "part",
+      "source": {
+        "path": "layers/bubble-0.png",
+        "sha256": "12c754398b8f352f4899b3620c8fad335cf1f689d26d774d592c94c897b4c882"
+      },
+      "track": [
+        {
+          "pose": null,
+          "translate": {
+            "x": 0,
+            "y": 0
+          },
+          "turn_16ths": 0,
+          "visible": true
+        },
+        {
+          "pose": null,
+          "translate": {
+            "x": 1,
+            "y": -4
+          },
+          "turn_16ths": 0,
+          "visible": true
+        },
+        {
+          "pose": null,
+          "translate": {
+            "x": 0,
+            "y": -8
+          },
+          "turn_16ths": 0,
+          "visible": true
+        },
+        {
+          "pose": null,
+          "translate": {
+            "x": 1,
+            "y": -12
+          },
+          "turn_16ths": 0,
+          "visible": true
+        }
+      ],
+      "z": 20
+    },
+    {
+      "clip": "error",
+      "layer_id": "bubble-1",
+      "matte": {
+        "path": "layers/bubble-1-matte.png",
+        "sha256": "91b5a5911ee6352f7085211559250d811cd0884139fd94088089d557cbc636c5"
+      },
+      "motion_bounds": null,
+      "origin": {
+        "x": 80,
+        "y": 48
+      },
+      "pivot": null,
+      "poses": {},
+      "role": "part",
+      "source": {
+        "path": "layers/bubble-1.png",
+        "sha256": "8753d3956f0be0693573b49dd12e0dd10f984c7d2d593e85a576b388014b2596"
+      },
+      "track": [
+        {
+          "pose": null,
+          "translate": {
+            "x": 1,
+            "y": -4
+          },
+          "turn_16ths": 0,
+          "visible": true
+        },
+        {
+          "pose": null,
+          "translate": {
+            "x": 0,
+            "y": -8
+          },
+          "turn_16ths": 0,
+          "visible": true
+        },
+        {
+          "pose": null,
+          "translate": {
+            "x": 1,
+            "y": -12
+          },
+          "turn_16ths": 0,
+          "visible": true
+        },
+        {
+          "pose": null,
+          "translate": {
+            "x": 0,
+            "y": 0
+          },
+          "turn_16ths": 0,
+          "visible": true
+        }
+      ],
+      "z": 30
+    }
+  ],
+  "layout": null,
+  "layout_id": null,
+  "mask_pixels": 1206,
+  "mask_sha256": "24f486f532ed2d209caa17186ee4b37cc5c359896d06d81798f6989a10566650",
+  "master_seed": 4128,
+  "phases": [
+    {
+      "duration_ms": 300,
+      "phase_id": "pose-0",
+      "seed": 4128
+    },
+    {
+      "duration_ms": 300,
+      "phase_id": "pose-1",
+      "seed": 4129
+    },
+    {
+      "duration_ms": 300,
+      "phase_id": "pose-2",
+      "seed": 4130
+    },
+    {
+      "duration_ms": 300,
+      "phase_id": "pose-3",
+      "seed": 4131
+    }
+  ],
+  "recipe_id": "story-v5-lift-yard",
+  "recipe_sha256": "dc61742bdb895ea2fd201afc2fc0a807496b9ce2262b2da11fc5e87a6c154a06",
+  "renderer": "pixelgen.motion/1",
+  "revision": 2
+}

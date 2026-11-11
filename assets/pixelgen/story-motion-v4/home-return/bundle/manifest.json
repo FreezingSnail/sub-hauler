@@ -1,0 +1,209 @@
+{
+  "animation_id": "story-v4-home-return",
+  "assets": [
+    {
+      "license": null,
+      "path": "inputs/frames/000.png",
+      "pixel_sha256": null,
+      "role": "source",
+      "sha256": "8bc54e63ece621b75c6d895fc09b55e233dd9f1817e6598d735397d4f936834a",
+      "source": "frames/000.png"
+    },
+    {
+      "license": null,
+      "path": "inputs/frames/001.png",
+      "pixel_sha256": null,
+      "role": "source",
+      "sha256": "8c82cfe40076ca915caff31cc481e51096d46c6f0d1fc10402d867a24ece7712",
+      "source": "frames/001.png"
+    },
+    {
+      "license": null,
+      "path": "inputs/frames/002.png",
+      "pixel_sha256": null,
+      "role": "source",
+      "sha256": "ef8b5e18409ccbda5edc95b0c5b038ce90dcec3b93f4715fe747b85bd578d6e4",
+      "source": "frames/002.png"
+    },
+    {
+      "license": null,
+      "path": "inputs/frames/003.png",
+      "pixel_sha256": null,
+      "role": "source",
+      "sha256": "482358f3b95e1e61c7f519be3bdc805b032b2b5095434aecb12afc3d9eda8050",
+      "source": "frames/003.png"
+    },
+    {
+      "license": null,
+      "path": "spritesheet.png",
+      "pixel_sha256": null,
+      "role": "spritesheet",
+      "sha256": "47e936e60a00f94923630da19fcb876ce12746a467d210b827f35fe9b21e90c3",
+      "source": null
+    },
+    {
+      "license": null,
+      "path": "preview.gif",
+      "pixel_sha256": null,
+      "role": "preview-gif",
+      "sha256": "768432e1aba2cec92e6094a52afc056f2369bb3f75cebd6a2589543b991ed09a",
+      "source": null
+    },
+    {
+      "license": null,
+      "path": "contact_sheet.html",
+      "pixel_sha256": null,
+      "role": "contact-sheet",
+      "sha256": "c3611cca52956084a27891739e3964d4f1ae6d144f91f9f7de2f79be7fadf1d1",
+      "source": null
+    }
+  ],
+  "environment": {
+    "core_lock_sha256": "21d731c34e8abfc6f3bab153e5b9d407ac16d02fb9a36b85704aa3c667b905c6",
+    "hardware": "arm64",
+    "os": "Darwin 25.6.0",
+    "python_version": "3.14.10",
+    "runtime_lock_sha256": null,
+    "runtime_python_version": null,
+    "uv_version": "uv 0.13.6 (Homebrew 2026-10-26 aarch64-apple-darwin)"
+  },
+  "frames": [
+    {
+      "candidate": null,
+      "duration_ms": 300,
+      "final": {
+        "license": null,
+        "path": "frames/000.png",
+        "pixel_sha256": "4c3f3ca78d26152c8a61313e37e02e1f3044e4c04ae999f5c57286cd4a1340a8",
+        "role": "final",
+        "sha256": "8bc54e63ece621b75c6d895fc09b55e233dd9f1817e6598d735397d4f936834a",
+        "source": null
+      },
+      "frame_id": "pose-0",
+      "index": 0,
+      "phase": "pose-0",
+      "seed": 4152,
+      "source": {
+        "license": null,
+        "path": "inputs/frames/000.png",
+        "pixel_sha256": null,
+        "role": "source",
+        "sha256": "8bc54e63ece621b75c6d895fc09b55e233dd9f1817e6598d735397d4f936834a",
+        "source": "frames/000.png"
+      }
+    },
+    {
+      "candidate": null,
+      "duration_ms": 300,
+      "final": {
+        "license": null,
+        "path": "frames/001.png",
+        "pixel_sha256": "303e3b7bc7d438391adf9dea2f1f3d897a1e7153905a4f6690a41002a4ee8f6e",
+        "role": "final",
+        "sha256": "8c82cfe40076ca915caff31cc481e51096d46c6f0d1fc10402d867a24ece7712",
+        "source": null
+      },
+      "frame_id": "pose-1",
+      "index": 1,
+      "phase": "pose-1",
+      "seed": 4153,
+      "source": {
+        "license": null,
+        "path": "inputs/frames/001.png",
+        "pixel_sha256": null,
+        "role": "source",
+        "sha256": "8c82cfe40076ca915caff31cc481e51096d46c6f0d1fc10402d867a24ece7712",
+        "source": "frames/001.png"
+      }
+    },
+    {
+      "candidate": null,
+      "duration_ms": 300,
+      "final": {
+        "license": null,
+        "path": "frames/002.png",
+        "pixel_sha256": "443cb36e3749ff87be83621bc241a303b274f06ba5dfe9e20cbaf9a67dbb535c",
+        "role": "final",
+        "sha256": "ef8b5e18409ccbda5edc95b0c5b038ce90dcec3b93f4715fe747b85bd578d6e4",
+        "source": null
+      },
+      "frame_id": "pose-2",
+      "index": 2,
+      "phase": "pose-2",
+      "seed": 4154,
+      "source": {
+        "license": null,
+        "path": "inputs/frames/002.png",
+        "pixel_sha256": null,
+        "role": "source",
+        "sha256": "ef8b5e18409ccbda5edc95b0c5b038ce90dcec3b93f4715fe747b85bd578d6e4",
+        "source": "frames/002.png"
+      }
+    },
+    {
+      "candidate": null,
+      "duration_ms": 300,
+      "final": {
+        "license": null,
+        "path": "frames/003.png",
+        "pixel_sha256": "c1a33470e984d1adf998bc17a0496194a5faf7bb8d17fd82a60d5aa7980058ac",
+        "role": "final",
+        "sha256": "482358f3b95e1e61c7f519be3bdc805b032b2b5095434aecb12afc3d9eda8050",
+        "source": null
+      },
+      "frame_id": "pose-3",
+      "index": 3,
+      "phase": "pose-3",
+      "seed": 4155,
+      "source": {
+        "license": null,
+        "path": "inputs/frames/003.png",
+        "pixel_sha256": null,
+        "role": "source",
+        "sha256": "482358f3b95e1e61c7f519be3bdc805b032b2b5095434aecb12afc3d9eda8050",
+        "source": "frames/003.png"
+      }
+    }
+  ],
+  "layout": null,
+  "loop": true,
+  "mask": {
+    "license": null,
+    "path": "inputs/mask.png",
+    "pixel_sha256": "1e0bb2fbe9cd2108af68f5f69b092057f62fdaf4d32599d07e42e815171cd940",
+    "role": "mask",
+    "sha256": "994886dbb68a4d485083148093f10ba36aa481da67d82fb4df944b432b2eb318",
+    "source": "mask.png"
+  },
+  "mode": "assemble",
+  "replay_identity": {
+    "candidate_manifest_sha256": [],
+    "encoder_id": "pixelgen-animation-export",
+    "encoder_version": "1",
+    "environment_sha256": "7f9791ca96a7f636abf292c56852bfdac8eed9d9e365cc4f596b1496f0ea0f3b",
+    "frame_final_sha256": [
+      "8bc54e63ece621b75c6d895fc09b55e233dd9f1817e6598d735397d4f936834a",
+      "8c82cfe40076ca915caff31cc481e51096d46c6f0d1fc10402d867a24ece7712",
+      "ef8b5e18409ccbda5edc95b0c5b038ce90dcec3b93f4715fe747b85bd578d6e4",
+      "482358f3b95e1e61c7f519be3bdc805b032b2b5095434aecb12afc3d9eda8050"
+    ],
+    "frame_source_sha256": [
+      "8bc54e63ece621b75c6d895fc09b55e233dd9f1817e6598d735397d4f936834a",
+      "8c82cfe40076ca915caff31cc481e51096d46c6f0d1fc10402d867a24ece7712",
+      "ef8b5e18409ccbda5edc95b0c5b038ce90dcec3b93f4715fe747b85bd578d6e4",
+      "482358f3b95e1e61c7f519be3bdc805b032b2b5095434aecb12afc3d9eda8050"
+    ],
+    "layout_sha256": null,
+    "mask_sha256": "994886dbb68a4d485083148093f10ba36aa481da67d82fb4df944b432b2eb318",
+    "spec_sha256": "1af6164f3ea1da9d5217017756ab9ec7040d0698f91d997c4049c55c5b13f313"
+  },
+  "schema_version": "pixelgen.animation/1",
+  "spec": {
+    "license": null,
+    "path": "inputs/spec.json",
+    "pixel_sha256": null,
+    "role": "spec",
+    "sha256": "1af6164f3ea1da9d5217017756ab9ec7040d0698f91d997c4049c55c5b13f313",
+    "source": null
+  }
+}

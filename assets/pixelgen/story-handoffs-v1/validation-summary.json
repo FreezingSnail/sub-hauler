@@ -1,0 +1,78 @@
+[
+  {
+    "scene": "tidewall-filters",
+    "frame_count": 4,
+    "duration_ms": 1200,
+    "rle_frame_bytes": [
+      606,
+      605,
+      600,
+      606
+    ],
+    "rle_total_bytes": 2417,
+    "changed_pixels_including_wrap": [
+      172,
+      172,
+      268,
+      268
+    ],
+    "human_review": "unreviewed"
+  },
+  {
+    "scene": "deep-anchor-dispatch",
+    "frame_count": 4,
+    "duration_ms": 1200,
+    "rle_frame_bytes": [
+      691,
+      692,
+      682,
+      689
+    ],
+    "rle_total_bytes": 2754,
+    "changed_pixels_including_wrap": [
+      248,
+      248,
+      348,
+      348
+    ],
+    "human_review": "unreviewed"
+  },
+  {
+    "scene": "cormorant-core",
+    "frame_count": 4,
+    "duration_ms": 1200,
+    "rle_frame_bytes": [
+      636,
+      632,
+      628,
+      632
+    ],
+    "rle_total_bytes": 2528,
+    "changed_pixels_including_wrap": [
+      142,
+      141,
+      159,
+      160
+    ],
+    "human_review": "unreviewed"
+  },
+  {
+    "scene": "restoration-ready",
+    "frame_count": 4,
+    "duration_ms": 1200,
+    "rle_frame_bytes": [
+      651,
+      652,
+      652,
+      652
+    ],
+    "rle_total_bytes": 2607,
+    "changed_pixels_including_wrap": [
+      57,
+      58,
+      58,
+      57
+    ],
+    "human_review": "unreviewed"
+  }
+]

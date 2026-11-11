@@ -1,20 +1,20 @@
 #pragma once
 
 #include "../src/game.hpp"
-#include "../src/hud.hpp"
 #include "../src/roster.hpp"
 #include "test.hpp"
 
 #include "../src/station.hpp"
 
-// Roster rules, default reset, and the single-hull collapse. The state field,
-// title layout, and class art are covered by roster_view_test.hpp and
-// pilot_view_test.hpp.
+// Roster rules, default reset, and the single-hull collapse. The frozen save
+// field is covered by voyage_save_test.hpp; HUD geometry lives in TitleSuite.
 
 inline void RosterSuite(TestRunner &runner) {
     {
-        Test test("roster: HAULER is the default class");
+        Test test("roster: HAULER is the only playable class and the reset default");
         test.assertEqual(static_cast<int>(roster::kDefault), static_cast<int>(roster::kHauler), "default id");
+        test.assertEqual(static_cast<int>(roster::kHauler), 1, "frozen HAULER id");
+        test.assertEqual(roster::kClassCount, 1, "one playable class");
 
         game::State state{};
         game::reset(state);
@@ -23,86 +23,29 @@ inline void RosterSuite(TestRunner &runner) {
     }
 
     {
-        Test test("roster: HAULER record and code");
-        const roster::ClassSpec spec = roster::spec(roster::kHauler);
-        test.assertEqual(spec.length, 94, "HAULER reference length");
-        test.assertEqual(spec.height, 22, "HAULER reference height");
-        test.assertEqual(spec.pilotW, 26, "HAULER pilot width");
-        test.assertEqual(spec.pilotH, 8, "HAULER pilot height");
-        test.assertEqual(roster::nameLength(roster::kHauler), 6, "HAULER name columns");
-        test.assertEqual(static_cast<int>(roster::code(roster::kHauler)), static_cast<int>('M'), "HAULER code");
-        test.assertTrue(roster::valid(roster::kHauler), "HAULER is valid");
+        Test test("roster: legacy save ids validate but normalize to HAULER");
+        test.assertTrue(roster::isValidId(0), "retired Minnow id stays loadable");
+        test.assertTrue(roster::isValidId(1), "HAULER id is valid");
+        test.assertTrue(roster::isValidId(2), "retired Leviathan id stays loadable");
+        test.assertTrue(!roster::isValidId(3), "unknown id above the frozen range is rejected");
+        test.assertTrue(!roster::isValidId(255), "erased id is rejected");
+
+        test.assertEqual(roster::normalize(0), roster::kHauler, "legacy small hull normalizes");
+        test.assertEqual(roster::normalize(1), roster::kHauler, "HAULER normalizes");
+        test.assertEqual(roster::normalize(2), roster::kHauler, "legacy large hull normalizes");
         runner.add(test);
     }
 
     {
-        Test test("roster: MINNOW/HAULER/LEVIATHAN order and records");
-        test.assertEqual(roster::kClassCount, 3, "three classes");
-        test.assertEqual(static_cast<int>(roster::kMinnow), 0, "MINNOW id");
-        test.assertEqual(static_cast<int>(roster::kHauler), 1, "HAULER id");
-        test.assertEqual(static_cast<int>(roster::kLeviathan), 2, "LEVIATHAN id");
-
-        test.assertEqual(roster::classAt(0), roster::kMinnow, "index 0");
-        test.assertEqual(roster::classAt(1), roster::kHauler, "index 1");
-        test.assertEqual(roster::classAt(2), roster::kLeviathan, "index 2");
-        test.assertEqual(roster::indexOf(roster::kMinnow), 0, "MINNOW index");
-        test.assertEqual(roster::indexOf(roster::kHauler), 1, "HAULER index");
-        test.assertEqual(roster::indexOf(roster::kLeviathan), 2, "LEVIATHAN index");
-
-        const roster::ClassSpec minnow = roster::spec(roster::kMinnow);
-        test.assertEqual(minnow.length, 64, "MINNOW reference length");
-        test.assertEqual(minnow.height, 16, "MINNOW reference height");
-        test.assertEqual(minnow.pilotW, 24, "MINNOW pilot width");
-        test.assertEqual(minnow.pilotH, 7, "MINNOW pilot height");
-
-        const roster::ClassSpec leviathan = roster::spec(roster::kLeviathan);
-        test.assertEqual(leviathan.length, 118, "LEVIATHAN reference length");
-        test.assertEqual(leviathan.height, 30, "LEVIATHAN reference height");
-        test.assertEqual(leviathan.pilotW, 26, "LEVIATHAN pilot width");
-        test.assertEqual(leviathan.pilotH, 8, "LEVIATHAN pilot height");
-
-        test.assertEqual(roster::nameLength(roster::kMinnow), 7, "MINNOW name columns");
-        test.assertEqual(roster::nameLength(roster::kLeviathan), 9, "LEVIATHAN name columns");
-        test.assertEqual(static_cast<int>(roster::code(roster::kMinnow)), static_cast<int>('S'), "MINNOW code");
-        test.assertEqual(static_cast<int>(roster::code(roster::kLeviathan)), static_cast<int>('L'), "LEVIATHAN code");
-        test.assertTrue(roster::nameOf(roster::kMinnow)[0] == 'M', "host MINNOW name");
-        test.assertTrue(roster::nameOf(roster::kLeviathan)[0] == 'L', "host LEVIATHAN name");
-        runner.add(test);
-    }
-
-    {
-        Test test("roster: next/previous wrap and invalid selection sanitizes");
-        roster::HullClass hull = roster::kHauler;
-        hull = roster::next(hull);
-        test.assertEqual(hull, roster::kLeviathan, "HAULER -> LEVIATHAN");
-        hull = roster::next(hull);
-        test.assertEqual(hull, roster::kMinnow, "LEVIATHAN -> MINNOW");
-        hull = roster::next(hull);
-        test.assertEqual(hull, roster::kHauler, "MINNOW wraps to HAULER");
-
-        hull = roster::previous(roster::kHauler);
-        test.assertEqual(hull, roster::kMinnow, "HAULER -> MINNOW backwards");
-        hull = roster::previous(hull);
-        test.assertEqual(hull, roster::kLeviathan, "MINNOW wraps to LEVIATHAN backwards");
-        hull = roster::previous(hull);
-        test.assertEqual(hull, roster::kHauler, "LEVIATHAN -> HAULER backwards");
-
-        test.assertEqual(roster::sanitize(static_cast<roster::HullClass>(7)), roster::kHauler, "invalid id falls back");
-        test.assertTrue(!roster::valid(static_cast<roster::HullClass>(7)), "invalid id is rejected");
-        runner.add(test);
-    }
-
-    {
-        Test test("roster: selection persists across dock and undock");
+        Test test("roster: HAULER persists across dock and undock");
         game::State state{};
         game::resetWorld(state);
-        state.hullClass = static_cast<uint8_t>(roster::kLeviathan);
         state.docked = 0;
         test.assertTrue(station::undock(state), "undock accepted");
-        test.assertEqual(state.hullClass, static_cast<uint8_t>(roster::kLeviathan), "hull survives undock");
+        test.assertEqual(state.hullClass, static_cast<uint8_t>(roster::kHauler), "hull survives undock");
         state.docked = 1;
         state.dockCooldown = 0;
-        test.assertEqual(state.hullClass, static_cast<uint8_t>(roster::kLeviathan), "hull survives a second dock");
+        test.assertEqual(state.hullClass, static_cast<uint8_t>(roster::kHauler), "hull survives a second dock");
         runner.add(test);
     }
 }

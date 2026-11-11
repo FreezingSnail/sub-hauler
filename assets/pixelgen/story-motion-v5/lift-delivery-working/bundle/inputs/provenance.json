@@ -1,0 +1,207 @@
+{
+  "assets": [
+    {
+      "height": 64,
+      "path": "background.png",
+      "role": "background",
+      "sha256": "99b782fd0e9d00199d798a621659de5295729edfa7c4c0698e0c4b7c1327dfc9",
+      "width": 128
+    },
+    {
+      "height": 5,
+      "path": "layers/bubble-0-matte.png",
+      "role": "layer:bubble-0:matte",
+      "sha256": "f71596d08b54af5b0d40285c1b6ad0aabdac8160c0929eb6eee76dd85755740e",
+      "width": 5
+    },
+    {
+      "height": 5,
+      "path": "layers/bubble-0.png",
+      "role": "layer:bubble-0:source",
+      "sha256": "12c754398b8f352f4899b3620c8fad335cf1f689d26d774d592c94c897b4c882",
+      "width": 5
+    },
+    {
+      "height": 17,
+      "path": "layers/freight-carriage-matte.png",
+      "role": "layer:freight-carriage:matte",
+      "sha256": "5d0e7980d9395e812a96e34c8afa09f76e3a3173873f2f0fa1639f89312b6e5c",
+      "width": 19
+    },
+    {
+      "height": 17,
+      "path": "layers/freight-carriage.png",
+      "role": "layer:freight-carriage:source",
+      "sha256": "8bc0952c98024e8d80ee63cd78a40bab6dcedbb11b347e3a8640d6e87d68d81a",
+      "width": 19
+    }
+  ],
+  "background": {
+    "path": "background.png",
+    "sha256": "99b782fd0e9d00199d798a621659de5295729edfa7c4c0698e0c4b7c1327dfc9"
+  },
+  "canvas": {
+    "depth": 1,
+    "height": 64,
+    "width": 128
+  },
+  "expected_mask_sha256": null,
+  "format": "pixelgen.motion.provenance/1",
+  "frame_sha256": [
+    "0c123608bf6da8cbf165e395d90ce265a481622dfa464978ed59be539b9854e0",
+    "4c9e413f029d9abf867cd4e0d77551df785ae94f48787aae56b84a8eb7be9489",
+    "6ef59455b84e69ae6bc5b763c87dea99fe219d3655a772ac0ca55b7dfb4e2ff8",
+    "46ec7eed8eff28e54a9b99ad6154b7c7e2c4d8982a92f7a0f11e7bb1bdc67d87"
+  ],
+  "layers": [
+    {
+      "clip": "error",
+      "layer_id": "freight-carriage",
+      "matte": {
+        "path": "layers/freight-carriage-matte.png",
+        "sha256": "5d0e7980d9395e812a96e34c8afa09f76e3a3173873f2f0fa1639f89312b6e5c"
+      },
+      "motion_bounds": null,
+      "origin": {
+        "x": 44,
+        "y": 24
+      },
+      "pivot": null,
+      "poses": {},
+      "role": "part",
+      "source": {
+        "path": "layers/freight-carriage.png",
+        "sha256": "8bc0952c98024e8d80ee63cd78a40bab6dcedbb11b347e3a8640d6e87d68d81a"
+      },
+      "track": [
+        {
+          "pose": null,
+          "translate": {
+            "x": 0,
+            "y": 0
+          },
+          "turn_16ths": 0,
+          "visible": true
+        },
+        {
+          "pose": null,
+          "translate": {
+            "x": 0,
+            "y": -2
+          },
+          "turn_16ths": 0,
+          "visible": true
+        },
+        {
+          "pose": null,
+          "translate": {
+            "x": 0,
+            "y": 0
+          },
+          "turn_16ths": 0,
+          "visible": true
+        },
+        {
+          "pose": null,
+          "translate": {
+            "x": 0,
+            "y": 2
+          },
+          "turn_16ths": 0,
+          "visible": true
+        }
+      ],
+      "z": 10
+    },
+    {
+      "clip": "error",
+      "layer_id": "bubble-0",
+      "matte": {
+        "path": "layers/bubble-0-matte.png",
+        "sha256": "f71596d08b54af5b0d40285c1b6ad0aabdac8160c0929eb6eee76dd85755740e"
+      },
+      "motion_bounds": null,
+      "origin": {
+        "x": 73,
+        "y": 36
+      },
+      "pivot": null,
+      "poses": {},
+      "role": "part",
+      "source": {
+        "path": "layers/bubble-0.png",
+        "sha256": "12c754398b8f352f4899b3620c8fad335cf1f689d26d774d592c94c897b4c882"
+      },
+      "track": [
+        {
+          "pose": null,
+          "translate": {
+            "x": 0,
+            "y": 0
+          },
+          "turn_16ths": 0,
+          "visible": true
+        },
+        {
+          "pose": null,
+          "translate": {
+            "x": 1,
+            "y": -3
+          },
+          "turn_16ths": 0,
+          "visible": true
+        },
+        {
+          "pose": null,
+          "translate": {
+            "x": 0,
+            "y": -6
+          },
+          "turn_16ths": 0,
+          "visible": true
+        },
+        {
+          "pose": null,
+          "translate": {
+            "x": 1,
+            "y": -9
+          },
+          "turn_16ths": 0,
+          "visible": true
+        }
+      ],
+      "z": 20
+    }
+  ],
+  "layout": null,
+  "layout_id": null,
+  "mask_pixels": 465,
+  "mask_sha256": "52d4e33af37886c42a9cb2bb362925b074a8c5815e45be85c1e44eb8f4128a85",
+  "master_seed": 4140,
+  "phases": [
+    {
+      "duration_ms": 300,
+      "phase_id": "pose-0",
+      "seed": 4140
+    },
+    {
+      "duration_ms": 300,
+      "phase_id": "pose-1",
+      "seed": 4141
+    },
+    {
+      "duration_ms": 300,
+      "phase_id": "pose-2",
+      "seed": 4142
+    },
+    {
+      "duration_ms": 300,
+      "phase_id": "pose-3",
+      "seed": 4143
+    }
+  ],
+  "recipe_id": "story-v5-lift-delivery-working",
+  "recipe_sha256": "22c04db5d2a5c554d1de6747d650b8cce7cfb500e79ee4f9c103678cd3d87413",
+  "renderer": "pixelgen.motion/1",
+  "revision": 2
+}

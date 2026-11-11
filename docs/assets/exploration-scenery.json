@@ -102,8 +102,8 @@
       "id": "trench-refuge-glass",
       "room": "O",
       "kind": "crystal",
-      "x": 332,
-      "y": 1016
+      "x": 404,
+      "y": 1008
     },
     {
       "id": "deep-anchor-vent",
@@ -128,13 +128,13 @@
     }
   ],
   "ambient": {
-    "tide": 58,
+    "tide": 55,
     "kelp": 25,
     "works": 29,
-    "deep": 14
+    "deep": 15
   },
-  "white_pixels": 10357,
-  "rock_pixels": 41506,
+  "white_pixels": 10421,
+  "rock_pixels": 42652,
   "settlements": [
     {
       "id": 0,

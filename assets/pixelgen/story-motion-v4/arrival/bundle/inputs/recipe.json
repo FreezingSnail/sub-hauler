@@ -1,0 +1,179 @@
+{
+  "schema_version": "pixelgen.motion/1",
+  "recipe_id": "story-v4-arrival",
+  "revision": 1,
+  "canvas": {
+    "width": 128,
+    "height": 64,
+    "depth": 1
+  },
+  "background": {
+    "path": "background.png",
+    "sha256": "fd4c838c88dc43374be48f4fe0da2783fe06e988a3f45e5a808a1df26639dff0"
+  },
+  "master_seed": 4100,
+  "phases": [
+    {
+      "phase_id": "pose-0",
+      "duration_ms": 300
+    },
+    {
+      "phase_id": "pose-1",
+      "duration_ms": 300
+    },
+    {
+      "phase_id": "pose-2",
+      "duration_ms": 300
+    },
+    {
+      "phase_id": "pose-3",
+      "duration_ms": 300
+    }
+  ],
+  "layers": [
+    {
+      "layer_id": "pressure-hull",
+      "role": "part",
+      "z": 10,
+      "source": {
+        "path": "layers/pressure-hull.png",
+        "sha256": "0ab62e97255aa2abdd2687e90d6fdef6c73af00a1a781c6de5eff3fe61c7dbab"
+      },
+      "matte": {
+        "path": "layers/pressure-hull-matte.png",
+        "sha256": "3a86ec2ccc63d7782ebc655f6f2acd1bc7b0154594901db63c3757bcfa15f635"
+      },
+      "origin": {
+        "x": 9,
+        "y": 10
+      },
+      "track": [
+        {
+          "translate": {
+            "x": 0,
+            "y": 0
+          },
+          "turn_16ths": 0
+        },
+        {
+          "translate": {
+            "x": 0,
+            "y": -1
+          },
+          "turn_16ths": 0
+        },
+        {
+          "translate": {
+            "x": 0,
+            "y": 0
+          },
+          "turn_16ths": 0
+        },
+        {
+          "translate": {
+            "x": 0,
+            "y": 1
+          },
+          "turn_16ths": 0
+        }
+      ],
+      "clip": "error"
+    },
+    {
+      "layer_id": "bubble-0",
+      "role": "part",
+      "z": 20,
+      "source": {
+        "path": "layers/bubble-0.png",
+        "sha256": "12c754398b8f352f4899b3620c8fad335cf1f689d26d774d592c94c897b4c882"
+      },
+      "matte": {
+        "path": "layers/bubble-0-matte.png",
+        "sha256": "f71596d08b54af5b0d40285c1b6ad0aabdac8160c0929eb6eee76dd85755740e"
+      },
+      "origin": {
+        "x": 7,
+        "y": 39
+      },
+      "track": [
+        {
+          "translate": {
+            "x": 0,
+            "y": 0
+          },
+          "turn_16ths": 0
+        },
+        {
+          "translate": {
+            "x": 1,
+            "y": -3
+          },
+          "turn_16ths": 0
+        },
+        {
+          "translate": {
+            "x": 0,
+            "y": -6
+          },
+          "turn_16ths": 0
+        },
+        {
+          "translate": {
+            "x": 1,
+            "y": -9
+          },
+          "turn_16ths": 0
+        }
+      ],
+      "clip": "error"
+    },
+    {
+      "layer_id": "bubble-1",
+      "role": "part",
+      "z": 30,
+      "source": {
+        "path": "layers/bubble-1.png",
+        "sha256": "8753d3956f0be0693573b49dd12e0dd10f984c7d2d593e85a576b388014b2596"
+      },
+      "matte": {
+        "path": "layers/bubble-1-matte.png",
+        "sha256": "91b5a5911ee6352f7085211559250d811cd0884139fd94088089d557cbc636c5"
+      },
+      "origin": {
+        "x": 81,
+        "y": 20
+      },
+      "track": [
+        {
+          "translate": {
+            "x": 1,
+            "y": -3
+          },
+          "turn_16ths": 0
+        },
+        {
+          "translate": {
+            "x": 0,
+            "y": -6
+          },
+          "turn_16ths": 0
+        },
+        {
+          "translate": {
+            "x": 1,
+            "y": -9
+          },
+          "turn_16ths": 0
+        },
+        {
+          "translate": {
+            "x": 0,
+            "y": 0
+          },
+          "turn_16ths": 0
+        }
+      ],
+      "clip": "error"
+    }
+  ]
+}

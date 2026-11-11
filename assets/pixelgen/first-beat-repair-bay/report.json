@@ -1,0 +1,65 @@
+{
+  "checks": [
+    {
+      "code": "png-signature",
+      "detail": "PNG signature present",
+      "passed": true
+    },
+    {
+      "code": "png-structure",
+      "detail": "3 chunks with valid bounds and checksums",
+      "passed": true
+    },
+    {
+      "code": "png-dimensions",
+      "detail": "128x64",
+      "passed": true
+    },
+    {
+      "code": "png-color-type",
+      "detail": "grayscale (colour type 0)",
+      "passed": true
+    },
+    {
+      "code": "png-bit-depth",
+      "detail": "bit depth 1",
+      "passed": true
+    },
+    {
+      "code": "png-transparency",
+      "detail": "no alpha channel or tRNS chunk",
+      "passed": true
+    },
+    {
+      "code": "png-decode",
+      "detail": "zlib stream produced the bounded scanline bytes and the encoded bytes reopened",
+      "passed": true
+    },
+    {
+      "code": "png-pixels",
+      "detail": "all 8192 decoded pixels are black or white",
+      "passed": true
+    }
+  ],
+  "diagnostics_final": {
+    "coverage": 0.35595703125,
+    "isolated_black": 12,
+    "isolated_white": 72,
+    "tile_entropy": 0.6678212557173083
+  },
+  "diagnostics_precomposite": {
+    "coverage": 0.35595703125,
+    "isolated_black": 12,
+    "isolated_white": 72,
+    "tile_entropy": 0.6678212557173083
+  },
+  "evaluated_sha256": "f63414b37ae1463afbcb2b1f182401fe27b1ae79c8ebc3e244759f2686058960",
+  "failure": null,
+  "hard_valid": true,
+  "human_review": {
+    "note": null,
+    "reviewer": null,
+    "status": "unreviewed"
+  },
+  "schema_version": "1.0"
+}

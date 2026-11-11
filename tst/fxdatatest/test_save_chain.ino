@@ -10,7 +10,7 @@
 #define ATM_FX_COMPACT_DIAG 0
 #endif
 
-#include "src/app.hpp"
+#include "boot_driver.hpp"
 #include "src/music_diag.hpp"
 
 
@@ -32,18 +32,45 @@ uint16_t readStackPointer() {
 
 bool s_saveOk;
 bool s_audioOk;
+bool s_skipOk;
 uint16_t s_reserve;
 
+// Counts the cart transaction through the exact cached-save helper the sketch
+// uses, so the device test can prove the second identical checkpoint performs
+// no erase and no page program.
+struct CountingStorage {
+    voyage_save::FxStorage storage;
+    uint8_t erases;
+    uint16_t pages;
+
+    CountingStorage() : erases(0), pages(0) {}
+
+    uint8_t read(uint16_t offset) { return storage.read(offset); }
+    void eraseBlock(uint8_t block) {
+        ++erases;
+        storage.eraseBlock(block);
+    }
+    void pageBegin(uint16_t page) { storage.pageBegin(page); }
+    void pageByte(uint8_t value) { storage.pageByte(value); }
+    void pageEnd() {
+        ++pages;
+        storage.pageEnd();
+    }
+};
+
 void runProductionChain() {
-    // Real setup already initialized FX/text/music and reset the run. Put the
-    // boat on a real berth with an active job so ABANDON is reachable.
+    // Real setup already initialized FX/text/music and reset the run. Accept
+    // FIRST through the production WORK board so the checkpoint is committed
+    // while still docked. The accepted load owns its departure handoff, so the
+    // screen changes to Story but the saved state remains at Tidewall.
     game::reset(s_state);
     s_state.docked = static_cast<int8_t>(campaign::kTidewall);
     chart::reset(s_chart);
-    s_saveOk = campaign::accept(s_state, campaign::kFirst);
-    s_screen = Screen::Station;
-    s_stationRow = station::kAbandonRow;
-    s_abandonConfirm = true;
+    s_screen = Screen::Work;
+    s_uiRow.work = 0;
+    s_voyageDirty = true;
+    Arduboy2Base::previousButtonState = 0;
+    Arduboy2Base::currentButtonState = A_BUTTON;
     s_just = A_BUTTON;
 
     music::setCue(music_logic::kHarbor);
@@ -59,10 +86,28 @@ void runProductionChain() {
         *p = static_cast<char>(kPattern);
     SREG = sreg;
 
-    updateStation();
-    s_saveOk = s_saveOk && s_screen == Screen::Station && !s_voyageDirty;
+    updateWork();
+    s_saveOk = game::hasActiveJob(s_state) && s_state.docked == static_cast<int8_t>(campaign::kTidewall) &&
+               s_screen == Screen::Story && !s_voyageDirty;
     voyage_save::FxStorage storage;
     s_saveOk = s_saveOk && voyage_save::inspect(storage).status == voyage_save::kSlotValid;
+
+    // The production chain just committed this exact state. A second identical
+    // checkpoint must be skipped: the cache matches, so the cart sees no erase
+    // and no page program. Music is paused around the helper exactly as the
+    // production save path does, then resumed for the refill window below.
+    CountingStorage counted;
+    const music_logic::PauseToken skipToken = music::pauseForTransaction();
+    const voyage_save::SaveResult repeat = voyage_flow::saveCheckpointIfChanged(s_state
+                                                                                ,
+                                                                                s_chart
+                                                                                ,
+                                                                                counted
+                                                                                ,
+                                                                                s_checkpoint);
+    music::resumeAfterTransaction(skipToken);
+    s_skipOk = repeat == voyage_save::kSaved && counted.erases == 0 && counted.pages == 0;
+    s_saveOk = s_saveOk && s_skipOk;
 
     // Let the real streaming player refill after the synchronous cart write.
     for (uint8_t frame = 0; frame < 24; ++frame) {
@@ -88,13 +133,15 @@ void runProductionChain() {
 
 void setup() {
     Serial.begin(9600);
-    applicationBoot();
+    boot_driver::boot();
     runProductionChain();
 
     Serial.print(F("stack_reserve="));
     Serial.println(s_reserve);
     Serial.print(F("save_chain="));
     Serial.println(s_saveOk ? 1 : 0);
+    Serial.print(F("save_skip="));
+    Serial.println(s_skipOk ? 1 : 0);
     Serial.print(F("audio_after_save="));
     Serial.println(s_audioOk ? 1 : 0);
 #if ATM_FX_COMPACT_DIAG

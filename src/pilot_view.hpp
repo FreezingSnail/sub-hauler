@@ -6,24 +6,22 @@
 #include "cave_render.hpp"
 #include "game.hpp"
 #include "pilot.hpp"
-#include "roster.hpp"
 
 #if defined(__AVR__)
 #include "common.hpp"
 #include "generated/pilot_sprites.hpp"
 #endif
 
-// Pilot view: pure screen mapping and the 26x8 baked silhouettes.
+// Pilot view: pure screen mapping and the 26x8 baked HAULER silhouette.
 //
 // The sub is drawn at world position minus the camera's whole-pixel origin, so
 // it slides with the terrain at single-pixel granularity. Collision semantics
 // still use game::State.x/y and the 26x8 hull in pilot.hpp.
 //
-// Every hull class draws inside the same 26x8 footprint, so collision, damage
-// brackets, and camera framing stay class-independent. The device reads fixed
-// plus-mask art from FX (right/left x unloaded/loaded). The host keeps the
-// equivalent procedural shapes so the permanent pixel tests stay pure C++.
-// With MULTI_HULL=0 only the HAULER sprite is referenced by device code.
+// The device reads fixed plus-mask art from FX (right/left x unloaded/loaded).
+// The host keeps the equivalent procedural shape so the permanent pixel tests
+// stay pure C++. The retired Minnow/Leviathan sheets remain archival FX ABI and
+// are never referenced by device code.
 //
 // No Arduino headers on the host path: tests draw into a plain page-major
 // buffer and inspect exact pixels. Device code passes Arduboy2Base::sBuffer.
@@ -109,87 +107,30 @@ inline void drawHauler(uint8_t *buffer, int16_t left, int16_t top, bool mirror, 
     fillLocal(buffer, left, top, mirror, 23, 5, 2, 1, false);
 }
 
-// MINNOW: 24x7 rounded shuttle with one door and a short offset sail.
-inline void drawMinnow(uint8_t *buffer, int16_t left, int16_t top, bool mirror, bool loaded) {
-    fillLocal(buffer, left, top, mirror, 15, 1, 6, 1, true);
-    fillLocal(buffer, left, top, mirror, 8, 2, 11, 1, true);
-    fillLocal(buffer, left, top, mirror, 4, 3, 18, 2, true);
-    fillLocal(buffer, left, top, mirror, 1, 5, 24, 1, true);
-    fillLocal(buffer, left, top, mirror, 2, 6, 22, 1, true);
-    fillLocal(buffer, left, top, mirror, 6, 7, 14, 1, true);
-
-    fillLocal(buffer, left, top, mirror, 17, 1, 1, 1, false);
-    fillLocal(buffer, left, top, mirror, 8, 4, 6, 3, false);
-    if (loaded)
-        fillLocal(buffer, left, top, mirror, 10, 4, 1, 3, true);
-
-    fillLocal(buffer, left, top, mirror, 2, 5, 1, 2, false);
-}
-
-// LEVIATHAN: 26x8 fortress with three doors and a stern notch.
-inline void drawLeviathan(uint8_t *buffer, int16_t left, int16_t top, bool mirror, bool loaded) {
-    fillLocal(buffer, left, top, mirror, 9, 0, 14, 2, true);
-    fillLocal(buffer, left, top, mirror, 3, 2, 22, 1, true);
-    fillLocal(buffer, left, top, mirror, 0, 3, 26, 3, true);
-    fillLocal(buffer, left, top, mirror, 1, 6, 24, 1, true);
-    fillLocal(buffer, left, top, mirror, 2, 7, 22, 1, true);
-
-    fillLocal(buffer, left, top, mirror, 3, 3, 20, 1, false);
-    fillLocal(buffer, left, top, mirror, 12, 0, 1, 2, false);
-    fillLocal(buffer, left, top, mirror, 18, 0, 1, 2, false);
-
-    fillLocal(buffer, left, top, mirror, 2, 4, 5, 3, false);
-    fillLocal(buffer, left, top, mirror, 18, 4, 5, 3, false);
-    if (loaded) {
-        fillLocal(buffer, left, top, mirror, 4, 4, 1, 3, true);
-        fillLocal(buffer, left, top, mirror, 20, 4, 1, 3, true);
-    }
-
-    fillLocal(buffer, left, top, mirror, 0, 4, 1, 2, false);
-}
 #endif   // !__AVR__
 
-// Draw one hull body at a footprint origin. Title and pilot share this exact
-// art, so a class silhouette is identical wherever it appears. Nothing is
-// drawn outside local x 0..25, y 0..7.
-inline void drawAt(uint8_t *buffer, int16_t left, int16_t top, bool mirror, bool loaded, roster::HullClass hull) {
+// Draw the HAULER body at a footprint origin. Title and pilot share this exact
+// art, so the silhouette is identical wherever it appears. Nothing is drawn
+// outside local x 0..25, y 0..7.
+inline void drawAt(uint8_t *buffer, int16_t left, int16_t top, bool mirror, bool loaded) {
 #if defined(__AVR__)
     (void)buffer;
     const uint16_t frame = static_cast<uint16_t>((mirror ? 2 : 0) + (loaded ? 1 : 0));
-    // if-chain, not switch: a three-case switch emits a RAM jump table.
-    if (hull == roster::kMinnow) {
-        Blit::draw(left, top, MINNOW_WIDTH, MINNOW_HEIGHT, minnow + 2, frame, Blit::PLUSMASK);
-        return;
-    }
-    if (hull == roster::kLeviathan) {
-        Blit::draw(left, top, LEVIATHAN_WIDTH, LEVIATHAN_HEIGHT, leviathan + 2, frame, Blit::PLUSMASK);
-        return;
-    }
     Blit::draw(left, top, HAULER_WIDTH, HAULER_HEIGHT, hauler + 2, frame, Blit::PLUSMASK);
 #else
-    if (hull == roster::kMinnow) {
-        drawMinnow(buffer, left, top, mirror, loaded);
-        return;
-    }
-    if (hull == roster::kLeviathan) {
-        drawLeviathan(buffer, left, top, mirror, loaded);
-        return;
-    }
     drawHauler(buffer, left, top, mirror, loaded);
 #endif
 }
 
-// Draw the selected class centred on the state position. The footprint is the
-// 26x8 collision hull for every class; class art only changes the pixels inside
-// it.
+// Draw the HAULER centred on the state position. The footprint is the 26x8
+// collision hull; the state hull byte is a frozen save field, not a selector.
 inline void draw(uint8_t *buffer, const game::State &state, const cave::Camera &camera) {
     const int16_t left = static_cast<int16_t>(screenX(state, camera) - game::kHullHalfW);
     const int16_t top = static_cast<int16_t>(screenY(state, camera) - game::kHullHalfH);
     if (!visible(left, top))
         return;
 
-    const roster::HullClass hull = roster::sanitize(static_cast<roster::HullClass>(state.hullClass));
-    drawAt(buffer, left, top, state.facingLeft, state.cargo > 0, hull);
+    drawAt(buffer, left, top, state.facingLeft, state.cargo > 0);
 }
 
 }   // namespace pilot_view

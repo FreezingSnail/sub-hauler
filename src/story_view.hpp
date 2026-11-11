@@ -5,58 +5,139 @@
 #include "campaign.hpp"
 #include "generated/story_beats.hpp"
 
-// Finalized seven-beat story decks. Each beat alternates an animated image
-// card (four poses at 3.3 fps) with a static text card. The FIRST beat has
-// three pairs; every other beat has two. Selection is driven only by a new
-// milestone/survey bit, so no story cursor is serialized and a reload never
-// replays a completed beat. HOME joins the ending path and is resumable while
-// the ending-presented flag is still clear.
+// Story scenes generated from story/scenes.json. Card kinds come from
+// the generated source map, not image/text alternation: a scene may contain any
+// number of consecutive text pages after automatic pagination. Scene ids 8..14
+// remain the original departures/joint restoration; the appended ids 15..16
+// hold the optional expedition result and its acceptance briefing.
+// Selection is driven by a new milestone/survey bit or by accepting a cargo
+// mission, so no story cursor is serialized. HOME joins the ending path and is
+// resumable while the ending-presented flag is still clear.
 namespace story_view {
 
-constexpr uint8_t kCardNone = 0;
-constexpr uint8_t kCardFirst = 1;
-constexpr uint8_t kCardPumpSurvey = 2;
-constexpr uint8_t kCardPump = 3;
-constexpr uint8_t kCardLiftSurvey = 4;
-constexpr uint8_t kCardLift = 5;
-constexpr uint8_t kCardBeacon = 6;
-constexpr uint8_t kCardHome = 7;
+constexpr uint8_t kSceneNone = 0;
+constexpr uint8_t kSceneFirst = STORY_SCENE_FIRST_RESULT;
+constexpr uint8_t kScenePumpSurvey = STORY_SCENE_PUMP_SURVEY;
+constexpr uint8_t kScenePump = STORY_SCENE_PUMP_RESULT;
+constexpr uint8_t kSceneLiftSurvey = STORY_SCENE_LIFT_SURVEY;
+constexpr uint8_t kSceneLift = STORY_SCENE_LIFT_RESULT;
+constexpr uint8_t kSceneBeacon = STORY_SCENE_BEACON_RESULT;
+constexpr uint8_t kSceneHome = STORY_SCENE_HOME_RESULT;
+constexpr uint8_t kSceneFirstDeparture = STORY_SCENE_FIRST_DEPARTURE;
+constexpr uint8_t kScenePumpPickup = STORY_SCENE_PUMP_PICKUP;
+constexpr uint8_t kSceneLiftPickup = STORY_SCENE_LIFT_PICKUP;
+constexpr uint8_t kSceneJointMissing = STORY_SCENE_JOINT_MISSING;
+constexpr uint8_t kSceneJointReady = STORY_SCENE_JOINT_READY;
+constexpr uint8_t kSceneBeaconDeparture = STORY_SCENE_BEACON_DEPARTURE;
+constexpr uint8_t kSceneHomeDeparture = STORY_SCENE_HOME_DEPARTURE;
+constexpr uint8_t kSceneExpedition = STORY_SCENE_EXPEDITION_RESULT;
+constexpr uint8_t kSceneExpeditionDeparture = STORY_SCENE_EXPEDITION_DEPARTURE;
+constexpr uint8_t kSceneMax = STORY_SCENE_MAX;
+
+// Frozen beat names remain the public ids used by milestone selection.
+constexpr uint8_t kCardNone = kSceneNone;
+constexpr uint8_t kCardFirst = kSceneFirst;
+constexpr uint8_t kCardPumpSurvey = kScenePumpSurvey;
+constexpr uint8_t kCardPump = kScenePump;
+constexpr uint8_t kCardLiftSurvey = kSceneLiftSurvey;
+constexpr uint8_t kCardLift = kSceneLift;
+constexpr uint8_t kCardBeacon = kSceneBeacon;
+constexpr uint8_t kCardHome = kSceneHome;
+constexpr uint8_t kCardExpedition = kSceneExpedition;
 constexpr uint8_t kCardCount = 7;
+constexpr uint8_t kHandoffCount = 8;
+constexpr uint8_t kHandoffFirst = kSceneFirstDeparture;
+constexpr uint8_t kHandoffPump = kScenePumpPickup;
+constexpr uint8_t kHandoffLift = kSceneLiftPickup;
+constexpr uint8_t kHandoffJointMissing = kSceneJointMissing;
+constexpr uint8_t kHandoffJointReady = kSceneJointReady;
+constexpr uint8_t kHandoffBeacon = kSceneBeaconDeparture;
+constexpr uint8_t kHandoffHome = kSceneHomeDeparture;
+constexpr uint8_t kHandoffExpedition = kSceneExpeditionDeparture;
 
-static_assert(kCardCount == 7, "seven story beats are frozen");
-static_assert(STORY_BEAT_CARDS == 30, "fifteen image cards plus fifteen text cards");
-static_assert(STORY_BEAT_IMAGES == 15, "fifteen animated scenes");
-static_assert(STORY_BEAT_FRAMES == 75, "sixty image poses plus fifteen static text cards");
-static_assert(STORY_BEAT_MAX_CARDS == 6, "FIRST has three image/text pairs");
+static_assert(kSceneExpedition == 15, "existing expedition result scene id stays frozen");
+static_assert(kSceneExpeditionDeparture == 16, "new expedition briefing appends after every existing scene");
+static_assert(STORY_CARD_COUNT <= 0xFF, "card ids fit the pending-scene metadata");
+static_assert(STORY_FRAME_COUNT <= 0xFF, "frame ids fit one-byte card metadata");
 
-constexpr uint8_t cardStart(uint8_t beat) {
-    return beat <= kCardFirst ? 0 : static_cast<uint8_t>(6 + (beat - 2) * 4);
+inline uint8_t sceneCards(uint8_t scene) {
+    if (scene > STORY_SCENE_MAX)
+        return 0;
+#if defined(__AVR__)
+    return pgm_read_byte(&STORY_SCENE_CARDS[scene]);
+#else
+    return STORY_SCENE_CARDS[scene];
+#endif
 }
 
-inline uint8_t cardCount(uint8_t beat) {
-    if (beat == kCardFirst)
-        return 6;
-    if (beat > kCardFirst && beat <= kCardCount)
-        return 4;
-    return 0;
+inline uint8_t sceneFirstCard(uint8_t scene) {
+    if (scene > STORY_SCENE_MAX)
+        return 0;
+#if defined(__AVR__)
+    return pgm_read_byte(&STORY_SCENE_FIRST_CARD[scene]);
+#else
+    return STORY_SCENE_FIRST_CARD[scene];
+#endif
 }
 
-constexpr uint8_t globalCard(uint8_t beat, uint8_t card) {
-    return static_cast<uint8_t>(cardStart(beat) + card);
+inline uint8_t cardFrame(uint8_t scene, uint8_t card) {
+    if (scene > STORY_SCENE_MAX || card >= sceneCards(scene))
+        return 0;
+    const uint8_t index = static_cast<uint8_t>(sceneFirstCard(scene) + card);
+#if defined(__AVR__)
+    return pgm_read_byte(&STORY_CARD_FRAME[index]);
+#else
+    return STORY_CARD_FRAME[index];
+#endif
 }
 
-// Cards alternate image/text from the first image in every beat.
-constexpr bool isImageCard(uint8_t global) {
-    return (global & 1u) == 0;
+// A saved pending-scene byte is none or one of the generated stable scenes.
+constexpr bool validScene(uint8_t scene) {
+    return scene <= kSceneMax;
 }
 
-// Frames are packed five per image/text pair (four poses, one static card).
-constexpr uint8_t firstFrame(uint8_t global) {
-    return static_cast<uint8_t>(global + 3 * ((global + 1) >> 1));
+constexpr bool validCard(uint8_t scene) {
+    return validScene(scene);
 }
 
-constexpr uint8_t firstFrameFor(uint8_t beat, uint8_t card) {
-    return firstFrame(globalCard(beat, card));
+inline uint8_t cardCount(uint8_t scene) {
+    return sceneCards(scene);
+}
+
+inline uint8_t cardKind(uint8_t scene, uint8_t card) {
+    if (scene > STORY_SCENE_MAX || card >= sceneCards(scene))
+        return STORY_KIND_TEXT;
+    const uint8_t index = static_cast<uint8_t>(sceneFirstCard(scene) + card);
+#if defined(__AVR__)
+    return pgm_read_byte(&STORY_CARD_KIND[index]);
+#else
+    return STORY_CARD_KIND[index];
+#endif
+}
+
+inline bool isImageCard(uint8_t scene, uint8_t card) {
+    return cardKind(scene, card) == STORY_KIND_IMAGE;
+}
+
+inline uint8_t firstFrameFor(uint8_t scene, uint8_t card) {
+    return cardFrame(scene, card);
+}
+
+// Cargo acceptance owns the departure scenes. Surveys never load cargo
+// and HOME still uses the explicit WORK row.
+inline uint8_t handoffForMission(uint8_t mission) {
+    return mission == campaign::kFirst ? kHandoffFirst :
+           mission == campaign::kPump ? kHandoffPump :
+           mission == campaign::kLift ? kHandoffLift :
+           mission == campaign::kBeacon ? kHandoffBeacon :
+           mission == campaign::kHome ? kHandoffHome :
+           mission == campaign::kExpedition ? kHandoffExpedition : kSceneNone;
+}
+
+// The joint-restoration scene is chosen from saved seal ownership, so a reload
+// after the second repair always gets the correct lead.
+constexpr uint8_t jointHandoff(bool sealHeld) {
+    return sealHeld ? kHandoffJointReady : kHandoffJointMissing;
 }
 
 // One new cargo milestone per dock, in stable order. HOME is intentionally
@@ -71,6 +152,8 @@ inline uint8_t cardForNewMilestone(uint8_t before, uint8_t after) {
         return kCardLift;
     if (fresh & campaign::kMilestoneBeacon)
         return kCardBeacon;
+    if (fresh & campaign::kMilestoneExpedition)
+        return kCardExpedition;
     return kCardNone;
 }
 
@@ -130,21 +213,24 @@ inline uint16_t frameOffset(uint8_t frame) {
     return static_cast<uint16_t>(bytes[0]) | (static_cast<uint16_t>(bytes[1]) << 8);
 }
 
-inline void draw(uint8_t beat, uint8_t card, uint8_t phase) {
-    const uint8_t count = cardCount(beat);
+inline void drawFrame(uint8_t frame) {
+    decode(storyBeats + frameOffset(frame), Arduboy2Base::sBuffer);
+}
+
+inline void draw(uint8_t scene, uint8_t card, uint8_t phase) {
+    const uint8_t count = cardCount(scene);
     if (count == 0)
         return;
     if (card >= count)
         card = static_cast<uint8_t>(count - 1);
-    const uint8_t global = globalCard(beat, card);
-    uint8_t frame = firstFrame(global);
-    if (isImageCard(global))
+    uint8_t frame = cardFrame(scene, card);
+    if (isImageCard(scene, card))
         frame = static_cast<uint8_t>(frame + (phase & 3));
-    decode(storyBeats + frameOffset(frame), Arduboy2Base::sBuffer);
+    drawFrame(frame);
 }
 
-inline void draw(uint8_t beat) {
-    draw(beat, 0, 0);
+inline void draw(uint8_t scene) {
+    draw(scene, 0, 0);
 }
 
 #endif   // __AVR__

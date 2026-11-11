@@ -1,0 +1,131 @@
+{
+  "schema_version": "pixelgen.motion/1",
+  "recipe_id": "story-v4-lift-delivery-working",
+  "revision": 1,
+  "canvas": {
+    "width": 128,
+    "height": 64,
+    "depth": 1
+  },
+  "background": {
+    "path": "background.png",
+    "sha256": "99b782fd0e9d00199d798a621659de5295729edfa7c4c0698e0c4b7c1327dfc9"
+  },
+  "master_seed": 4140,
+  "phases": [
+    {
+      "phase_id": "pose-0",
+      "duration_ms": 300
+    },
+    {
+      "phase_id": "pose-1",
+      "duration_ms": 300
+    },
+    {
+      "phase_id": "pose-2",
+      "duration_ms": 300
+    },
+    {
+      "phase_id": "pose-3",
+      "duration_ms": 300
+    }
+  ],
+  "layers": [
+    {
+      "layer_id": "freight-carriage",
+      "role": "part",
+      "z": 10,
+      "source": {
+        "path": "layers/freight-carriage.png",
+        "sha256": "8bc0952c98024e8d80ee63cd78a40bab6dcedbb11b347e3a8640d6e87d68d81a"
+      },
+      "matte": {
+        "path": "layers/freight-carriage-matte.png",
+        "sha256": "5d0e7980d9395e812a96e34c8afa09f76e3a3173873f2f0fa1639f89312b6e5c"
+      },
+      "origin": {
+        "x": 44,
+        "y": 24
+      },
+      "track": [
+        {
+          "translate": {
+            "x": 0,
+            "y": 0
+          },
+          "turn_16ths": 0
+        },
+        {
+          "translate": {
+            "x": 0,
+            "y": -2
+          },
+          "turn_16ths": 0
+        },
+        {
+          "translate": {
+            "x": 0,
+            "y": 0
+          },
+          "turn_16ths": 0
+        },
+        {
+          "translate": {
+            "x": 0,
+            "y": 2
+          },
+          "turn_16ths": 0
+        }
+      ],
+      "clip": "error"
+    },
+    {
+      "layer_id": "bubble-0",
+      "role": "part",
+      "z": 20,
+      "source": {
+        "path": "layers/bubble-0.png",
+        "sha256": "12c754398b8f352f4899b3620c8fad335cf1f689d26d774d592c94c897b4c882"
+      },
+      "matte": {
+        "path": "layers/bubble-0-matte.png",
+        "sha256": "f71596d08b54af5b0d40285c1b6ad0aabdac8160c0929eb6eee76dd85755740e"
+      },
+      "origin": {
+        "x": 73,
+        "y": 36
+      },
+      "track": [
+        {
+          "translate": {
+            "x": 0,
+            "y": 0
+          },
+          "turn_16ths": 0
+        },
+        {
+          "translate": {
+            "x": 1,
+            "y": -3
+          },
+          "turn_16ths": 0
+        },
+        {
+          "translate": {
+            "x": 0,
+            "y": -6
+          },
+          "turn_16ths": 0
+        },
+        {
+          "translate": {
+            "x": 1,
+            "y": -9
+          },
+          "turn_16ths": 0
+        }
+      ],
+      "clip": "error"
+    }
+  ]
+}

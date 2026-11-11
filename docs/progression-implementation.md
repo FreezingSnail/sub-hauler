@@ -1,10 +1,10 @@
 # Voyage progression — implementation contracts
 
-Current status (2026-11-01): the campaign epic is closed. Production uses
-schema 7 in one 512 B cart slot and the ATMlib2FX compact synth with a 32 B
+Current status (2026-11-03): the campaign epic is closed. Production uses
+schema 8 in one 512 B cart slot and the ATMlib2FX compact synth with a 32 B
 ring. The fixed build has no feature profiles. The shop, currency, job payouts,
-repeatable freight offers and credit caches are removed; schema 7 has a 24 B
-scalar payload, a fixed 300-unit air tank and signature `0x61`, and schema 6
+repeatable freight offers and credit caches are removed; schema 8 has a 25 B
+scalar payload, a fixed 300-unit air tank and signature `0x61`, and schema 7
 slots are incompatible. Mines and hull strength are retired. Dated baseline and
 audio-probe sections retain their original measurements and flags, including
 earlier schema and ring figures; use [platform.md](platform.md) for current
@@ -120,7 +120,7 @@ byte**. The remaining 3,584 bytes of the block stay erased and are not used.
 
 ```text
 slot +   0  magic 'S' 'H' 'V' 'Y'   (0x53 0x48 0x56 0x59)
-slot +   4  schema version          = 7
+slot +   4  schema version          = 8
 slot +   5  world layout version    = world::LAYOUT_VERSION (3 now)
 slot +   6  campaign content version = 2
 slot +   7  feature/profile signature (bitfield, section 4)
@@ -136,8 +136,8 @@ bytes 0–239; page 1 carries payload bytes 240–494 and the commit byte (the l
 byte programmed). Erased flash is `0xFF`, so an uncommitted slot has commit
 `0xFF`, not `0x00`. `0x5A` means committed; any other value is invalid.
 
-Payload capacity is 495 B. Schema 7 uses 280 B with a chart (24 scalar + 256
-chart) and 24 B without a chart. Bytes after the used payload are programmed as
+Payload capacity is 495 B. Schema 8 uses 281 B with a chart (25 scalar + 256
+chart) and 25 B without a chart. Bytes after the used payload are programmed as
 `0xFF`, matching erased flash, and are not read.
 
 CRC is **CRC-16/CCITT-FALSE**: polynomial `0x1021`, init `0xFFFF`, no
@@ -148,7 +148,7 @@ Check value for `"123456789"` is `0x29B1`; the storage tests assert that vector.
 
 ## 4. Profile signature
 
-One byte, fixed for schema 7:
+One byte, fixed for schema 8:
 
 | Bit | Feature |
 | --- | --- |
@@ -166,16 +166,16 @@ The fixed build always writes `0x61`. A slot whose signature differs is
 VOYAGE. `MUSIC` is not in the signature because music has no saved field.
 
 Chart presence is derived from bit 0, not stored separately. Expected payload
-length is `24 + (bit0 ? 256 : 0)`.
+length is `25 + (bit0 ? 256 : 0)`.
 
-## 5. Scalar payload schema (24 B)
+## 5. Scalar payload schema (25 B)
 
 Little-endian, fixed order, no padding, no raw C++ struct bytes.
 
 | Offset | Bytes | Field | Width / rule |
 | ---: | ---: | --- | --- |
 | 0 | 1 | berth | 0–5 |
-| 1 | 1 | hull class | 0–2 |
+| 1 | 1 | hull class | 0–2 accepted; saves write 1 (HAULER); 0/2 normalize to HAULER on load |
 | 2 | 1 | tools | CUTTER/SEAL/THRUSTER/LENS bits |
 | 3 | 1 | pickups | 4 claim bits |
 | 4 | 2 | open gates | 9 bits |
@@ -191,24 +191,32 @@ Little-endian, fixed order, no padding, no raw C++ struct bytes.
 | 19 | 2 | delivered jobs | u16, saturating |
 | 21 | 2 | rescue count | u16, saturating |
 | 23 | 1 | ending presented | 0/1 |
+| 24 | 1 | pending scene | 0 = none, 1–7 = beat/result deck, 8–14 = departure/joint handoff |
 
-Chart bytes follow at payload offset 24–279 when bit 0 of the signature is set.
-Scalar total is exactly 24 B. Schema 7 removes the retired credits, air level,
+Chart bytes follow at payload offset 25–280 when bit 0 of the signature is set.
+Scalar total is exactly 25 B. Schema 8 removes the retired credits, air level,
 visited-settlement, job reward, offer cursor and board seed fields; the payload
-comfortably fits the frozen 495 B area.
+comfortably fits the frozen 495 B area. `pendingStory` is range-checked on save
+and load; schema 7 slots are incompatible.
 
 Semantic validation, in addition to CRC and header checks:
 
 - berth 0–5; berths 4 and 5 require their restoration milestone (section 8).
-- hull class within the roster.
+- hull class 0–2: the retired Minnow(0) and Leviathan(2) ids load and
+  normalize to HAULER(1); values above 2 are corrupt.
 - tools/claims/gates/milestones/surveys only within their masks.
-- milestones are monotonic: BEACON requires PUMP and LIFT; HOME requires
-  BEACON; ending-presented requires HOME.
+- milestones are monotonic: BEACON requires PUMP and LIFT; DEEP RELAY requires
+  BEACON; new HOME requires BEACON and DEEP RELAY; ending-presented requires
+  HOME. Legacy pre-linear checkpoints may hold HOME without DEEP RELAY and stay
+  valid; they cannot create a new HOME acceptance.
 - job kind NONE: mission/origin/destination are 0xFF, load is 0.
-- campaign job: mission 0–6, origin/destination match the mission table,
-  load 4. There is no reward or ordinary-job field.
-- no ordinary, timed or express kind exists in schema 7. Schema 1/2 EEPROM
-  records, a schema 3 dual-slot cart and schema 4/5/6 slots are incompatible
+- campaign job: mission 0–7, origin/destination match the mission table,
+  load 4. A pre-linear in-flight HOME job with only BEACON remains loadable and
+  completable but cannot be newly accepted. There is no reward or ordinary-job
+  field.
+- `pendingStory` is 0 (none) or a valid scene id 1–16 (seven result/survey decks, eight departure/joint handoffs and the DEEP RELAY result).
+- no ordinary, timed or express kind exists in schema 8. Schema 1/2 EEPROM
+  records, a schema 3 dual-slot cart and schema 4/5/6/7 slots are incompatible
   and are not migrated.
 - Surveys are facts, not jobs: `recordSurvey()` accepts PUMP or LIFT before
   FIRST and the saved mask keeps either/both bits. Only accepting a survey
@@ -226,12 +234,13 @@ applied.
 ### Schema 3 invalidation
 
 Schema 5 keeps the single-slot cart layout but removes the dual-copy sequence
-and fallback; schema 7 removes the economy fields. Schema 1/2 EEPROM records,
+and fallback; schema 8 removes the economy fields and adds the pending deck.
+Schema 1/2 EEPROM records,
 schema 3 cart records, old EEPROM bytes
 and the retired standalone chart block are **incompatible or absent, not
 migrated**. A player with an older record or a torn current record sees the
 normal incompatible/corrupt message and may start a clean NEW VOYAGE; no old
-job, payment, chart or elapsed age is preserved. Current schema 7 slots
+job, payment, chart or elapsed age is preserved. Current schema 8 slots
 still receive the full magic, length, CRC and semantic checks, so corruption is
 never silently accepted or loaded.
 
@@ -249,6 +258,16 @@ Save transaction (freeze simulation, pause music, ignore departure input):
    read-back CRC to equal the CRC just written.
 6. Only after that check report `SAVED`, resume music and unfreeze. On failure
    offer `RETRY` or `CONTINUE UNSAVED`; never report success optimistically.
+
+Before step 1 the App compares the live checkpoint's encoded CRC with a RAM
+cache of the last successfully written or loaded checkpoint. If they are equal,
+the cart already holds this byte-identical record, so `requestSave()` reports
+`SAVED` without erasing or programming and leaves the dirty flag clear. The CRC
+covers every serialized field (voyage ticks and the full chart included), so
+normal travel or progress changes always rewrite. The cache is seeded by a
+successful save, a successful load or a successful new-voyage save and is
+invalidated by reset or any failed save/load; it is never stored in the cart and
+does not change the single-slot schema, commit order or failure contract.
 
 **This is not power-fail atomic.** An interruption during the erase or page
 program may lose the previous checkpoint. The contract is weaker and explicit:
@@ -278,7 +297,7 @@ addresses 0–259 and pre-schema-4 cart slots are never inspected, offered,
 copied or repaired. A NEW VOYAGE resets the chart, applies
 `chart::revealInitial()` at the generated spawn berth, and persists that reveal
 in the first checkpoint. There is no KEEP OLD CHART prompt and no legacy import
-path. The single cart slot is erased and rewritten. Standalone chart save is retired; the fixed build writes only schema 7 voyage
+path. The single cart slot is erased and rewritten. Standalone chart save is retired; the fixed build writes only schema 8 voyage
 checkpoints.
 
 ## 8. Stable campaign IDs
@@ -294,33 +313,37 @@ Mission IDs (`kMissionNone = 0xFF`):
 | 4 | LIFT | Benthos → Cormorant | milestone LIFT |
 | 5 | BEACON | Cormorant → Deep Anchor | milestone BEACON |
 | 6 | HOME | Deep Anchor → Tidewall | milestone HOME |
+| 7 | DEEP RELAY | Deep Anchor → Deep Relay | milestone EXPEDITION |
 
 Campaign work completes once and pays nothing. No generated route reward or
-deadline table exists.
+deadline table exists. DEEP RELAY is mandatory: HOME cannot be accepted until
+the expedition milestone is set.
 
 Survey IDs: `SURVEY_PUMP = 0` (Pump Refuge), `SURVEY_LIFT = 1` (Freight Yard).
 Both rings exist from voyage start; their clues appear after FIRST. A recorded
 survey satisfies the request immediately and is never demanded again.
 
-Milestone bits: `FIRST=0`, `PUMP=1`, `LIFT=2`, `BEACON=3`, `HOME=4`.
-Survey bits: `PUMP=0`, `LIFT=1`.
+Milestone bits: `FIRST=0`, `PUMP=1`, `LIFT=2`, `BEACON=3`, `HOME=4`,
+`EXPEDITION=5`. Survey bits: `PUMP=0`, `LIFT=1`.
 
 Berth IDs: Tidewall 0, Benthos 1, Cormorant 2, Deep Anchor 3,
-Pump Refuge 4, Lower Gantry 5. Berths 0–3 are the campaign delivery
-destinations; 4–5 are service-only and must never appear in a mission
-destination. `SETTLEMENT_COUNT` stays 4; a generated `BERTH_COUNT` is 6.
+Pump Refuge 4, Lower Gantry 5, Freight Yard 6, Deep Relay 7. Berths 0–3 are
+the campaign delivery destinations; 4–7 are service-only and must never appear
+in a mission destination. `SETTLEMENT_COUNT` stays 4; generated `BERTH_COUNT` is
+8.
 
 Restoration eligibility:
 
 - Pump Refuge (4) becomes dockable and checkpoint-valid only after milestone
-  PUMP; Lower Gantry (5) only after LIFT.
+  PUMP; Lower Gantry (5) and Freight Yard (6) only after LIFT; Deep Relay (7)
+  only after EXPEDITION, or while its own matching load is aboard.
 - Before restoration the mooring is visible but inactive and shows a clue.
 - Service berths refill air, repair the hull and save the voyage with cargo;
   they do not generate work, accept deliveries or sell upgrades.
-- Both new berths need authored safe approaches and generated service metadata
-  (pixel position plus required milestone), produced by `make gen`. Their
-  placement must pass the same hull-clearance, escape-column and reachability
-  checks as the four existing berths.
+- All four service berths need authored safe approaches and generated service
+  metadata (pixel position plus required milestone), produced by `make gen`.
+  Their placement must pass the same hull-clearance, escape-column and
+  reachability checks as the four existing berths.
 
 Mission eligibility:
 
@@ -333,8 +356,11 @@ Mission eligibility:
 - PUMP requires FIRST and PUMP_SURVEY; source Cormorant.
 - LIFT requires FIRST and LIFT_SURVEY; source Benthos.
 - BEACON requires PUMP, LIFT and the pressure seal; source Cormorant.
-- HOME requires BEACON; source Deep Anchor; explicit acceptance, never
-  auto-loaded.
+- DEEP RELAY requires BEACON plus cutter, pressure seal, thruster and survey
+  lens; source Deep Anchor; destination Deep Relay; explicit acceptance.
+- HOME requires BEACON and DEEP RELAY; source Deep Anchor; explicit acceptance,
+  never auto-loaded. A pre-linear in-flight HOME job with only BEACON remains
+  completable as a save-compatibility path.
 - Completed missions never reappear. Abandoning clears cargo and the active
   job, saves, and lets the source reissue the same mission for free.
 
@@ -365,9 +391,9 @@ surveys and tool discoveries do not occupy the slot.
   docked. UNDOCK or B starts travel.
 - The station board is `WORK / UNDOCK`; WORK opens one board listing eligible
   story and survey rows. A accepts directly. The active-job board is
-  `summary / ABANDON / WORK / UNDOCK`, keeping UNDOCK initially and ABANDON
-  behind its own confirmation, with WORK available for the carrying summary and
-  clues. A service berth shows UNDOCK alone.
+  `summary / WORK / UNDOCK`, keeping UNDOCK initially; mandatory story work has
+  no abandon row or confirmation. WORK remains available for the carrying
+  summary and clues. A work/service berth shows UNDOCK alone.
 
 ## 10. Campaign state additions
 
@@ -382,9 +408,10 @@ to the payload above):
 | `delivered` | 2 | u16 saturating |
 | `rescues` | 2 | u16 saturating |
 | `ending` | 1 | 0/1 |
+| `pendingStory` | 1 | 0 = none, 1–7 = result/survey deck, 8–14 and 16 = departure/joint handoff, 15 = expedition result |
 
 `ActiveJob` is 5 B: the timer fields are gone, `kind`, `mission` and `from`
-replace them, and the reward byte is removed. The saved scalar is 24 B.
+replace them, and the reward byte is removed. The saved scalar is 25 B.
 
 ## 11. Fixed build and profiles
 
@@ -471,17 +498,20 @@ production synth fit; the fixed build now ships music):
   stops playback and prevents starts; it is not a voyage field.
 - Cue IDs: `HARBOR=0`, `SONAR=1`, `KELP=2`, `BUBBLEJET=3`, `ABYSSAL=4`,
   `TIDEPOOL=5`.
-- Cue mapping: all three home boards and the new-voyage title → HARBOR;
-  Lantern Reaches travel → SONAR; Kelp Galleries travel → KELP; Broken Works
-  travel → BUBBLEJET; Glass Trench travel and unrestored Deep Anchor board →
-  ABYSSAL; restored service berths, restored Deep Anchor board and ending →
-  TIDEPOOL.
-- Travel region comes from the authored `region` field per room, baked into a
-  deterministic 320x160 FX plane. Every tile is owned by the nearest authored
-  room centre, including connecting passages, so approach history cannot
-  change ownership; ties use the lower room index. Evaluate at most once per
-  30 frames. A region must persist for 120 flight ticks (2 s) before it
-  replaces the cue.
+- Cue mapping: the Tidewall board, unrestored Benthos/Cormorant boards and the
+  new-voyage title → HARBOR; Lantern Reaches travel → SONAR; Kelp Galleries
+  travel → KELP; Broken Works travel → BUBBLEJET; Glass Trench travel and
+  unrestored Deep Anchor board → ABYSSAL; restored Benthos/Cormorant boards,
+  restored service berths, restored Deep Anchor board, PUMP/LIFT/BEACON story
+  decks and ending → TIDEPOOL.
+- Travel region comes from the authored `music_region`, falling back to the
+  scenery `region`, baked into a deterministic 320x160 FX plane. Every tile is
+  owned by the nearest authored room centre, including connecting passages, so
+  approach history cannot change ownership; ties use the lower room index.
+  Gate-cut open-water fragments under 256 tiles merge into the neighbouring
+  region with the longest shared edge, keeping cue boundaries readable.
+  Evaluate at most once per 30 frames. A region must persist for 120 flight
+  ticks (2 s) before it replaces the cue.
 - Verify the 100 Hz Bubblejet Run under real rendering, chart, transitions and
   idle menus; measure the worst refill window against the 64 B ring and the
   library's service deadline. Listen on the physical speaker before claiming
@@ -543,12 +573,15 @@ Implemented in this slice:
 - WORK replaces the redundant SERVICE row and the retired freight rows. One
   board lists eligible restoration and survey rows;
   A accepts directly and auto-loads. Active-job boards keep UNDOCK as the
-  initial selection and place ABANDON and WORK behind deliberate movement.
-- Pump Refuge (berth 4) and Lower Gantry (berth 5) have generated service
-  metadata in `src/generated/level.hpp`: stable symbolic ids, dock pixels and
-  restoration milestone bits. Both docks pass the wall-attach, hull/approach,
-  hazard-clearance and base-tool reachability validators. Neither accepts
-  campaign deliveries.
+  initial selection; story work cannot be abandoned.
+- Pump Refuge (berth 4), Lower Gantry (berth 5) and the Freight Yard lift
+  (berth 6) have generated work/service metadata in
+  `src/generated/level.hpp`: stable symbolic ids, dock pixels and restoration
+  milestone bits. The mandatory Deep Relay (berth 7) uses the
+  expedition milestone bit and requires all four tools. All docks pass the
+  wall-attach, hull/approach and hazard-clearance validators; restoration sites
+  stay base-tool reachable and the late expedition is reachable with the full
+  tool set.
 - PUMP opens Pump Refuge as a service-only berth: docking refills air, repairs
   hull and saves loaded cargo, but shows only the smaller UNDOCK board. It
   publishes no work and sells nothing.

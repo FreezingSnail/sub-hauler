@@ -244,6 +244,12 @@ inline uint8_t currentCount() {
     return CURRENT_COUNT;
 }
 
+// True when this zone is a tide gate rather than a room-drift hazard. Gated
+// zones block upstream travel until the current thruster is owned.
+inline bool currentGated(uint8_t id) {
+    return ((CURRENT_GATE_MASK >> id) & 1u) != 0;
+}
+
 inline int16_t spawnTileX() {
     return SPAWN_TILE_X;
 }

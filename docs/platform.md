@@ -12,7 +12,7 @@ Keep dated measurements in the checkpoint table instead of copying them around.
 | MCU | ATmega32u4 |
 | Display | 128×64 SSD1306 OLED, native 1-bit |
 | Framebuffer | 1,024 B (`Arduboy2Base::sBuffer`) |
-| Cart | external FX flash; flashable `fxdata/fxdata.bin` (2,086,400 B); the unpadded 2,082,129 B payload is `fxdata/fxdata-data.bin` |
+| Cart | external FX flash; current `fxdata/fxdata.bin` image is 2,096,640 B; the unpadded 2,092,503 B payload is `fxdata/fxdata-data.bin`, with the 4,096 B save partition at `FX_SAVE_PAGE = 0xFFF0` |
 | Display mode | native 1-bit via `Arduboy2Base` |
 | Logical frame | `FRAME(x)` = `x`; one image per frame |
 | Blitting | `Blit::draw` plus-mask blits into `sBuffer`; no OLED access |
@@ -21,6 +21,11 @@ Keep dated measurements in the checkpoint table instead of copying them around.
 | Frame rate | 60 fps (`arduboy.setFrameRate(60)`) |
 | Toolchain | arduino-cli 1.2.0; arduboy-homemade:avr 1.4.0; AVR-GCC 7.3.0-atmel3.6.1-arduino7; `-mrelax -mcall-prologues`; LTO |
 | Math | integer/fixed-point only; no `float`/`double` |
+
+Story art checkpoint (2026-11-07, `sub-hauler-4jh`): the DEEP RELAY scene now
+has its own 128×64 illustration in the former shared dispatch row; HOME uses
+the existing cargo-loading art. The source sheet remains 512×1088 with
+seventeen rows. See the dated checkpoint table for current resource figures.
 
 ## Resource budgets
 
@@ -39,53 +44,61 @@ SRAM remains capped at **1,700 B** and measured stack reserve must remain at
 least **600 B**. Prior task documents quoting a hard 29,000 B flash ceiling
 are superseded by this decision.
 
-Current fixed build (2026-11-01): one configuration always links the ATMlib2FX
+Current fixed build (2026-11-09): one configuration always links the ATMlib2FX
 compact synth (`ATM_FX_COMPACT_LOOP=1`, `ATM_FX_COMPACT_RING=32`) over the six
-authored C1 streams. The whole image is **27,230 B flash / 1,646 B static RAM**
-(`.text/.data/.bss` **27,218 / 12 / 1,634 B**), leaving 2,466 B free under the
-29,696 B hardware flash limit and 54 B static headroom / 914 B static free SRAM.
-The 29,000 B planning line remains advisory and is not claimed. Build outputs
-are `build/arduino` / `dist/fx` and `build/arduino-mini` / `dist/mini`.
+authored C1 streams. The whole image is **28,702 B flash / 1,650 B static RAM**
+(`.text/.data/.bss` **28,690 / 12 / 1,638 B**), leaving 994 B free under the
+29,696 B hardware flash limit and 50 B static headroom / 910 B static free SRAM.
+The 29,000 B planning line remains advisory; the image is 298 B under it. Build
+outputs are `build/arduino` / `dist/fx` and `build/arduino-mini` / `dist/mini`.
 Feature-profile, development, runtime-USB, streaming-backend and EEPROM
 chart-save variants are retired.
 
 The fixed build has no shop, currency, job payout, repeatable freight offer or
 credit cache. Air is a fixed 300-unit tank with free berth refill and free
 rescue. The station board is native (`WORK / UNDOCK`,
-`summary / ABANDON / WORK / UNDOCK`, or `UNDOCK` at a service berth) and WORK
-lists only story and survey rows. The generated shop/menu frames and text
+`summary / WORK / UNDOCK`, or `UNDOCK` at a work/service berth) and WORK lists
+only story and survey rows. Mandatory story work cannot be abandoned. The generated shop/menu frames and text
 remain archival cart ABI and are never drawn.
 
 Startup splash measurements and art provenance are in
 [startup-splashes.md](startup-splashes.md). The new FX section appends after
-all shipped menus. The finalized seven campaign story decks (thirty cards,
-fifteen animated scenes with four poses each), their exact text,
-trigger/replay contract and 46,673 B RLE cart blob are in
-[story-beats.md](story-beats.md); the blob appends after the chart hint and
-preserves every earlier offset and the 4 KiB save page.
+all shipped menus. `story/scenes.json` is the single editable UTF-8 source for
+scene order, prose and named image rows. `story/art.png` is the canonical
+512×1088 Piskel sheet (seventeen rows of four 128×64 poses); retained pixelgen
+bundles are provenance only. The canonical sources produce sixteen scenes:
+seven result/survey decks, six departures, two joint-restoration variants and
+one additional DEEP RELAY result. Automatic pagination emits forty-one
+cards (twenty image, twenty-one text) and eighty-nine frames from seventeen
+shared animated scenes; consecutive text pages are allowed. The four
+`story-handoffs-v1` scenes replace the old
+departure placeholders. The exact text, preview, trigger/replay/save contract
+and 57,316 B RLE cart blob are in [story-beats.md](story-beats.md); the blob
+appends after the chart hint and preserves every earlier offset and the 4 KiB
+save page.
 
 Campaign, voyage save and synth music are unconditional. The stack target
 remains 600 B.
 
 ## Stack measurement
 
-Current fixed-build checkpoint (2026-11-01): **`stack_reserve=702`** for the
+Current fixed-build checkpoint (2026-11-03): **`stack_reserve=665`** for the
 exact production `updateStation()`→`requestSave()`→`saveVoyageNow()` chain
-with active synth music (`make fxtest-save-chain`), and **660** for the
+with active synth music (`make fxtest-save-chain`), and **642** for the
 combined `test_memory_music` probe, which also renders a fractional camera
-through the terrain shift path and decodes every one of the 75 story-deck
+through the terrain shift path and decodes every one of the 90 story-deck
 frames through a 16 B scratch chunk; both exceed the 600 B target.
 The device suites compile the serial marker with `SERIAL_BUFFER_SIZE=8` so their
 USB-only RX buffer is not charged against the production no-USB stack path. All
-fourteen default device suites print `P`, plus the separate `test_flight` probe.
+fifteen default device suites print `P`, plus the separate `test_flight` probe.
 The representative path includes salvage, cutter operation, object rendering,
 chart gate markers and discovery HUD messages in addition to the earlier
 flight/chart/hazard/roster/contract paths. The additional
-`make fxtest-flight` probe passes at **11.600 ms maximum** over **842**
+`make fxtest-flight` probe passes at **11.096 ms maximum** over **842**
 complete flight frames with active music, zero 16 ms deadline misses and zero
 audio underruns/errors; `fail_mask=0` and `cases_ok=1`. See
 `docs/camera-review.md` for coverage limits. AVR
-`game::State` is **90 B**, including run-local tools, claims, gate
+`game::State` is **77 B**, including run-local tools, claims, gate
 masks and interaction/notice state plus the campaign counters. The following method and older probe coverage explain the
 measurement; dated older figures remain historical checkpoints.
 
@@ -132,10 +145,12 @@ destination X lit and two blinked off. The M7 current path steps inside
 generated current 0, draws the flow marks, and draws the pilot frame. The
 particle path latches a deterministic hard wall impact, spawns/ages the
 four-particle pool, and draws a pilot frame with debris. The shop path docks,
-buys an air upgrade, and draws the one-row shop board. The M8 roster path draws
-all three title screens (name, playable silhouette, length stat), then flies
-the LEVIATHAN silhouette through the pilot frames; title and pilot now read the
-baked FX sprites and the external font/string sections. The cargo-free contract
+buys an air upgrade, and draws the one-row shop board. The retired M8 roster
+path drew all three title screens (name, playable silhouette, length stat),
+then flew the LEVIATHAN silhouette through the pilot frames. The current fixed
+build draws one baked HAULER title panel and the HAULER pilot only; title and
+pilot still read the baked FX sprites and the external font/string sections.
+The cargo-free contract
 path replaces the removed hold screens: it posts offers at a real berth,
 accepts the first offer (auto-loading four units), draws the active station
 board, undocks through the board action, and draws the first pilot frame. The
@@ -212,8 +227,8 @@ keep their offsets.
 
 The partition is one 4 KiB erase block. The only 512 B slot is at offset 0:
 16 B header, 495 B payload area and commit byte at offset 511, programmed as two
-256 B pages with the commit last. Schema 7 payloads are 24 B scalar (280 B with
-the chart; 24 B without). `voyage_save::FxStorage` wraps `FX::seekSave`,
+256 B pages with the commit last. Schema 8 payloads are 25 B scalar (281 B with
+the chart; 25 B without). `voyage_save::FxStorage` wraps `FX::seekSave`,
 `FX::eraseSaveBlock`, `FX::programSavePage` + `FX::seekCommand(SFC_WRITE)` +
 `FX::writeByte` and `FX::waitWhileBusy`; all four use the same runtime save page
 selected by `FX::begin(FX_DATA_PAGE, FX_SAVE_PAGE)`.
@@ -226,8 +241,8 @@ needs replacement confirmation). This is intentionally not a power-fail atomic
 two-copy protocol. No voyage byte is written to internal EEPROM. The 4 KiB
 region adds 0 B of static SRAM and no data-image bytes; the adapter is a
 stateless stack object and the page stream is generated from live state.
-Schema 1/2 EEPROM records, schema 3 dual-slot carts, schema 4 slots and the
-retired chart block are intentionally not migrated.
+Schema 1/2 EEPROM records, schema 3 dual-slot carts, schema 4 and schema 7
+slots, and the retired chart block are intentionally not migrated.
 
 ### Optional standalone chart save
 
@@ -259,10 +274,15 @@ EEPROM.
 Dated whole-image numbers are evidence, not guaranteed headroom. Entries before
 2026-10-29 are historical: references to `full`/`lean`/`core`/`min`
 profiles, `MUSIC_BACKEND`, `SH_RELEASE_NO_USB`, `SH_FEATURE_*`, developer mode
-or EEPROM chart save describe retired variants, not current build options.
+or EEPROM chart save describe retired variants, not the shipping build. The
+current developer-only `DEBUG=1` image is documented in
+[dev-flow.md](dev-flow.md) and is not part of the shipped matrix.
 
 | Date | Flash | Static RAM | Toolchain / notes |
 | --- | --- | --- | --- |
+| 2026-11-09 | 28,702 B | 1,650 B | Thruster tide gates, return-shaft tides, survey-lens relocation, and refreshed story art: all nine tide zones are thruster gates; without the thruster they push downstream and block upstream, and owning the thruster disables force, blocking and flow marks. The two former T thruster gates are now tides: Basalt descent pushes up and Jet approach pushes left. The return-shaft shortcut keeps a seal-only P gate and gains a rightward gate tide and an upward tide above it; Pipe Junction pushes down, Cormorant pushes up. The survey lens moves to the upper-west Trench Cove `(36,78)`, above the pressure line at the end of a long jagged switchback route from Trench Refuge; Trench Refuge→Deep Anchor widens with a 10×7 chamber so the station approach dominates. Guide full map/route maps use the fully rendered native world. `.text/.data/.bss` **28,690 / 12 / 1,638 B**; 994 B hardware flash free, 298 B under the advisory 29,000 B line, 50 B static headroom, 910 B static free. Host **246**, tooling **155**, docs **32** + preview **8**; **15/15** default device suites P; save-chain **703**, combined music **626**; runtime-page P; flight **842** frames, **11,440 µs max**, 0 misses, gap **1**, 0 underruns/errors, `fail_mask=0`; Mini **28,702 / 1,650 B**; gen-check deterministic. `make gen`: 16 scenes / 41 cards / 89 frames, story **57,023 B**; FX payload/image **2,092,503 / 2,096,640 B**, **512 B** below 2 MiB; `FX_SAVE_PAGE=0xFFF0` unchanged. No physical playthrough, human map review or speaker listening claimed. |
+| 2026-11-07 | 28,418 B | 1,649 B | Wall-spanning currents (`sub-hauler-vc6`): all eight zones scan their full flow strip and extend through adjoining side openings to solid walls, then overlap the walls by one tile. Per-zone tile counts retain compact AVR metadata while runtime extents support more than 255 pixels. Guide map regenerated through `make gen`. `.text/.data/.bss` **28,406 / 12 / 1,637 B**, 1,278 B hardware flash free. Host **244**, generator tests **117**, docs **32** + preview **8**; targeted `test_world`, `test_render`, `test_memory_music`, `test_save_chain` pass. Stack reserve **641 B** combined music and **703 B** save-chain. Flight **842** frames, **11,428 µs max**, zero misses, gap **1**, zero audio underruns/errors. `make gen-check` deterministic; FX payload/image **2,092,670 / 2,097,152 B**. |
+| 2026-11-07 | 28,396 B | 1,649 B | Linear DEEP RELAY progression (`sub-hauler-yt0`) and guide/full-map refresh (`sub-hauler-gp0`): HOME now requires BEACON + DEEP RELAY; DEEP RELAY requires BEACON and cutter/seal/thruster/lens and appears as the Deep Anchor WORK row. Pre-linear in-flight HOME saves still load, validate and complete without fabricating EXPEDITION; completed legacy HOME saves remain valid. `.text/.data/.bss` **28,384 / 12 / 1,637 B**; 1,300 B hardware flash free, 604 B under the advisory 29,000 B line, 51 B static headroom, 911 B static free. Host **244**, tooling **150**, **15/15** default device suites P; save-chain **703**, combined music **646**; runtime-page P; flight **842** frames, **11,412 µs max**, 0 misses, gap 1, 0 underruns/errors, `fail_mask=0`; Mini **28,396 / 1,649 B**; gen-check deterministic. `make gen`: 16 scenes / 41 cards / 89 frames, story **57,190 B**; FX payload/image **2,092,670 / 2,097,152 B**, 183 B before the save section; `FX_SAVE_PAGE=0xFFF0` unchanged. The generated overview adds current/equipment-cove/survey/delivery labels and the guide embeds it. No physical playthrough, human map review or speaker listening claimed. |
 | 2026-10-20 | 6,636 B | 1,214 B | arduino-cli 1.2.0; arduboy-homemade:avr 1.4.0; AVR-GCC 7.3.0-atmel3.6.1-arduino7; `make size` |
 | 2026-10-22 | 6,840 B | 1,217 B | M1 cave render (static camera, 16x8 visible window); full/lean/core/min identical; no Ardens run |
 | 2026-10-22 | 10,584 B | 1,259 B | M2 pilot view (world step, HAULER silhouette, HUD, D-pad input); full/min identical; no Ardens run |
@@ -299,6 +319,12 @@ or EEPROM chart save describe retired variants, not current build options.
 | 2026-10-28 | 29,616 B | 1,662 B | Splash hold: the Snailware logo keeps 60 × 16 ms, while the title frame now holds 150 × 16 ms; the real introduction measures **3,417 ms**. Full/Mini **29,616 / 1,662 B** (+18 B flash, no RAM), **80 B** hardware flash free; music-off **24,940 / 1,458 B**, stream **27,122 / 1,618 B**; lean/core/min unchanged at **14,874 / 12,742 / 6,778 B** flash and **1,417 / 1,159 / 1,115 B** static. `test_startup` still compares 52 frames and passes its 3,250–4,000 ms window; `test_startup` and the production-sketch `test_save_chain` use an 8 s suite capture. Host **251**, tooling **144**, `make gen-check` deterministic, all **14** default device suites P. FX payload/image unchanged at **2,077,552 / 2,081,792 B**. No GUI playthrough or skip-button injection claimed. |
 | 2026-10-30 | 28,848 B | 1,660 B | Finalized seven-beat story decks (`sub-hauler-7vx`): 30 alternating cards (15 animated 128×64 scenes ×4 poses at 3.3 fps plus 15 baked text cards) packed as a 46,673 B RLE cart blob. FIRST has three pairs; the other six beats two. Survey decks play at the in-world dwell and return to the frozen pilot; HOME is the first part of the ending and resumes after reload until the ending flag commits. `.text/.data/.bss` **28,836 / 12 / 1,648**; 848 B hardware flash free, 40 B static headroom, 900 B static free. Host **234**, tooling **122**, **14/14** default device suites P; save-chain **696**, combined music **626**; flight 842 frames **11,768 µs max**, 0 misses, gap 1, 0 underruns/errors; runtime-page P; Mini **28,848 / 1,660 B**; gen-check deterministic. FX payload/image **2,082,151 / 2,086,400 B** (10,752 B under 2 MiB); `FX_SAVE_PAGE` remains **0xFFF0** and all earlier declaration offsets are preserved; `storyBeats=0x1F0F16`. No physical playthrough, GUI check or speaker listening claimed. See [story-beats.md](story-beats.md). |
 | 2026-11-01 | 27,230 B | 1,646 B | Economy removal (`sub-hauler-9q0`): shop, currency, job payouts, repeatable freight offers, air-tank levels and the three credit coves are gone; campaign deliveries are intrinsic unpaid restoration work. Pickup records are now `x/y/kind` with a **5-byte stride** (4 records, object stream **91 B**); the former credit cove rooms remain as geography with no pickup. Fixed **300-unit** air tank with free berth refill and free rescue. Station board `WORK / UNDOCK`, `summary / ABANDON / WORK / UNDOCK`, or `UNDOCK` at a service berth; WORK lists only story and survey rows. The generated route reward/deadline API is removed. Save schema **7**: scalar **24 B**, no-chart payload **24 B**, chart payload **280 B**, fixed-build signature **0x61** (shop bit retired); schema 6 slots are incompatible and are never migrated. `sizeof(game::State)` **90 B**, `ActiveJob` **5 B**. `.text/.data/.bss` **27,218 / 12 / 1,634**; **2,466 B** hardware flash free, **54 B** static headroom, **914 B** static free. Host **215**, tooling **128**, **14/14** default device suites P; save-chain **702**, combined music **660**; flight 842 frames **11,600 µs max**, 0 misses, gap 1, 0 underruns/errors, `fail_mask=0`; runtime-page P; Mini **27,230 / 1,646 B**; gen-check deterministic. FX payload/image **2,082,129 / 2,086,400 B** (10,752 B under 2 MiB); `FX_SAVE_PAGE` remains **0xFFF0** and all earlier declaration offsets are preserved. The flight probe's discovery-notice case no longer looks for a removed credit pickup kind. No physical playthrough, GUI check or speaker listening claimed. |
+| 2026-11-02 | 27,230 B | 1,646 B | Story motion/clarity pass (`sub-hauler-e9s`): fifteen native pixelgen loops with clearer sub hulls and cable break, moving carriage/reel/crane, sweeping beacon, rising circulation/leak bubbles; 4 poses at 300 ms. All fifteen render/check/replay/check bundles pass. New production `test_story` verifies all 75 decoded frame CRCs, cadence/input/returns/save-failure continuation/HOME; render/display/service max **10,748 µs** (CRC work excluded). Host **217**, tooling **130**, browser **7**, **15/15** default device suites P; save-chain **702**, combined music **660**; runtime-page P; flight **842** frames, **11,600 µs max**, zero misses/audio errors. FX/Mini unchanged **27,230 / 1,646 B**. Story blob **45,439 B** (-1,234 B); FX payload/image **2,080,895 / 2,085,120 B** (-1,280 B padded), **12,032 B** cart headroom; save page **0xFFF0**. Gen-check deterministic. Human artistic approval/physical playthrough unrecorded. |
+| 2026-11-07 | 28,316 B | 1,649 B | DEEP RELAY departure art and acceptance beat (`sub-hauler-4jh`): a distinct 128×64 1-bit wreck/relay image replaces the now-unused shared dispatch row; HOME departure uses existing cargo-loading art. New expedition scenes follow BEACON and precede HOME. Story has 16 scenes, 41 cards, 89 frames, and a 57,377 B packed story blob. `.text/.data/.bss` **28,304 / 12 / 1,637 B**; 1,380 B hardware flash free, 684 B under 29,000 planning, 51 B static headroom, 911 B static free. `make gen`, FX build, size, and Mini pass. Cart payload/image **2,092,857 / 2,097,152 B**, leaving **183 B** before the save section; save page `0xFFF0` unchanged. Pixelgen conversion/check/replay pass (`hard_valid=true`, replay matched); the source image used built-in image generation because Pixelgen MFLUX could not access Metal. Human visual review and host/tool/device suites remain unclaimed. |
+| 2026-11-05 | 28,218 B | 1,650 B | Playable hull and cargo-slot UI reduction (`sub-hauler-9he` + `sub-hauler-ded`): only HAULER remains playable; title LEFT/RIGHT hull cycling, B reset and LEN stat are retired. Legacy schema-8 hull bytes 0/2 load and normalize to HAULER while retaining voyage progress; saves always write HAULER at the frozen offset-1 byte. HUD CGO boxes/label and dead active-WORK CARGO fallback are removed; accepted destination, pickup/delivery, loaded-v-empty handling, ballast notch and one-active-job state remain. `.text/.data/.bss` **28,206 / 12 / 1,638 B**; **1,478 B** hardware flash free, 782 B under 29,000 planning, **50 B** static headroom, 910 B static free. Host **235**, tooling **147**, browser **8**, **15/15** default device suites P; save-chain **665**, combined music **642**; `test_story` **90** frame CRCs; runtime-page P; flight **842** frames, **11,096 µs max**, 0 misses, gap 1, 0 underruns/errors, `fail_mask=0`; Mini **28,218 / 1,650 B**; gen-check deterministic. Cart unchanged **2,092,772 / 2,096,896 B** (256 B under 2 MiB); FX declaration order/offset ABI and `FX_SAVE_PAGE=0xFFF0` unchanged. Human visual/physical acceptance remains explicit and unclaimed. |
+| 2026-11-03 | 28,432 B | 1,650 B | Integrated handoff art (`sub-hauler-sxc`, verified through `sub-hauler-3ca`): Sol's four `story-handoffs-v1` bundles replace the FIRST/HOME/BEACON departure placeholders and both joint variants. Source prose is unchanged; `beacon-descent` and `home-return` leave the active blob, while `delivery-loading` and `repair-bay` remain for PUMP pickup and FIRST result. Actual net art change **+8,520 B RLE blob** (10,306 B new − 1,810 B removed + 24 B offsets), not the 1,485 B estimate that assumed removing `home-return` too. Story blob **57,316 B**, now **90 frames** (17 unique images). `.text/.data/.bss` **28,420 / 12 / 1,638 B**; **1,264 B** hardware flash free, 568 B under 29,000 planning, **50 B** static headroom, 910 B static free. Host **235**, tooling **144**, browser **8**, **15/15** default device suites P; save-chain **665**, combined music **659**; `test_story` **90** frame CRCs, handoffs/cold reload P; runtime-page P; flight **842** frames, **11,604 µs max**, 0 misses, gap 1, 0 underruns/errors, `fail_mask=0`; Mini **28,432 / 1,650 B**; gen-check deterministic. FX payload/image **2,092,772 / 2,096,896 B**, only **256 B** under 2 MiB; every earlier offset and `FX_SAVE_PAGE = 0xFFF0` unchanged, `storyBeats = 0x1F0F00`. Human artistic review remains **unreviewed**. No physical playthrough, GUI check or speaker listening claimed. |
+| 2026-11-03 | 28,432 B | 1,650 B | Editable story source and automatic text pagination (`sub-hauler-640`): `story/scenes.json` is the single UTF-8 authoring source for scene order, prose and image references; the packer uppercases, wraps at 20 columns and emits consecutive six-row text cards with no truncation. Scene/card kinds are generated, not image/text alternation. Fourteen scenes produce **40 cards** (18 image, 22 text) and **78 frames** from **14** deduped images; story blob **48,796 B**. FIRST names the remote Cormorant Freight Yard lift; survey findings name replacement collection stations directly; handoff prose keeps destinations, seal location and dispatch motivation. Shared preview exposes all scenes/pages. `.text/.data/.bss` **28,420 / 12 / 1,638 B**; **1,264 B** hardware flash free, 568 B under 29,000 planning, **50 B** static headroom, 910 B static free. Host **235**, tooling **144**, browser **8**, **15/15** default device suites P; save-chain **665**, combined music **659**; `test_story` **78** frame CRCs, handoffs/cold reload P, max **10,756 µs**; runtime-page P; flight **842** frames, **11,604 µs max**, 0 misses, gap 1, 0 underruns/errors, `fail_mask=0`; Mini **28,432 / 1,650 B**; gen-check deterministic. FX payload/image **2,084,252 / 2,088,448 B** (**8,704 B** under 2 MiB); every earlier offset and `FX_SAVE_PAGE = 0xFFF0` unchanged, `storyBeats = 0x1F0F00`. No physical playthrough, GUI check or speaker listening claimed. |
+| 2026-11-03 | 28,330 B | 1,650 B | Story geography and progression handoffs (`sub-hauler-3ca`): PUMP copy and guidance now name Benthos as the delivery berth; LIFT names Cormorant and the remote Freight Yard repair; next-stop guidance checks the unfinished survey/repair before the seal and never says BEACON ready early; empty WORK boards keep the clue; five cargo departures and one joint-restoration handoff reuse existing loading art. Beat delivery decks now carry result cards only. Scene/card/frame map covers **36 cards / 78 frames** from **15** shared scenes; story blob **49,168 B**. `pendingStory` now validates saved scene ids 0–14 with the same 25 B scalar schema 8. `.text/.data/.bss` **28,318 / 12 / 1,638 B**; **1,366 B** hardware flash free, 670 B under 29,000 planning, **50 B** static headroom, 910 B static free. Host **235**, tooling **135**, browser **7**, **15/15** default device suites P; save-chain **665**, combined music **660**; `test_story` **78** frame CRCs, handoffs/cold reload P, max **10,748 µs**; runtime-page P; flight **842** frames, **11,604 µs max**, 0 misses, gap 1, 0 underruns/errors, `fail_mask=0`; Mini **28,330 / 1,650 B**; gen-check deterministic. FX payload/image **2,084,624 / 2,088,960 B** (**8,192 B** under 2 MiB); every earlier offset and `FX_SAVE_PAGE = 0xFFF0` unchanged, `storyBeats = 0x1F0F00`. No physical playthrough, GUI check or speaker listening claimed. |
 
 Chart performance checkpoint (2026-10-26, `sub-hauler-h89`): paused charts
 compose on entry and at the existing 16-frame sub/destination blink boundaries
@@ -487,10 +513,10 @@ The optional
 chart save variant
 was last measured at 29,330 B / 1,690 B before the carve; a fresh
 `SAVE_CHART=1` measurement is required before changing the default.
-`MULTI_HULL` still adds class art/string calls; core and min measure
-12,626 B / 1,302 B and 9,142 B / 1,252 B because the roster collapses to
-HAULER and those calls compile out. Any future persistent state still needs a
-carve rather than another byte-class allocation. The probe does not print the
+The retired `MULTI_HULL` option added class art/string calls; the fixed build
+now compiles only the HAULER sprite call, and the earlier collapsed core/min
+measurements were 12,626 B / 1,302 B and 9,142 B / 1,252 B. Any future
+persistent state still needs a carve rather than another byte-class allocation. The probe does not print the
 exact high-water byte unless `SH_STACK_DIAG=1`; static free bytes are still not
 a stack measurement.
 

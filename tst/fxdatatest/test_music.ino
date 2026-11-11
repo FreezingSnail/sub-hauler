@@ -43,6 +43,14 @@ static world::TileCache s_cache;
 static uint16_t s_gapMax = 0;
 static uint16_t s_serviceMaxUs = 0;
 
+// A changed policy cue is insufficient: verify the synth actually loaded its
+// unique FX stream. This catches controller early-outs that leave old music on.
+bool playingCue(uint8_t cue) {
+    const uint32_t offset = music::backend::cueOffset(cue);
+    return music::active() && atm_fx_compact_state.stream_base == offset &&
+           atm_fx_compact_state.stream_end == offset + music::backend::cueLength(cue);
+}
+
 uint16_t timedService() {
     const uint32_t start = micros();
     music::service();
@@ -106,7 +114,7 @@ void setup() {
     bool ok = true;
     for (uint8_t cue = 0; cue < music::backend::kCueCount; ++cue) {
         music::setCue(cue);
-        ok = music::active() && music::currentCue() == cue && ok;
+        ok = playingCue(cue) && music::currentCue() == cue && ok;
         for (uint8_t frame = 0; frame < kFramesPerCue; ++frame) {
             noteGap(timedService());
             delay(6);
@@ -145,7 +153,7 @@ void setup() {
     boot.hasValid = true;
     
     
-    voyage_view::drawTitle(boot, voyage_view::kTitleContinue, s_state.hullClass, voyage_view::kTitleMenu);
+    voyage_view::drawTitle(boot, voyage_view::kTitleContinue, voyage_view::kTitleMenu);
     noteGap(timedService());
     FX::display(CLEAR_BUFFER);
     noteGap(timedService());
@@ -206,25 +214,34 @@ void setup() {
     // Actual backend transitions: same-cue continuity, station->flight
     // hysteresis, pause/resume and MUSIC OFF/ON.
     music::setCue(music_logic::kHarbor);
-    const uint8_t sameBefore = music::currentCue();
+    for (uint8_t tick = 0; tick < 8; ++tick) {
+        delay(6);
+        noteGap(timedService());
+    }
+    music::pause();
+    const uint32_t samePosition = atm_fx_compact_state.head_offset;
+    const uint32_t sameNext = atm_fx_compact_state.next_offset;
     music::setCue(music_logic::kHarbor);
-    const bool sameCue = music::active() && music::currentCue() == sameBefore;
+    const bool sameCue = playingCue(music_logic::kHarbor) && music::paused() &&
+                         atm_fx_compact_state.head_offset == samePosition &&
+                         atm_fx_compact_state.next_offset == sameNext;
+    music::resume();
     music::beginFlight(s_state);
     s_state.x = 168 * 8 + 4;   // Kelp Cathedral
     s_state.y = 18 * 8 + 4;
     for (uint8_t frame = 0; frame < 130; ++frame)
         music::updateFlight(s_state);
-    const bool flightSwitched = music::currentCue() == music_logic::kKelp;
+    const bool flightSwitched = music::currentCue() == music_logic::kKelp && playingCue(music_logic::kKelp);
 
     // Dock override resets the pending flight candidate; undocking must not
     // inherit the old hysteresis count and switch immediately.
     music::overrideCue(music_logic::kTidepool);
-    const bool dockedOverride = music::currentCue() == music_logic::kTidepool;
+    const bool dockedOverride = music::currentCue() == music_logic::kTidepool && playingCue(music_logic::kTidepool);
     for (uint8_t frame = 0; frame < 120; ++frame)
         music::updateFlight(s_state);
-    const bool dockedHold = music::currentCue() == music_logic::kTidepool;
+    const bool dockedHold = music::currentCue() == music_logic::kTidepool && playingCue(music_logic::kTidepool);
     music::updateFlight(s_state);
-    const bool undockedSwitchReset = music::currentCue() == music_logic::kKelp;
+    const bool undockedSwitchReset = music::currentCue() == music_logic::kKelp && playingCue(music_logic::kKelp);
 
     music::pause();
     const bool pausedBackend = music::paused();
@@ -236,7 +253,7 @@ void setup() {
     music::setCue(music_logic::kTidepool);
     const bool offNoStart = !music::active();
     music::toggleEnabled();
-    const bool onStarts = music::enabled() && music::active() && music::currentCue() == music_logic::kTidepool;
+    const bool onStarts = music::enabled() && playingCue(music_logic::kTidepool) && music::currentCue() == music_logic::kTidepool;
     ok = ok && sameCue && flightSwitched && dockedOverride && dockedHold && undockedSwitchReset && pausedBackend && resumedBackend && rescueCancelPaused && rescueSuccess && offSilent && offNoStart && onStarts && (music::enabled() == enabledBefore);
     ok = ok && mapContinues;
 

@@ -53,8 +53,15 @@ class AuthoredLevelTest(unittest.TestCase):
         rooms={r['id']:r for r in self.source['rooms']}
         boundary=self.source['pressure_y']
         self.assertLess(rooms['CW']['position'][1],boundary)
-        for key in ('J','O','D','G','I','DL','DC'):
+        for key in ('J','O','D','G','I','DC'):
             self.assertGreater(rooms[key]['position'][1],boundary)
+        # The lens cove sits in the empty upper-west rock, but its only
+        # connection is the winding route from Trench Refuge below the
+        # pressure boundary, so the seal still gates it.
+        self.assertLess(rooms['DL']['position'][1],boundary)
+        links=sorted((r['from'],r['to']) for r in self.source['routes']
+                     if 'DL' in (r['from'],r['to']))
+        self.assertEqual(links,[('O','DL')])
         self.assertEqual(rooms['D']['position'][1],max(r['position'][1] for r in rooms.values() if 'station' in r))
         self.assertEqual(len(rooms),32)
         self.assertEqual(len(self.source['routes']),42)
@@ -131,24 +138,156 @@ class AuthoredLevelTest(unittest.TestCase):
         self.assertEqual(gen_scenery.decorate(plain,base,spines),(base,{}))
 
     def test_service_berths_and_surveys_are_stable_generated_metadata(self):
-        self.assertEqual([b.id for b in self.level.service_berths],[4,5])
-        self.assertEqual([b.symbol for b in self.level.service_berths],['PUMP_REFUGE','LOWER_GANTRY'])
-        self.assertEqual([b.milestone for b in self.level.service_berths],[2,4])
+        self.assertEqual([b.id for b in self.level.service_berths],[4,5,6,7])
+        self.assertEqual([b.symbol for b in self.level.service_berths],['PUMP_REFUGE','LOWER_GANTRY','FREIGHT_YARD','DEEP_RELAY'])
+        self.assertEqual([b.milestone for b in self.level.service_berths],[2,4,4,32])
         self.assertEqual([s.id for s in self.level.surveys],[0,1])
         self.assertEqual([s.symbol for s in self.level.surveys],['PUMP','LIFT'])
         self.assertNotIn(4,range(len(self.level.world.settlements)))
         header=(ROOT/'src/generated/level.hpp').read_text()
-        for symbol,value in (('BERTH_PUMP_REFUGE',4),('BERTH_LOWER_GANTRY',5),('SURVEY_PUMP',0),('SURVEY_LIFT',1)):
+        for symbol,value in (('BERTH_PUMP_REFUGE',4),('BERTH_LOWER_GANTRY',5),('BERTH_FREIGHT_YARD',6),('BERTH_DEEP_RELAY',7),('SURVEY_PUMP',0),('SURVEY_LIFT',1)):
             self.assertIn(f'constexpr uint8_t {symbol} = {value};',header)
         for berth in self.level.service_berths:
             self.assertIn(f'{{{berth.id}, {berth.milestone}, {berth.pixel_x}, {berth.pixel_y}}},',header)
         for survey in self.level.surveys:
             self.assertIn(f'{{{survey.id}, {survey.pixel_x}, {survey.pixel_y}}},',header)
-        self.assertIn('constexpr uint8_t  BERTH_COUNT       = 6;',header)
+        self.assertIn('constexpr uint8_t  BERTH_COUNT       = 8;',header)
         # Service berths and surveys never enter the four-settlement economy.
         for origin in range(4):
             for destination in range(4):
                 self.assertLess(destination,4)
+
+    def test_currents_cover_the_common_passage_cross_section(self):
+        rooms={r['id']:r for r in self.source['rooms']}
+        fixed_rects={(c['x'],c['y'],c['w'],c['h']) for c in self.source.get('currents',[])}
+        for current in self.level.world.currents:
+            horizontal=current.ax_q8!=0
+            cx=current.x+current.w//2
+            cy=current.y+current.h//2
+            grid=self.level.world.grid
+            self.assertFalse(grid[(cy//8)*320+cx//8],'current centre is navigable')
+            # The intersection rule must not swallow a neighbouring room or a
+            # side cove. Each room-centre tide contains exactly its own room
+            # centre; the fixed Cormorant tide contains none.
+            inside={r['id'] for r in rooms.values()
+                    if current.x<=r['position'][0]*8<current.x+current.w
+                    and current.y<=r['position'][1]*8<current.y+current.h}
+            if current.w>32 or current.h>16:
+                self.assertLessEqual(len(inside),1,f'current swallowed rooms {inside}')
+            # Full-cargo thrust is 34 - 3*4 = 22 px/s^2; current force 16 px/s^2.
+            self.assertGreater(22,abs(current.ax_q8)//256 if current.ax_q8 else abs(current.ay_q8)//256)
+            if (current.x,current.y,current.w,current.h) in fixed_rects:
+                continue
+            if horizontal:
+                edges=[(x,y) for x in range(current.x//8,(current.x+current.w)//8)
+                       for y in (current.y//8,(current.y+current.h)//8-1)]
+            else:
+                edges=[(x,y) for y in range(current.y//8,(current.y+current.h)//8)
+                       for x in (current.x//8,(current.x+current.w)//8-1)]
+            self.assertTrue(any(grid[y*320+x] for x,y in edges),
+                            'current overlaps at least one rock edge')
+
+        # Regression: the retired F/V/A/O walls are gone.
+        for room in ('F','V','A','O'):
+            x,y=rooms[room]['position'];x*=8;y*=8
+            self.assertFalse(any(c.x<=x<c.x+c.w and c.y<=y<c.y+c.h
+                                 for c in self.level.world.currents),
+                             f'{room} tide was retired')
+
+    def test_cormorant_tide_pushes_up_and_stays_thruster_gated(self):
+        tide=next((i,c) for i,c in enumerate(self.level.world.currents)
+                  if c.x==1744 and c.y==507 and c.w==96 and c.h==8)
+        index,current=tide
+        self.assertLess(current.ay_q8,0,'Cormorant tide pushes upward')
+        self.assertEqual(current.ax_q8,0)
+        self.assertTrue(self.level.current_gate_mask&(1<<index),
+                        'Cormorant tide remains a thruster tide gate')
+        self.assertLess(current.y,self.source['rooms'][
+            next(i for i,r in enumerate(self.source['rooms']) if r['id']=='C')]['position'][1]*8,
+                        'tide sits above Cormorant')
+
+    def test_all_tides_are_thruster_gates(self):
+        self.assertEqual(self.level.current_gate_mask,
+                         (1<<len(self.level.world.currents))-1)
+
+    def test_thruster_gate_sections_are_tide_zones(self):
+        # The two former T gates are zero-required tide placeholders.
+        gate_by_name={g.name:g for g in self.level.gates}
+        self.assertEqual(gate_by_name['J_G'].required,0)
+        self.assertEqual(gate_by_name['I_DC'].required,0)
+        by_rect={(c.x,c.y,c.w,c.h):c for c in self.level.world.currents}
+        basalt=by_rect[(941,1071,96,8)]
+        jet=by_rect[(1852,1038,8,96)]
+        self.assertLess(basalt.ay_q8,0,'Basalt tide blocks the descent')
+        self.assertLess(jet.ax_q8,0,'Jet approach tide blocks the entry')
+        self.assertEqual(basalt.ax_q8,0)
+        self.assertEqual(jet.ay_q8,0)
+
+    def test_pipe_junction_tide_pushes_down(self):
+        room=next(r for r in self.source['rooms'] if r['id']=='S')
+        x,y=room['position'][0]*8,room['position'][1]*8
+        tide=next(c for c in self.level.world.currents
+                  if c.x<=x<c.x+c.w and c.y<=y<c.y+c.h)
+        self.assertGreater(tide.ay_q8,0,'Pipe Junction tide pushes downward')
+        self.assertEqual(tide.ax_q8,0)
+
+    def test_current_covers_the_common_strip_and_rejects_side_pockets(self):
+        rooms={'test':{'position':[14,14],'radius':4}}
+        for horizontal in (True,False):
+            with self.subTest(horizontal=horizontal):
+                grid=bytearray([1])*(320*160)
+                for y in range(10,21):
+                    for x in range(10,21):
+                        grid[y*320+x]=0
+                if horizontal:
+                    for y in range(10,26):
+                        grid[y*320+12]=0
+                    for y in range(25,29):
+                        grid[y*320+13]=0
+                    authored=gen_world.Current(96,104,32,16,2048,0)
+                    water=(104,112)
+                    rock=(104,72)
+                    side=(104,224)
+                else:
+                    for x in range(5,26):
+                        grid[13*320+x]=0
+                    for x in range(25,29):
+                        grid[14*320+x]=0
+                    authored=gen_world.Current(96,104,32,16,0,2048)
+                    water=(112,112)
+                    rock=(72,112)
+                    side=(208,112)
+                zone=gen_level.cover_current(grid,rooms,authored)
+                for x,y in (water,rock):
+                    self.assertTrue(zone.x<=x<zone.x+zone.w and zone.y<=y<zone.y+zone.h)
+                self.assertFalse(zone.x<=side[0]<zone.x+zone.w and zone.y<=side[1]<zone.y+zone.h,
+                                 'side passage is not part of the common cross-section')
+                self.assertFalse(grid[(water[1]//8)*320+water[0]//8])
+                self.assertTrue(grid[(rock[1]//8)*320+rock[0]//8])
+                if horizontal:
+                    self.assertEqual((zone.x,zone.w),(authored.x,authored.w))
+                else:
+                    self.assertEqual((zone.y,zone.h),(authored.y,authored.h))
+                self.assertEqual((zone.ax_q8,zone.ay_q8),(authored.ax_q8,authored.ay_q8))
+
+    def test_deep_relay_expedition_needs_every_tool_and_reaches_the_lower_right(self):
+        relay=next(b for b in self.level.service_berths if b.symbol=='DEEP_RELAY')
+        self.assertEqual(relay.milestone,gen_level.MILESTONES['expedition'])
+        self.assertGreater(relay.tile_x,200)
+        self.assertGreater(relay.tile_y,120)
+        self.assertNotIn((relay.tile_x,relay.tile_y),gen_level.reachable_tiles(self.level,0))
+        self.assertIn((relay.tile_x,relay.tile_y),gen_level.reachable_tiles(self.level,sum(gen_level.TOOLS.values())))
+
+    def test_preview_labels_currents_equipment_coves_and_delivery_markers(self):
+        svg=gen_level.render_preview(self.level)
+        for label in ('TIDEWALL','DEEP ANCHOR','DEEP RELAY','PUMP REFUGE','FREIGHT YARD',
+                      'CUTTER','SEAL','THRUSTER','LENS','PUMP DELIVERY','LIFT DELIVERY'):
+            self.assertIn('>'+label+'<',svg,label)
+        self.assertEqual(svg.count('fill="#6cc7e8" fill-opacity=".22"'),len(self.level.world.currents))
+        self.assertIn('expanded current',svg)
+        # The lower-right relay is drawn at its generated dock, not a stale inset.
+        relay=next(b for b in self.level.service_berths if b.symbol=='DEEP_RELAY')
+        self.assertIn(f'x="{relay.tile_x*4-20}" y="{relay.tile_y*4+18}">DEEP RELAY</text>',svg)
 
     def test_unsafe_service_berth_or_survey_placements_are_rejected(self):
         bad=copy.deepcopy(self.source)
@@ -217,7 +356,12 @@ class AuthoredLevelTest(unittest.TestCase):
                     i=(py//8)*2560+px;bit=1<<(py&7)
                     self.assertEqual(baked[i]&bit,base[i]&bit,'settlement art cannot cover the hull approach')
         home=report[0]
-        self.assertEqual((self.level.world.spawn_sub_x,self.level.world.spawn_sub_y),(home['x'],home['y']))
+        self.assertEqual((self.level.world.spawn_sub_x,self.level.world.spawn_sub_y),
+                         (home['x']-gen_level.SPAWN_DOCK_OFFSET_PX,home['y']))
+        world=self.level.world
+        self.assertTrue(all(not world.grid[y*320+x] for y in range((world.spawn_sub_y-4)//8,(world.spawn_sub_y+3)//8+1)
+                            for x in range((world.spawn_sub_x-13)//8,(world.spawn_sub_x+12)//8+1)),
+                        'new-voyage hull starts in open water')
 
     def test_rock_features_are_real_collision_tiles(self):
         bare=copy.deepcopy(self.source)

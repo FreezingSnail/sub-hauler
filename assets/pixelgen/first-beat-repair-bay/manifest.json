@@ -1,0 +1,229 @@
+{
+  "assets": [
+    {
+      "license": null,
+      "path": "inputs/config.json",
+      "pixel_sha256": null,
+      "role": "config",
+      "sha256": "887b05dc40de21602ee7dfac659e48750ad9deaa94bb8028e3a1c41d677ca830",
+      "source": null
+    }
+  ],
+  "backend": {
+    "backend": "mflux",
+    "backend_version": "0.24.0",
+    "model_revision": "7ee1b3aa8178a1240050490072196a57da2bf2a9",
+    "python_version": "3.14.10",
+    "runtime": "mflux-generate-flux2",
+    "runtime_version": "0.24.0",
+    "unknown": {},
+    "weight_hashes": []
+  },
+  "environment": {
+    "core_lock_sha256": "21d731c34e8abfc6f3bab153e5b9d407ac16d02fb9a36b85704aa3c667b905c6",
+    "hardware": "arm64",
+    "os": "Darwin 25.6.0",
+    "python_version": "3.14.10",
+    "runtime_lock_sha256": "0b2a7dd5a28eb40f4b7b85111d1cb3050b9aba3b873b0e1d7976da258c652f4a",
+    "runtime_python_version": "3.14.10",
+    "uv_version": "uv 0.13.6 (Homebrew 2026-10-26 aarch64-apple-darwin)"
+  },
+  "failure": null,
+  "final": {
+    "license": null,
+    "path": "final.png",
+    "pixel_sha256": "0c507ff557169c764784c1f60eac626dbdb5c130f985f516dc40110121ee7963",
+    "role": "final",
+    "sha256": "f63414b37ae1463afbcb2b1f182401fe27b1ae79c8ebc3e244759f2686058960",
+    "source": null
+  },
+  "layout": null,
+  "mode": "generate",
+  "preview": {
+    "license": null,
+    "path": "preview.png",
+    "pixel_sha256": "dabc1d42342d7b9d9819a6e4c400097399380ed7bd520d3245c695968bddb880",
+    "role": "preview",
+    "sha256": "d3ea99a575603b2045379babf080496340fc501a3222f67aa2255378134c361c",
+    "source": null
+  },
+  "reproducibility": {
+    "conversion_replay": "not-performed",
+    "fresh_generation": "not-attempted"
+  },
+  "request": {
+    "guidance": null,
+    "height": 512,
+    "layout": null,
+    "layout_id": null,
+    "model": {
+      "name": "Runpod/FLUX.2-klein-4B-mflux-4bit",
+      "revision": "7ee1b3aa8178a1240050490072196a57da2bf2a9",
+      "source": null,
+      "weight_hashes": []
+    },
+    "prompt": "one-point perspective interior of a dark underwater repair bay, pump housing with a large circular impeller in the left foreground, freight lift opening on the right midground, floor grating and ceiling pipes converging to a distant vanishing point, large solid white machinery masses with black openings, selective Bayer dithering only in the floor and deep shadows, high contrast black and white, no lettering, no text, no words, no numbers, no watermark, no signature, no logo",
+    "prompt_template": "pixel art, 1-bit monochrome, crisp shapes, no lettering, no text: {prompt}",
+    "scheduler": null,
+    "schema_version": "1.0",
+    "seed": 1104,
+    "steps": 4,
+    "tail": {
+      "quantization": {
+        "bayer_matrix": [
+          [
+            0,
+            8,
+            2,
+            10
+          ],
+          [
+            12,
+            4,
+            14,
+            6
+          ],
+          [
+            3,
+            11,
+            1,
+            9
+          ],
+          [
+            15,
+            7,
+            13,
+            5
+          ]
+        ],
+        "mode": "bayer",
+        "origin_x": 0,
+        "origin_y": 0,
+        "threshold": 128
+      },
+      "resample": {
+        "mode": "nearest",
+        "target_height": 64,
+        "target_width": 128
+      }
+    },
+    "width": 1024
+  },
+  "resolved_generation": {
+    "defaults": {
+      "backend_command": "mflux-generate-flux2",
+      "base_model": null,
+      "controlnet_image_path": null,
+      "controlnet_strength": null,
+      "created_at": "2026-11-01T21:36:11.439772",
+      "depth_image_path": null,
+      "generation_time_seconds": 60.18,
+      "guidance": 1.0,
+      "image_path": null,
+      "image_paths": null,
+      "lora_paths": null,
+      "lora_scales": null,
+      "masked_image_path": null,
+      "mflux_version": "0.24.0",
+      "model": "black-forest-labs/FLUX.2-klein-4B",
+      "model_path": "/Users/connorfranc/code/arduboy/pixelgen/out/models/flux2-klein-4b",
+      "model_revision": "7ee1b3aa8178a1240050490072196a57da2bf2a9",
+      "negative_prompt": null,
+      "precision": "mlx.core.bfloat16",
+      "prompt": "pixel art, 1-bit monochrome, crisp shapes, no lettering, no text: one-point perspective interior of a dark underwater repair bay, pump housing with a large circular impeller in the left foreground, freight lift opening on the right midground, floor grating and ceiling pipes converging to a distant vanishing point, large solid white machinery masses with black openings, selective Bayer dithering only in the floor and deep shadows, high contrast black and white, no lettering, no text, no words, no numbers, no watermark, no signature, no logo",
+      "quantize": 4,
+      "redux_image_paths": null,
+      "redux_image_strengths": null,
+      "runtime_python_version": "3.14.10",
+      "scheduler": "flow_match_euler_discrete",
+      "scheduler_source": "mflux 0.24.0 flux2_generate.py hardcodes it",
+      "seed": 1104,
+      "sidecar": {
+        "base_model": null,
+        "controlnet_image_path": null,
+        "controlnet_strength": null,
+        "created_at": "2026-11-01T21:36:11.439772",
+        "depth_image_path": null,
+        "generation_time_seconds": 60.18,
+        "guidance": 1.0,
+        "height": 512,
+        "image_path": null,
+        "image_paths": null,
+        "image_strength": null,
+        "lora_paths": null,
+        "lora_scales": null,
+        "masked_image_path": null,
+        "mflux_version": "0.24.0",
+        "model": "black-forest-labs/FLUX.2-klein-4B",
+        "model_path": "/Users/connorfranc/code/arduboy/pixelgen/out/models/flux2-klein-4b",
+        "negative_prompt": null,
+        "precision": "mlx.core.bfloat16",
+        "prompt": "pixel art, 1-bit monochrome, crisp shapes, no lettering, no text: one-point perspective interior of a dark underwater repair bay, pump housing with a large circular impeller in the left foreground, freight lift opening on the right midground, floor grating and ceiling pipes converging to a distant vanishing point, large solid white machinery masses with black openings, selective Bayer dithering only in the floor and deep shadows, high contrast black and white, no lettering, no text, no words, no numbers, no watermark, no signature, no logo",
+        "quantize": 4,
+        "redux_image_paths": null,
+        "redux_image_strengths": null,
+        "seed": 1104,
+        "steps": 4,
+        "width": 1024
+      },
+      "sidecar_sha256": "7e6537d701057bbcc65c901111caccdc2305ccc2ab76b654df71f87878c06370",
+      "user_prompt": "one-point perspective interior of a dark underwater repair bay, pump housing with a large circular impeller in the left foreground, freight lift opening on the right midground, floor grating and ceiling pipes converging to a distant vanishing point, large solid white machinery masses with black openings, selective Bayer dithering only in the floor and deep shadows, high contrast black and white, no lettering, no text, no words, no numbers, no watermark, no signature, no logo"
+    },
+    "guidance": 1.0,
+    "height": 512,
+    "prompt_template": "pixel art, 1-bit monochrome, crisp shapes, no lettering, no text: {prompt}",
+    "scheduler": "flow_match_euler_discrete",
+    "steps": 4,
+    "unknown": [],
+    "width": 1024
+  },
+  "run_id": "generate-fc851b3f9cfdc1d9",
+  "schema_version": "1.0",
+  "source": {
+    "license": null,
+    "path": "source.png",
+    "pixel_sha256": "82eae9705e461cf7b23be5781140d29eee5fe752f58198ef2e1686ae170866f7",
+    "role": "source",
+    "sha256": "8e60587bae19bf437c0d1c87cf7c321eaa9344537f91ba455cd28d205b4534dd",
+    "source": null
+  },
+  "tail": {
+    "quantization": {
+      "bayer_matrix": [
+        [
+          0,
+          8,
+          2,
+          10
+        ],
+        [
+          12,
+          4,
+          14,
+          6
+        ],
+        [
+          3,
+          11,
+          1,
+          9
+        ],
+        [
+          15,
+          7,
+          13,
+          5
+        ]
+      ],
+      "mode": "bayer",
+      "origin_x": 0,
+      "origin_y": 0,
+      "threshold": 128
+    },
+    "resample": {
+      "mode": "nearest",
+      "target_height": 64,
+      "target_width": 128
+    }
+  }
+}

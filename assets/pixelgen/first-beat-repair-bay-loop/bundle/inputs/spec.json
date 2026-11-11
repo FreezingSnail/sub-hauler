@@ -1,0 +1,212 @@
+{
+  "anchor_prompt": null,
+  "frames": [
+    {
+      "candidate": null,
+      "duration_ms": 300,
+      "frame_id": "frame-0",
+      "phase": "anchor",
+      "seed": 803,
+      "source": {
+        "encoded_bytes": null,
+        "format": "png",
+        "height": 64,
+        "opaque": true,
+        "path": "inputs/sources/000.png",
+        "sha256": "e86c184b73accc651c4d8c228b6e3826df75f8b0c9b4e5677e7602e798d9bdae",
+        "width": 128
+      }
+    },
+    {
+      "candidate": null,
+      "duration_ms": 300,
+      "frame_id": "frame-1",
+      "phase": "quarter-turn",
+      "seed": 804,
+      "source": {
+        "encoded_bytes": null,
+        "format": "png",
+        "height": 64,
+        "opaque": true,
+        "path": "inputs/sources/001.png",
+        "sha256": "eb8917bbf3c8435f6bb5d02f763e0c6a9019908e662042a76c0a3cac37fb8bee",
+        "width": 128
+      }
+    },
+    {
+      "candidate": null,
+      "duration_ms": 300,
+      "frame_id": "frame-2",
+      "phase": "half-turn",
+      "seed": 805,
+      "source": {
+        "encoded_bytes": null,
+        "format": "png",
+        "height": 64,
+        "opaque": true,
+        "path": "inputs/sources/002.png",
+        "sha256": "002ef43f1a483a3ef4515c2b4d031bcdc4fd58b150a518eab42378526037fd2e",
+        "width": 128
+      }
+    },
+    {
+      "candidate": null,
+      "duration_ms": 300,
+      "frame_id": "frame-3",
+      "phase": "three-quarter-turn",
+      "seed": 806,
+      "source": {
+        "encoded_bytes": null,
+        "format": "png",
+        "height": 64,
+        "opaque": true,
+        "path": "inputs/sources/003.png",
+        "sha256": "19d209ba75ad05e8708a3448fa9b42eb7a15fc42f68a8dbbd9de622b93a2b1e6",
+        "width": 128
+      }
+    }
+  ],
+  "layout": null,
+  "layout_id": null,
+  "mask": {
+    "height": 64,
+    "kind": "png",
+    "path": "inputs/mask.png",
+    "rectangles": [
+      {
+        "height": 1,
+        "width": 1,
+        "x": 40,
+        "y": 20
+      },
+      {
+        "height": 1,
+        "width": 9,
+        "x": 36,
+        "y": 21
+      },
+      {
+        "height": 1,
+        "width": 13,
+        "x": 34,
+        "y": 22
+      },
+      {
+        "height": 1,
+        "width": 15,
+        "x": 33,
+        "y": 23
+      },
+      {
+        "height": 1,
+        "width": 17,
+        "x": 32,
+        "y": 24
+      },
+      {
+        "height": 1,
+        "width": 17,
+        "x": 32,
+        "y": 25
+      },
+      {
+        "height": 1,
+        "width": 19,
+        "x": 31,
+        "y": 26
+      },
+      {
+        "height": 1,
+        "width": 19,
+        "x": 31,
+        "y": 27
+      },
+      {
+        "height": 1,
+        "width": 19,
+        "x": 31,
+        "y": 28
+      },
+      {
+        "height": 1,
+        "width": 19,
+        "x": 31,
+        "y": 29
+      },
+      {
+        "height": 1,
+        "width": 21,
+        "x": 30,
+        "y": 30
+      },
+      {
+        "height": 1,
+        "width": 19,
+        "x": 31,
+        "y": 31
+      },
+      {
+        "height": 1,
+        "width": 19,
+        "x": 31,
+        "y": 32
+      },
+      {
+        "height": 1,
+        "width": 19,
+        "x": 31,
+        "y": 33
+      },
+      {
+        "height": 1,
+        "width": 19,
+        "x": 31,
+        "y": 34
+      },
+      {
+        "height": 1,
+        "width": 17,
+        "x": 32,
+        "y": 35
+      },
+      {
+        "height": 1,
+        "width": 17,
+        "x": 32,
+        "y": 36
+      },
+      {
+        "height": 1,
+        "width": 15,
+        "x": 33,
+        "y": 37
+      },
+      {
+        "height": 1,
+        "width": 13,
+        "x": 34,
+        "y": 38
+      },
+      {
+        "height": 1,
+        "width": 9,
+        "x": 36,
+        "y": 39
+      },
+      {
+        "height": 1,
+        "width": 1,
+        "x": 40,
+        "y": 40
+      }
+    ],
+    "sha256": "4412b335a05f1be4ab8f6f93e9b75c392bda04a28f72ffda740db37164543ffe",
+    "width": 128
+  },
+  "master_seed": null,
+  "mode": "assemble",
+  "model": null,
+  "schema_version": "pixelgen.animation/1",
+  "spec_id": "first-beat-repair-bay-loop",
+  "tail": null
+}

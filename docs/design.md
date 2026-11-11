@@ -8,7 +8,7 @@ state. The browser sandbox is retired (available in git history); the shipped
 device path is the cargo-free contract loop described below.
 
 Current implementation note (2026-11-01): the fixed build ships the
-seven-objective campaign and ending, schema 7 single-slot cart checkpoints,
+eight-objective campaign and ending, schema 7 single-slot cart checkpoints,
 ATMlib2FX synth music and the boot introduction. Sonar is retired. The shop,
 currency, job payouts, repeatable freight offers and credit caches were removed;
 campaign deliveries are intrinsic restoration work and all work is untimed.
@@ -16,7 +16,7 @@ campaign deliveries are intrinsic restoration work and all work is untimed.
 ## Active exploration map — 2026-10-25
 
 The device now loads the authored `levels/exploration.json` world, with
-32 rooms, 42 passages, nine equipment gates and four equipment coves. The high
+32 rooms, 42 passages, six equipment gates, three tide sections and four equipment coves. The high
 pressure region is lowest. `make gen` appends its collision/chart/object
 sections and writes the active `src/generated/level.hpp`; legacy seed-4242
 sections and `src/generated/world.hpp` stay unchanged for ABI compatibility.
@@ -32,35 +32,41 @@ the [progression design](progression.md) records the accepted direction.
 
 - The cutaway is the identity of the game. The external sub is the travel view;
   the inside is where cargo, ballast, air, engine, and crew live.
-- Cargo belongs inside the hull. The pilot uses the selected external hull and
-  cargo is represented by coarse internal mass, trim, acceleration, and top
-  speed. Accepting a contract auto-loads four units; the player starts travel
-  with an explicit UNDOCK row action or B.
+- Cargo belongs inside the hull. The pilot always uses the fixed HAULER
+  external hull and cargo is represented by coarse internal mass, trim,
+  acceleration, and top speed. Accepting a contract auto-loads the story cargo; the
+  player starts travel with an explicit UNDOCK row action or B.
 - The internal view should be used at stations and for maintenance work, not
   as a second full-time flight view.
 - Feel is slow, heavy, deliberate. The former packing puzzle is removed rather
   than gated: there is no loading screen, LOAD CARGO row, commit chord, or
   arrangement runtime on device.
 
-## Sub classes
+## Sub class
 
-| Class | Hull | Hold (legacy FX) | Cargo units |
-| --- | ---: | ---: | ---: |
-| MINNOW | 64 px | 6×3 hex bay | 4 |
-| HAULER | 94 px | 11×3 split/notched bay | 4 |
-| LEVIATHAN | 118 px | 14×4 twin-spine bay | 4 |
+The fixed build has one playable hull, HAULER. The title starts NEW VOYAGE
+directly with it; LEFT/RIGHT hull cycling, the B reset action and the LEN
+statistic are retired.
+
+| Class | Hull | Hold (legacy FX) | Status |
+| --- | ---: | ---: | --- |
+| MINNOW | 64 px | 6×3 hex bay | retired; legacy save id 0 only |
+| HAULER | 94 px | 11×3 split/notched bay | playable |
+| LEVIATHAN | 118 px | 14×4 twin-spine bay | retired; legacy save id 2 only |
 
 The `FLEET` browser reference shows three round hulls, external and cutaway:
 - MINNOW: TADPOLE rounded shuttle with bow viewport and landing skids.
 - HAULER: FLATBED rounded freighter with deckhouse and cargo doors.
 - LEVIATHAN: FORTRESS rounded heavy with outrigger pods and deckhouse/gantry.
 
-The device roster keeps the three playable hulls and their pilot art. The
-silhouettes are baked FX sprites with right/left and unloaded/loaded frames,
-shared by title and flight; the host tests retain equivalent procedural shapes
-for exact-pixel checks. The legacy hold dimensions remain only in the shipped
-`cargoBank` FX declaration and generator so flash offsets stay stable; no
-flight or station code reads that bank.
+The device draws only the HAULER silhouette from baked FX sprites with
+right/left and unloaded/loaded frames, shared by title and flight; the host
+tests retain the equivalent procedural shape for exact-pixel checks. The
+retired Minnow/Leviathan pilot sheets and the legacy hold dimensions remain in
+the shipped `cargoBank`/FX declarations only to keep flash offsets stable; no
+flight, title or station code references them. Schema-8 saves keep their hull
+byte at the frozen offset, always write HAULER, and normalize an older
+Minnow/Leviathan byte to HAULER on load without dropping voyage progress.
 
 ## Contract loading loop
 
@@ -69,16 +75,15 @@ flight or station code reads that bank.
 2. Open `WORK`, select an eligible story restoration row or survey lead, and
    press `A`. Acceptance fills the hold with the mission's four coarse cargo
    units, neutralizes trim, and keeps the boat docked. Survey rows open the
-   chart instead. `ABANDON` has its own confirmation; there is no detail step.
+   chart instead. Mandatory story work has no abandon action or confirmation.
 3. Confirm the active board's `UNDOCK` row with `A`, or press `B`, to start
    travel. Docking latch and flight pause are unchanged.
 4. Deliver at the destination station. Work is untimed and unpaid, and a loaded
    arrival resolves exactly once; wrong-berth stops keep the job and load.
-   `ABANDON` clears the hold and contract while docked.
+   Repair cargo completes at the Pump Refuge pump or Freight Yard lift.
 
 The top-level station board is `WORK / UNDOCK`; while carrying a job it is
-`summary / ABANDON / WORK / UNDOCK`, and a service-only berth shows `UNDOCK`
-alone. `WORK` opens the single board with eligible story rows only. There is no
+`summary / WORK / UNDOCK`, and a work/service berth shows `UNDOCK` alone. `WORK` opens the single board with eligible story rows only. There is no
 shop row, no separate offer list, no `LOAD CARGO` row, no job timer or
 late-failure state, and no way to reach a packing screen.
 
@@ -159,12 +164,13 @@ and the old font symbols are absent from the ELF. The external font keeps the
 same 6x8 cell and layout constants, so station rows stay at 7 px pitch and
 128x64 clipping is unchanged.
 
-MINNOW/HAULER/LEVIATHAN are generated 26x8 plus-mask sheets: right/left facing
-and unloaded/loaded. Title and pilot draw the same frames through
-`Blit::draw`, preserving class pixels, mirroring, masking, and draw order.
-`tools/gen_pilot.py` owns the shapes; `tools/gen_sprites.py` packs them into a
-separate include appended after every shipped FX symbol. With `MULTI_HULL=0`,
-only the HAULER sprite call is compiled.
+The generated 26x8 plus-mask sheets still contain the retired
+MINNOW/HAULER/LEVIATHAN art for FX ABI, but only the HAULER frames are drawn.
+Title and pilot share those frames through `Blit::draw`, preserving mirroring,
+masking, and draw order. `tools/gen_pilot.py` owns the shapes;
+`tools/gen_sprites.py` packs them into a separate include appended after every
+shipped FX symbol. The multi-hull selector is retired, so only the HAULER
+sprite call is compiled into device code.
 
 Both additions are append-only. The shipped `cargoBank` stays at offset
 **0x001AC2** with unchanged bytes; the FX payload in
@@ -258,12 +264,12 @@ checkpoint records build/static evidence only.
 From `docs/platform.md`:
 
 - 128×64 SSD1306, 1,024 B framebuffer.
-- 2,560 B SRAM; **914 B** static free in the current full image.
-- 29,696 B flash; current full image **27,230 B flash / 1,646 B static RAM**
-  (2,466 B flash free, 54 B static headroom under the 1,700 B planning ceiling;
-  combined music probe **660 B** and production save chain **702 B** against a
+- 2,560 B SRAM; **910 B** static free in the current full image.
+- 29,696 B flash; current full image **28,702 B flash / 1,650 B static RAM**
+  (994 B flash free, 50 B static headroom under the 1,700 B planning ceiling;
+  combined music probe **626 B** and production save chain **703 B** against a
   600 B target).
-- AVR `game::State` is **90 B**; the compact generated metadata is 88 B PROGMEM; the 128 B cave atlas
+- AVR `game::State` is **77 B**; the compact generated metadata is 88 B PROGMEM; the 128 B cave atlas
   stays in fast program flash.
 - No floats, no heap in device code, no cart reads during display.
 
@@ -281,7 +287,7 @@ their sources.
 - `PILOT` — external sim, stations, contracts, shop. Draws the selected round
   hull; cargo is internal mass, not a stack above the hull.
 - Loading screen — historical packing prototype; not shipped on device.
-- `FLEET` — external and cutaway profiles for the same selected hull.
+- `FLEET` — external and cutaway profiles for the same HAULER hull.
 
 The browser cargo generator is reference-only; the retained FX arrangement
 bank is an ABI artifact, not a runtime plan.
@@ -289,8 +295,9 @@ bank is an ABI artifact, not a runtime plan.
 ## Open questions
 
 - How exactly coarse cargo units map to mass/neutral trim for future balance.
-- Jobs currently require a full four-unit hold so acceptance has a clear
+- Jobs currently require the full story load so acceptance has a clear
   pass/fail. Revisit partial-hold jobs and their effect on top speed, air, and
   routes.
-- Whether the collected survey lens should gain a new effect now that gameplay
-  sonar is retired; today it sets its tool bit but changes no reveal.
+- The survey lens is required for the mandatory Deep Relay expedition and reads
+  the buried lower-right relay; the late expedition is part of the linear
+  BEACON → DEEP RELAY → HOME route.

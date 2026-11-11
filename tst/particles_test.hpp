@@ -173,6 +173,143 @@ inline void ParticlesSuite(TestRunner &runner) {
         runner.add(test);
     }
 
+    static_assert(game::kHardFloorAirCost == 5, "floor slam cost is fixed at five air units");
+
+    {
+        Test test("hard descending floor impact spends exactly five air");
+        Fixture fake;
+        for (int16_t tx = 0; tx < world::TILES_X; ++tx)
+            fake.setTile(tx, 12, true);
+
+        game::State state;
+        game::resetWorld(state);
+        place(state, 104, 92);
+        state.air = game::airCapacity(state);
+        state.vyQ8 = game::kMaxVyQ8;
+
+        int16_t airBefore = state.air;
+        bool hit = false;
+        for (uint8_t tick = 0; tick < 40 && !hit; ++tick) {
+            airBefore = state.air;
+            game::stepWorld(state, idle(), fake);
+            hit = state.impactAxis == 2 && game::hardWallImpact(state);
+        }
+        test.assertTrue(hit, "hard descending floor impact recorded");
+        test.assertEqual(state.air, static_cast<int16_t>(airBefore - game::kHardFloorAirCost), "exactly five units spent once");
+        runner.add(test);
+    }
+
+    {
+        Test test("soft floor contact spends no air");
+        Fixture fake;
+        for (int16_t tx = 0; tx < world::TILES_X; ++tx)
+            fake.setTile(tx, 12, true);
+
+        game::State state;
+        game::resetWorld(state);
+        place(state, 104, 92);
+        state.air = game::airCapacity(state);
+        state.vyQ8 = static_cast<int16_t>(game::kHardImpactSpeedQ8 - 1);
+
+        const int16_t airBefore = state.air;
+        bool hit = false;
+        for (uint8_t tick = 0; tick < 40 && !hit; ++tick) {
+            game::stepWorld(state, idle(), fake);
+            hit = state.impactAxis == 2;
+        }
+        test.assertTrue(hit, "soft floor contact recorded");
+        test.assertTrue(!game::hardWallImpact(state), "contact stays below the hard threshold");
+        test.assertEqual(state.air, airBefore, "soft scrape is free");
+        runner.add(test);
+    }
+
+    {
+        Test test("hard ceiling impact spends no air");
+        Fixture fake;
+        for (int16_t tx = 0; tx < world::TILES_X; ++tx)
+            fake.setTile(tx, 0, true);
+
+        game::State state;
+        game::resetWorld(state);
+        place(state, 104, 12);
+        state.air = game::airCapacity(state);
+        state.vyQ8 = static_cast<int16_t>(-game::kMaxVyQ8);
+
+        const int16_t airBefore = state.air;
+        game::stepWorld(state, idle(), fake);
+        test.assertEqual(state.impactAxis, 2, "ceiling contact is a vertical impact");
+        test.assertTrue(game::hardWallImpact(state), "ceiling speed clears the hard threshold");
+        test.assertEqual(state.air, airBefore, "ceiling hit is free");
+        runner.add(test);
+    }
+
+    {
+        Test test("hard side impact spends no air");
+        Fixture fake;
+        for (int16_t ty = 0; ty < world::TILES_Y; ++ty)
+            fake.setTile(14, ty, true);
+
+        game::State state;
+        game::resetWorld(state);
+        place(state, 99, 80);
+        state.air = game::airCapacity(state);
+        state.vxQ8 = game::kMaxVxBaseQ8;
+        state.xFrac = static_cast<int16_t>(game::kSubpixelOne - 1);
+
+        const int16_t airBefore = state.air;
+        game::stepWorld(state, idle(), fake);
+        test.assertEqual(state.impactAxis, 1, "side contact is a horizontal impact");
+        test.assertTrue(game::hardWallImpact(state), "side speed clears the hard threshold");
+        test.assertEqual(state.air, airBefore, "side hit is free");
+        runner.add(test);
+    }
+
+    {
+        Test test("blocked gate contact spends no air");
+        Fixture fake;   // empty terrain: the closed gate alone blocks
+        const auto gate = exploration_data::gate(0);
+
+        game::State state;
+        game::resetWorld(state);
+        place(state, static_cast<int16_t>(gate.x + gate.w / 2), static_cast<int16_t>(gate.y - game::kHullHalfH - 1));
+        state.tools = 0;
+        state.openGates = 0;
+        state.air = game::airCapacity(state);
+        state.vyQ8 = game::kMaxVyQ8;
+
+        const int16_t airBefore = state.air;
+        bool hit = false;
+        for (uint8_t tick = 0; tick < 40 && !hit; ++tick) {
+            game::stepWorld(state, idle(), fake);
+            hit = state.impactAxis == 4;
+        }
+        test.assertTrue(hit, "closed gate records its dedicated impact axis");
+        test.assertEqual(state.air, airBefore, "gate block is free");
+        runner.add(test);
+    }
+
+    {
+        Test test("hard floor impact floors air at zero");
+        Fixture fake;
+        for (int16_t tx = 0; tx < world::TILES_X; ++tx)
+            fake.setTile(tx, 12, true);
+
+        game::State state;
+        game::resetWorld(state);
+        place(state, 104, 92);
+        state.air = 3;
+        state.vyQ8 = game::kMaxVyQ8;
+
+        bool hit = false;
+        for (uint8_t tick = 0; tick < 40 && !hit; ++tick) {
+            game::stepWorld(state, idle(), fake);
+            hit = state.impactAxis == 2 && game::hardWallImpact(state);
+        }
+        test.assertTrue(hit, "hard descending floor impact recorded");
+        test.assertEqual(state.air, 0, "tank never goes negative");
+        runner.add(test);
+    }
+
     {
         Test test("pilot-view particles are clipped to the visible buffer");
         game::State state;

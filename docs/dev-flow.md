@@ -7,8 +7,17 @@ hardware and resource facts live in `docs/platform.md`.
 ## Inner loop vs full gate
 
 - Host: `make test`; tooling: `make test-tools`; docs: `make docs-check`.
+- Developer map inspection: `make debug` builds `DEBUG=1` and launches Ardens.
+  In that image, A on the chart toggles world collision off/on, and holding A
+  in flight moves the boat at 3x position speed while air, currents, docking
+  and the voyage clock keep production pacing. The release build and output
+  directories are unchanged.
+- Ardens save continuity: `make save-migrate SAVE=/path/absim_<hash>.save`
+  copies an existing save under the current image's key. Add `DEBUG=1` to
+  migrate to the debug image. The source save and its payload are untouched;
+  the new key name is printed. The schema-7 save layout is unchanged.
 - One device suite while iterating: `make fxtest FXTEST_ONLY=test_boot`.
-- Full device gate: `make fxtest` compiles the 14 default fixed-build suites
+- Full device gate: `make fxtest` compiles the 15 default fixed-build suites
   and requires an exact bare `P` marker from each. It excludes the longer
   `test_flight` probe and the emulator-only runtime-page suite.
   `fxtest-save-chain`, `fxtest-save-runtime-page` and `fxtest-flight` are
@@ -34,6 +43,10 @@ hardware and resource facts live in `docs/platform.md`.
   append new entries; never reorder or remove one after it has shipped.
 - Stage generated sets together after a regen. Never commit a half-generated
   set.
+- Story prose, scene order and image-row names live in `story/scenes.json`;
+  the canonical Piskel artwork sheet is `story/art.png`. See `story/README.md`.
+  Edit that source and run `make gen`; do not add shipping card copy to the HTML
+  preview or generator. Preview with `docs/story-sketchbook.html`.
 - Tests read generated symbolic constants, never literal record indices.
 
 ## Release runtime and uploader entry

@@ -212,8 +212,8 @@ inline void WorldSuite(TestRunner &runner) {
 
     {
         Test test("generated service berth and survey metadata stays symbolic");
-        test.assertEqual(world::berthCount(), 6, "four freight berths plus two service berths");
-        test.assertEqual(world::serviceBerthCount(), 2, "both restoration berths generated");
+        test.assertEqual(world::berthCount(), 8, "four freight berths plus four work/service berths");
+        test.assertEqual(world::serviceBerthCount(), 4, "both restoration berths and both work sites generated");
         test.assertEqual(world::surveyCount(), 2, "both survey rings generated");
 
         world::Berth berth;
@@ -230,9 +230,17 @@ inline void WorldSuite(TestRunner &runner) {
         test.assertEqual(berth.id, world::BERTH_PUMP_REFUGE, "Pump Refuge id through berthInfo");
         test.assertTrue(world::berthInfo(world::BERTH_LOWER_GANTRY, berth), "berthInfo resolves Lower Gantry");
         test.assertEqual(berth.milestone, 4, "Lower Gantry requires the LIFT bit");
+        test.assertTrue(world::berthInfo(world::BERTH_FREIGHT_YARD, berth), "berthInfo resolves the Freight Yard lift");
+        test.assertEqual(berth.milestone, 4, "Freight Yard is restored by the LIFT bit");
+        test.assertEqual(berth.tile_x, 271, "Freight Yard dock tile x");
+        test.assertEqual(berth.tile_y, 77, "Freight Yard dock tile y");
+        test.assertTrue(world::berthInfo(world::BERTH_DEEP_RELAY, berth), "berthInfo resolves the Deep Relay");
+        test.assertEqual(berth.milestone, 32, "Deep Relay is unlocked by the expedition bit");
+        test.assertEqual(berth.tile_x, 249, "Deep Relay dock tile x");
+        test.assertEqual(berth.tile_y, 153, "Deep Relay dock tile y");
         test.assertTrue(world::berthInfo(2, berth), "berthInfo resolves a freight settlement");
         test.assertEqual(berth.milestone, 0, "freight berths have no restoration milestone");
-        test.assertTrue(!world::berthInfo(6, berth), "no phantom berth id");
+        test.assertTrue(!world::berthInfo(8, berth), "no phantom berth id");
 
         world::Survey survey;
         test.assertTrue(world::surveyInfo(0, survey), "pump survey metadata");

@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "raster_source_tool": "image_gen.imagegen",
+  "raster_source_seed": null,
+  "seed_note": "Image-generation tool does not expose a seed. Numeric master seeds in native motion recipes identify deterministic authored poses; they are not claimed as raster-generation seeds.",
+  "reference": "assets/pixelgen/story-motion-v5/delivery-loading/bundle/frames/000.png",
+  "transparent_background": false,
+  "native_parts": "author.py creates isolated cargo/machinery layers and clean plates from pixelgen-converted anchors. pixelgen motion owns frame compositing, derived masks, assembly, and replay.",
+  "human_review": "unreviewed",
+  "prompts": {
+    "tidewall-filters": "Create a monochrome 1-bit pixel art scene for a 128x64 Arduboy game. Preserve reference submarine design exactly: rounded white hull, three black circular portholes in row, black belly. Scene is Tidewall's enclosed submerged moonpool dock, no people, no text. Submarine sits lower left beside a loading cradle on right with two prominent rectangular pleated filter cartridges (parallel black grooves and white border). Open dorsal hold; cargo rests dockside beside it, never outside hull in water. Quiet black background, sparse structural outlines, selective dither. Crisp readable pixels. No surface, sky, or waterline.",
+    "deep-anchor-dispatch": "Deep Anchor's enclosed deep-underwater dispatch loading bay, imposing angular buttresses and massive pipe on right. Small rounded white submarine lower left with exactly three black circular portholes in a row and black belly, preserve reference hull design. Open dorsal hold beside dock cradle. Cradle holds a sealed rectangular physical records dispatch case with a clasp and small stacked return-supply crates. No people, letters, labels or text. No surface or waterline. Quiet black background, sparse white outlines, selective dither, crisp high contrast 1-bit pixel art for 128x64 Arduboy, cargo beside open hold or inside hull.",
+    "cormorant-core": "Cormorant's enclosed submerged industrial loading bay. Small rounded white submarine lower left, exactly three black circular portholes in row and black belly, preserve reference hull. Open dorsal cargo hold beside cradle on right. Cradle holds one short upright cylindrical beacon core with white ridged ends and dark central band, overhead gantry cable attaches to core. No people, no letters or labels, no text. Fully underwater enclosed bay, no waterline. Quiet black background, sparse white outlines, selective dither, crisp high contrast monochrome 1-bit pixel art for 128x64 Arduboy.",
+    "restoration-ready": "Completed underwater joint restoration, neutral shared machinery service bay with two working mechanisms: left intact pump wheel in pipe housing, right intact cable winch on small gantry; central rounded white submarine with exactly three black circular portholes and black belly, preserve reference hull. All machinery neatly assembled and operational, no broken pieces, no repair requests, no people, no text or letters. Enclosed submerged service bay, no surface or waterline. Quiet black background, white large readable silhouettes, selective dither. Crisp high contrast monochrome 1-bit pixel art composed for 128x64 Arduboy."
+  },
+  "local_generation_attempt": {
+    "seed": 73101,
+    "published": false,
+    "failure": "ImportError: [metal::load_device] No Metal device available.",
+    "note": "Doctor reported ready:true, but the sandbox could not access the Metal GPU. Failed attempts remain transient; no failed asset is packaged. Existing sibling pixelgen CLI used because installed CLI lacks animate. No installs or model downloads."
+  }
+}

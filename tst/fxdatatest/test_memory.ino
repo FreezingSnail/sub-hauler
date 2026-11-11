@@ -12,7 +12,7 @@
 //   4. Re-enable interrupts and run kRepresentativeFrames of the normal
 //      poll/update/render/present path, including FX cart reads. The M6 chart
 //      path, the M7 current and particle frames,
-//      the M8 title/all-hull art path, and the cargo-free contract/undock path
+//      the fixed HAULER title art path, and the cargo-free contract/undock path
 //      follow in the same measured window.
 //   5. Scan upward from bssEnd + 1 for the lowest byte that is no longer
 //      0xA5. That address is the stack high-water mark.
@@ -42,7 +42,6 @@
 #include "src/station.hpp"
 #include "src/station_view.hpp"
 #include "src/particles.hpp"
-#include "src/roster_view.hpp"
 #include "src/campaign.hpp"
 #include "src/campaign_view.hpp"
 #include "src/work_view.hpp"
@@ -55,10 +54,10 @@ extern "C" char __bss_end;
 
 Arduboy2Base arduboy;
 
-// The full AVR state budget is pinned here at 90 B after the gl1.3/gl1.4
-// compaction and the economy strip: diagnostic counters, job clocks, offers,
-// rewards and the retired shop fields are gone.
-static_assert(sizeof(game::State) == 90, "full campaign+save run state is 90 bytes on AVR");
+// The full AVR state budget is pinned here at 77 B after the gl1.3/gl1.4
+// compaction, the economy strip and schema 8's pending-story byte: diagnostic
+// counters, job clocks, offers, rewards and the retired shop fields are gone.
+static_assert(sizeof(game::State) == 77, "full campaign+save run state is 77 bytes on AVR");
 
 // The firmware owns the persistent explored set statically. Keeping the probe's
 // copy here (rather than as a local in the measured path) charges those 257 B
@@ -95,13 +94,14 @@ __attribute__((noinline)) void runRepresentativePath() {
     world::clearCache(cache);
     game::resetWorld(state);
 
-    // Title path: draw every class silhouette through the real selection screen
-    // (no cart reads), then fly the largest body for the pilot frames below.
-    for (uint8_t index = 0; index < roster::kClassCount; ++index) {
-        roster_view::draw(static_cast<uint8_t>(roster::classAt(index)));
-        FX::display(CLEAR_BUFFER);
-    }
-    state.hullClass = static_cast<uint8_t>(roster::kLeviathan);
+    // Title path: draw the baked HAULER title panel (no cart reads), then fly
+    // the same body for the pilot frames below.
+    voyage_flow::BootStatus titleStatus;
+    titleStatus.state = voyage_flow::kBootValid;
+    titleStatus.hasValid = true;
+    voyage_view::drawTitle(titleStatus, voyage_view::kTitleContinue, voyage_view::kTitleMenu);
+    FX::display(CLEAR_BUFFER);
+    state.hullClass = static_cast<uint8_t>(roster::kHauler);
 
     for (uint16_t frame = 0; frame < kRepresentativeFrames; ++frame) {
         arduboy.pollButtons();
@@ -254,14 +254,14 @@ __attribute__((noinline)) void runRepresentativePath() {
 
     // Title, save-failure and recovery prompts: each is now a baked panel, but
     // the stack window still needs the real panel burst plus the surrounding
-    // hull selection code.
+    // fixed-hull title code.
     voyage_flow::BootStatus boot;
     boot.state = voyage_flow::kBootValid;
     boot.hasValid = true;
 
-    voyage_view::drawTitle(boot, voyage_view::kTitleContinue, state.hullClass, voyage_view::kTitleMenu);
+    voyage_view::drawTitle(boot, voyage_view::kTitleContinue, voyage_view::kTitleMenu);
     FX::display(CLEAR_BUFFER);
-    voyage_view::drawTitle(boot, voyage_view::kTitleNewVoyage, state.hullClass, voyage_view::kTitleConfirmReplace);
+    voyage_view::drawTitle(boot, voyage_view::kTitleNewVoyage, voyage_view::kTitleConfirmReplace);
     FX::display(CLEAR_BUFFER);
     voyage_view::drawSaveFailed(0);
     FX::display(CLEAR_BUFFER);

@@ -1,0 +1,229 @@
+{
+  "assets": [
+    {
+      "license": null,
+      "path": "inputs/config.json",
+      "pixel_sha256": null,
+      "role": "config",
+      "sha256": "887b05dc40de21602ee7dfac659e48750ad9deaa94bb8028e3a1c41d677ca830",
+      "source": null
+    }
+  ],
+  "backend": {
+    "backend": "mflux",
+    "backend_version": "0.24.0",
+    "model_revision": "7ee1b3aa8178a1240050490072196a57da2bf2a9",
+    "python_version": "3.14.10",
+    "runtime": "mflux-generate-flux2",
+    "runtime_version": "0.24.0",
+    "unknown": {},
+    "weight_hashes": []
+  },
+  "environment": {
+    "core_lock_sha256": "21d731c34e8abfc6f3bab153e5b9d407ac16d02fb9a36b85704aa3c667b905c6",
+    "hardware": "arm64",
+    "os": "Darwin 25.6.0",
+    "python_version": "3.14.10",
+    "runtime_lock_sha256": "0b2a7dd5a28eb40f4b7b85111d1cb3050b9aba3b873b0e1d7976da258c652f4a",
+    "runtime_python_version": "3.14.10",
+    "uv_version": "uv 0.13.6 (Homebrew 2026-10-26 aarch64-apple-darwin)"
+  },
+  "failure": null,
+  "final": {
+    "license": null,
+    "path": "final.png",
+    "pixel_sha256": "06f35d210ff9775f7a9d3aa9e205e16b0bd240445f2d2753a40314387724eb52",
+    "role": "final",
+    "sha256": "547a0b48931235589e937db0efd50e49d47307e1106f6b66fbb1619dfe8e0468",
+    "source": null
+  },
+  "layout": null,
+  "mode": "generate",
+  "preview": {
+    "license": null,
+    "path": "preview.png",
+    "pixel_sha256": "43aa7a575ac2f57eb4e76021dce9f9ab9fdce78a9988e096f6cb5aff78d0822c",
+    "role": "preview",
+    "sha256": "944dd79995bc3455110877301c09d227582c15e4fa06149cdea92c61f6783460",
+    "source": null
+  },
+  "reproducibility": {
+    "conversion_replay": "not-performed",
+    "fresh_generation": "not-attempted"
+  },
+  "request": {
+    "guidance": null,
+    "height": 512,
+    "layout": null,
+    "layout_id": null,
+    "model": {
+      "name": "Runpod/FLUX.2-klein-4B-mflux-4bit",
+      "revision": "7ee1b3aa8178a1240050490072196a57da2bf2a9",
+      "source": null,
+      "weight_hashes": []
+    },
+    "prompt": "underwater scene, small submarine facing right beside a large broken shipwreck on the right, kelp forest and rocks along the seabed, a few fish silhouettes, pixel art, high contrast black and white, no lettering, no text, no words, no numbers, no watermark, no signature, no logo",
+    "prompt_template": "pixel art, 1-bit monochrome, crisp shapes, no lettering, no text: {prompt}",
+    "scheduler": null,
+    "schema_version": "1.0",
+    "seed": 42,
+    "steps": 4,
+    "tail": {
+      "quantization": {
+        "bayer_matrix": [
+          [
+            0,
+            8,
+            2,
+            10
+          ],
+          [
+            12,
+            4,
+            14,
+            6
+          ],
+          [
+            3,
+            11,
+            1,
+            9
+          ],
+          [
+            15,
+            7,
+            13,
+            5
+          ]
+        ],
+        "mode": "bayer",
+        "origin_x": 0,
+        "origin_y": 0,
+        "threshold": 128
+      },
+      "resample": {
+        "mode": "nearest",
+        "target_height": 64,
+        "target_width": 128
+      }
+    },
+    "width": 1024
+  },
+  "resolved_generation": {
+    "defaults": {
+      "backend_command": "mflux-generate-flux2",
+      "base_model": null,
+      "controlnet_image_path": null,
+      "controlnet_strength": null,
+      "created_at": "2026-11-01T01:54:14.447935",
+      "depth_image_path": null,
+      "generation_time_seconds": 20.89,
+      "guidance": 1.0,
+      "image_path": null,
+      "image_paths": null,
+      "lora_paths": null,
+      "lora_scales": null,
+      "masked_image_path": null,
+      "mflux_version": "0.24.0",
+      "model": "black-forest-labs/FLUX.2-klein-4B",
+      "model_path": "/Users/connorfranc/code/arduboy/pixelgen/out/models/flux2-klein-4b",
+      "model_revision": "7ee1b3aa8178a1240050490072196a57da2bf2a9",
+      "negative_prompt": null,
+      "precision": "mlx.core.bfloat16",
+      "prompt": "pixel art, 1-bit monochrome, crisp shapes, no lettering, no text: underwater scene, small submarine facing right beside a large broken shipwreck on the right, kelp forest and rocks along the seabed, a few fish silhouettes, pixel art, high contrast black and white, no lettering, no text, no words, no numbers, no watermark, no signature, no logo",
+      "quantize": 4,
+      "redux_image_paths": null,
+      "redux_image_strengths": null,
+      "runtime_python_version": "3.14.10",
+      "scheduler": "flow_match_euler_discrete",
+      "scheduler_source": "mflux 0.24.0 flux2_generate.py hardcodes it",
+      "seed": 42,
+      "sidecar": {
+        "base_model": null,
+        "controlnet_image_path": null,
+        "controlnet_strength": null,
+        "created_at": "2026-11-01T01:54:14.447935",
+        "depth_image_path": null,
+        "generation_time_seconds": 20.89,
+        "guidance": 1.0,
+        "height": 512,
+        "image_path": null,
+        "image_paths": null,
+        "image_strength": null,
+        "lora_paths": null,
+        "lora_scales": null,
+        "masked_image_path": null,
+        "mflux_version": "0.24.0",
+        "model": "black-forest-labs/FLUX.2-klein-4B",
+        "model_path": "/Users/connorfranc/code/arduboy/pixelgen/out/models/flux2-klein-4b",
+        "negative_prompt": null,
+        "precision": "mlx.core.bfloat16",
+        "prompt": "pixel art, 1-bit monochrome, crisp shapes, no lettering, no text: underwater scene, small submarine facing right beside a large broken shipwreck on the right, kelp forest and rocks along the seabed, a few fish silhouettes, pixel art, high contrast black and white, no lettering, no text, no words, no numbers, no watermark, no signature, no logo",
+        "quantize": 4,
+        "redux_image_paths": null,
+        "redux_image_strengths": null,
+        "seed": 42,
+        "steps": 4,
+        "width": 1024
+      },
+      "sidecar_sha256": "4048bda400502e8f973803337737bbf3ecbaca66eca6bd40f293ba3e33f91e79",
+      "user_prompt": "underwater scene, small submarine facing right beside a large broken shipwreck on the right, kelp forest and rocks along the seabed, a few fish silhouettes, pixel art, high contrast black and white, no lettering, no text, no words, no numbers, no watermark, no signature, no logo"
+    },
+    "guidance": 1.0,
+    "height": 512,
+    "prompt_template": "pixel art, 1-bit monochrome, crisp shapes, no lettering, no text: {prompt}",
+    "scheduler": "flow_match_euler_discrete",
+    "steps": 4,
+    "unknown": [],
+    "width": 1024
+  },
+  "run_id": "generate-bd095bc4b3c21fcd",
+  "schema_version": "1.0",
+  "source": {
+    "license": null,
+    "path": "source.png",
+    "pixel_sha256": "13a3b655e1a5008afdfa3ef4f6acac52d86a1184a87370cab0df736734a4afb0",
+    "role": "source",
+    "sha256": "f0819ab18a694ba4a20b8e81c26c3edbb687b6bfde1a1b7bdeaa6e4c180e1e81",
+    "source": null
+  },
+  "tail": {
+    "quantization": {
+      "bayer_matrix": [
+        [
+          0,
+          8,
+          2,
+          10
+        ],
+        [
+          12,
+          4,
+          14,
+          6
+        ],
+        [
+          3,
+          11,
+          1,
+          9
+        ],
+        [
+          15,
+          7,
+          13,
+          5
+        ]
+      ],
+      "mode": "bayer",
+      "origin_x": 0,
+      "origin_y": 0,
+      "threshold": 128
+    },
+    "resample": {
+      "mode": "nearest",
+      "target_height": 64,
+      "target_width": 128
+    }
+  }
+}

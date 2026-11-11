@@ -1,0 +1,98 @@
+{
+  "anchor_prompt": null,
+  "frames": [
+    {
+      "candidate": null,
+      "duration_ms": 300,
+      "frame_id": "frame-0",
+      "phase": "start",
+      "seed": 701,
+      "source": {
+        "encoded_bytes": null,
+        "format": "png",
+        "height": 64,
+        "opaque": true,
+        "path": "inputs/sources/000.png",
+        "sha256": "ec0ae539ac898e67138eddc45bcbd0a7debab1f310f5b111c1a07988b1402738",
+        "width": 128
+      }
+    },
+    {
+      "candidate": null,
+      "duration_ms": 300,
+      "frame_id": "frame-1",
+      "phase": "step-1",
+      "seed": 702,
+      "source": {
+        "encoded_bytes": null,
+        "format": "png",
+        "height": 64,
+        "opaque": true,
+        "path": "inputs/sources/001.png",
+        "sha256": "dd303818e4c75f589b0e58799adbbd12e8a851b5f0fc10882adc57b67ea96c68",
+        "width": 128
+      }
+    },
+    {
+      "candidate": null,
+      "duration_ms": 300,
+      "frame_id": "frame-2",
+      "phase": "step-2",
+      "seed": 703,
+      "source": {
+        "encoded_bytes": null,
+        "format": "png",
+        "height": 64,
+        "opaque": true,
+        "path": "inputs/sources/002.png",
+        "sha256": "53742bf0e886b28d324fa4410c5ee47c9b8af98862066a183278c2a89f62c6ae",
+        "width": 128
+      }
+    },
+    {
+      "candidate": null,
+      "duration_ms": 300,
+      "frame_id": "frame-3",
+      "phase": "step-3",
+      "seed": 704,
+      "source": {
+        "encoded_bytes": null,
+        "format": "png",
+        "height": 64,
+        "opaque": true,
+        "path": "inputs/sources/003.png",
+        "sha256": "f02a5326e49262c8d56adac429506cb8da839d2aaf6588a11436ae1901475695",
+        "width": 128
+      }
+    }
+  ],
+  "layout": null,
+  "layout_id": null,
+  "mask": {
+    "height": 64,
+    "kind": "png",
+    "path": "inputs/mask.png",
+    "rectangles": [
+      {
+        "height": 40,
+        "width": 48,
+        "x": 10,
+        "y": 10
+      },
+      {
+        "height": 40,
+        "width": 50,
+        "x": 68,
+        "y": 10
+      }
+    ],
+    "sha256": "72bedfe3996919303440ee641867d54df6ba64af60d88c45193145ac2f19a57b",
+    "width": 128
+  },
+  "master_seed": null,
+  "mode": "assemble",
+  "model": null,
+  "schema_version": "pixelgen.animation/1",
+  "spec_id": "first-beat-grow-tanks-loop",
+  "tail": null
+}

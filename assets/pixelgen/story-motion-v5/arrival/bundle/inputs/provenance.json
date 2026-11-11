@@ -1,0 +1,280 @@
+{
+  "assets": [
+    {
+      "height": 64,
+      "path": "background.png",
+      "role": "background",
+      "sha256": "98a3ca8f0aa3ae8568ad0109430df2648e850ca436ecaeef0e9bca012f4e23a2",
+      "width": 128
+    },
+    {
+      "height": 5,
+      "path": "layers/bubble-0-matte.png",
+      "role": "layer:bubble-0:matte",
+      "sha256": "f71596d08b54af5b0d40285c1b6ad0aabdac8160c0929eb6eee76dd85755740e",
+      "width": 5
+    },
+    {
+      "height": 5,
+      "path": "layers/bubble-0.png",
+      "role": "layer:bubble-0:source",
+      "sha256": "12c754398b8f352f4899b3620c8fad335cf1f689d26d774d592c94c897b4c882",
+      "width": 5
+    },
+    {
+      "height": 4,
+      "path": "layers/bubble-1-matte.png",
+      "role": "layer:bubble-1:matte",
+      "sha256": "91b5a5911ee6352f7085211559250d811cd0884139fd94088089d557cbc636c5",
+      "width": 4
+    },
+    {
+      "height": 4,
+      "path": "layers/bubble-1.png",
+      "role": "layer:bubble-1:source",
+      "sha256": "8753d3956f0be0693573b49dd12e0dd10f984c7d2d593e85a576b388014b2596",
+      "width": 4
+    },
+    {
+      "height": 41,
+      "path": "layers/original-pressure-hull-matte.png",
+      "role": "layer:original-pressure-hull:matte",
+      "sha256": "6cf30db7258faaca26113944f6c0e045afe5d8979e2db69f0ff2315ad2d26f2d",
+      "width": 63
+    },
+    {
+      "height": 41,
+      "path": "layers/original-pressure-hull.png",
+      "role": "layer:original-pressure-hull:source",
+      "sha256": "402abf51fc8d0a43c83e8d7a8fafe60c806d8689042da85b9f32abdb6dee5851",
+      "width": 63
+    }
+  ],
+  "background": {
+    "path": "background.png",
+    "sha256": "98a3ca8f0aa3ae8568ad0109430df2648e850ca436ecaeef0e9bca012f4e23a2"
+  },
+  "canvas": {
+    "depth": 1,
+    "height": 64,
+    "width": 128
+  },
+  "expected_mask_sha256": null,
+  "format": "pixelgen.motion.provenance/1",
+  "frame_sha256": [
+    "4906cee4867e8b32b4096eb2344fd28ab5d735c58e3d7ff0628ff7a264767a52",
+    "9a1f4994f4ea73f51d44d52867d8f56d9441cbb4bce865eb395c0830b8904cee",
+    "848e883e7b8c9ce935044a39b0439f38c2cdaaa95f3410f216f74652cc332ebc",
+    "e4a92d2b5ce04ac39abb95686e56e4c8c17e2d215e9221c6338daba66329a4b0"
+  ],
+  "layers": [
+    {
+      "clip": "error",
+      "layer_id": "original-pressure-hull",
+      "matte": {
+        "path": "layers/original-pressure-hull-matte.png",
+        "sha256": "6cf30db7258faaca26113944f6c0e045afe5d8979e2db69f0ff2315ad2d26f2d"
+      },
+      "motion_bounds": null,
+      "origin": {
+        "x": 4,
+        "y": 4
+      },
+      "pivot": null,
+      "poses": {},
+      "role": "part",
+      "source": {
+        "path": "layers/original-pressure-hull.png",
+        "sha256": "402abf51fc8d0a43c83e8d7a8fafe60c806d8689042da85b9f32abdb6dee5851"
+      },
+      "track": [
+        {
+          "pose": null,
+          "translate": {
+            "x": 0,
+            "y": 0
+          },
+          "turn_16ths": 0,
+          "visible": true
+        },
+        {
+          "pose": null,
+          "translate": {
+            "x": 0,
+            "y": -1
+          },
+          "turn_16ths": 0,
+          "visible": true
+        },
+        {
+          "pose": null,
+          "translate": {
+            "x": 0,
+            "y": 0
+          },
+          "turn_16ths": 0,
+          "visible": true
+        },
+        {
+          "pose": null,
+          "translate": {
+            "x": 0,
+            "y": 1
+          },
+          "turn_16ths": 0,
+          "visible": true
+        }
+      ],
+      "z": 10
+    },
+    {
+      "clip": "error",
+      "layer_id": "bubble-0",
+      "matte": {
+        "path": "layers/bubble-0-matte.png",
+        "sha256": "f71596d08b54af5b0d40285c1b6ad0aabdac8160c0929eb6eee76dd85755740e"
+      },
+      "motion_bounds": null,
+      "origin": {
+        "x": 4,
+        "y": 54
+      },
+      "pivot": null,
+      "poses": {},
+      "role": "part",
+      "source": {
+        "path": "layers/bubble-0.png",
+        "sha256": "12c754398b8f352f4899b3620c8fad335cf1f689d26d774d592c94c897b4c882"
+      },
+      "track": [
+        {
+          "pose": null,
+          "translate": {
+            "x": 0,
+            "y": 0
+          },
+          "turn_16ths": 0,
+          "visible": true
+        },
+        {
+          "pose": null,
+          "translate": {
+            "x": 1,
+            "y": -3
+          },
+          "turn_16ths": 0,
+          "visible": true
+        },
+        {
+          "pose": null,
+          "translate": {
+            "x": 0,
+            "y": -6
+          },
+          "turn_16ths": 0,
+          "visible": true
+        },
+        {
+          "pose": null,
+          "translate": {
+            "x": 1,
+            "y": -9
+          },
+          "turn_16ths": 0,
+          "visible": true
+        }
+      ],
+      "z": 20
+    },
+    {
+      "clip": "error",
+      "layer_id": "bubble-1",
+      "matte": {
+        "path": "layers/bubble-1-matte.png",
+        "sha256": "91b5a5911ee6352f7085211559250d811cd0884139fd94088089d557cbc636c5"
+      },
+      "motion_bounds": null,
+      "origin": {
+        "x": 81,
+        "y": 20
+      },
+      "pivot": null,
+      "poses": {},
+      "role": "part",
+      "source": {
+        "path": "layers/bubble-1.png",
+        "sha256": "8753d3956f0be0693573b49dd12e0dd10f984c7d2d593e85a576b388014b2596"
+      },
+      "track": [
+        {
+          "pose": null,
+          "translate": {
+            "x": 1,
+            "y": -3
+          },
+          "turn_16ths": 0,
+          "visible": true
+        },
+        {
+          "pose": null,
+          "translate": {
+            "x": 0,
+            "y": -6
+          },
+          "turn_16ths": 0,
+          "visible": true
+        },
+        {
+          "pose": null,
+          "translate": {
+            "x": 1,
+            "y": -9
+          },
+          "turn_16ths": 0,
+          "visible": true
+        },
+        {
+          "pose": null,
+          "translate": {
+            "x": 0,
+            "y": 0
+          },
+          "turn_16ths": 0,
+          "visible": true
+        }
+      ],
+      "z": 30
+    }
+  ],
+  "layout": null,
+  "layout_id": null,
+  "mask_pixels": 2817,
+  "mask_sha256": "cc3de3f5d950723535f3a8ed90b0ce13e4d52348513c437755464d7ca65e2b94",
+  "master_seed": 4100,
+  "phases": [
+    {
+      "duration_ms": 300,
+      "phase_id": "pose-0",
+      "seed": 4100
+    },
+    {
+      "duration_ms": 300,
+      "phase_id": "pose-1",
+      "seed": 4101
+    },
+    {
+      "duration_ms": 300,
+      "phase_id": "pose-2",
+      "seed": 4102
+    },
+    {
+      "duration_ms": 300,
+      "phase_id": "pose-3",
+      "seed": 4103
+    }
+  ],
+  "recipe_id": "story-v5-arrival",
+  "recipe_sha256": "50fabe6e31eee918755c1de8ed7bffe0268e77ce1c6b532c86de2d63b1e89400",
+  "renderer": "pixelgen.motion/1",
+  "revision": 2
+}

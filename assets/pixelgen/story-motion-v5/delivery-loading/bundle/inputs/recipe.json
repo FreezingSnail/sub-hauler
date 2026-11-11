@@ -1,0 +1,83 @@
+{
+  "schema_version": "pixelgen.motion/1",
+  "recipe_id": "story-v5-delivery-loading",
+  "revision": 2,
+  "canvas": {
+    "width": 128,
+    "height": 64,
+    "depth": 1
+  },
+  "background": {
+    "path": "background.png",
+    "sha256": "d8dc68f4ca64b3159e9982e01395d09d4dbbf83ff9aaf9ae89c2d98eab440d79"
+  },
+  "master_seed": 4120,
+  "phases": [
+    {
+      "phase_id": "pose-0",
+      "duration_ms": 300
+    },
+    {
+      "phase_id": "pose-1",
+      "duration_ms": 300
+    },
+    {
+      "phase_id": "pose-2",
+      "duration_ms": 300
+    },
+    {
+      "phase_id": "pose-3",
+      "duration_ms": 300
+    }
+  ],
+  "layers": [
+    {
+      "layer_id": "lowered-impeller",
+      "role": "part",
+      "z": 10,
+      "source": {
+        "path": "layers/lowered-impeller.png",
+        "sha256": "2070992c63bfa30501e1eb449227e21ffafcdb0027ef0c7a073745bd4320c543"
+      },
+      "matte": {
+        "path": "layers/lowered-impeller-matte.png",
+        "sha256": "775dbfc14d962c0eec46c8e2784b073d405b220efcc751b88b74b8ae6a2ebeef"
+      },
+      "origin": {
+        "x": 44,
+        "y": 9
+      },
+      "track": [
+        {
+          "translate": {
+            "x": 0,
+            "y": 0
+          },
+          "turn_16ths": 0
+        },
+        {
+          "translate": {
+            "x": 1,
+            "y": 2
+          },
+          "turn_16ths": 0
+        },
+        {
+          "translate": {
+            "x": 0,
+            "y": 4
+          },
+          "turn_16ths": 0
+        },
+        {
+          "translate": {
+            "x": -1,
+            "y": 2
+          },
+          "turn_16ths": 0
+        }
+      ],
+      "clip": "error"
+    }
+  ]
+}

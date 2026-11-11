@@ -1,152 +1,277 @@
 #!/usr/bin/env python3
-"""Pack the finalized seven story-beat decks for the FX cart.
+"""Pack the editable story source into native 128x64 cards for the FX cart.
 
-Source of truth is ``docs/story-sketchbook.html`` plus the native 128x64 poses
-in ``docs/assets/first-beat-animation/all-beats-v3``. Every beat alternates an
-animated image card (four poses at 3.3 fps) with a static story-text card. The
-FIRST beat has three image/text pairs; the other six beats have two.
+Canonical inputs are ``story/scenes.json`` (scene order, prose and sheet rows)
+and ``story/art.png`` (one illustration per row, four 128x64 poses across).
+The editable PNG is never overwritten by generation. Retained pixelgen bundles
+are provenance, not active inputs. Prose wraps and automatically paginates.
 
-The cart is nearly full, so each 1,024-byte page-major frame is run-length
-encoded. The blob starts with one little-endian uint16 offset per frame,
-relative to the blob base. No frame header is needed: card order always
-alternates image/text starting with an image, so the device derives the first
-frame from the global card index.
-
-Text cards are baked with the same 5x7 glyphs, 20-column wrap, six-row limit,
-10 px leading and centring used by the sketchbook preview. That keeps the game
-pixel-identical to the approved preview and avoids shipping a second layout
-engine.
+Outputs:
+  fxdata/tables/story-beats.bin
+  src/generated/story_beats.hpp
+  tst/fxdatatest/story_frame_crc.hpp
+  docs/assets/first-beat-animation/frames.js
 """
 
 from __future__ import annotations
 
 import argparse
+import base64
+import io
 import json
-import re
 import struct
 from pathlib import Path
 
 from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[1]
-HTML = ROOT / "docs/story-sketchbook.html"
-IMAGES = ROOT / "docs/assets/first-beat-animation/all-beats-v3"
+SOURCE = ROOT / "story/scenes.json"
+CARD_SHEET = ROOT / "docs/assets/story-cards.png"
+CARD_MAP = ROOT / "docs/assets/story-cards.json"
 OUTPUT = ROOT / "fxdata/tables/story-beats.bin"
 HEADER = ROOT / "src/generated/story_beats.hpp"
+PREVIEW = ROOT / "docs/assets/first-beat-animation/frames.js"
 
 WIDTH = 128
 HEIGHT = 64
 FRAME_BYTES = WIDTH * HEIGHT // 8
+ROWS_PER_CARD = 6
+COLUMNS = 20
 RLE_PAD = 32
-BEAT_BLOCKS = (
-    "pumpFrames",
-    "deliveryFrames",
-    "liftFrames",
-    "liftDeliveryFrames",
-    "beaconFrames",
-    "homeFrames",
+
+# Packed scene IDs/order are frozen for save compatibility. JSON scenes and
+# editable-sheet rows follow narrative order independently.
+SCENE_ORDER = (
+    ("first-result", "STORY_SCENE_FIRST_RESULT"),
+    ("pump-survey", "STORY_SCENE_PUMP_SURVEY"),
+    ("pump-result", "STORY_SCENE_PUMP_RESULT"),
+    ("lift-survey", "STORY_SCENE_LIFT_SURVEY"),
+    ("lift-result", "STORY_SCENE_LIFT_RESULT"),
+    ("beacon-result", "STORY_SCENE_BEACON_RESULT"),
+    ("home-result", "STORY_SCENE_HOME_RESULT"),
+    ("first-departure", "STORY_SCENE_FIRST_DEPARTURE"),
+    ("pump-pickup", "STORY_SCENE_PUMP_PICKUP"),
+    ("lift-pickup", "STORY_SCENE_LIFT_PICKUP"),
+    ("joint-missing", "STORY_SCENE_JOINT_MISSING"),
+    ("joint-ready", "STORY_SCENE_JOINT_READY"),
+    ("beacon-departure", "STORY_SCENE_BEACON_DEPARTURE"),
+    ("home-departure", "STORY_SCENE_HOME_DEPARTURE"),
+    # Appended late optional expedition result; earlier ids stay frozen.
+    ("deep-relay-result", "STORY_SCENE_EXPEDITION_RESULT"),
+    ("deep-relay-departure", "STORY_SCENE_EXPEDITION_DEPARTURE"),
 )
-BEAT_NAMES = (
-    "FIRST",
-    "PUMP SURVEY",
-    "PUMP",
-    "LIFT SURVEY",
-    "LIFT",
-    "BEACON",
-    "HOME",
-)
-STRING_RE = re.compile(r"'((?:[^'\\]|\\.)*)'")
+SCENE_IDS = {name: index + 1 for index, (name, _) in enumerate(SCENE_ORDER)}
+
+# Existing 5x7 story font columns, plus an apostrophe. Keep this table in sync
+# with the preview glyph rendering. The native text cards use these bytes.
+GLYPHS = {
+    " ": [0, 0, 0, 0, 0],
+    "'": [0, 0, 3, 0, 0],
+    "-": [8, 8, 8, 8, 8],
+    "/": [32, 16, 8, 4, 2],
+    "0": [62, 81, 73, 69, 62],
+    "1": [0, 66, 127, 64, 0],
+    "2": [114, 73, 73, 73, 70],
+    "3": [33, 65, 73, 77, 51],
+    "4": [24, 20, 18, 127, 16],
+    "5": [39, 69, 69, 69, 57],
+    "6": [60, 74, 73, 73, 49],
+    "7": [65, 33, 17, 9, 7],
+    "8": [54, 73, 73, 73, 54],
+    "9": [70, 73, 73, 41, 30],
+    ":": [0, 0, 20, 0, 0],
+    "A": [124, 18, 17, 18, 124],
+    "B": [127, 73, 73, 73, 54],
+    "C": [62, 65, 65, 65, 34],
+    "D": [127, 65, 65, 65, 62],
+    "E": [127, 73, 73, 73, 65],
+    "F": [127, 9, 9, 9, 1],
+    "G": [62, 65, 65, 81, 115],
+    "H": [127, 8, 8, 8, 127],
+    "I": [0, 65, 127, 65, 0],
+    "J": [32, 64, 65, 63, 1],
+    "K": [127, 8, 20, 34, 65],
+    "L": [127, 64, 64, 64, 64],
+    "M": [127, 2, 28, 2, 127],
+    "N": [127, 4, 8, 16, 127],
+    "O": [62, 65, 65, 65, 62],
+    "P": [127, 9, 9, 9, 6],
+    "Q": [62, 65, 81, 33, 94],
+    "R": [127, 9, 25, 41, 70],
+    "S": [38, 73, 73, 73, 50],
+    "T": [3, 1, 127, 1, 3],
+    "U": [63, 64, 64, 64, 63],
+    "V": [31, 32, 64, 32, 31],
+    "W": [63, 64, 56, 64, 63],
+    "X": [99, 20, 8, 20, 99],
+    "Y": [3, 4, 120, 4, 3],
+    "Z": [97, 89, 73, 77, 67],
+    ".": [0, 96, 96, 0, 0],
+    ",": [0, 80, 48, 0, 0],
+}
+SUPPORTED = frozenset(GLYPHS)
 
 
-def decode_js_string(value: str) -> str:
-    return value.replace("\\n", "\n").replace("\\t", "\t").replace("\\'", "'").replace("\\\\", "\\")
+class StoryError(ValueError):
+    pass
 
 
-def parse_story(html: str):
-    glyph_match = re.search(r"const glyphs=(\{.*?\});", html, re.S)
-    if not glyph_match:
-        raise ValueError("story-sketchbook.html: glyph table not found")
-    glyphs = {key: list(value) for key, value in json.loads(glyph_match.group(1)).items()}
+def fail(path: Path, line, message: str) -> None:
+    raise StoryError("{}:{}: {}".format(path, line, message))
 
-    text_match = re.search(r"const storyText=\[(.*?)\];", html, re.S)
-    if not text_match:
-        raise ValueError("story-sketchbook.html: first-beat storyText not found")
-    first_text = [decode_js_string(value) for value in STRING_RE.findall(text_match.group(1))]
-    if len(first_text) != 3:
-        raise ValueError("story-sketchbook.html: expected three first-beat text cards")
 
-    images_match = re.search(r"const images=\[(.*?)\];", html, re.S)
-    if not images_match:
-        raise ValueError("story-sketchbook.html: first-beat images not found")
-    first_images = re.findall(r"art:'([^']+)'", images_match.group(1))
-    if len(first_images) != 3:
-        raise ValueError("story-sketchbook.html: expected three first-beat images")
+def parse_source(text: str, path: Path = SOURCE):
+    """Validate the canonical JSON, retaining prose as editable paragraphs."""
+    def unique_keys(pairs):
+        result = {}
+        for key, value in pairs:
+            if key in result:
+                raise StoryError("{}: duplicate JSON key {!r}".format(path, key))
+            result[key] = value
+        return result
 
-    decks = []
-    first_deck = []
-    for image_art, copy in zip(first_images, first_text):
-        first_deck.append({"kind": "image", "art": image_art})
-        first_deck.append({"kind": "text", "copy": copy})
-    decks.append(first_deck)
+    try:
+        document = json.loads(text, object_pairs_hook=unique_keys)
+    except json.JSONDecodeError as error:
+        fail(path, error.lineno, error.msg)
 
-    for block_name in BEAT_BLOCKS:
-        block = re.search(r"const " + block_name + r"=\[(.*?)\];", html, re.S)
-        if not block:
-            raise ValueError("story-sketchbook.html: {} not found".format(block_name))
-        entries = re.findall(r"\{(.*?)\}", block.group(1), re.S)
-        deck = []
-        for entry in entries:
-            if "kind:'image'" in entry:
-                art = re.search(r"art:'([^']+)'", entry)
-                if not art:
-                    raise ValueError("{}: image card has no art name".format(block_name))
-                deck.append({"kind": "image", "art": art.group(1)})
-            elif "kind:'text'" in entry:
-                copy = re.search(r"copy:'((?:[^'\\]|\\.)*)'", entry, re.S)
-                if not copy:
-                    raise ValueError("{}: text card has no copy".format(block_name))
-                deck.append({"kind": "text", "copy": decode_js_string(copy.group(1))})
+    def fields(value, expected, location):
+        if not isinstance(value, dict) or set(value) != set(expected):
+            fail(path, location, "expected fields {}".format(", ".join(expected)))
+
+    fields(document, ("version", "art", "scenes"), "root")
+    if type(document["version"]) is not int or document["version"] != 1:
+        fail(path, "version", "expected story format version 1")
+    art = document["art"]
+    fields(art, ("file", "tile_width", "tile_height", "poses", "rows"), "art")
+    if not isinstance(art["file"], str) or not art["file"]:
+        fail(path, "art.file", "expected a sheet filename")
+    if any(type(art[key]) is not int or art[key] != value
+           for key, value in (("tile_width", WIDTH), ("tile_height", HEIGHT), ("poses", 4))):
+        fail(path, "art", "expected four 128x64 poses per row")
+    rows = art["rows"]
+    if (not isinstance(rows, list) or not rows or
+            any(not isinstance(name, str) or not name or name.strip() != name for name in rows)):
+        fail(path, "art.rows", "expected nonempty image names")
+    if len(set(rows)) != len(rows):
+        fail(path, "art.rows", "duplicate image name")
+    scenes = document["scenes"]
+    if not isinstance(scenes, list):
+        fail(path, "scenes", "expected a scene array")
+    for scene in scenes:
+        fields(scene, ("name", "title", "cards"), "scene")
+        if not isinstance(scene["name"], str) or not isinstance(scene["title"], str) or not scene["title"].strip():
+            fail(path, "scene", "expected a scene name and nonempty title")
+        location = scene["name"]
+        if not isinstance(scene["cards"], list) or not scene["cards"]:
+            fail(path, location, "scene has no cards")
+        for index, card in enumerate(scene["cards"]):
+            where = "{}/card{}".format(location, index + 1)
+            if not isinstance(card, dict):
+                fail(path, where, "expected a card object")
+            if card.get("kind") == "image":
+                fields(card, ("kind", "art"), where)
+                if not isinstance(card["art"], str) or card["art"] not in rows:
+                    fail(path, where, "unknown sheet art {!r}".format(card["art"]))
+            elif card.get("kind") == "text":
+                fields(card, ("kind", "paragraphs"), where)
+                paragraphs = card["paragraphs"]
+                if (not isinstance(paragraphs, list) or not paragraphs or
+                        any(not isinstance(paragraph, str) or not paragraph.strip() for paragraph in paragraphs)):
+                    fail(path, where, "expected nonempty paragraph strings")
             else:
-                raise ValueError("{}: unknown card kind".format(block_name))
-        if len(deck) != 4 or any(deck[index]["kind"] != ("image" if index % 2 == 0 else "text") for index in range(4)):
-            raise ValueError("{}: deck must be image/text/image/text".format(block_name))
-        decks.append(deck)
-
-    if len(decks) != len(BEAT_NAMES):
-        raise ValueError("expected seven story-beat decks")
-    return glyphs, decks
+                fail(path, where, "unknown card kind")
+    expected = [name for name, _ in SCENE_ORDER]
+    names = [scene["name"] for scene in scenes]
+    if len(names) != len(expected) or set(names) != set(expected):
+        fail(path, "scenes", "scenes must contain each stable scene exactly once: {}".format(expected))
+    return document
 
 
-def text_lines(copy: str):
-    """Mirror the sketchbook's 20-column, six-row text layout."""
+def load_sheet(document, source_path=SOURCE, image=None):
+    """Accept opaque black/white PNG exports, including Piskel RGBA exports."""
+    art = document["art"]
+    path = source_path.parent / art["file"]
+    if image is None:
+        with Image.open(path) as source:
+            if source.format != "PNG":
+                raise StoryError("{}: expected a PNG sheet".format(path))
+            image = source.copy()
+    expected = (WIDTH * 4, HEIGHT * len(art["rows"]))
+    if image.size != expected:
+        raise StoryError("{}: expected sheet size {}, found {}".format(path, expected, image.size))
+    rgba = image.convert("RGBA")
+    colors = rgba.getcolors(3)
+    if colors is None or any(color not in ((0, 0, 0, 255), (255, 255, 255, 255)) for _, color in colors):
+        raise StoryError("{}: sheet must contain only opaque black and white pixels".format(path))
+    return rgba.convert("1", dither=Image.Dither.NONE)
+
+
+def art_pose(sheet, rows, art, phase):
+    if art not in rows or phase not in range(4):
+        raise StoryError("unknown sheet art or pose: {} / {}".format(art, phase))
+    top = rows.index(art) * HEIGHT
+    return sheet.crop((phase * WIDTH, top, (phase + 1) * WIDTH, top + HEIGHT))
+
+
+def normalize_prose(paragraph: str, path: Path, line: int) -> str:
+    text = " ".join(paragraph.split()).upper()
+    if not text:
+        fail(path, line, "empty paragraph")
+    for char in text:
+        if char not in SUPPORTED:
+            fail(path, line, "unsupported character {!r} (U+{:04X})".format(char, ord(char)))
+    return text
+
+
+def wrap_paragraph(text: str, path: Path, line: int):
     rows = []
-    cleaned = re.sub(r"[^A-Z0-9 .,:/\-\n]", "", copy.upper())
-    for paragraph in cleaned.split("\n"):
-        row = ""
-        for word in paragraph.split():
-            while len(word) > 20:
-                if row:
-                    rows.append(row)
-                    row = ""
-                rows.append(word[:20])
-                word = word[20:]
-            if row and len(row) + 1 + len(word) > 20:
-                rows.append(row)
-                row = ""
-            if word:
-                row += (" " if row else "") + word
+    row = ""
+    for word in text.split():
+        if len(word) > COLUMNS:
+            fail(path, line, "word '{}' exceeds {} columns".format(word, COLUMNS))
+        if not row:
+            row = word
+        elif len(row) + 1 + len(word) <= COLUMNS:
+            row += " " + word
+        else:
+            rows.append(row)
+            row = word
+    if row:
         rows.append(row)
     return rows
 
 
-def text_frame(copy: str, glyphs) -> bytes:
-    rows = text_lines(copy)[:6]
+def paginate(paragraphs, path: Path, line: int):
+    pages = []
+    page = []
+    for index, paragraph in enumerate(paragraphs):
+        rows = wrap_paragraph(normalize_prose(paragraph, path, line), path, line)
+        if index != 0:
+            if len(page) < ROWS_PER_CARD:
+                page.append("")
+            elif page:
+                pages.append(page)
+                page = []
+        for row in rows:
+            if len(page) >= ROWS_PER_CARD:
+                pages.append(page)
+                page = []
+            page.append(row)
+    if page:
+        pages.append(page)
+    return pages
+
+
+def text_frame(rows) -> bytes:
+    if not rows or len(rows) > ROWS_PER_CARD:
+        raise ValueError("text card rows must be 1..{}".format(ROWS_PER_CARD))
     pixels = bytearray(FRAME_BYTES)
     top = (HEIGHT - ((len(rows) - 1) * 10 + 7)) // 2
     for line, row in enumerate(rows):
         left = (WIDTH - (len(row) * 6 - 1)) // 2
         for index, char in enumerate(row):
-            for column, bits in enumerate(glyphs.get(char, glyphs[" "])):
+            for column, bits in enumerate(GLYPHS[char]):
                 for y in range(7):
                     if bits & (1 << y):
                         pixel_y = top + line * 10 + y
@@ -156,17 +281,18 @@ def text_frame(copy: str, glyphs) -> bytes:
     return bytes(pixels)
 
 
-def image_frame(path: Path) -> bytes:
-    image = Image.open(path).convert("RGB")
+def image_frame(image) -> bytes:
+    if image.mode != "1" or "transparency" in image.info:
+        raise ValueError("expected opaque native 1-bit image")
     if image.size != (WIDTH, HEIGHT):
-        raise ValueError("{}: expected 128x64, found {}".format(path, image.size))
+        raise ValueError("expected 128x64, found {}".format(image.size))
     source = image.load()
     pixels = bytearray(FRAME_BYTES)
     for y in range(0, HEIGHT, 8):
         for x in range(WIDTH):
             value = 0
             for bit in range(8):
-                if source[x, y + bit][1] > 64:
+                if source[x, y + bit]:
                     value |= 1 << bit
             pixels[(y >> 3) * WIDTH + x] = value
     return bytes(pixels)
@@ -214,69 +340,290 @@ def rle_decode(data: bytes) -> bytes:
     return bytes(out)
 
 
-def build_blob(decks, glyphs, images_root: Path) -> bytes:
+def build_layout(document, source_path: Path = SOURCE, sheet_image=None):
+    sheet = load_sheet(document, source_path, sheet_image)
+    rows = document["art"]["rows"]
+    scenes = sorted(document["scenes"], key=lambda scene: SCENE_IDS.get(scene["name"], 0))
     frames = []
-    for beat_index, deck in enumerate(decks):
-        for card_index, card in enumerate(deck):
+    image_frames = {}
+    scene_cards = [0]
+    scene_first = [0]
+    card_frames = []
+    card_kinds = []
+    preview_scenes = []
+    image_cards = 0
+    text_cards = 0
+
+    for scene in scenes:
+        preview = {"id": scene["name"], "title": scene["title"], "cards": []}
+        scene_first.append(len(card_frames))
+        count = 0
+        scene_text = 0
+        for card in scene["cards"]:
             if card["kind"] == "image":
-                for phase in range(4):
-                    path = images_root / "{}-{}.png".format(card["art"], phase)
-                    if not path.is_file():
-                        raise ValueError("missing story pose {}".format(path))
-                    frames.append(rle_encode(image_frame(path)))
+                art = card["art"]
+                if art not in image_frames:
+                    first = len(frames)
+                    for phase in range(4):
+                        frames.append(rle_encode(image_frame(art_pose(sheet, rows, art, phase))))
+                    image_frames[art] = first
+                card_frames.append(image_frames[art])
+                card_kinds.append(0)
+                image_cards += 1
+                preview["cards"].append({
+                    "kind": "image",
+                    "title": "Image - {}".format(art),
+                    "intent": "Native image scene: {}".format(art),
+                    "art": art,
+                    "copy": "",
+                })
             else:
-                frames.append(rle_encode(text_frame(card["copy"], glyphs)))
+                pages = paginate(card["paragraphs"], source_path, scene["name"])
+                for page in pages:
+                    card_frames.append(len(frames))
+                    frames.append(rle_encode(text_frame(page)))
+                    card_kinds.append(1)
+                    text_cards += 1
+                    scene_text += 1
+                    copy = "\n".join(page)
+                    preview["cards"].append({
+                        "kind": "text",
+                        "title": "Text page {}".format(scene_text),
+                        "intent": "Generated from story/scenes.json",
+                        "copy": copy,
+                        "rows": page,
+                    })
+            count = len(preview["cards"])
+            if count > 0xFF:
+                raise StoryError("scene {} has too many cards".format(scene["name"]))
+        scene_cards.append(len(preview["cards"]))
+        preview_scenes.append(preview)
+
+    if len(frames) > 0xFF:
+        raise StoryError("story frame count {} exceeds one-byte card frame metadata".format(len(frames)))
+    if len(card_frames) != sum(scene_cards):
+        raise StoryError("internal card count mismatch")
+
     offsets = []
     position = len(frames) * 2
     for frame in frames:
         offsets.append(position)
         position += len(frame)
     if position >= 0x10000:
-        raise ValueError("story-beat blob does not fit the uint16 offset table")
+        raise StoryError("story blob {} B exceeds the uint16 offset table".format(position))
     blob = bytearray()
     for offset in offsets:
         blob += struct.pack("<H", offset)
     for frame in frames:
         blob += frame
     blob += b"\0" * RLE_PAD
-    return bytes(blob)
+
+    return {
+        "blob": bytes(blob),
+        "frames": len(frames),
+        "images": len(image_frames),
+        "scene_cards": scene_cards,
+        "scene_first": scene_first,
+        "card_frames": card_frames,
+        "card_kinds": card_kinds,
+        "image_cards": image_cards,
+        "text_cards": text_cards,
+        "max_cards": max(scene_cards),
+        "preview_scenes": preview_scenes,
+        "arts": list(image_frames.keys()),
+        "story_order": [scene["name"] for scene in document["scenes"]],
+        "sheet": sheet,
+        "art_rows": rows,
+    }
 
 
-def write_header(path: Path, cards: int, images: int, frames: int, size: int) -> None:
+def write_header(path: Path, layout, size: int) -> None:
+    scene_constants = "\n".join(
+        "constexpr uint8_t {} = {};".format(cpp_name, index + 1)
+        for index, (_, cpp_name) in enumerate(SCENE_ORDER)
+    )
+    scene_cards = ", ".join(str(value) for value in layout["scene_cards"])
+    scene_first = ", ".join(str(value) for value in layout["scene_first"])
+    card_frames = ", ".join(str(value) for value in layout["card_frames"])
+    card_kinds = ", ".join(str(value) for value in layout["card_kinds"])
     path.write_text(
         "// Generated by tools/gen_story_beats.py. Do not edit.\n"
         "#pragma once\n\n"
         "#include <stdint.h>\n\n"
         "constexpr uint8_t STORY_BEAT_WIDTH  = {};\n"
         "constexpr uint8_t STORY_BEAT_HEIGHT = {};\n"
-        "constexpr uint8_t STORY_BEAT_CARDS  = {};\n"
-        "constexpr uint8_t STORY_BEAT_IMAGES = {};\n"
-        "constexpr uint8_t STORY_BEAT_FRAMES = {};\n"
+        "constexpr uint8_t STORY_SCENE_MAX  = {};\n"
+        "constexpr uint8_t STORY_SCENE_COUNT = {};\n"
+        "constexpr uint8_t STORY_CARD_COUNT = {};\n"
+        "constexpr uint8_t STORY_IMAGE_CARD_COUNT = {};\n"
+        "constexpr uint8_t STORY_TEXT_CARD_COUNT = {};\n"
+        "constexpr uint8_t STORY_IMAGE_COUNT = {};\n"
+        "constexpr uint8_t STORY_FRAME_COUNT = {};\n"
         "constexpr uint16_t STORY_BEAT_BYTES = {};\n"
         "constexpr uint8_t STORY_BEAT_FRAME_TICKS = 18;\n"
         "constexpr uint8_t STORY_BEAT_CYCLE_TICKS = 72;\n"
-        "constexpr uint8_t STORY_BEAT_MAX_CARDS = 6;\n".format(WIDTH, HEIGHT, cards, images, frames, size),
+        "constexpr uint8_t STORY_BEAT_MAX_CARDS = {};\n"
+        "constexpr uint8_t STORY_KIND_IMAGE = 0;\n"
+        "constexpr uint8_t STORY_KIND_TEXT = 1;\n"
+        "// Compatibility aliases used by frame/CRC fixtures.\n"
+        "constexpr uint8_t STORY_BEAT_IMAGES = STORY_IMAGE_COUNT;\n"
+        "constexpr uint8_t STORY_BEAT_FRAMES = STORY_FRAME_COUNT;\n"
+        "constexpr uint8_t STORY_BEAT_CARDS = STORY_CARD_COUNT;\n"
+        "\n"
+        "{}\n"
+        "\n"
+        "#if defined(__AVR__)\n"
+        "#include <avr/pgmspace.h>\n"
+        "const uint8_t STORY_SCENE_CARDS[STORY_SCENE_COUNT] PROGMEM = {{{}}};\n"
+        "const uint8_t STORY_SCENE_FIRST_CARD[STORY_SCENE_COUNT] PROGMEM = {{{}}};\n"
+        "const uint8_t STORY_CARD_FRAME[STORY_CARD_COUNT] PROGMEM = {{{}}};\n"
+        "const uint8_t STORY_CARD_KIND[STORY_CARD_COUNT] PROGMEM = {{{}}};\n"
+        "#else\n"
+        "constexpr uint8_t STORY_SCENE_CARDS[STORY_SCENE_COUNT] = {{{}}};\n"
+        "constexpr uint8_t STORY_SCENE_FIRST_CARD[STORY_SCENE_COUNT] = {{{}}};\n"
+        "constexpr uint8_t STORY_CARD_FRAME[STORY_CARD_COUNT] = {{{}}};\n"
+        "constexpr uint8_t STORY_CARD_KIND[STORY_CARD_COUNT] = {{{}}};\n"
+        "#endif\n".format(
+            WIDTH,
+            HEIGHT,
+            len(SCENE_ORDER),
+            len(SCENE_ORDER) + 1,
+            layout["image_cards"] + layout["text_cards"],
+            layout["image_cards"],
+            layout["text_cards"],
+            layout["images"],
+            layout["frames"],
+            size,
+            layout["max_cards"],
+            scene_constants,
+            scene_cards,
+            scene_first,
+            card_frames,
+            card_kinds,
+            scene_cards,
+            scene_first,
+            card_frames,
+            card_kinds,
+        ),
+        encoding="utf-8",
+    )
+
+
+def write_test_crcs(blob: bytes, count: int) -> None:
+    """Independent device reference for every complete page-major frame."""
+    offsets = [struct.unpack_from("<H", blob, i * 2)[0] for i in range(count)]
+    values = []
+    for i, start in enumerate(offsets):
+        end = offsets[i + 1] if i + 1 < count else len(blob) - RLE_PAD
+        crc = 0
+        for byte in rle_decode(blob[start:end]):
+            crc ^= byte
+            for _ in range(8):
+                crc = (crc >> 1) ^ (0x8408 if crc & 1 else 0)
+        values.append("0x{:04X}".format(crc))
+    (ROOT / "tst/fxdatatest/story_frame_crc.hpp").write_text(
+        "// Generated by tools/gen_story_beats.py. Do not edit.\n"
+        "#pragma once\n#include <avr/pgmspace.h>\n"
+        '#include "src/generated/story_beats.hpp"\n'
+        "const uint16_t kStoryFrameCrc[STORY_FRAME_COUNT] PROGMEM = {\n    "
+        + ", ".join(values) + "\n};\n", encoding="utf-8")
+
+
+def png_data_url(image):
+    buffer = io.BytesIO()
+    image.save(buffer, format="PNG")
+    return "data:image/png;base64," + base64.b64encode(buffer.getvalue()).decode("ascii")
+
+
+def native_image(data):
+    image = Image.new("1", (WIDTH, HEIGHT))
+    pixels = image.load()
+    for y in range(HEIGHT):
+        for x in range(WIDTH):
+            pixels[x, y] = 255 if (data[(y // 8) * WIDTH + x] >> (y % 8)) & 1 else 0
+    return image
+
+
+def write_card_sheet(layout):
+    """All cards in narrative order, independent of packed save-scene order."""
+    count = len(layout["card_frames"])
+    sheet = Image.new("1", (WIDTH * 4, HEIGHT * count))
+    offsets = [struct.unpack_from("<H", layout["blob"], i * 2)[0] for i in range(layout["frames"])]
+    cards = []
+    row = 0
+    by_name = {scene["id"]: scene for scene in layout["preview_scenes"]}
+    for name in layout["story_order"]:
+        scene = by_name[name]
+        for card_index, card in enumerate(scene["cards"]):
+            packed_card = layout["scene_first"][SCENE_IDS[name]] + card_index
+            first = layout["card_frames"][packed_card]
+            poses = 4 if card["kind"] == "image" else 1
+            for phase in range(poses):
+                frame = first + phase
+                end = offsets[frame + 1] if frame + 1 < layout["frames"] else len(layout["blob"]) - RLE_PAD
+                image = native_image(rle_decode(layout["blob"][offsets[frame]:end]))
+                sheet.paste(image, (phase * WIDTH, row * HEIGHT))
+            cards.append({"row": row, "scene": scene["id"], "card": card_index,
+                          "kind": card["kind"], "poses": poses, "title": card["title"],
+                          "packed_card": packed_card})
+            row += 1
+    CARD_SHEET.parent.mkdir(parents=True, exist_ok=True)
+    sheet.save(CARD_SHEET)
+    CARD_MAP.write_text(json.dumps({"tile_width": WIDTH, "tile_height": HEIGHT,
+                                   "columns": 4, "cards": cards}, indent=2) + "\n", encoding="utf-8")
+
+
+def write_preview(layout) -> None:
+    animation = {
+        "period": 300,
+        "scenes": {
+            art: [
+                png_data_url(art_pose(layout["sheet"], layout["art_rows"], art, phase))
+                for phase in range(4)
+            ] for art in layout["arts"]
+        },
+    }
+    data = {
+        "period": 300,
+        "columns": COLUMNS,
+        "rows": ROWS_PER_CARD,
+        "glyphs": GLYPHS,
+        "scenes": layout["preview_scenes"],
+    }
+    PREVIEW.write_text(
+        "globalThis.StoryAnimation={};\n"
+        "globalThis.StoryData={};\n".format(
+            json.dumps(animation, separators=(",", ":")),
+            json.dumps(data, separators=(",", ":"), ensure_ascii=False),
+        ),
         encoding="utf-8",
     )
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--html", type=Path, default=HTML)
-    parser.add_argument("--images", type=Path, default=IMAGES)
+    parser.add_argument("--source", type=Path, default=SOURCE)
     parser.add_argument("--output", type=Path, default=OUTPUT)
     parser.add_argument("--header", type=Path, default=HEADER)
     args = parser.parse_args()
 
-    glyphs, decks = parse_story(args.html.read_text(encoding="utf-8"))
-    blob = build_blob(decks, glyphs, args.images)
-    cards = sum(len(deck) for deck in decks)
-    images = sum(1 for deck in decks for card in deck if card["kind"] == "image")
-    frames = sum(4 if card["kind"] == "image" else 1 for deck in decks for card in deck)
+    scenes = parse_source(args.source.read_text(encoding="utf-8"), args.source)
+    layout = build_layout(scenes, args.source)
+    blob = layout["blob"]
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_bytes(blob)
-    write_header(args.header, cards, images, frames, len(blob))
-    print("gen_story_beats: {} cards / {} images / {} frames -> {} B".format(cards, images, frames, len(blob)))
+    write_header(args.header, layout, len(blob))
+    write_test_crcs(blob, layout["frames"])
+    write_preview(layout)
+    write_card_sheet(layout)
+    print("gen_story_beats: {} scenes / {} cards ({} image, {} text) / {} frames -> {} B".format(
+        len(scenes["scenes"]),
+        layout["image_cards"] + layout["text_cards"],
+        layout["image_cards"],
+        layout["text_cards"],
+        layout["frames"],
+        len(blob),
+    ))
 
 
 if __name__ == "__main__":

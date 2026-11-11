@@ -88,6 +88,46 @@ inline void CollisionSuite(TestRunner &runner) {
     }
 
     {
+        Test test("developer speed scale advances three fixed steps");
+        Fixture fake;
+        game::State normal;
+        game::State fast;
+        game::resetWorld(normal);
+        game::resetWorld(fast);
+        place(normal, 100, 80);
+        place(fast, 100, 80);
+        normal.vxQ8 = game::topSpeedQ8For(0);
+        fast.vxQ8 = normal.vxQ8;
+
+        game::stepWorld(normal, idle(), fake);
+        game::stepWorld(fast, idle(), fake, nullptr, true, game::kDevSpeedScale);
+
+        const int32_t normalTravel = static_cast<int32_t>(normal.x - 100) * game::kSubpixelOne + normal.xFrac;
+        const int32_t fastTravel = static_cast<int32_t>(fast.x - 100) * game::kSubpixelOne + fast.xFrac;
+        test.assertEqual(fastTravel, normalTravel * game::kDevSpeedScale, "position advance is exactly 3x");
+        test.assertEqual(fast.vxQ8, normal.vxQ8, "stored velocity keeps production physics");
+        test.assertEqual(fast.air, normal.air, "air drain is one tick");
+        test.assertEqual(fast.ticks, normal.ticks, "simulation ticks are one step");
+        runner.add(test);
+    }
+
+    {
+        Test test("developer speed scale still stops at walls");
+        Fixture fake;
+        fillTiles(fake, 10, 0, 10, 159, true);
+        game::State state;
+        game::resetWorld(state);
+        place(state, 60, 80);
+        state.vxQ8 = game::topSpeedQ8For(0);
+        for (uint8_t i = 0; i < 10; ++i)
+            game::stepWorld(state, right(), fake, nullptr, true, game::kDevSpeedScale);
+        test.assertEqual(state.x, 67, "scaled advance stops on the last clear pixel");
+        test.assertEqual(state.xFrac, 0, "blocked remainder is zero");
+        test.assertEqual(state.vxQ8, 0, "blocked axis velocity is zero");
+        runner.add(test);
+    }
+
+    {
         Test test("right wall stops the hull at the last valid pixel");
         Fixture fake;
         fillTiles(fake, 10, 0, 10, 159, true);   // solid column at x=80
@@ -131,6 +171,50 @@ inline void CollisionSuite(TestRunner &runner) {
         test.assertEqual(state.impactAxis, 1, "wall impact is horizontal");
         test.assertTrue(state.impactSpeedQ8 > 0, "fast impact reported");
         test.assertEqual(state.xFrac, 0, "remainder cleared after impact");
+        runner.add(test);
+    }
+
+    {
+        Test test("developer no-clip crosses solid terrain");
+        Fixture fake;
+        fillTiles(fake, 10, 0, 10, 159, true);   // solid column at x=80
+        game::State state;
+        game::resetWorld(state);
+        place(state, 64, 80);
+        const uint16_t readsBefore = fake.tileReads;
+
+        bool crossed = false;
+        for (int i = 0; i < 120; ++i) {
+            game::stepWorld(state, right(), fake, nullptr, false);
+            if (state.x > 80)
+                crossed = true;
+        }
+        test.assertTrue(crossed, "no-clip moves through the wall");
+        test.assertTrue(state.x > 80, "boat is beyond the blocked pixel");
+        test.assertEqual(state.impactAxis, 0, "no collision impact is recorded");
+        test.assertEqual(fake.tileReads, readsBefore, "no-clip makes no terrain reads");
+        runner.add(test);
+    }
+
+    {
+        Test test("developer no-clip keeps the hull inside the world border");
+        Fixture fake;
+        game::State state;
+        game::resetWorld(state);
+        place(state, static_cast<int16_t>(world::PIXELS_X - game::kHullHalfW - 1), 80);
+
+        for (int i = 0; i < 120; ++i)
+            game::stepWorld(state, right(), fake, nullptr, false);
+        test.assertEqual(state.x, static_cast<int16_t>(world::PIXELS_X - game::kHullHalfW), "right border clamps");
+        test.assertEqual(state.xFrac, 0, "clamped remainder is zero");
+        test.assertEqual(state.vxQ8, 0, "clamped velocity is zero");
+
+        place(state, 100, static_cast<int16_t>(game::kHullHalfH + 1));
+        for (int i = 0; i < 120; ++i)
+            game::stepWorld(state, game::Input{true, false, false, false}, fake, nullptr, false);
+        test.assertEqual(state.y, game::kHullHalfH, "top border clamps");
+        test.assertEqual(state.yFrac, 0, "clamped y remainder is zero");
+        test.assertEqual(state.vyQ8, 0, "clamped y velocity is zero");
         runner.add(test);
     }
 

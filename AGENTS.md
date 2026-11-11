@@ -18,6 +18,9 @@ project, `docs/platform.md` for the hardware/resource contract, and
   `src/generated/`.
 - `fxdata/fxdata.txt` declaration order is flash ABI. Append entries; never
   reorder or remove shipped ones.
+- `story/scenes.json` is canonical for scene order, prose and image-row names;
+  `story/art.png` is the canonical Piskel artwork sheet (four 128x64 poses per row). Never duplicate shipping card copy in the HTML
+  preview, generator or tests; run `make gen` after a source edit.
 
 ## Commands
 
@@ -30,7 +33,7 @@ make test-tools           # Python tooling tests
 make docs-check           # local doc links + active selector guard
 make build | mini         # FX (dist/fx) / Mini (dist/mini) firmware
 make size                 # whole-image flash/RAM report
-make fxtest               # 14 device suites via Ardens (P/F markers)
+make fxtest               # 15 device suites via Ardens (P/F markers)
 make fxtest-save-chain    # exact production save-chain stack/audio probe
 make fxtest-flight        # 842-frame complete-flight timing/audio probe
 make run                  # Ardens with ELF + FX image
@@ -72,3 +75,5 @@ One task = one implement-verify loop. Run the exact verification commands for
 the task, report exact output and numbers, and do not commit or push unless the
 orchestrator asks. If a build cannot fit or a gate fails, report BLOCKED with
 the deficit and options instead of faking a pass.
+
+Use @pixelgen-assets for 128x64 monochrome assets.

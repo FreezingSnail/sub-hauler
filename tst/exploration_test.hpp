@@ -3,6 +3,7 @@
 #include <queue>
 #include <utility>
 #include <vector>
+#include "../src/currents.hpp"
 #include "../src/exploration.hpp"
 #include "../src/exploration_view.hpp"
 #include "../src/pilot.hpp"
@@ -140,6 +141,10 @@ inline void ExplorationSuite(TestRunner &runner) {
         world_test::FakeWorld reader;
         for (uint8_t id = 0; id < data::GATE_COUNT; ++id) {
             const auto g = data::gate(id);
+            // Zero-required records are tide-gate placeholders: the authored
+            // current zone, not the old gate rectangle, blocks the passage.
+            if (g.required == 0)
+                continue;
             for (uint8_t side = 0; side < 2; ++side) {
                 game::State s;
                 game::resetWorld(s);
@@ -172,11 +177,31 @@ inline void ExplorationSuite(TestRunner &runner) {
         }
         game::State s;
         game::resetWorld(s);
-        const auto combined = data::gate(data::GATE_Q_J);
+        const auto returnShaft = data::gate(data::GATE_Q_J);
         s.tools = data::THRUSTER;
-        t.assertTrue(exploration::closed(s, data::GATE_Q_J, combined), "return shaft cannot bypass pressure requirement");
+        t.assertTrue(exploration::closed(s, data::GATE_Q_J, returnShaft), "return shaft cannot bypass pressure requirement");
         s.tools = data::SEAL;
-        t.assertTrue(exploration::closed(s, data::GATE_Q_J, combined), "return shaft also needs thruster");
+        t.assertTrue(!exploration::closed(s, data::GATE_Q_J, returnShaft), "seal opens the pressure gate");
+        world::Current returnTide;
+        bool foundTide = false;
+        for (uint8_t id = 0; id < world::CURRENT_COUNT; ++id) {
+            world::Current candidate;
+            if (world::currentInfo(id, candidate) && candidate.x == returnShaft.x && candidate.y == returnShaft.y) {
+                returnTide = candidate;
+                foundTide = true;
+                break;
+            }
+        }
+        t.assertTrue(foundTide, "return shaft has a rightward tide");
+        place(s, static_cast<int16_t>(returnShaft.x + returnShaft.w / 2), static_cast<int16_t>(returnShaft.y + returnShaft.h / 2));
+        s.tools = data::SEAL;
+        s.vxQ8 = -200;
+        currents::apply(s);
+        t.assertEqual(s.vxQ8, 0, "return shaft tide blocks upstream without thruster");
+        s.tools = data::SEAL | data::THRUSTER;
+        s.vxQ8 = -200;
+        currents::apply(s);
+        t.assertEqual(s.vxQ8, -200, "thruster disables the return shaft tide");
         runner.add(t);
     }
     {
