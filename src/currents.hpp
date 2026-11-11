@@ -62,7 +62,8 @@ inline bool findAt(int16_t x, int16_t y, world::Current &out, uint8_t *idOut = n
 // upstream velocity component (rather than adding a huge opposing force)
 // leaves every perpendicular and downstream escape open, so a pocket cannot
 // pin the boat when the zone edge is reached. Owning the thruster disables
-// every tide completely.
+// this upstream clamp but leaves the tide acceleration in place, so the
+// player's stronger thrust can still fight the flow.
 inline void blockUpstream(game::State &state, const world::Current &zone) {
     if (zone.ax_q8 > 0) {
         if (state.vxQ8 < 0)
@@ -83,7 +84,8 @@ inline void blockUpstream(game::State &state, const world::Current &zone) {
 // World-step hook. Outside every zone this leaves velocity untouched (zero
 // acceleration), and a docked boat is never pushed. Every generated tide is
 // gated: without the thruster it pushes downstream and blocks upstream motion;
-// once the thruster is owned all tide force and blocking are disabled.
+// once the thruster is owned the tide still pushes, but upstream blocking is
+// disabled so thrust can make headway against the flow.
 inline void apply(game::State &state) {
     if (state.docked >= 0)
         return;
@@ -95,10 +97,9 @@ inline void apply(game::State &state) {
         applyZone(state, zone);
         return;
     }
-    if ((state.tools & exploration_data::THRUSTER) != 0)
-        return;
     applyZone(state, zone);
-    blockUpstream(state, zone);
+    if ((state.tools & exploration_data::THRUSTER) == 0)
+        blockUpstream(state, zone);
 }
 
 }   // namespace currents
