@@ -90,8 +90,9 @@ generated device descriptors, and decoded listening WAVs under
 `build/audio-adpcm/`.
 Those are the sampled-audio admission assets; see
 [`docs/audio-admission.md`](../docs/audio-admission.md) for the codec, player,
-metrics and timing. They are appended after every earlier FX symbol and do not
-change the existing C1 streams.
+metrics and timing. They are archival evidence only: since `sub-hauler-646.18`
+the streams are no longer declared in `fxdata/fxdata.txt`, so they do not add
+cart bytes or alter the existing C1 streams.
 
 
 Validation/export and host decoder loop checks establish timing and stream

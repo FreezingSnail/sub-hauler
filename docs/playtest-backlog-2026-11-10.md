@@ -30,6 +30,7 @@ All sixteen notes are filed under epic **sub-hauler-646**. Decision summary:
 | 16 | sub-hauler-646.15 | Unique HOME departure art. |
 | 17 | sub-hauler-646.16 | Keep network + thanks; cut the voyage-stats card. |
 | 18 | sub-hauler-646.17 | Read-only dock-dialog preview in the existing sketchbook; blocked by note 2. |
+| cart | sub-hauler-646.18 | Remove archival ADPCM streams from the shipping cart; unblocks notes 13/14/16. |
 
 Related work links: notes 13/14/16 share the canonical story sheet; notes 8/9
 share generated exploration terrain; notes 1/12 both touch thruster-era
@@ -365,6 +366,13 @@ art rows.
 **Filed:** sub-hauler-646.12. Coordinated with sub-hauler-646.13 (site result)
 and sub-hauler-646.15 (HOME departure) because all three append rows to the
 same canonical sheet.
+
+**Cart dependency:** each new 128×64 row costs roughly 2–3 KB compressed, but
+the cart had only 41 B before the save page. New bead **sub-hauler-646.18**
+removes the six archival ADPCM streams (~1.42 MB) from `fxdata/fxdata.txt`
+while keeping the files and `make gen-audio` as evidence. `FX_SAVE_PAGE` stays
+`0xFFF0`; this is a user-approved one-time exception to the append-only layout
+rule. The three art rows land after 646.18.
 
 ## 14. Second-to-last job needs unique site art
 

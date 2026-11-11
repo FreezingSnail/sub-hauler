@@ -183,3 +183,13 @@ remains 16 scenes, 41 cards and 89 frames; the story blob is **57,023 B** and
 the FX payload/image is **2,092,503 / 2,096,640 B**, leaving 512 B below 2 MiB.
 `test_story` passes all 89 frame CRCs with a **10,756 µs** maximum; the full
 host, tooling and default device gates pass. No human art review is claimed.
+
+## Archival ADPCM removal — 2026-11-10
+
+`sub-hauler-646.18` removed the six unused archival ADPCM streams from the
+shipping `fxdata.txt` layout (1,424,640 B). The story art, card and frame map is
+unchanged; `storyBeats` moves down to **0x095200** and every symbol through
+`txt_a_finish` keeps its offset. The current FX payload/image is
+**667,863 / 672,000 B**, leaving **1,425,152 B** below 2 MiB, and
+`FX_SAVE_PAGE = 0xFFF0` is unchanged. The `.bin` files and `make gen-audio`
+remain archival evidence only.

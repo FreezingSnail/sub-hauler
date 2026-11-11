@@ -11,6 +11,15 @@ shipping backend. Production `full` now uses the ATMlib2FX compact synth with
 gates below remain as comparison evidence. See
 [platform.md](platform.md) for the current backend and whole-image result.
 
+Shipping-layout note (2026-11-10, `sub-hauler-646.18`): the six raw streams are
+no longer declared in `fxdata/fxdata.txt`. Removing 1,424,640 B of unused cart
+bytes is the user-approved one-time exception to the append-only FX ABI. The
+`.bin` files, manifest, `src/generated/audio.hpp` and `make gen-audio` remain as
+archival evidence; the header is not compiled into firmware or tests. The
+current shipping cart is **667,863 B** payload / **672,000 B** image with
+`FX_SAVE_PAGE = 0xFFF0` unchanged; every symbol through `txt_a_finish` keeps its
+offset and later symbols shift down by the removed bytes.
+
 ## Assets
 
 `tools/gen_audio_adpcm.py` encodes the six deterministic 8 kHz s16le
@@ -39,10 +48,11 @@ waveform/error measurements; they are not a physical speaker or listening
 claim. Decoded listening files are written to `build/audio-adpcm/<id>.wav` and
 `.pcm`.
 
-The six streams append to `fxdata/fxdata.txt` after every shipped symbol. The
-cart payload becomes **1,876,899 B** and the padded flashable image
-**1,876,992 B**, below the 2 MiB admission cap (2,097,152 B). All earlier FX
-offsets are unchanged.
+At admission the six streams appended to `fxdata/fxdata.txt` after every shipped
+symbol: cart payload **1,876,899 B** and padded flashable image **1,876,992 B**,
+below the 2 MiB admission cap (2,097,152 B), with all earlier FX offsets
+unchanged. Those declarations have since been removed from the shipping layout
+as noted above; these figures remain the admission-time evidence.
 
 ## Player contract
 
