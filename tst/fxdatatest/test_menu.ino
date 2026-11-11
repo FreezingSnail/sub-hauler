@@ -59,7 +59,7 @@ void stationReference(uint8_t selected) {
             station_view::drawSelectionMark(y);
     }
     text::normal();
-    text::at(station_view::kHintX, station_view::kHintY);
+    text::at(station_view::kHintX, station_view::kBarkY);
     text::print(station_view::dockBarkText(campaign::dockBark(state, static_cast<uint8_t>(state.docked))));
 }
 

@@ -331,14 +331,16 @@ inline void StationSuite(TestRunner &runner) {
         const uint8_t lastRow = static_cast<uint8_t>(station::kStationRowCount - 1);
         test.assertEqual(station_view::rowY(station::kFirstRow), station_view::kRowY0, "first row uses the layout origin");
         test.assertTrue(station_view::rowY(station::kFirstRow) - station_view::kRowInsetY >= station_view::kStatusY + 7, "first invert bar clears status");
-        test.assertTrue(station_view::rowY(lastRow) + station_view::kRowInvertH <= station_view::kHintY, "last row clears the hint");
-        test.assertTrue(station_view::rowY(static_cast<uint8_t>(station::kActiveRowCount - 1)) + station_view::kRowInvertH <= station_view::kHintY,
-                        "active board's last row clears the hint");
-        test.assertTrue(station_view::kHintY + 7 <= 64, "hint fits inside 64 rows");
+        test.assertTrue(station_view::rowY(lastRow) + station_view::kRowInvertH <= station_view::kBarkY, "last row clears the bark");
+        test.assertTrue(station_view::rowY(static_cast<uint8_t>(station::kActiveRowCount - 1)) + station_view::kRowInvertH <= station_view::kBarkY,
+                        "active board's last row clears the bark");
+        test.assertTrue(station_view::kBarkY + 8 <= 64, "bark fits inside 64 rows");
+        test.assertTrue(station_view::kHintY + 7 <= 64, "archival hint fits inside 64 rows");
         test.assertTrue(station_view::kRowX + 6 * 6 < 128, "row labels fit inside 128 columns");
         test.assertEqual(station_view::kRowInvertH, 7, "station board uses a 7 px invert");
         test.assertEqual(station_view::kRowStep, 7, "station board rows are 7 px apart");
-        test.assertEqual(station_view::kHintY, 56, "station board bark starts at 56");
+        test.assertEqual(station_view::kBarkY, 56, "station board bark starts at 56");
+        test.assertEqual(station_view::kHintY, 57, "archival generated hint row stays at 57");
         test.assertEqual(station::kStationRowCount, 2, "no-job board has WORK and UNDOCK");
         test.assertEqual(station_view::kBerthIconCount, campaign::kBerthCount, "every berth owns a header silhouette");
         test.assertTrue(station_view::kNameX + station_view::kNameChars * 6 <= station_view::kIconX, "longest berth name clears the icon");
