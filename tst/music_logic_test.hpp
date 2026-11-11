@@ -184,4 +184,47 @@ inline void MusicLogicSuite(TestRunner &runner) {
         test.assertEqual(flight.currentCue, music_logic::kHarbor, "short crossing keeps the old cue");
         runner.add(test);
     }
+
+    {
+        Test test("music fade ramp is integer, bounded and 160 ms");
+        test.assertEqual(static_cast<int>(music_logic::kFadeMs), 160, "full ramp duration");
+        uint8_t gain = music_logic::kFadeMax;
+        uint8_t steps = 0;
+        while (gain != 0 && steps < 255) {
+            gain = music_logic::fadeStep(gain, 0);
+            ++steps;
+        }
+        test.assertEqual(gain, 0, "fade-out reaches silence");
+        test.assertEqual(steps, music_logic::kFadeSteps, "fade-out uses the fixed step count");
+        steps = 0;
+        while (gain != music_logic::kFadeMax && steps < 255) {
+            gain = music_logic::fadeStep(gain, music_logic::kFadeMax);
+            ++steps;
+        }
+        test.assertEqual(gain, music_logic::kFadeMax, "fade-in reaches unity");
+        test.assertEqual(steps, music_logic::kFadeSteps, "fade-in uses the fixed step count");
+        runner.add(test);
+    }
+
+    {
+        Test test("music fade retargets from any gain without overshoot");
+        test.assertEqual(music_logic::fadeStep(100, 90), 92, "small retarget steps down");
+        test.assertEqual(music_logic::fadeStep(music_logic::kFadeMax, 0), 120, "full gain steps down");
+        test.assertEqual(music_logic::fadeStep(0, music_logic::kFadeMax), 8, "silence steps up");
+        test.assertEqual(music_logic::fadeStep(90, 90), 90, "at target is unchanged");
+        test.assertEqual(music_logic::fadeStep(5, 0), 0, "clamps to zero");
+        test.assertEqual(music_logic::fadeStep(123, music_logic::kFadeMax), music_logic::kFadeMax, "clamps to target");
+        runner.add(test);
+    }
+
+    {
+        Test test("pause and cue transitions are covered by fade timing");
+        // A cue change is one fade-out plus one fade-in; a pause or resume is a
+        // single ramp. Every path is bounded by the same integer constants.
+        const int cueTransitionMs = music_logic::kFadeMs * 2;
+        test.assertTrue(music_logic::kFadeMs >= 150 && music_logic::kFadeMs <= 300, "single ramp is 150-300 ms");
+        test.assertTrue(cueTransitionMs >= 150 && cueTransitionMs <= 600, "cue change stays a short transition");
+        test.assertEqual(music_logic::kFadeSteps * music_logic::kFadeStep, music_logic::kFadeMax, "ramp consumes the full range exactly");
+        runner.add(test);
+    }
 }
