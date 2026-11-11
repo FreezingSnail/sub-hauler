@@ -11,15 +11,15 @@ old frame PNGs no longer affect the game.
 
 ## Piskel artwork
 
-The sheet is **512×1088 pixels**, arranged as **four columns × seventeen rows**.
+The sheet is **512×1216 pixels**, arranged as **four columns × nineteen rows**.
 Every cell is **128×64 pixels**. Each row is one illustration, and its columns
 are animation poses 0, 1, 2 and 3. The game shows each pose for 300 ms.
 
 Open `art.png` as a full image to edit the entire sheet, or import it as a
 sprite sheet using frame width **128**, frame height **64**, and zero spacing
-or margins. This creates 68 frames in row order. When exporting those frames,
+or margins. This creates 76 frames in row order. When exporting those frames,
 use PNG sprite-sheet export with **four columns**, scale **1×**, no spacing,
-and no padding. Replace `story/art.png`; retain its 512×1088 dimensions.
+and no padding. Replace `story/art.png`; retain its 512×1216 dimensions.
 
 Use only opaque **#000000** and **#ffffff**. Piskel's RGB/RGBA PNG exports are
 accepted; transparency and intermediate colors are rejected rather than
@@ -49,12 +49,17 @@ lift branches remain playable in either order. Rows are:
 | 14–15 | Beacon core pickup and Deep Anchor beacon |
 | 16 | Deep Relay wreck, found by the survey lens |
 | 17 | Tidewall homecoming lights |
+| 18 | DEEP RELAY briefing: beacon call and console |
+| 19 | HOME departure: loaded sub leaving Deep Anchor |
 
 The complete generated card sheet follows the same narrative sequence, with
 text pages between the illustrations. Both alternative seal variants are
 included for inspection; the game chooses one according to seal ownership.
-DEEP RELAY follows BEACON and precedes HOME. HOME departure reuses the cargo
-loading illustration; the new relay art replaces the old shared dispatch row.
+The opening instruction is the first card: it reuses the `arrival` row and
+points the player to Benthos. DEEP RELAY follows BEACON and precedes HOME.
+DEEP RELAY acceptance uses the briefing row, the site result keeps the wreck
+row, and HOME departure uses its own loaded-sub row; PUMP pickup remains the
+only user of `delivery-loading`.
 
 ## JSON text
 
@@ -108,5 +113,6 @@ After `make gen`:
 
 The same native pixels feed the browser and `fxdata/tables/story-beats.bin`.
 `make gen-check` checks repeatability. Further edits must still fit the cart:
-the current padded image fills 2 MiB (127 bytes of alignment padding remain). Pagination preserves all
-text; it does not remove the device's storage and card/frame-count limits.
+the current padded image is **676,352 B**, leaving **1,420,800 B** below 2 MiB.
+Pagination preserves all text; it does not remove the device's storage and
+card/frame-count limits.

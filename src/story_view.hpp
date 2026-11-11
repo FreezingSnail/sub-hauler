@@ -9,10 +9,12 @@
 // the generated source map, not image/text alternation: a scene may contain any
 // number of consecutive text pages after automatic pagination. Scene ids 8..14
 // remain the original departures/joint restoration; the appended ids 15..16
-// hold the optional expedition result and its acceptance briefing.
-// Selection is driven by a new milestone/survey bit or by accepting a cargo
-// mission, so no story cursor is serialized. HOME joins the ending path and is
-// resumable while the ending-presented flag is still clear.
+// hold the optional expedition result and its acceptance briefing, and id 17 is
+// the opening deck. Selection is driven by a new milestone/survey bit or by
+// accepting a cargo mission, so no story cursor is serialized. HOME joins the
+// ending path and is resumable while the ending-presented flag is still clear.
+// The opening deck is RAM-only: New Voyage shows it once and Continue resumes
+// the committed berth checkpoint without replaying it.
 namespace story_view {
 
 constexpr uint8_t kSceneNone = 0;
@@ -32,6 +34,7 @@ constexpr uint8_t kSceneBeaconDeparture = STORY_SCENE_BEACON_DEPARTURE;
 constexpr uint8_t kSceneHomeDeparture = STORY_SCENE_HOME_DEPARTURE;
 constexpr uint8_t kSceneExpedition = STORY_SCENE_EXPEDITION_RESULT;
 constexpr uint8_t kSceneExpeditionDeparture = STORY_SCENE_EXPEDITION_DEPARTURE;
+constexpr uint8_t kSceneOpening = STORY_SCENE_OPENING;
 constexpr uint8_t kSceneMax = STORY_SCENE_MAX;
 
 // Frozen beat names remain the public ids used by milestone selection.
@@ -57,6 +60,7 @@ constexpr uint8_t kHandoffExpedition = kSceneExpeditionDeparture;
 
 static_assert(kSceneExpedition == 15, "existing expedition result scene id stays frozen");
 static_assert(kSceneExpeditionDeparture == 16, "new expedition briefing appends after every existing scene");
+static_assert(kSceneOpening == 17, "opening deck appends after every existing scene");
 static_assert(STORY_CARD_COUNT <= 0xFF, "card ids fit the pending-scene metadata");
 static_assert(STORY_FRAME_COUNT <= 0xFF, "frame ids fit one-byte card metadata");
 

@@ -90,6 +90,8 @@ static UiAux s_uiAux = {0};
 
 // New restoration beat awaiting its deck. bss zero is kCardNone; the byte is
 // set only by a dock/survey transition and cleared when the deck finishes.
+// The New Voyage opening deck is also staged here, but never written to the
+// checkpoint: Continue restores the committed berth and resumes without it.
 static uint8_t s_pendingStory;
 
 // Story deck progress. The card/phase/ticks are transient; a reload never
@@ -490,10 +492,14 @@ static void startNewVoyage() {
     s_airEmptyShown = false;
     if (result == voyage_save::kSaved) {
         // newVoyage() persisted the spawn reveal in the first checkpoint and
-        // left the live boat in free flight beside the home dock.
+        // left the live boat in free flight beside the home dock. The opening
+        // deck is RAM-only and plays before the first pilot frame; a cold
+        // reload from here resumes the saved berth without replaying it.
         s_voyageDirty = false;
         s_savedNoticeTicks = 0;
-        showPilot();
+        s_pendingStory = story_view::kSceneOpening;
+        s_storyReturnPilot = 1;
+        beginStory();
     } else {
         beginSaveFailure(kSaveResumeStation);
     }

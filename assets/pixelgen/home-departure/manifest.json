@@ -1,0 +1,229 @@
+{
+  "assets": [
+    {
+      "license": null,
+      "path": "inputs/config.json",
+      "pixel_sha256": null,
+      "role": "config",
+      "sha256": "887b05dc40de21602ee7dfac659e48750ad9deaa94bb8028e3a1c41d677ca830",
+      "source": null
+    }
+  ],
+  "backend": {
+    "backend": "mflux",
+    "backend_version": "0.24.0",
+    "model_revision": "7ee1b3aa8178a1240050490072196a57da2bf2a9",
+    "python_version": "3.14.10",
+    "runtime": "mflux-generate-flux2",
+    "runtime_version": "0.24.0",
+    "unknown": {},
+    "weight_hashes": []
+  },
+  "environment": {
+    "core_lock_sha256": "21d731c34e8abfc6f3bab153e5b9d407ac16d02fb9a36b85704aa3c667b905c6",
+    "hardware": "arm64",
+    "os": "Darwin 25.6.0",
+    "python_version": "3.14.10",
+    "runtime_lock_sha256": "0b2a7dd5a28eb40f4b7b85111d1cb3050b9aba3b873b0e1d7976da258c652f4a",
+    "runtime_python_version": "3.14.10",
+    "uv_version": "uv 0.13.6 (Homebrew 2026-10-26 aarch64-apple-darwin)"
+  },
+  "failure": null,
+  "final": {
+    "license": null,
+    "path": "final.png",
+    "pixel_sha256": "0d85d8300a8120e8d34186c88ec7ff7286c65e4c7a87e64ed43b015bee3c7177",
+    "role": "final",
+    "sha256": "3c3bc418459e6c311ec077b0e90322565c2428650582da3e0f5374ba5e9a4545",
+    "source": null
+  },
+  "layout": null,
+  "mode": "generate",
+  "preview": {
+    "license": null,
+    "path": "preview.png",
+    "pixel_sha256": "f16efb6e99d4be44a8b958fc5818e5a091c77f9852caa023b132672d4449879b",
+    "role": "preview",
+    "sha256": "4d35d5cb5bff6963534ca51c59dc74977e5aea70878918e910db04c9a1471a18",
+    "source": null
+  },
+  "reproducibility": {
+    "conversion_replay": "not-performed",
+    "fresh_generation": "not-attempted"
+  },
+  "request": {
+    "guidance": null,
+    "height": 512,
+    "layout": null,
+    "layout_id": null,
+    "model": {
+      "name": "Runpod/FLUX.2-klein-4B-mflux-4bit",
+      "revision": "7ee1b3aa8178a1240050490072196a57da2bf2a9",
+      "source": null,
+      "weight_hashes": []
+    },
+    "prompt": "128x64 monochrome 1-bit Arduboy scene: a small submarine fully loaded with survey record canisters and supply crates, leaving the illuminated Deep Anchor docking cradle into dark water, side view, hatch open, bubbles and beacon behind, high contrast black and white, crisp readable silhouette, no text",
+    "prompt_template": "pixel art, 1-bit monochrome, crisp shapes, no lettering, no text: {prompt}",
+    "scheduler": null,
+    "schema_version": "1.0",
+    "seed": 6615,
+    "steps": 4,
+    "tail": {
+      "quantization": {
+        "bayer_matrix": [
+          [
+            0,
+            8,
+            2,
+            10
+          ],
+          [
+            12,
+            4,
+            14,
+            6
+          ],
+          [
+            3,
+            11,
+            1,
+            9
+          ],
+          [
+            15,
+            7,
+            13,
+            5
+          ]
+        ],
+        "mode": "bayer",
+        "origin_x": 0,
+        "origin_y": 0,
+        "threshold": 128
+      },
+      "resample": {
+        "mode": "nearest",
+        "target_height": 64,
+        "target_width": 128
+      }
+    },
+    "width": 1024
+  },
+  "resolved_generation": {
+    "defaults": {
+      "backend_command": "mflux-generate-flux2",
+      "base_model": null,
+      "controlnet_image_path": null,
+      "controlnet_strength": null,
+      "created_at": "2026-11-10T22:42:18.544592",
+      "depth_image_path": null,
+      "generation_time_seconds": 23.95,
+      "guidance": 1.0,
+      "image_path": null,
+      "image_paths": null,
+      "lora_paths": null,
+      "lora_scales": null,
+      "masked_image_path": null,
+      "mflux_version": "0.24.0",
+      "model": "black-forest-labs/FLUX.2-klein-4B",
+      "model_path": "/Users/connorfranc/code/arduboy/pixelgen/out/models/flux2-klein-4b",
+      "model_revision": "7ee1b3aa8178a1240050490072196a57da2bf2a9",
+      "negative_prompt": null,
+      "precision": "mlx.core.bfloat16",
+      "prompt": "pixel art, 1-bit monochrome, crisp shapes, no lettering, no text: 128x64 monochrome 1-bit Arduboy scene: a small submarine fully loaded with survey record canisters and supply crates, leaving the illuminated Deep Anchor docking cradle into dark water, side view, hatch open, bubbles and beacon behind, high contrast black and white, crisp readable silhouette, no text",
+      "quantize": 4,
+      "redux_image_paths": null,
+      "redux_image_strengths": null,
+      "runtime_python_version": "3.14.10",
+      "scheduler": "flow_match_euler_discrete",
+      "scheduler_source": "mflux 0.24.0 flux2_generate.py hardcodes it",
+      "seed": 6615,
+      "sidecar": {
+        "base_model": null,
+        "controlnet_image_path": null,
+        "controlnet_strength": null,
+        "created_at": "2026-11-10T22:42:18.544592",
+        "depth_image_path": null,
+        "generation_time_seconds": 23.95,
+        "guidance": 1.0,
+        "height": 512,
+        "image_path": null,
+        "image_paths": null,
+        "image_strength": null,
+        "lora_paths": null,
+        "lora_scales": null,
+        "masked_image_path": null,
+        "mflux_version": "0.24.0",
+        "model": "black-forest-labs/FLUX.2-klein-4B",
+        "model_path": "/Users/connorfranc/code/arduboy/pixelgen/out/models/flux2-klein-4b",
+        "negative_prompt": null,
+        "precision": "mlx.core.bfloat16",
+        "prompt": "pixel art, 1-bit monochrome, crisp shapes, no lettering, no text: 128x64 monochrome 1-bit Arduboy scene: a small submarine fully loaded with survey record canisters and supply crates, leaving the illuminated Deep Anchor docking cradle into dark water, side view, hatch open, bubbles and beacon behind, high contrast black and white, crisp readable silhouette, no text",
+        "quantize": 4,
+        "redux_image_paths": null,
+        "redux_image_strengths": null,
+        "seed": 6615,
+        "steps": 4,
+        "width": 1024
+      },
+      "sidecar_sha256": "181b6a7c2919be1c7d211cc43784cf22a1e828105e824fe8a77184e29651d5fc",
+      "user_prompt": "128x64 monochrome 1-bit Arduboy scene: a small submarine fully loaded with survey record canisters and supply crates, leaving the illuminated Deep Anchor docking cradle into dark water, side view, hatch open, bubbles and beacon behind, high contrast black and white, crisp readable silhouette, no text"
+    },
+    "guidance": 1.0,
+    "height": 512,
+    "prompt_template": "pixel art, 1-bit monochrome, crisp shapes, no lettering, no text: {prompt}",
+    "scheduler": "flow_match_euler_discrete",
+    "steps": 4,
+    "unknown": [],
+    "width": 1024
+  },
+  "run_id": "generate-481840a02e7cf3eb",
+  "schema_version": "1.0",
+  "source": {
+    "license": null,
+    "path": "source.png",
+    "pixel_sha256": "49d2ffcd67b2733347306b8a8cd065e3a41157109cb32e5fab1ead042fcdd2cd",
+    "role": "source",
+    "sha256": "8be4ae4800e5b1e6be1ae00fdd1183dd9e2923258d7e0e9f3e9adba6c4439365",
+    "source": null
+  },
+  "tail": {
+    "quantization": {
+      "bayer_matrix": [
+        [
+          0,
+          8,
+          2,
+          10
+        ],
+        [
+          12,
+          4,
+          14,
+          6
+        ],
+        [
+          3,
+          11,
+          1,
+          9
+        ],
+        [
+          15,
+          7,
+          13,
+          5
+        ]
+      ],
+      "mode": "bayer",
+      "origin_x": 0,
+      "origin_y": 0,
+      "threshold": 128
+    },
+    "resample": {
+      "mode": "nearest",
+      "target_height": 64,
+      "target_width": 128
+    }
+  }
+}

@@ -187,14 +187,14 @@ enum ScalarOffset : uint8_t {
 
 static_assert(kFieldPendingStory + 1 == kScalarBytes, "scalar field table covers the payload");
 
-// Pending scene ids are 0 (none) through story_view::kSceneMax (16): seven
-// milestone/survey decks, eight departure/joint handoff scenes and the appended
-// lower-right expedition result and briefing. This
-// storage layer must not include the presentation header (its AVR draw path
-// pulls the cart/music adapters into storage-only fixtures), so app.hpp pins
-// the coupling.
+// Pending scene ids are 0 (none) through story_view::kSceneMax (17): seven
+// milestone/survey decks, eight departure/joint handoff scenes, the appended
+// lower-right expedition result and briefing, and the RAM-only opening deck.
+// This storage layer must not include the presentation header (its AVR draw
+// path pulls the cart/music adapters into storage-only fixtures), so app.hpp
+// pins the coupling.
 constexpr uint8_t kPendingStoryNone = 0;
-constexpr uint8_t kPendingStoryMax = 16;
+constexpr uint8_t kPendingStoryMax = 17;
 
 inline uint8_t scalarU8(const Scalar &scalar, uint8_t offset) {
     return scalar.bytes[offset];

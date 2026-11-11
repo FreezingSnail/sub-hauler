@@ -271,6 +271,32 @@ bool handoffPlayback() {
     return s_screen == Screen::Station && ok;
 }
 
+// New Voyage plays the RAM-only opening deck before pilot control. Continue
+// restores the committed berth checkpoint and must not replay it; a cold reload
+// during the deck therefore skips it rather than resuming (at-most-once).
+// Emulator/host-harness only: startNewVoyage rewrites the cart save slot.
+bool openingPlayback() {
+    resetRun();
+    s_screen = Screen::Title;
+    startNewVoyage();
+    bool ok = s_screen == Screen::Story && s_pendingStory == story_view::kSceneOpening && s_storyReturnPilot == 1;
+    ok = story_view::cardCount(story_view::kSceneOpening) == 2 && ok;
+    ok = story_view::isImageCard(story_view::kSceneOpening, 0) && ok;
+    ok = !story_view::isImageCard(story_view::kSceneOpening, 1) && ok;
+    for (uint8_t card = 0; card < story_view::cardCount(story_view::kSceneOpening); ++card)
+        advanceStory();
+    ok = s_screen == Screen::Pilot && s_pendingStory == story_view::kSceneNone && ok;
+
+    // The saved new-voyage record has no pending deck: Continue enters the
+    // Tidewall board instead of replaying the opening.
+    resetRun();
+    s_screen = Screen::Title;
+    continueVoyage();
+    ok = s_screen == Screen::Station && s_pendingStory == story_view::kSceneNone && ok;
+    ok = s_state.pendingStory == story_view::kSceneNone && ok;
+    return ok;
+}
+
 } // namespace
 
 void setup() {
@@ -284,13 +310,15 @@ void setup() {
     const bool noticeOk = noticeBacking();
     const bool reloadOk = coldReload();
     const bool handoffOk = handoffPlayback();
+    const bool openingOk = openingPlayback();
     Serial.print(F("story_pixels=")); Serial.println(pixelsOk ? STORY_BEAT_FRAMES : 0);
     Serial.print(F("story_playback=")); Serial.println(playbackOk ? 1 : 0);
     Serial.print(F("story_notice_backing=")); Serial.println(noticeOk ? 1 : 0);
     Serial.print(F("story_cold_reload=")); Serial.println(reloadOk ? 1 : 0);
     Serial.print(F("story_handoffs=")); Serial.println(handoffOk ? 1 : 0);
+    Serial.print(F("story_opening=")); Serial.println(openingOk ? 1 : 0);
     Serial.print(F("story_max_us=")); Serial.println(s_storyMaxUs);
-    Serial.println(pixelsOk && playbackOk && noticeOk && reloadOk && handoffOk ? 'P' : 'F');
+    Serial.println(pixelsOk && playbackOk && noticeOk && reloadOk && handoffOk && openingOk ? 'P' : 'F');
 }
 
 void loop() {}

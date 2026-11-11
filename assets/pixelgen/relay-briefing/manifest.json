@@ -1,0 +1,229 @@
+{
+  "assets": [
+    {
+      "license": null,
+      "path": "inputs/config.json",
+      "pixel_sha256": null,
+      "role": "config",
+      "sha256": "887b05dc40de21602ee7dfac659e48750ad9deaa94bb8028e3a1c41d677ca830",
+      "source": null
+    }
+  ],
+  "backend": {
+    "backend": "mflux",
+    "backend_version": "0.24.0",
+    "model_revision": "7ee1b3aa8178a1240050490072196a57da2bf2a9",
+    "python_version": "3.14.10",
+    "runtime": "mflux-generate-flux2",
+    "runtime_version": "0.24.0",
+    "unknown": {},
+    "weight_hashes": []
+  },
+  "environment": {
+    "core_lock_sha256": "21d731c34e8abfc6f3bab153e5b9d407ac16d02fb9a36b85704aa3c667b905c6",
+    "hardware": "arm64",
+    "os": "Darwin 25.6.0",
+    "python_version": "3.14.10",
+    "runtime_lock_sha256": "0b2a7dd5a28eb40f4b7b85111d1cb3050b9aba3b873b0e1d7976da258c652f4a",
+    "runtime_python_version": "3.14.10",
+    "uv_version": "uv 0.13.6 (Homebrew 2026-10-26 aarch64-apple-darwin)"
+  },
+  "failure": null,
+  "final": {
+    "license": null,
+    "path": "final.png",
+    "pixel_sha256": "cf1dd8e296d5c38635a8434c3c9eadb1486424fa2365f50697eb6b8a82e61659",
+    "role": "final",
+    "sha256": "759467d92780f2d75fd2766260e0a475b57a6badf9d47d75d3bd1215fb82b7c6",
+    "source": null
+  },
+  "layout": null,
+  "mode": "generate",
+  "preview": {
+    "license": null,
+    "path": "preview.png",
+    "pixel_sha256": "1b28d2570e1905607f9ffcb4d8fa1fad39a503d8c81f32afa2c782d67b82541e",
+    "role": "preview",
+    "sha256": "25ec906357869cf74c91052bdaf0cf1fbe04bf2c45c8486e70af0f21f489e09a",
+    "source": null
+  },
+  "reproducibility": {
+    "conversion_replay": "not-performed",
+    "fresh_generation": "not-attempted"
+  },
+  "request": {
+    "guidance": null,
+    "height": 512,
+    "layout": null,
+    "layout_id": null,
+    "model": {
+      "name": "Runpod/FLUX.2-klein-4B-mflux-4bit",
+      "revision": "7ee1b3aa8178a1240050490072196a57da2bf2a9",
+      "source": null,
+      "weight_hashes": []
+    },
+    "prompt": "128x64 monochrome 1-bit Arduboy scene: inside a small submarine control cabin at Deep Anchor, a glowing sonar/beacon console showing a circular signal ring and a relay call, crew silhouettes and instrument panels, briefing mood, no wreck, no text, high contrast black and white, readable small shapes",
+    "prompt_template": "pixel art, 1-bit monochrome, crisp shapes, no lettering, no text: {prompt}",
+    "scheduler": null,
+    "schema_version": "1.0",
+    "seed": 6613,
+    "steps": 4,
+    "tail": {
+      "quantization": {
+        "bayer_matrix": [
+          [
+            0,
+            8,
+            2,
+            10
+          ],
+          [
+            12,
+            4,
+            14,
+            6
+          ],
+          [
+            3,
+            11,
+            1,
+            9
+          ],
+          [
+            15,
+            7,
+            13,
+            5
+          ]
+        ],
+        "mode": "bayer",
+        "origin_x": 0,
+        "origin_y": 0,
+        "threshold": 128
+      },
+      "resample": {
+        "mode": "nearest",
+        "target_height": 64,
+        "target_width": 128
+      }
+    },
+    "width": 1024
+  },
+  "resolved_generation": {
+    "defaults": {
+      "backend_command": "mflux-generate-flux2",
+      "base_model": null,
+      "controlnet_image_path": null,
+      "controlnet_strength": null,
+      "created_at": "2026-11-10T22:41:26.951972",
+      "depth_image_path": null,
+      "generation_time_seconds": 23.79,
+      "guidance": 1.0,
+      "image_path": null,
+      "image_paths": null,
+      "lora_paths": null,
+      "lora_scales": null,
+      "masked_image_path": null,
+      "mflux_version": "0.24.0",
+      "model": "black-forest-labs/FLUX.2-klein-4B",
+      "model_path": "/Users/connorfranc/code/arduboy/pixelgen/out/models/flux2-klein-4b",
+      "model_revision": "7ee1b3aa8178a1240050490072196a57da2bf2a9",
+      "negative_prompt": null,
+      "precision": "mlx.core.bfloat16",
+      "prompt": "pixel art, 1-bit monochrome, crisp shapes, no lettering, no text: 128x64 monochrome 1-bit Arduboy scene: inside a small submarine control cabin at Deep Anchor, a glowing sonar/beacon console showing a circular signal ring and a relay call, crew silhouettes and instrument panels, briefing mood, no wreck, no text, high contrast black and white, readable small shapes",
+      "quantize": 4,
+      "redux_image_paths": null,
+      "redux_image_strengths": null,
+      "runtime_python_version": "3.14.10",
+      "scheduler": "flow_match_euler_discrete",
+      "scheduler_source": "mflux 0.24.0 flux2_generate.py hardcodes it",
+      "seed": 6613,
+      "sidecar": {
+        "base_model": null,
+        "controlnet_image_path": null,
+        "controlnet_strength": null,
+        "created_at": "2026-11-10T22:41:26.951972",
+        "depth_image_path": null,
+        "generation_time_seconds": 23.79,
+        "guidance": 1.0,
+        "height": 512,
+        "image_path": null,
+        "image_paths": null,
+        "image_strength": null,
+        "lora_paths": null,
+        "lora_scales": null,
+        "masked_image_path": null,
+        "mflux_version": "0.24.0",
+        "model": "black-forest-labs/FLUX.2-klein-4B",
+        "model_path": "/Users/connorfranc/code/arduboy/pixelgen/out/models/flux2-klein-4b",
+        "negative_prompt": null,
+        "precision": "mlx.core.bfloat16",
+        "prompt": "pixel art, 1-bit monochrome, crisp shapes, no lettering, no text: 128x64 monochrome 1-bit Arduboy scene: inside a small submarine control cabin at Deep Anchor, a glowing sonar/beacon console showing a circular signal ring and a relay call, crew silhouettes and instrument panels, briefing mood, no wreck, no text, high contrast black and white, readable small shapes",
+        "quantize": 4,
+        "redux_image_paths": null,
+        "redux_image_strengths": null,
+        "seed": 6613,
+        "steps": 4,
+        "width": 1024
+      },
+      "sidecar_sha256": "6ddde4b3121b8d51ecaa26ef4aca4e4f31377c795e81724ceeccc4163a9c27fc",
+      "user_prompt": "128x64 monochrome 1-bit Arduboy scene: inside a small submarine control cabin at Deep Anchor, a glowing sonar/beacon console showing a circular signal ring and a relay call, crew silhouettes and instrument panels, briefing mood, no wreck, no text, high contrast black and white, readable small shapes"
+    },
+    "guidance": 1.0,
+    "height": 512,
+    "prompt_template": "pixel art, 1-bit monochrome, crisp shapes, no lettering, no text: {prompt}",
+    "scheduler": "flow_match_euler_discrete",
+    "steps": 4,
+    "unknown": [],
+    "width": 1024
+  },
+  "run_id": "generate-483c48da606bde0c",
+  "schema_version": "1.0",
+  "source": {
+    "license": null,
+    "path": "source.png",
+    "pixel_sha256": "4e08911e563e32778f3b60c1018a9d1ed33299613de1ec7d18f14fece485a989",
+    "role": "source",
+    "sha256": "e5ade5e049238932d2c709ecbdd5c5a84dff3807f232b5c8a76e1de1b3db8b81",
+    "source": null
+  },
+  "tail": {
+    "quantization": {
+      "bayer_matrix": [
+        [
+          0,
+          8,
+          2,
+          10
+        ],
+        [
+          12,
+          4,
+          14,
+          6
+        ],
+        [
+          3,
+          11,
+          1,
+          9
+        ],
+        [
+          15,
+          7,
+          13,
+          5
+        ]
+      ],
+      "mode": "bayer",
+      "origin_x": 0,
+      "origin_y": 0,
+      "threshold": 128
+    },
+    "resample": {
+      "mode": "nearest",
+      "target_height": 64,
+      "target_width": 128
+    }
+  }
+}
