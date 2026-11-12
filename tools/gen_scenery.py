@@ -1,7 +1,7 @@
 """Offline native pixel scenery. Called by gen_level through make gen only.
 
-Solid collision silhouettes stay authoritative. Background objects are hollow
-line art, kept outside the hull's route corridor and all interactive markers.
+Collision remains authoritative. Ambient growth avoids the route corridor;
+non-colliding wrecks project into water while leaving interactions clear.
 Nothing from this module executes on the device.
 """
 from collections import deque
@@ -15,10 +15,11 @@ REGIONS = ('tide', 'kelp', 'works', 'deep')
 # A room may override its region's ambient growths and wall markings with a
 # named texture. The override is scoped to the room's own pocket, so it never
 # re-themes a whole region or another room.
-TEXTURES = REGIONS + ('lens', 'pressure')
+TEXTURES = REGIONS + ('lens', 'pressure', 'cutter', 'turbine', 'alien')
 TEXTURE_RADIUS_TILES = 4
 AMBIENT = {'tide': 'coral', 'kelp': 'kelp', 'works': 'scrap',
-           'deep': 'crystal', 'lens': 'lens-shard', 'pressure': 'pressure-rib'}
+           'deep': 'crystal', 'lens': 'lens-shard', 'pressure': 'pressure-rib',
+           'cutter': 'saw-rack', 'turbine': 'coil', 'alien': 'alien-node'}
 
 
 def protection(level, spines):
@@ -63,7 +64,7 @@ def motif(kind, seed):
             line([(0, -n), (side*4, -n-3), (side*4, -n-5)])
         line([(-5, 0), (-2, -2), (2, -2), (5, 0)])
     elif kind == 'kelp':
-        height = 22 + seed % 15
+        height = (40 + seed % 11) if seed % 3 == 0 else (14 + seed % 19)
         stem = [(round(2*math.sin(n/6+seed)), -n) for n in range(height)]
         line(stem)
         for n in range(6, height-2, 6):
@@ -71,6 +72,9 @@ def motif(kind, seed):
             side = 1 if n % 12 else -1
             line([(x, y), (x+side*6, y-5), (x+side*5, y-1), (x, y+1)])
         line([(-4, 0), (0, -2), (4, 0)])
+    elif kind == 'kelp-canopy':
+        # Same fronds suspended from the ceiling into the water.
+        return {(x,-y) for x,y in motif('kelp',seed)}
     elif kind == 'scrap':
         box(-8, -10, 17, 9)
         line([(-7, -3), (1, -9), (7, -3)])
@@ -195,6 +199,32 @@ def motif(kind, seed):
         line([(13, -23), (21, -26), (23, -23)])
         line([(-3, -32), (3, -32)])
         line([(-1, -34), (1, -34)])
+    elif kind == 'alien-core':
+        # Broken asymmetric machine shell with a suspended hexagonal core.
+        line([(-25, -3), (-25, -28), (-17, -37), (-8, -37)])
+        line([(-21, -4), (-21, -26), (-15, -32), (-8, -32)])
+        line([(11, -35), (23, -25), (23, -4), (17, 0), (8, 0)])
+        line([(15, -29), (19, -23), (19, -7), (14, -4)])
+        line([(-11, -19), (-5, -27), (6, -27), (12, -19), (6, -10), (-5, -10), (-11, -19)])
+        oval(-4, -22, 9, 8)
+        for y in (-29, -21, -13):
+            line([(-21, y), (-15, y+3)])
+        line([(-17, -4), (-10, -4), (-7, -7)])
+        line([(12, -15), (17, -15)])
+    elif kind == 'saw-rack':
+        line([(-12, 0), (-12, -4), (12, -4), (12, 0)])
+        for x in (-8, 0, 8):
+            line([(x-3, -5), (x, -12), (x+3, -5)])
+    elif kind == 'coil':
+        oval(-10, -14, 21, 12)
+        oval(-6, -11, 13, 6)
+        line([(-13, 0), (-9, -5)])
+        line([(9, -5), (13, 0)])
+    elif kind == 'alien-node':
+        line([(-10, -5), (-5, -14), (5, -14), (10, -5), (5, 0), (-5, 0), (-10, -5)])
+        box(-3, -9, 7, 5)
+        line([(-15, -6), (-10, -6)])
+        line([(10, -6), (15, -6)])
     elif kind == 'pressure-rib':
         # A short pair of buckled hull ribs with a bolted seam.
         line([(-10, 0), (-10, -9), (-6, -14), (6, -14), (10, -9), (10, 0)])
@@ -292,7 +322,7 @@ def decorate(level, base, spines):
         if texture:
             # Scope an override to the room's own pocket; it never repaints a
             # neighbouring room or the whole region.
-            reach = room['radius'] + TEXTURE_RADIUS_TILES
+            reach = room['radius'] + (14 if texture == 'alien' else TEXTURE_RADIUS_TILES)
             if (room['position'][0]-tx)**2 + (room['position'][1]-ty)**2 <= reach*reach:
                 return texture
         return room['region']
@@ -321,7 +351,38 @@ def decorate(level, base, spines):
             return False
         white.update((px, py) for px, py in points if water(px, py))
         xs, ys = zip(*points)
-        occupied_draw.rectangle((min(xs)-3, min(ys)-3, max(xs)+3, max(ys)+3), fill=255)
+        if kind in ('kelp','kelp-canopy'):
+            # Permit neighboring strands to interleave into dense beds while
+            # still reserving their roots against duplicate placements.
+            occupied_draw.rectangle((x-2,y-2,x+2,y+2), fill=255)
+        else:
+            occupied_draw.rectangle((min(xs)-3, min(ys)-3, max(xs)+3, max(ys)+3), fill=255)
+        return True
+
+    # Unlike ambient scenery, wrecks can cross the navigation corridor. Only
+    # interaction footprints and gates constrain these non-colliding outlines.
+    interaction = Image.new('1', (WIDTH, HEIGHT))
+    marker_draw = ImageDraw.Draw(interaction)
+    for p in level.pickups:
+        marker_draw.rectangle((p.x-12,p.y-10,p.x+12,p.y+10),fill=255)
+    for g in level.gates:
+        marker_draw.rectangle((g.x-3,g.y-3,g.x+g.w+3,g.y+g.h+3),fill=255)
+    for dock in list(level.world.settlements)+list(level.service_berths):
+        x,y=dock.pixel_x,dock.pixel_y
+        marker_draw.rectangle((x-19,y-12,x+19,y+12),fill=255)
+
+    def place_wreck(kind, x, y, variant):
+        points={(x+px,y+py) for px,py in motif(kind,variant)}
+        halo={(px+dx,py+dy) for px,py in points for dx in (-1,0,1) for dy in (-1,0,1)}
+        if any(not (8<=px<WIDTH-8 and 8<=py<HEIGHT-8) or interaction.getpixel((px,py))
+               or occupied.getpixel((px,py)) for px,py in halo):
+            return False
+        if sum(water(px,py) for px,py in points)<len(points)*.35:
+            return False
+        black.update(halo-points)
+        white.update(points)
+        xs,ys=zip(*halo)
+        occupied_draw.rectangle((min(xs)-3,min(ys)-3,max(xs)+3,max(ys)+3),fill=255)
         return True
 
     def place_wall(kind, x, y, variant):
@@ -343,9 +404,15 @@ def decorate(level, base, spines):
         dx, dy = item.get('offset', [0, 40])
         theme = room.get('texture', room['region'])
         mount = item.get('mount', 'water')
-        if mount not in ('water', 'wall'):
+        if mount not in ('water', 'wall', 'wreck'):
             raise ValueError(f'unknown scenery mount: {mount}')
-        if mount == 'wall':
+        if mount == 'wreck':
+            pixels=motif(item['kind'],seed+i)
+            candidates=sorted(((cx+dx+x,cy+dy+y) for y in range(-24,25,2) for x in range(-24,25,2)),
+                              key=lambda p: (-sum(cx-63<=p[0]+px<cx+63 and cy-31<=p[1]+py<cy+31
+                                                  for px,py in pixels),
+                                             (p[0]-cx-dx)**2+(p[1]-cy-dy)**2))
+        elif mount == 'wall':
             # Coves are small dead-end pockets, so their wreck silhouettes are
             # etched into the surrounding wall rather than dropped into the
             # protected route corridor.
@@ -365,7 +432,9 @@ def decorate(level, base, spines):
                                  if p[2] == theme and abs(p[0]-cx) < 100 and abs(p[1]-cy) < 100),
                                 key=lambda p: (p[0]-cx-dx)**2+(p[1]-cy-dy)**2)
         for x, y in candidates:
-            placed = place_wall(item['kind'], x, y, seed+i) if mount == 'wall' else place(item['kind'], x, y, seed+i)
+            placed = (place_wreck(item['kind'],x,y,seed+i) if mount=='wreck' else
+                      place_wall(item['kind'],x,y,seed+i) if mount=='wall' else
+                      place(item['kind'],x,y,seed+i))
             if placed:
                 stats['landmarks'].append({'id': item['id'], 'room': item['room'], 'kind': item['kind'],
                                            'mount': mount, 'x': x, 'y': y})
@@ -390,17 +459,37 @@ def decorate(level, base, spines):
             if place_wall(AMBIENT[texture], x, y, seed+placed):
                 stats['ambient'][texture] += 1
                 placed += 1
-                if placed == 4:
+                if placed == (2 if texture in ('cutter','turbine','alien') else 4):
                     break
     for x, y, theme in floors:
         # Choose growths from the stable coarse floor identity, so refining a
         # contour moves their roots instead of reshuffling the whole biome.
         coarse_y = round(y/8)*8+1
         value = (x*71+coarse_y*113+seed) & 0xFFFF
-        if value % (3 if theme in ('kelp', 'lens') else 5):
+        if theme != 'kelp' and value % (3 if theme == 'lens' else 5):
             continue
-        if place(ambient[theme], x, y, value):
-            stats['ambient'][theme] += 1
+        variants = (value, value+1, value+2) if theme == 'kelp' else (value,)
+        for variant in variants:
+            if place(ambient[theme], x, y, variant):
+                stats['ambient'][theme] += 1
+                break
+
+    # Kelp fills the forest from both sides of its passages. Find the actual
+    # curved ceiling just as floor fronds find the curved seabed. The regular
+    # protected corridor still prevents vegetation from burying the route.
+    for y in range(2,158):
+        for x in range(2,318):
+            if region(x,y) != 'kelp' or grid[y*320+x] or not grid[(y-1)*320+x]:
+                continue
+            px=x*8+4
+            roots=[py for py in range(y*8-7,y*8+8)
+                   if solid_pixels[px,py] and not solid_pixels[px,py+1]]
+            if not roots: continue
+            py=min(roots,key=lambda v:abs(v-y*8))
+            for variant in (x*71+y*113+seed, x*71+y*113+seed+1, x*71+y*113+seed+2):
+                if place('kelp-canopy',px,py,variant):
+                    stats['ambient']['kelp']+=1
+                    break
 
     # Rock decoration stays near the water and three pixels inside the actual
     # wall. It never nicks the terrain silhouette or makes a false opening.
@@ -436,6 +525,19 @@ def decorate(level, base, spines):
                 gradient = (int(distance[ty*320+tx+1])-int(distance[ty*320+tx-1]),
                             int(distance[(ty+1)*320+tx])-int(distance[(ty-1)*320+tx]))
                 worn_plating(d,x,y,seed,gradient)
+            elif theme == 'cutter':
+                d.line([(x-13,y+6), (x-13,y-5), (x+13,y-5)], fill=255, width=2)
+                for dx in (-8, 0, 8):
+                    d.line([(x+dx-3,y+3), (x+dx,y-2), (x+dx+3,y+3)], fill=255)
+            elif theme == 'turbine':
+                d.arc((x-11,y-9,x+11,y+9), 30, 300, fill=255, width=2)
+                for dx in (-5, 1, 7):
+                    d.line([(x+dx-3,y+5), (x+dx+2,y-5)], fill=255)
+            elif theme == 'alien':
+                d.line([(x-14,y-7), (x-6,y-7), (x-1,y+1), (x+11,y+1)], fill=255, width=2)
+                d.line([(x-14,y-2), (x-9,y-2), (x-4,y+6), (x+11,y+6)], fill=255)
+                d.rectangle((x+9,y-2,x+14,y+9), outline=255)
+                d.rectangle((x+11,y+1,x+12,y+5), fill=255)
             elif theme == 'pressure':
                 # Broken parallel bulkhead ribs and rivets distinguish this
                 # pocket from both the works plating and the lens rings.
@@ -459,16 +561,18 @@ def decorate(level, base, spines):
     # reads as its own place, not just a tinted copy of the region.
     for room in rooms.values():
         texture = room.get('texture')
-        if texture not in ('lens', 'pressure'):
+        if texture not in ('lens', 'pressure', 'cutter', 'turbine', 'alien'):
             continue
         cx, cy = (v*8 for v in room['position'])
+        if texture in ('alien','cutter','turbine'):
+            continue
         if texture == 'pressure':
             for radius in (42, 51, 60):
                 d.rounded_rectangle((cx-radius, cy-radius//2, cx+radius, cy+radius//2),
-                                    radius=13, outline=255)
+                                    radius=13, outline=255, width=2 if radius==51 else 1)
             continue
         for radius in (40, 50, 60):
-            d.ellipse((cx-radius, cy-radius, cx+radius, cy+radius), outline=255)
+            d.ellipse((cx-radius, cy-radius, cx+radius, cy+radius), outline=255, width=2 if radius==50 else 1)
         for dx, dy in ((-26, -44), (26, -44), (-30, 40), (30, 40)):
             d.line([(cx+dx, cy+dy), (cx+dx*5//4, cy+dy*5//4)], fill=255)
     ink = ImageChops.logical_and(ink, interior.convert('1'))

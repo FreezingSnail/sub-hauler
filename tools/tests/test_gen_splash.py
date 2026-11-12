@@ -1,4 +1,5 @@
 import sys
+import json
 import unittest
 from pathlib import Path
 
@@ -11,6 +12,14 @@ import gen_sprites
 
 
 class SplashGenerationTest(unittest.TestCase):
+    def test_splash_uses_canonical_arrival_art_between_text_bands(self):
+        _, game = gen_splash.frames()
+        source = json.loads((ROOT / "story/scenes.json").read_text(encoding="utf-8"))
+        row = source["art"]["rows"].index("arrival")
+        with Image.open(ROOT / "story" / source["art"]["file"]) as sheet:
+            art = sheet.crop((0, row * 64 + 9, 128, row * 64 + 55)).convert("RGBA")
+        self.assertEqual(game.crop((0, 9, 128, 55)).tobytes(), art.tobytes())
+
     def test_original_logo_pixels_are_centered_at_native_size(self):
         brand, _ = gen_splash.frames()
         source = Image.open(ROOT / "images/splash/source/snailware_64x64.png").convert("L")

@@ -11,6 +11,7 @@
 #include "src/generated/pause_sprites.hpp"
 #include "src/generated/pilot_sprites.hpp"
 #include "src/generated/text_stamp_sprites.hpp"
+#include "src/generated/text_layout.hpp"
 #include "src/generated/world.hpp"
 #include "src/generated/music.hpp"
 #include "src/generated/hud_sprites.hpp"
@@ -97,11 +98,13 @@ static_assert(img_row_labels == img_dock_barks + spriteBytes(IMG_DOCK_BARKS_WIDT
 static_assert(img_story_row == img_row_labels + spriteBytes(IMG_ROW_LABELS_WIDTH, IMG_ROW_LABELS_HEIGHT, IMG_ROW_LABELS_FRAMES, IMG_ROW_LABELS_MASKED), "STORY rows follow the row labels");
 static_assert(img_txt_a_next == img_story_row + spriteBytes(IMG_STORY_ROW_WIDTH, IMG_STORY_ROW_HEIGHT, IMG_STORY_ROW_FRAMES, IMG_STORY_ROW_MASKED), "individual string stamps follow the STORY sheet");
 static_assert(IMG_BERTH_NAMES_FRAMES == 9 && IMG_BERTH_WORK_FRAMES == 8 && IMG_CARRY_ROW_FRAMES == 9 &&
-              IMG_DOCK_BARKS_FRAMES == 73 && IMG_ROW_LABELS_FRAMES == 4 && IMG_STORY_ROW_FRAMES == 18 &&
+              IMG_DOCK_BARKS_FRAMES == text_layout::kDockBarkFrames && IMG_ROW_LABELS_FRAMES == 4 && IMG_STORY_ROW_FRAMES == 18 &&
               IMG_TXT_AIR_WIDTH == 128 && IMG_TXT_AIR_HEIGHT == 8 && IMG_TXT_AIR_FRAMES == 2 && IMG_TXT_AIR_MASKED,
               "baked stamp sheets and two-frame string rows");
 static_assert(FX_DATA_BYTES == img_txt_yes_no + spriteBytes(IMG_TXT_YES_NO_WIDTH, IMG_TXT_YES_NO_HEIGHT, IMG_TXT_YES_NO_FRAMES, IMG_TXT_YES_NO_MASKED), "FX image ends after the last text stamp");
-static_assert(STORY_CARD_COUNT == 43 && STORY_IMAGE_CARD_COUNT == 21 && STORY_TEXT_CARD_COUNT == 22 && STORY_IMAGE_COUNT == 21 && STORY_FRAME_COUNT == 106, "source-backed story cards");
+static_assert(STORY_CARD_COUNT == STORY_IMAGE_CARD_COUNT + STORY_TEXT_CARD_COUNT &&
+              STORY_FRAME_COUNT == STORY_IMAGE_COUNT * 4 + STORY_TEXT_CARD_COUNT,
+              "source-backed image poses and paginated text cover every card and frame");
 static_assert(FX_SAVE_BYTES == 4096, "save partition is one 4 KiB erase block");
 static_assert(FX_SAVE_PAGE == 0xFFF0, "save partition is the last 16 cart pages");
 static_assert((FX_DATA_BYTES + 255) / 256 + FX_SAVE_BYTES / 256 + FX_DATA_PAGE == 65536, "data and save partitions tile the cart image");

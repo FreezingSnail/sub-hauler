@@ -20,8 +20,8 @@ constexpr uint8_t kBerthNameFallback = 8;
 // story/dock_hints.json. Frames are berth-major and point-minor; every berth
 // owns one line at every saved progression point.
 constexpr uint8_t kDockBarkBerths = 8;
-constexpr uint8_t kDockBarkPoints = 9;
-constexpr uint8_t kDockBarkFrames = 73;
+constexpr uint8_t kDockBarkPoints = 14;
+constexpr uint8_t kDockBarkFrames = 113;
 static_assert(1 + (kDockBarkBerths - 1) * kDockBarkPoints + (kDockBarkPoints - 1) + 1 == kDockBarkFrames,
               "dock bark frame count must match the berth x point grid");
 

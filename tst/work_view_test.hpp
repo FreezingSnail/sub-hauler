@@ -150,6 +150,12 @@ inline void WorkViewSuite(TestRunner &runner) {
 
         test.assertEqual(work_view::clueFor(state), work_view::kClueSeal, "Deep Anchor sees the same sealed stage");
         state.campaign |= campaign::kMilestoneBeacon;
+        state.tools = exploration_data::CUTTER | exploration_data::SEAL;
+        test.assertEqual(work_view::rowCount(state), 0, "missing lens keeps the relay off WORK");
+        test.assertEqual(work_view::clueFor(state), campaign::kDockPointLens, "empty WORK board points above Deep Anchor");
+        state.tools |= exploration_data::LENS;
+        test.assertEqual(work_view::clueFor(state), campaign::kDockPointThruster, "lens pickup advances to the missing thruster");
+        state.tools = exploration_data::CUTTER | exploration_data::SEAL | exploration_data::LENS | exploration_data::THRUSTER;
         test.assertEqual(work_view::clueFor(state), work_view::kClueCore, "Deep Anchor advertises the mandatory relay");
         state.campaign |= campaign::kMilestoneExpedition;
         test.assertEqual(work_view::clueFor(state), work_view::kClueRelay, "Deep Anchor reports the lit beacon after the relay");

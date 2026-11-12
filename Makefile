@@ -330,6 +330,7 @@ render-world:
 	cp $(WORLD_RENDER_DIR)/game-world.png docs/assets/exploration-world-2026-11-09.png
 	cp $(WORLD_RENDER_DIR)/game-world-music.png docs/assets/exploration-world-music-2026-11-09.png
 	cp $(WORLD_RENDER_DIR)/game-world-native.png docs/assets/exploration-world-native-2026-11-09.png
+	cp $(WORLD_RENDER_DIR)/game-world-equipment.png docs/assets/exploration-equipment.png
 
 TEST_OUT      := build/tests/host
 TEST_SOURCES  := tst/main.cpp
@@ -411,7 +412,7 @@ fxtest-run:
 			stage="$(FXTEST_BUILD_DIR)/$$name"; \
 			cp -f "$(FXDATA_BIN)" "$$stage/fxdata.bin"; \
 			ms="$(FXTEST_MS)"; \
-			case "$$name" in test_startup|test_save_chain|test_story) \
+			case "$$name" in test_startup|test_save_chain|test_story|test_render) \
 				if [ "$$ms" -lt 8000 ]; then ms=8000; fi ;; \
 			esac; \
 			echo "=== $$name ==="; \

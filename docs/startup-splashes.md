@@ -2,22 +2,22 @@
 
 Normal voyage builds show the original Snailware logo and then a Sub-hauler
 title scene before the existing title menu. The logo lasts 60 × 16 ms (about
-1 s); the title splash lasts 150 × 16 ms (about 2.4 s). The complete
-introduction measures 3,417 ms including presentation and release debounce.
-Any held button skips the introduction; waiting for release prevents that
-input from selecting NEW VOYAGE or CONTINUE. The final timeout also waits
-for release. The title/menu music cue starts before the logos and keeps playing
-through the introduction; voyage time starts afterward. Developer and
-campaign/save-off profiles keep their existing startup.
+1 s); the title splash waits for a fresh button press. A held button used to
+skip the logo must be released first, and its release is consumed before menu
+input. The title/menu music cue starts before the logos and keeps playing
+through the introduction; voyage time starts afterward.
 
 The generated preview is `build/splash-preview.png` (written by
 `tools/gen_splash.py` during `make gen`; `build/` is disposable and not
 committed). The original 64×64
 [Snailware source](../images/splash/source/README.md) is retained
 unchanged with its upstream MIT license and verified blob SHA. SNAIL / WARE
-placement follows AllYourArdu. The game screen uses the existing HAULER art
-and font with a baked underwater scene. Two opaque 128×64 frames cost 2,050 B
+placement follows AllYourArdu. The game screen reuses the canonical Benthos
+arrival artwork from `story/art.png`, with a title and button prompt in black
+bands. Two opaque 128×64 frames cost 2,050 B
 of FX payload and no program-memory bitmap storage.
+
+The following measurements are historical, from the 2026-10-28 timed splash:
 
 | Full synth build step | Flash | Static RAM |
 | --- | ---: | ---: |

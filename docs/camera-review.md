@@ -11,6 +11,25 @@ The current fixed-build checkpoint measures **28,218 / 1,650 B** with the
 ATMlib2FX synth and an **11.096 ms** maximum complete-flight frame with the same
 camera behavior.
 
+## HUD fill checkpoint — 2026-11-11
+
+The supplied Ardens profile showed 81.6% CPU active, with samples in the
+music interrupt, cart reads, display transfer and drawing. `drawPilot` includes
+inlined scene work, so it is not a measurement of the hull sprite alone.
+
+Full-page rectangles now use a bulk buffer fill, and partial-page rectangles
+move the color choice out of the pixel loop. On the same device render probe,
+the cached case 0 HUD fell from **1,912 µs to 1,724 µs**; all **24** cached and
+cold frame CRCs matched. The complete 842-frame flight probe's maximum fell
+from **12,868 µs to 12,652 µs**, with zero 16 ms misses, audio gap 1 tick and
+zero underruns/errors in both runs. These targeted timings do not establish a
+new whole-session CPU-active percentage.
+
+The release image changed from **28,554 to 28,626 B flash** and stayed at
+**1,640 B static SRAM**. The music and production save-chain probes measured
+**640 B** and **683 B** stack reserve respectively. Host and device render
+checks passed; no physical-device or whole-session CPU measurement is claimed.
+
 ## Verified implementation
 
 The shipping FX and Mini images measure **28,218 B flash / 1,650 B static

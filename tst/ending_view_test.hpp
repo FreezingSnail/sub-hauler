@@ -7,8 +7,7 @@
 
 // Pure homecoming card contract: exactly two cards in network-then-thanks order.
 // The retired voyage-stats card is no longer part of the sequence. Device-only
-// panel layout is pinned by the static_asserts in ending_view.hpp, which compile
-// in this host build too.
+// panel artwork and layout are checked by the panel generator tests.
 inline void EndingViewSuite(TestRunner &runner) {
     {
         Test test("ending cards advance twice and then finish");

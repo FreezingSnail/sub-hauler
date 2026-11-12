@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Compose two opaque startup frames from the original logo and game art."""
+"""Compose two opaque startup frames from the original logo and story art."""
+import json
 from pathlib import Path
 
 from PIL import Image, ImageDraw
 
 from gen_panels import draw_text
-from gen_pilot import normalize as normalize_pilot
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -20,24 +20,18 @@ def frames(root=ROOT):
     draw_text(brand, 1, 10, "SNAIL")
     draw_text(brand, 100, 10, "WARE")
 
-    game = Image.new("RGBA", (128, 64), "black")
-    title = Image.new("RGBA", (60, 8), "black")
-    draw_text(title, 0, 0, "SUB-HAULER")
-    game.paste(title.resize((120, 16), Image.Resampling.NEAREST), (4, 5))
+    # Reuse the canonical first-arrival art, with quiet bands for the title and
+    # button prompt. The sheet row is named by scenes.json rather than an index.
+    source = root / "story/scenes.json"
+    story = json.loads(source.read_text(encoding="utf-8"))
+    row = story["art"]["rows"].index("arrival")
+    with Image.open(source.parent / story["art"]["file"]) as sheet:
+        game = sheet.crop((0, row * 64, 128, (row + 1) * 64)).convert("RGBA")
     pen = ImageDraw.Draw(game)
-    # Rock ledges frame the established HAULER silhouette. All scenery is
-    # baked here; the device only copies a complete native 1-bit frame.
-    pen.line([(0, 27), (7, 27), (7, 30), (17, 30), (17, 33), (24, 33)], fill="white")
-    pen.line([(127, 28), (119, 28), (119, 32), (109, 32), (109, 35), (103, 35)], fill="white")
-    pen.line([(0, 50), (13, 50), (13, 48), (28, 48), (28, 51), (49, 51),
-              (49, 52), (84, 52), (84, 50), (111, 50), (111, 47), (127, 47)], fill="white")
-    ship_sheet = normalize_pilot(root / "images/pilot/hauler_26x8.png")
-    ship = ship_sheet.crop((0, 0, 26, ship_sheet.height))
-    ship = ship.resize((52, ship.height * 2), Image.Resampling.NEAREST)
-    game.paste(ship, (38, 46 - ship.height), ship)
-    for x, y in ((29, 34), (23, 29), (18, 39)):
-        pen.rectangle((x, y, x + 2, y + 2), outline="white")
-    draw_text(game, 7, 56, "PRESS A TO START")
+    pen.rectangle((0, 0, 127, 8), fill="black")
+    pen.rectangle((0, 55, 127, 63), fill="black")
+    draw_text(game, 34, 1, "SUB-HAULER")
+    draw_text(game, 16, 56, "PRESS ANY BUTTON")
     return brand, game
 
 

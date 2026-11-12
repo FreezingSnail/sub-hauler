@@ -12,7 +12,7 @@ Keep dated measurements in the checkpoint table instead of copying them around.
 | MCU | ATmega32u4 |
 | Display | 128×64 SSD1306 OLED, native 1-bit |
 | Framebuffer | 1,024 B (`Arduboy2Base::sBuffer`) |
-| Cart | external FX flash; current `fxdata/fxdata.bin` image is 642,048 B; the unpadded 637,779 B payload is `fxdata/fxdata-data.bin`, with the 4,096 B save partition at `FX_SAVE_PAGE = 0xFFF0` |
+| Cart | external FX flash; current `fxdata/fxdata.bin` image is 675,840 B; the unpadded 671,528 B payload is `fxdata/fxdata-data.bin`, with the 4,096 B save partition at `FX_SAVE_PAGE = 0xFFF0` |
 | Display mode | native 1-bit via `Arduboy2Base` |
 | Logical frame | `FRAME(x)` = `x`; one image per frame |
 | Blitting | `Blit::draw` plus-mask blits into `sBuffer`; no OLED access |
@@ -45,7 +45,50 @@ SRAM remains capped at **1,700 B** and measured stack reserve must remain at
 least **600 B**. Prior task documents quoting a hard 29,000 B flash ceiling
 are superseded by this decision.
 
-Current fixed build (2026-11-11, after `sub-hauler-2va`): one configuration
+Animated scenery checkpoint (2026-11-11, `sub-hauler-wfu`): the restored pump
+and lift animate after their respective milestones; two Kelp Cathedral fronds
+sway, and two deep vents release bubbles. The submarine wake now requires
+horizontal movement. FX uses **28,554 B flash / 1,640 B static RAM**, leaving
+**1,142 B** flash and **60 B** static headroom. The 842-frame flight probe
+measured **12,868 µs** max, with zero missed frames, audio underruns or errors.
+The save-chain and combined-music stack reserves are **683 B** and **673 B**.
+
+Submarine bubble wake (2026-11-11, `sub-hauler-1vv`, superseded above): movement draws a small
+flight-clock-driven wake behind the boat, including vertical movement, without
+adding state. FX and Mini use **28,238 B flash / 1,640 B static RAM**, leaving
+**1,458 B** flash and **60 B** static headroom. Save-chain stack reserve is
+**683 B** and combined music reserve is **642 B**; the 842-frame flight probe
+measured **12,848 µs** max, with zero
+missed frames, underruns or errors.
+
+Wildlife expansion (2026-11-11, `sub-hauler-7e7`): 20 sites across the map
+show animated fish schools or drifting jellyfish, using the flight clock and
+no additional static state. FX and Mini use **27,818 B flash / 1,640 B static
+RAM**, leaving **1,878 B** flash and **60 B** static headroom. The save-chain
+stack reserve is **683 B**, and combined music reserve is **649 B**; the
+842-frame flight probe measured **12,800 µs**
+max, with zero missed frames, audio underruns or errors. Wildlife footprints
+are checked against the baked terrain.
+
+Ambient fish checkpoint (2026-11-11, `sub-hauler-7hn`): four schools animate
+in selected clear-water caverns using the existing flight clock, without game
+state or cart reads. FX and Mini use **27,486 B flash / 1,640 B static RAM**,
+leaving **2,210 B** flash and **60 B** static headroom. The save-chain stack
+reserve is **683 B**, and the combined music reserve is **638 B**; the
+842-frame flight probe measured **12,648 µs** max,
+zero missed frames, audio underruns or errors. The earlier story checkpoint
+below records the baseline before fish.
+
+Verified story checkpoint (2026-11-11, `sub-hauler-a7s`, including cave
+scenery and preceding subsequent pilot-art edits): FX and Mini use **27,120 B flash / 1,640 B static RAM**
+(`.text/.data/.bss` **27,116 / 4 / 1,636 B**), leaving **2,576 B** hardware
+flash headroom and **60 B** under the static ceiling. Measured stack reserves
+are **683 B** for the production save chain and **640 B** for combined music.
+The **842-frame** flight probe has a **12,628 µs** maximum with zero misses,
+underruns or errors. The story remains **43 cards / 106 frames**; its blob is
+**70,042 B**. The cart payload/image are **671,496 / 675,840 B**.
+
+Baked-text checkpoint (2026-11-11, `sub-hauler-2va`): one configuration
 always links the ATMlib2FX compact synth (`ATM_FX_COMPACT_LOOP=1`,
 `ATM_FX_COMPACT_RING=32`) over the six authored C1 streams. The whole image is
 **27,792 B flash / 1,655 B static RAM** (`.text/.data/.bss` **27,784 / 8 /
@@ -314,6 +357,7 @@ current developer-only `DEBUG=1` image is documented in
 
 | Date | Flash | Static RAM | Toolchain / notes |
 | --- | --- | --- | --- |
+| 2026-11-11 | 27,120 B | 1,640 B | Story guidance and prose (`sub-hauler-a7s`, including current cave scenery): opening names the Tidewall spawn berth; suppliers, receiving sites, seal/core handoff, relay return and physical HOME dispatch are explicit. Five appended presentation-only dock points add missing cutter/lens/thruster and surveyed repair-collection leads, shared by station and WORK boards. Lens clue points above Deep Anchor and vanishes when owned. Scene, mission and save IDs unchanged; 17 scenes / 43 cards / 106 frames, story blob **70,042 B**. FX/Mini `.text/.data/.bss` **27,116 / 4 / 1,636 B**, **2,576 B** flash free, **60 B** static headroom. Host **257**, tooling **173**, docs/Node **18**; 15 default device suites P; save-chain **683 B**, combined music **640 B**, runtime-page P; flight **842 frames**, **12,628 µs max**, 0 misses, gap 1, 0 underruns/errors. Gen-check deterministic; FX payload/image **671,496 / 675,840 B**; **1,421,312 B** below 2 MiB, save page **0xFFF0**. Logs `build/story-hints-*.log`. No physical playthrough claimed. |
 | 2026-11-11 | 27,784 B | 1,655 B | Story deck 24-bit frame offsets: refreshed `story/art.png` and `story/scenes.json` produced **106 frames** whose combined RLE payload plus the old two-byte offset table exceeded the 65,535 B ceiling. `story-beats.bin` now begins with 106 little-endian three-byte frame offsets (318 B), and `story_view::frameOffset` reads three bytes and returns `uint24_t`. `STORY_BEAT_BYTES` is 32-bit. Final story blob **67,468 B**; `.text/.data/.bss` **27,776 / 8 / 1,647 B**, **1,912 B** hardware flash free. `make gen` 17 scenes / 43 cards / 106 frames / 21 images; FX payload/image **658,682 / 662,784 B**, **1,434,368 B** below 2 MiB; `storyBeats=0x07E52A`, `storyMeta=0x08ECB6`, `FX_DATA_PAGE=0xF5E3`, `FX_SAVE_PAGE=0xFFF0` unchanged. `make gen-check` deterministic; host **264**, tooling **181**, docs **18**; all **15/15** default device suites print `P`, with `test_story` decoding **106** frame CRCs at **10,772 µs** max; Mini **27,784 / 1,655 B**. No physical playthrough or human art review claimed. |
 | 2026-11-11 | 27,792 B | 1,655 B | Baked runtime text stamps (`sub-hauler-2va`): every production label is a static 128x8 plus-mask FX image, so release code issues no `text::print`/`number`/`character`/`begin` call and `text::begin()` leaves the production boot path. `tools/gen_text_images.py` bakes the 6x8 glyph table into 83 two-frame `img_txt_*` rows (white/black, 3 px inset) plus `img_berth_names` (9), `img_dock_barks` (16), `img_row_labels` (4), `img_story_row` (18), `img_carry_row` (9) and `img_berth_work` (8) sheets; `gen_sprites` packs `fxdata/TextData.txt` with a two-byte header and 256 B frame stride. The retired `dockBarks` cart blob and `generated/dock_barks.hpp` are gone; `tools/dock_bark_table.py` is the shared bark order. Before `.text/.data/.bss` **29,130 / 16 / 1,649 B**, **29,146 B flash / 1,665 B static**, debug **29,456 B / 1,666 B**, FX payload/image **579,005 / 583,168 B**, `FX_DATA_PAGE=0xF71A`. After **27,792 B flash / 1,655 B static**, `.text/.data/.bss` **27,784 / 8 / 1,647 B** (−1,354 B flash, −10 B static), **1,904 B** hardware flash free, debug **28,102 B / 1,656 B**, FX payload/image **637,779 / 642,048 B** (+58,774/+58,880 B, 83 text rows + six sheets), `FX_DATA_PAGE=0xF634`, `FX_SAVE_PAGE=0xFFF0` unchanged at the 4 KiB save tail. The external 6x8 font and `print`/`number`/`character` stay for reference tests only; no font-renderer symbol remains in the release ELF. `make gen-check` deterministic; host **262**, tooling **169**, docs **33** + preview **8**; all 15 default device suites P plus save-chain, runtime-page and flight. No physical playthrough claimed. |
 | 2026-11-11 | 29,146 B | 1,665 B | Redundant berth air readout removal (`sub-hauler-39u`): berth service always refills to capacity, so the station board no longer draws the tank gauge or the `AIR <current>/<capacity>` status line. Removed `drawAirGauge`/`drawStatus`, their layout constants and static asserts, and the now-unreferenced `txt_air_status = 'AIR '` declaration (the HUD keeps `txt_air`). Before `.text/.data/.bss` **29,362 / 16 / 1,649 B**, **29,378 B flash / 1,665 B static**, debug **29,688 B / 1,666 B**, FX payload/image **579,010 / 583,168 B**, `FX_DATA_PAGE=0xF71A`. After **29,146 B flash / 1,665 B static**, `.text/.data/.bss` **29,130 / 16 / 1,649 B**, **550 B** hardware flash free, debug **29,456 B / 1,666 B**, FX payload/image **579,005 / 583,168 B** (−5 B payload, image unchanged), `FX_DATA_PAGE=0xF71A` and `FX_SAVE_PAGE=0xFFF0` unchanged; later FX symbols shift down **5 B**. `make gen-check` deterministic; host **262**, tooling **161**, docs **33** + preview **8**; targeted `test_boot` and `test_menu` (**29** pixel cases) pass; Mini **29,146 / 1,665 B**. No physical playthrough claimed. |

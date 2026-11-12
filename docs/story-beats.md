@@ -114,7 +114,9 @@ scenes replace the old departure placeholders; `beacon-descent` and
   variant.
 - HOME result cards are the ending prologue. The ending flag commit still
   controls replay after the cards.
-- The ending presentation is two fixed cards, lit network then thanks. The
+- The ending presentation is two fixed cards: the four restored stations,
+  then a voyage-complete message over the Tidewall homecoming artwork. A or B
+  returns to the station, and VIEW ENDING replays them. The
   retired voyage-stats panel remains declared in the FX layout so later flash
   offsets stay stable, but no screen draws it.
 
@@ -261,3 +263,36 @@ from **21 shared images**. FX payload/image are **658,682 / 662,784 B**,
 `test_boot` and `test_story` pass; `test_story` decodes all **106** frame CRCs
 with a **10,772 µs** maximum. FX and Mini firmware are **27,784 B flash /
 1,655 B static**. Human art review and a physical playthrough are not claimed.
+
+## Story and hint review — 2026-11-11
+
+`sub-hauler-a7s` reviews the current direct-to-site repair routes, both repair
+orders and equipment gates. The opening now sends the pilot to the Tidewall
+spawn berth for Benthos's filters. Survey findings identify the part supplier,
+departures name the receiving site, and the joint-restoration handoff identifies
+the seal workshop or Cormorant's core. The DEEP RELAY result directs the pilot
+back to Deep Anchor. HOME explains why physical records still travel after the
+beacon is restored. Short underwater details connect the repaired machinery,
+food supply and station lights to the final discovery.
+
+Five presentation-only `DockPoint` values append after HOME without changing
+save fields or mission/scene IDs. Once the beacon is lit, missing cutter, lens
+and thruster leads replace the generic equipment count; the lens clue points
+to the cave above Deep Anchor. Owning a tool removes its lead. Before either
+remaining repair, the saved survey fact selects inspection or part collection.
+The station board and WORK use the same selector, including empty WORK boards.
+
+The canonical prose retains **17 scenes, 43 cards** (21 image, 22 text) and
+**106 frames**. Each handoff fits one six-row text page; the discovery has two.
+All artwork and four-pose animation rows are retained. Inspect the regenerated
+[sketchbook](story-sketchbook.html) or [card sheet](assets/story-cards.png).
+
+At the verified story checkpoint, `make gen-check`, `make test` (**257**), `make test-tools`
+(**173**), `make docs-check` (**18** Node tests), all **15** `make fxtest`
+suites, `make fxtest-save-chain` (**683 B** reserve),
+`make fxtest-save-runtime-page`, `make fxtest-flight` (**842** frames,
+**12,628 µs** maximum, zero misses/audio errors), `make size` and `make mini`
+pass. Combined music stack reserve is **640 B**. The measured story-checkpoint image,
+including cave scenery, is **27,120 B flash / 1,640 B static**, with a
+**70,042 B** story blob and **671,496 / 675,840 B** FX payload/image. Logs are
+`build/story-hints-*.log`; no physical-device playthrough is claimed.

@@ -1,16 +1,17 @@
 #!/usr/bin/env python3
 """Normalize the authored HAULER pilot sheet and emit host art.
 
-``images/pilot/hauler_26x8.png`` is authored art: four 26-pixel-wide frames
+``images/pilot/hauler_26x8.png`` is authored art: four 28-pixel-wide frames
 packed left to right in this order:
 
     right empty, right loaded, left empty, left loaded
 
-The source canvas may be taller than the 26x8 collision footprint. Fully
-transparent rows above and below the union of the opaque pixels are trimmed,
-and the normalized sheet is written to ``build/gen/pilot/hauler_<w>x<h>.png``
-for ``gen_sprites.py``. The game keeps the 26x8 collision hull and bottom-aligns
-the taller art, so a mast may extend above the hull.
+Each frame is the 26-pixel collision-hull body with a one-pixel opaque black
+outline. The source canvas may be taller than the 26x8 collision footprint. Fully transparent rows above and below the union of the opaque
+pixels are trimmed, and the normalized sheet is written to
+``build/gen/pilot/hauler_<w>x<h>.png`` for ``gen_sprites.py``. The game keeps
+the 26x8 collision hull, centres the body on it and lets the outline bleed
+outside; a mast may still extend above the hull.
 
 The same normalized pixels are emitted as a host-only C++ bitmap. Host pixel
 tests and the device therefore draw one authored source.
@@ -24,7 +25,8 @@ from pathlib import Path
 from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[1]
-FRAME_WIDTH = 26
+FRAME_WIDTH = 28
+HULL_WIDTH = 26
 FRAMES = 4
 MIN_HEIGHT = 8
 SOURCE = ROOT / "images/pilot/hauler_26x8.png"

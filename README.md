@@ -211,9 +211,10 @@ Build outputs are `build/arduino` / `dist/fx` for FX and
 - `story/art.png` — canonical Piskel story-art sheet.
 - `images/<section>/<symbol>_<W>x<H>.png` — authored sprites. Add a file in the
   matching source directory, run `make gen`.
-- `images/pilot/hauler_26x8.png` — authored HAULER sheet: four 26-px-wide
-  frames. The generator trims transparent rows and bottom-aligns the art to the
-  fixed 26x8 collision hull. Do not edit the generated files in `build/gen/`.
+- `images/pilot/hauler_26x8.png` — authored HAULER sheet: four 28-px-wide
+  frames (26-px body plus a 1-px black outline). The generator trims
+  transparent rows and bottom-aligns the body to the fixed 26x8 collision hull.
+  Do not edit the generated files in `build/gen/`.
 - `fxdata/fxdata.txt` — ordered flash layout. Append new `image_t`/`raw_t`/
   `string` entries; order is ABI.
 
@@ -230,7 +231,7 @@ Blit::draw(x, y, HAULER_WIDTH, HAULER_HEIGHT, ::hauler + 2, FRAME(frame),
 ```
 
 The fixed pilot sheet uses the same contract from `fxdata/PilotSprites.txt`
-(`hauler`; four frames). `tools/gen_pilot.py` normalizes the authored
+(`hauler`; four outlined frames). `tools/gen_pilot.py` normalizes the authored
 `images/pilot/hauler_26x8.png`, writes the packed sheet source under
 `build/gen/pilot/`, and emits `src/generated/pilot_host.hpp` so host pixel tests
 draw the same art. The retired MINNOW/LEVIATHAN sheets are not generated or

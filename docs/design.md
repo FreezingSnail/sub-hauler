@@ -168,14 +168,16 @@ path is never instantiated; release code also drops the external font renderer.
 Stamps keep the same 6x8 cell and layout constants, so station rows stay at
 7 px pitch and 128x64 clipping is unchanged.
 
-The authored HAULER sheet is `images/pilot/hauler_26x8.png`: four 26-px-wide
-frames (right empty, right loaded, left empty, left loaded). `gen_pilot.py`
-validates the palette and mirroring, trims transparent rows, and writes a
-normalized sheet to `build/gen/pilot/`; `gen_sprites.py` packs it into a plus-mask
-include. Art may be taller than the fixed 26x8 collision hull and is
-bottom-aligned, so the mast extends above the hull box. Host pixel tests use
-`src/generated/pilot_host.hpp` from the same normalized pixels, keeping one art
-source. Title and pilot share the frames through `Blit::draw`. The retired
+The authored HAULER sheet is `images/pilot/hauler_26x8.png`: four 28-px-wide
+frames (right empty, right loaded, left empty, left loaded). Each frame is the
+26-px collision-hull body with a one-pixel opaque black outline.
+`gen_pilot.py` validates the palette and mirroring, trims transparent rows, and
+writes a normalized sheet to `build/gen/pilot/`; `gen_sprites.py` packs it into
+a plus-mask include. The body is bottom-aligned to the fixed 26x8 collision
+hull and its outline bleeds outside it, so the mast extends above the hull box.
+Host pixel tests use `src/generated/pilot_host.hpp` from the same normalized
+pixels, keeping one art source. Title and pilot share the frames through
+`Blit::draw`. The retired
 MINNOW/LEVIATHAN fills remain in `tools/gen_pilot.py` as archival provenance and
 are not packed. The multi-hull selector is retired, so only the HAULER sprite
 call is compiled into device code.

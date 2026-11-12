@@ -113,6 +113,12 @@ class AuthoredLevelTest(unittest.TestCase):
         decorated,stats=gen_scenery.decorate(self.level,base,spines)
         protected=gen_scenery.protection(self.level,spines)
         contour=gen_contours.solid_image(self.level.world.grid)
+        wreck_pixels=set()
+        for item in stats['landmarks']:
+            if item['mount']=='wreck':
+                wreck_pixels.update((item['x']+px+dx,item['y']+py+dy)
+                                    for px,py in gen_scenery.motif(item['kind'],0)
+                                    for dx in (-1,0,1) for dy in (-1,0,1))
         changed=0
         for i,(a,b) in enumerate(zip(base,decorated)):
             delta=a^b
@@ -121,6 +127,7 @@ class AuthoredLevelTest(unittest.TestCase):
             for bit in range(8):
                 if not delta&(1<<bit):continue
                 y=page*8+bit
+                if (x,y) in wreck_pixels: continue
                 self.assertFalse(protected.getpixel((x,y)),(x,y,'route or interactive marker changed'))
                 # Use the curved visual wall here; the coarse collision tile
                 # can differ at its rounded corners by a couple of pixels.
@@ -144,12 +151,12 @@ class AuthoredLevelTest(unittest.TestCase):
         del plain.source['scenery']
         self.assertEqual(gen_scenery.decorate(plain,base,spines),(base,{}))
 
-    def test_equipment_coves_carry_distinct_wall_landmarks(self):
+    def test_equipment_wrecks_project_into_water_and_leave_markers_clear(self):
         base=gen_level.base_terrain_bytes(self.level)
         spines=gen_level.scenery_spines(self.level)
         _,stats=gen_scenery.decorate(self.level,base,spines)
         by_room={item['room']:item for item in stats['landmarks']}
-        expected={'W':'cutter-tender','BR':'thruster-pod','CW':'workshop-lock','DL':'trench-lens'}
+        expected={'W':'cutter-tender','BR':'thruster-pod','CW':'workshop-lock','DL':'trench-lens','DC':'alien-core'}
         rooms={r['id']:r for r in self.source['rooms']}
         interior=gen_contours.solid_image(self.level.world.grid).filter(ImageFilter.MinFilter(7))
         protected=gen_scenery.protection(self.level,spines)
@@ -157,7 +164,7 @@ class AuthoredLevelTest(unittest.TestCase):
         for room_id,kind in expected.items():
             item=by_room[room_id]
             self.assertEqual(item['kind'],kind,room_id)
-            self.assertEqual(item['mount'],'wall',room_id)
+            self.assertEqual(item['mount'],'wreck',room_id)
             self.assertNotIn(kind,seen,'each cove needs its own silhouette')
             seen.add(kind)
             cx,cy=(v*8 for v in rooms[room_id]['position'])
@@ -166,10 +173,16 @@ class AuthoredLevelTest(unittest.TestCase):
             visible=sum(cx-64 <= item['x']+px < cx+64 and cy-32 <= item['y']+py < cy+32
                         for px,py in pixels)
             self.assertGreaterEqual(visible, len(pixels)*0.65, f'{room_id} landmark in pickup viewport')
-            for px,py in gen_scenery.motif(kind,0):
-                x,y=item['x']+px,item['y']+py
-                self.assertTrue(interior.getpixel((x,y)),f'{room_id} landmark must be etched inside rock')
-                self.assertFalse(protected.getpixel((x,y)),f'{room_id} landmark must clear the route corridor')
+            points={(item['x']+px,item['y']+py) for px,py in pixels}
+            solid=gen_contours.solid_image(self.level.world.grid)
+            self.assertGreater(sum(not solid.getpixel((x,y)) for x,y in points),len(points)*.35)
+            for x,y in points:
+                for pickup in self.level.pickups:
+                    self.assertFalse(pickup.x-13<=x<=pickup.x+13 and pickup.y-11<=y<=pickup.y+11,
+                                     f'{room_id}: pickup remains readable')
+                for gate in self.level.gates:
+                    self.assertFalse(gate.x-4<=x<=gate.x+gate.w+4 and gate.y-4<=y<=gate.y+gate.h+4,
+                                     f'{room_id}: gate remains readable')
         # The wall landmarks are new vocabulary, not reused region motifs.
         self.assertTrue(seen.isdisjoint({'tender','wreck','relay','pump','crane','winch'}))
 
@@ -203,6 +216,34 @@ class AuthoredLevelTest(unittest.TestCase):
         next(r for r in bad['rooms'] if r['id']=='DL')['texture']='bogus'
         with self.assertRaisesRegex(ValueError,'texture'):
             gen_scenery.decorate(gen_level.build(bad),base,spines)
+
+    def test_equipment_and_relay_themes_read_in_native_viewports(self):
+        expected={'W':'cutter','BR':'turbine','DC':'alien'}
+        rooms={r['id']:r for r in self.source['rooms']}
+        plain=copy.deepcopy(self.level)
+        for room in plain.source['rooms']:
+            if room['id'] in expected: room.pop('texture')
+        base=gen_level.base_terrain_bytes(self.level)
+        spines=gen_level.scenery_spines(self.level)
+        decorated,stats=gen_scenery.decorate(self.level,base,spines)
+        bare,_=gen_scenery.decorate(plain,base,spines)
+        for key,theme in expected.items():
+            self.assertEqual(rooms[key]['texture'],theme)
+            self.assertGreater(stats['ambient'][theme],0)
+            cx,cy=(v*8 for v in rooms[key]['position'])
+            changed=sum(bool((decorated[(y//8)*2560+x]^bare[(y//8)*2560+x]) & (1<<(y%8)))
+                        for y in range(cy-32,cy+32) for x in range(cx-64,cx+64))
+            self.assertGreater(changed,40,f'{key}: theme must be visible at the interaction point')
+
+    def test_kelp_forest_has_dense_floor_and_ceiling_growth(self):
+        base=gen_level.base_terrain_bytes(self.level)
+        _,stats=gen_scenery.decorate(self.level,base,gen_level.scenery_spines(self.level))
+        self.assertGreaterEqual(stats['ambient']['kelp'],130)
+        heights=[max(-y for x,y in gen_scenery.motif('kelp',seed)) for seed in range(12)]
+        self.assertLess(min(heights),25)
+        self.assertGreaterEqual(max(heights),40)
+        frond=gen_scenery.motif('kelp-canopy',0)
+        self.assertTrue(any(y>10 for x,y in frond),'canopy hangs down into water')
 
     def test_pressure_seal_winding_approach_requires_cutter(self):
         route=next(r for r in self.source['routes'] if r['from']=='Z' and r['to']=='CW')

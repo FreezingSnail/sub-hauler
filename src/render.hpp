@@ -3,10 +3,13 @@
 #include "cave.hpp"
 #include "cave_render.hpp"
 #include "campaign_view.hpp"
+#include "ambient_view.hpp"
+#include "bubble_view.hpp"
 #include "common.hpp"
 #include "fxdata.h"
 #include "game.hpp"
 #include "exploration_view.hpp"
+#include "fish_view.hpp"
 #include "hazard_view.hpp"
 #include "particles_view.hpp"
 #include "pilot_view.hpp"
@@ -26,6 +29,9 @@ namespace view {
 inline void frame(const game::State &state, const cave::Camera &camera, world::TileCache &cache, world::FxTables &tables) {
     world::refreshCache(cache, tables, cave::cacheOriginTileX(camera), cave::cacheOriginTileY(camera));
     cave::streamFrame(camera, tables, Arduboy2Base::sBuffer);
+    ambient_view::draw(Arduboy2Base::sBuffer, camera, state.ticks);
+    fish_view::draw(Arduboy2Base::sBuffer, camera, state.ticks);
+    bubble_view::draw(Arduboy2Base::sBuffer, state, camera);
     campaign_view::drawRestoration(Arduboy2Base::sBuffer, state, camera);
     hazard_view::drawCurrents(Arduboy2Base::sBuffer, state, camera);
     exploration_view::draw(Arduboy2Base::sBuffer, state, camera);

@@ -45,17 +45,35 @@ class GenPilotTest(unittest.TestCase):
             cell = sheet.crop((frame * gen_pilot.FRAME_WIDTH, 0, (frame + 1) * gen_pilot.FRAME_WIDTH, sheet.height))
             self.assertIsNotNone(cell.getbbox())
 
+    def test_authored_art_has_a_one_pixel_black_outline(self):
+        sheet = gen_pilot.normalize()
+        self.assertEqual(sheet.width, 4 * gen_pilot.FRAME_WIDTH)
+        self.assertEqual(gen_pilot.FRAME_WIDTH, gen_pilot.HULL_WIDTH + 2)
+        for frame in range(gen_pilot.FRAMES):
+            cell = sheet.crop((frame * gen_pilot.FRAME_WIDTH, 0, (frame + 1) * gen_pilot.FRAME_WIDTH, sheet.height))
+            for y in range(cell.height):
+                for x in range(cell.width):
+                    red, _green, _blue, alpha = cell.getpixel((x, y))
+                    if alpha == 0 or red < 128:
+                        continue
+                    for dy in (-1, 0, 1):
+                        for dx in (-1, 0, 1):
+                            nx, ny = x + dx, y + dy
+                            if 0 <= nx < cell.width and 0 <= ny < cell.height:
+                                self.assertEqual(cell.getpixel((nx, ny))[3], 255, f"frame {frame} white pixel {x},{y} has a transparent neighbour")
+
     def test_write_art_trims_rows_and_emits_host_arrays(self):
         source = make_sheet(FIXTURES / "synthetic_104x16.png")
         output = FIXTURES / "out.png"
         header = FIXTURES / "pilot_host.hpp"
         written, written_header = gen_pilot.write_art(source, FIXTURES, header)
-        self.assertEqual(Image.open(written).size, (104, 12))
+        with Image.open(written) as image:
+            self.assertEqual(image.size, (112, 12))
         self.assertEqual(written_header.read_text(), gen_pilot.host_header(gen_pilot.normalize(source)))
         text = written_header.read_text()
         self.assertIn("HAULER_ART_PAGES = 2", text)
-        self.assertIn("haulerHostData[4][2][26]", text)
-        self.assertIn("haulerHostMask[4][2][26]", text)
+        self.assertIn("haulerHostData[4][2][28]", text)
+        self.assertIn("haulerHostMask[4][2][28]", text)
         self.assertEqual(output.exists(), False)
 
     def test_rejects_art_that_does_not_span_the_frame_width(self):

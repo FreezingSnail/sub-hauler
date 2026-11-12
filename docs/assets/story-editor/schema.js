@@ -257,7 +257,7 @@ globalThis.StoryEditorSchema = {
         },
         {
           "kind": "text",
-          "paragraphs": 1
+          "paragraphs": 2
         }
       ]
     },
@@ -772,12 +772,12 @@ globalThis.StoryEditorSchema = {
     {
       "id": "pump",
       "label": "PUMP",
-      "facts": "PUMP complete and LIFT still open; the lift survey may or may not be recorded."
+      "facts": "PUMP complete and LIFT incomplete; the lift survey is still missing."
     },
     {
       "id": "lift",
       "label": "LIFT",
-      "facts": "LIFT complete and PUMP still open; the pump survey may or may not be recorded."
+      "facts": "LIFT complete and PUMP incomplete; the pump survey is still missing."
     },
     {
       "id": "both",
@@ -792,7 +792,7 @@ globalThis.StoryEditorSchema = {
     {
       "id": "core",
       "label": "CORE",
-      "facts": "BEACON delivered; the beacon core is lit and DEEP RELAY is next."
+      "facts": "BEACON delivered and all four tools owned; DEEP RELAY can be accepted at Deep Anchor."
     },
     {
       "id": "relay",
@@ -803,6 +803,31 @@ globalThis.StoryEditorSchema = {
       "id": "home",
       "label": "HOME",
       "facts": "HOME delivered; the four-station network is restored."
+    },
+    {
+      "id": "cutter",
+      "label": "CUTTER",
+      "facts": "BEACON delivered, DEEP RELAY incomplete and the cutter missing; find the tender near Tidewall first."
+    },
+    {
+      "id": "lens",
+      "label": "LENS",
+      "facts": "BEACON delivered, DEEP RELAY incomplete, cutter owned and survey lens missing; search the cave above Deep Anchor."
+    },
+    {
+      "id": "thruster",
+      "label": "THRUSTER",
+      "facts": "BEACON delivered, DEEP RELAY incomplete, cutter and lens owned but thruster missing; search the old relay compartment near Benthos."
+    },
+    {
+      "id": "pump_ready",
+      "label": "PUMP READY",
+      "facts": "LIFT complete, PUMP incomplete and pump survey recorded; collect the impeller at Cormorant."
+    },
+    {
+      "id": "lift_ready",
+      "label": "LIFT READY",
+      "facts": "PUMP complete, LIFT incomplete and lift survey recorded; collect cable at Benthos."
     }
   ],
   "hintMaxChars": 20,

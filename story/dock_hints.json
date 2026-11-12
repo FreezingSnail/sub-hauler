@@ -14,12 +14,12 @@
     {
       "id": "pump",
       "label": "PUMP",
-      "facts": "PUMP complete and LIFT still open; the lift survey may or may not be recorded."
+      "facts": "PUMP complete and LIFT incomplete; the lift survey is still missing."
     },
     {
       "id": "lift",
       "label": "LIFT",
-      "facts": "LIFT complete and PUMP still open; the pump survey may or may not be recorded."
+      "facts": "LIFT complete and PUMP incomplete; the pump survey is still missing."
     },
     {
       "id": "both",
@@ -34,7 +34,7 @@
     {
       "id": "core",
       "label": "CORE",
-      "facts": "BEACON delivered; the beacon core is lit and DEEP RELAY is next."
+      "facts": "BEACON delivered and all four tools owned; DEEP RELAY can be accepted at Deep Anchor."
     },
     {
       "id": "relay",
@@ -45,85 +45,145 @@
       "id": "home",
       "label": "HOME",
       "facts": "HOME delivered; the four-station network is restored."
+    },
+    {
+      "id": "cutter",
+      "label": "CUTTER",
+      "facts": "BEACON delivered, DEEP RELAY incomplete and the cutter missing; find the tender near Tidewall first."
+    },
+    {
+      "id": "lens",
+      "label": "LENS",
+      "facts": "BEACON delivered, DEEP RELAY incomplete, cutter owned and survey lens missing; search the cave above Deep Anchor."
+    },
+    {
+      "id": "thruster",
+      "label": "THRUSTER",
+      "facts": "BEACON delivered, DEEP RELAY incomplete, cutter and lens owned but thruster missing; search the old relay compartment near Benthos."
+    },
+    {
+      "id": "pump_ready",
+      "label": "PUMP READY",
+      "facts": "LIFT complete, PUMP incomplete and pump survey recorded; collect the impeller at Cormorant."
+    },
+    {
+      "id": "lift_ready",
+      "label": "LIFT READY",
+      "facts": "PUMP complete, LIFT incomplete and lift survey recorded; collect cable at Benthos."
     }
   ],
   "berths": {
     "tidewall": {
-      "fresh": "I HEAR THERE IS WORK",
-      "first": "BENTHOS HAS WORK",
-      "pump": "LIFT NEEDS CABLE",
-      "lift": "LIFT CRANE MOVES",
-      "both": "CUTTER: OLD TENDER",
-      "seal": "CHECK CORMORANT",
-      "core": "SEARCH THE DEPTHS",
-      "relay": "ANY NEWS FROM BELOW",
-      "home": "WHAT A MYSTERY EH"
+      "fresh": "FILTERS TO BENTHOS",
+      "first": "PUMP AND LIFT SILENT",
+      "pump": "CHECK FREIGHT YARD",
+      "lift": "CHECK PUMP REFUGE",
+      "both": "SEAL: WEST WORKSHOP",
+      "seal": "CORE AT CORMORANT",
+      "core": "WORK AT DEEP ANCHOR",
+      "relay": "DISPATCH AT ANCHOR",
+      "home": "YOUR BERTH IS LIT",
+      "cutter": "CUTTER: OLD TENDER",
+      "lens": "LENS: ABOVE ANCHOR",
+      "thruster": "THRUSTER: OLD RELAY",
+      "pump_ready": "IMPELLER: CORMORANT",
+      "lift_ready": "CABLE: BENTHOS"
     },
     "benthos": {
-      "fresh": "TIDEWALL HAS FILTERS",
-      "first": "WE HAVE SOME WORK",
-      "pump": "LIFT NEEDS CABLE",
-      "lift": "PUMP AWAITS REPAIR",
+      "fresh": "FILTERS AT TIDEWALL",
+      "first": "CHECK PUMP REFUGE",
+      "pump": "CHECK FREIGHT YARD",
+      "lift": "CHECK PUMP REFUGE",
       "both": "SEAL: WEST WORKSHOP",
-      "seal": "HEAD DEEPER",
-      "core": "THRUSTER IN WRECK",
-      "relay": "ODDITY IN THE DEPTHS",
-      "home": "YOU SAVED OUR SKINS"
+      "seal": "CORE AT CORMORANT",
+      "core": "WORK AT DEEP ANCHOR",
+      "relay": "DISPATCH AT ANCHOR",
+      "home": "THE KELP SWAYS AGAIN",
+      "cutter": "CUTTER: OLD TENDER",
+      "lens": "LENS: ABOVE ANCHOR",
+      "thruster": "THRUSTER: OLD RELAY",
+      "pump_ready": "IMPELLER: CORMORANT",
+      "lift_ready": "CABLE: TAKE WORK"
     },
     "cormorant": {
-      "fresh": "TIDEWALL HAS WORK",
-      "first": "LIFT NEEDS REPAIR",
-      "pump": "LIFT AWAITS REPAIR",
-      "lift": "PUMP NEEDS PART",
-      "both": "SEARCH WEST FOR SEAL",
-      "seal": "WE HAVE WORK",
-      "core": "HEAD TO DEEP ANCHOR",
-      "relay": "HEAD TO DEEP ANCHOR",
-      "home": "A FINE CAPTAIN"
+      "fresh": "FILTERS AT TIDEWALL",
+      "first": "CHECK FREIGHT YARD",
+      "pump": "CHECK FREIGHT YARD",
+      "lift": "CHECK PUMP REFUGE",
+      "both": "SEAL: WEST WORKSHOP",
+      "seal": "CORE TO DEEP ANCHOR",
+      "core": "WORK AT DEEP ANCHOR",
+      "relay": "DISPATCH AT ANCHOR",
+      "home": "FREIGHT MOVES AGAIN",
+      "cutter": "CUTTER: OLD TENDER",
+      "lens": "LENS: ABOVE ANCHOR",
+      "thruster": "THRUSTER: OLD RELAY",
+      "pump_ready": "IMPELLER: TAKE WORK",
+      "lift_ready": "CABLE: BENTHOS"
     },
     "deep_anchor": {
-      "fresh": "TRY TIDEWALL",
-      "first": "NOTHING DOWN HERE",
-      "pump": "HEAD UP TO SHALLOWS",
-      "lift": "BEACON NEEDS PUMP",
-      "both": "BEACON NEEDS SEAL",
-      "seal": "ITS TOO DARK HERE",
-      "core": "DEEP RELAY: 4 TOOLS",
-      "relay": "ALERT THE OTHERS",
-      "home": "GOOD WORK DOWN HERE"
+      "fresh": "WORK AT TIDEWALL",
+      "first": "REPAIR PUMP AND LIFT",
+      "pump": "CHECK FREIGHT YARD",
+      "lift": "CHECK PUMP REFUGE",
+      "both": "SEAL: WEST WORKSHOP",
+      "seal": "CORE AT CORMORANT",
+      "core": "DEEP RELAY WORK HERE",
+      "relay": "DISPATCH TO TIDEWALL",
+      "home": "YOUR LIGHT IS SEEN",
+      "cutter": "CUTTER: OLD TENDER",
+      "lens": "LENS: CAVE ABOVE US",
+      "thruster": "THRUSTER: OLD RELAY",
+      "pump_ready": "IMPELLER: CORMORANT",
+      "lift_ready": "CABLE: BENTHOS"
     },
     "pump_refuge": {
-      "fresh": "MOORING INACTIVE",
-      "first": "CHECK CORMORANT",
-      "pump": "PUMP REFUGE OPEN",
-      "lift": "PUMP STILL DRY",
-      "both": "SEAL NEEDED STILL",
-      "seal": "DEEP A NEEDS HELP",
-      "core": "WATER FLOWING WELL",
-      "relay": "HOW YOU DOING TODAY",
-      "home": "PUMP HUMS ALONG"
+      "fresh": "PUMP AWAITS REPAIR",
+      "first": "INSPECT THE PUMP",
+      "pump": "AIR AND FLOW RETURN",
+      "lift": "INSPECT THE PUMP",
+      "both": "SEAL: WEST WORKSHOP",
+      "seal": "CORE AT CORMORANT",
+      "core": "WORK AT DEEP ANCHOR",
+      "relay": "DISPATCH AT ANCHOR",
+      "home": "THE PUMP KEEPS TIME",
+      "cutter": "CUTTER: OLD TENDER",
+      "lens": "LENS: ABOVE ANCHOR",
+      "thruster": "THRUSTER: OLD RELAY",
+      "pump_ready": "IMPELLER: CORMORANT",
+      "lift_ready": "CABLE: BENTHOS"
     },
     "lower_gantry": {
-      "fresh": "GANTRY INACTIVE",
-      "first": "FIX THE GANTRY",
-      "pump": "GANTRY WAITS LIFT",
-      "lift": "GANTRY OPEN",
-      "both": "SEAL STILL MISSING",
-      "seal": "WE BUILT A BEACON",
-      "core": "NO WORK HERE",
-      "relay": "SHES WORKING FINE",
-      "home": "THANKS FOR THE HELP"
+      "fresh": "GANTRY AWAITS LIFT",
+      "first": "CHECK FREIGHT YARD",
+      "pump": "CHECK FREIGHT YARD",
+      "lift": "WORK AT PUMP REFUGE",
+      "both": "SEAL: WEST WORKSHOP",
+      "seal": "CORE AT CORMORANT",
+      "core": "WORK AT DEEP ANCHOR",
+      "relay": "DISPATCH AT ANCHOR",
+      "home": "CRATES CLIMB AGAIN",
+      "cutter": "CUTTER: OLD TENDER",
+      "lens": "LENS: ABOVE ANCHOR",
+      "thruster": "THRUSTER: OLD RELAY",
+      "pump_ready": "IMPELLER: CORMORANT",
+      "lift_ready": "CABLE: BENTHOS"
     },
     "freight_yard": {
-      "fresh": "YARD INACTIVE",
-      "first": "CHECK BENTHOS",
-      "pump": "YARD WAITS CABLE",
-      "lift": "YARD OPEN",
-      "both": "SEAL: FIND WORKSHOP",
-      "seal": "HEAD TO CORMORANT",
-      "core": "HOWS THE SUB RUNNING",
-      "relay": "HOW ABOUT SOME PAINT",
-      "home": "YARD HUMS ALONG"
+      "fresh": "LIFT AWAITS REPAIR",
+      "first": "INSPECT THE LIFT",
+      "pump": "INSPECT THE LIFT",
+      "lift": "CHECK PUMP REFUGE",
+      "both": "SEAL: WEST WORKSHOP",
+      "seal": "CORE AT CORMORANT",
+      "core": "WORK AT DEEP ANCHOR",
+      "relay": "DISPATCH AT ANCHOR",
+      "home": "THE CABLE SINGS LOW",
+      "cutter": "CUTTER: OLD TENDER",
+      "lens": "LENS: ABOVE ANCHOR",
+      "thruster": "THRUSTER: OLD RELAY",
+      "pump_ready": "IMPELLER: CORMORANT",
+      "lift_ready": "CABLE: BENTHOS"
     },
     "deep_relay": {
       "fresh": "RELAY SLEEPS DEEP",
@@ -132,9 +192,14 @@
       "lift": "RELAY SLEEPS DEEP",
       "both": "RELAY SLEEPS DEEP",
       "seal": "RELAY SLEEPS DEEP",
-      "core": "RELAY SLEEPS DEEP",
-      "relay": "AN OMINOUS FEELING",
-      "home": "AN OMINOUS FEELING"
+      "core": "SURVEY FROM ANCHOR",
+      "relay": "BACK TO DEEP ANCHOR",
+      "home": "THE RING KEEPS QUIET",
+      "cutter": "CUTTER: OLD TENDER",
+      "lens": "LENS: ABOVE ANCHOR",
+      "thruster": "THRUSTER: OLD RELAY",
+      "pump_ready": "IMPELLER: CORMORANT",
+      "lift_ready": "CABLE: BENTHOS"
     }
   }
 }

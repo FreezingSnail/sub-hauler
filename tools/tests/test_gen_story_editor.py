@@ -16,7 +16,7 @@ class StoryEditorGenerationTest(unittest.TestCase):
     def test_schema_covers_the_fixed_story_structure(self):
         self.assertEqual(len(self.schema["scenes"]), len(self.schema["sceneOrder"]))
         self.assertEqual(len(self.schema["berths"]), 8)
-        self.assertEqual(len(self.schema["points"]), 9)
+        self.assertEqual(len(self.schema["points"]), 14)
         self.assertEqual(self.schema["hintMaxChars"], 20)
         self.assertEqual(len(self.schema["missionIds"]), 8)
         self.assertEqual(len(self.missions["missions"]), 8)

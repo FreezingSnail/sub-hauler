@@ -8,7 +8,7 @@ Edit these source files, then run `make gen`:
   characters or fewer; the generator uppercases them.
 - [art.png](art.png): the canonical artwork sheet for Piskel.
 - [dock_hints.json](dock_hints.json): one station/WORK hint line per berth at
-  each `campaign::DockPoint` (fresh through home). Keep every line at 20
+  each `campaign::DockPoint` (campaign stages and missing-equipment leads). Keep every line at 20
   characters or fewer; duplicate lines are allowed.
 
 Use the local [story editor](../docs/story-editor.html) for text-only edits:
@@ -18,6 +18,9 @@ and copy, and dock hints beside the native previews, then save and run
 editor writes only these JSON files; scene/card counts and image rows are fixed.
 The dock-hint grid is campaign-wide: rows are berths and columns are completion
 points, so it is not filtered by the selected scene.
+After BEACON, the selector names missing equipment before advertising DEEP
+RELAY work: cutter, then the lens above Deep Anchor, then the thruster. The
+remaining repair's survey also changes its hint from inspection to collection.
 Chrome/Edge desktop can save in place through the File System Access API;
 other browsers load files and download the edited JSON.
 
@@ -70,7 +73,7 @@ The complete generated card sheet follows the same narrative sequence, with
 text pages between the illustrations. Both alternative seal variants are
 included for inspection; the game chooses one according to seal ownership.
 The opening instruction uses its own `opening-voyage` row and points the player
-to Benthos. DEEP RELAY follows BEACON and precedes HOME.
+to Tidewall to collect Benthos's filters. DEEP RELAY follows BEACON and precedes HOME.
 DEEP RELAY acceptance uses the briefing row, the site result keeps the wreck
 row, and HOME departure uses its own underwater travel row; PUMP pickup remains the
 only user of `delivery-loading`.
@@ -89,8 +92,8 @@ The version-1 document contains `art` and `scenes`. Each scene has a stable
     {
       "kind": "text",
       "paragraphs": [
-        "Load the impeller inside the hull. Deliver to Benthos.",
-        "Its crew services Pump Refuge."
+        "Load the impeller inside the hull. Deliver to Pump Refuge.",
+        "Its crew can restore the pump."
       ]
     }
   ]

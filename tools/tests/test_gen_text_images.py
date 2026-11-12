@@ -119,7 +119,7 @@ class TextStampGenerationTest(unittest.TestCase):
         duplicate = copy.deepcopy(self.dock_hints)
         duplicate["berths"]["benthos"]["fresh"] = duplicate["berths"]["tidewall"]["fresh"]
         texts = gen.dock_hint_texts(self.campaign, duplicate)
-        self.assertEqual(len(texts), 72)
+        self.assertEqual(len(texts), len(self.dock_hints["berths"]) * len(self.dock_hints["points"]))
         self.assertEqual(texts.count(duplicate["berths"]["tidewall"]["fresh"]), 2)
 
         overlong = copy.deepcopy(self.dock_hints)
@@ -132,7 +132,7 @@ class TextStampGenerationTest(unittest.TestCase):
         self.assertIn("kBerthNameFrames = {}".format(counts["img_berth_names"]), self.layout)
         self.assertIn("kDockBarkFrames = {}".format(counts["img_dock_barks"]), self.layout)
         self.assertIn("kDockBarkBerths = 8", self.layout)
-        self.assertIn("kDockBarkPoints = 9", self.layout)
+        self.assertIn("kDockBarkPoints = {}".format(len(self.dock_hints["points"])), self.layout)
         self.assertIn("constexpr uint8_t dockBarkFrame", self.layout)
         self.assertIn("kRowLabelFrames = {}".format(counts["img_row_labels"]), self.layout)
         self.assertIn("kStoryRowFrames = {}".format(counts["img_story_row"]), self.layout)

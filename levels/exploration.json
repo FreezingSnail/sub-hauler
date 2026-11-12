@@ -536,6 +536,7 @@
       "id": "W",
       "name": "Abandoned tender",
       "region": "tide",
+      "texture": "cutter",
       "position": [
         17,
         33
@@ -559,6 +560,7 @@
       "id": "BR",
       "name": "Old relay compartment",
       "region": "kelp",
+      "texture": "turbine",
       "position": [
         185,
         6
@@ -620,6 +622,7 @@
       "id": "DC",
       "name": "Hidden jet cove",
       "region": "deep",
+      "texture": "alien",
       "position": [
         249,
         149
@@ -1984,10 +1987,11 @@
       {"id": "deep-anchor-vent", "room": "D", "kind": "vent", "offset": [40, 50]},
       {"id": "glass-chimney", "room": "G", "kind": "crystal", "offset": [-34, 46]},
       {"id": "jet-approach-vent", "room": "I", "kind": "vent", "offset": [40, 50]},
-      {"id": "cutter-cove-tender", "room": "W", "kind": "cutter-tender", "mount": "wall", "offset": [0, -34]},
-      {"id": "thruster-cove-pod", "room": "BR", "kind": "thruster-pod", "mount": "wall", "offset": [-54, -6]},
-      {"id": "seal-cove-workshop", "room": "CW", "kind": "workshop-lock", "mount": "wall", "offset": [0, -28]},
-      {"id": "lens-cove-array", "room": "DL", "kind": "trench-lens", "mount": "wall", "offset": [0, -36]}
+      {"id": "cutter-cove-tender", "room": "W", "kind": "cutter-tender", "mount": "wreck", "offset": [-34, 8]},
+      {"id": "thruster-cove-pod", "room": "BR", "kind": "thruster-pod", "mount": "wreck", "offset": [-34, 8]},
+      {"id": "seal-cove-workshop", "room": "CW", "kind": "workshop-lock", "mount": "wreck", "offset": [-34, 8]},
+      {"id": "lens-cove-array", "room": "DL", "kind": "trench-lens", "mount": "wreck", "offset": [-34, 8]},
+      {"id": "relay-core-wreck", "room": "DC", "kind": "alien-core", "mount": "wreck", "offset": [-34, 8]}
     ]
   },
   "freight_timing": {

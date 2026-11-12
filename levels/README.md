@@ -63,9 +63,9 @@ its native page/bit orientation across the entire world.
 `scenery` in `exploration.json` owns the decorative art version, deterministic
 seed and named landmark preferences (`room`, `kind`, pixel `offset`). Landmarks
 default to `mount: "water"` and sit on the curved cave floor; `mount: "wall"`
-etches the same hollow line art into the surrounding rock instead. The four
-equipment coves are small dead-end pockets whose water is protected route
-corridor, so each carries its own wall-etched wreck silhouette:
+etches hollow line art into the surrounding rock instead. `mount: "wreck"`
+places a contrasting outlined object across the cave wall and navigable water.
+Wrecks have no collision; pickup markers, gate faces and berths remain clear. Each equipment cave carries its own wreck silhouette projecting into the water:
 `cutter-tender` at the Abandoned tender (`W`), `thruster-pod` at the Old relay
 compartment (`BR`), `workshop-lock` at the Sealed workshop (`CW`) and
 `trench-lens` at the Hidden trench cove (`DL`). A room may also name a
@@ -75,12 +75,17 @@ The Hidden trench cove uses `texture: "lens"`: `lens-shard` wall growths plus
 concentric lens rings and facet arcs mark the lens cave.
 The wider Sealed workshop pickup pocket uses `texture: "pressure"`, with
 buckled ribs, rivets and layered bulkhead outlines marking the seal cave.
+Cutter and thruster pockets add salvage racks and turbine coils. The final
+relay carries a broken alien machine shell with a suspended hexagonal core
+and sparse circuit conduits. These wrecks overlap the water while leaving
+interaction footprints clear; background textures remain clipped into rock.
+`make render-world` also exports equipment and relay views at native 128×64.
 `tools/gen_scenery.py` adds region-specific rock markings and hollow background
 motifs during `make gen`: strata/coral/moorings, kelp/pumps, weathered plating and
-wreck machinery, and fractured basalt/crystals/vents. Scenery does not alter
-collision tiles, chart cells, gates or pickups. Artwork stays outside a
-30-pixel route-centre corridor, station/spawn footprints and gate/pickup markers;
-dark wall markings stay three pixels inside solid rock. Larger motifs search
+wreck machinery, and fractured basalt/crystals/vents. The kelp forest carries dense floor fronds and hanging ceiling canopies.
+Scenery does not alter collision tiles, chart cells, gates or pickups. Ambient
+growth stays outside a 30-pixel route-centre corridor, station/spawn footprints
+and gate/pickup markers; wreck outlines may overlap the route corridor. Dark wall markings stay three pixels inside solid rock. Larger motifs search
 near their authored room for a safe floor location, failing generation if no
 placement fits. Wall-mounted motifs search the room's wall for a fully
 rock-clipped location, prioritizing the portion visible in a 128×64 viewport

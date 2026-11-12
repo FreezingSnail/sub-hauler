@@ -12,8 +12,8 @@ globalThis.StoryMissions = {
     {
       "id": "first",
       "title": "Filters for Benthos",
-      "summary": "Benthos needs filters to service the grow tanks",
-      "intent": "Without those filters, they can't grow food.",
+      "summary": "Carry Tidewall's filters to Benthos.",
+      "intent": "The grow tanks feed the stations. Filters are the first step toward restoring them.",
       "scenes": [
         "first-departure",
         "first-result"
@@ -22,8 +22,8 @@ globalThis.StoryMissions = {
     {
       "id": "pump_survey",
       "title": "Survey Pump Station",
-      "summary": "Inspect the pump at Pump Refuge. ",
-      "intent": "Hold beside the inactive pump, see what is wrong.",
+      "summary": "Inspect the idle pump at Pump Refuge.",
+      "intent": "Hold beside the pump to identify the broken impeller and learn where to collect a replacement.",
       "scenes": [
         "pump-survey"
       ]
@@ -31,8 +31,8 @@ globalThis.StoryMissions = {
     {
       "id": "pump",
       "title": "Repair Pump Station",
-      "summary": "Carry the replacement impeller from Cormorant to the Pump Refuge pump. ",
-      "intent": "Once fixed the grow tanks will be online.",
+      "summary": "Carry Cormorant's replacement impeller to the pump at Pump Refuge.",
+      "intent": "Restore circulation to the grow tanks and reopen Pump Refuge's air berth.",
       "scenes": [
         "pump-pickup",
         "pump-result"
@@ -41,8 +41,8 @@ globalThis.StoryMissions = {
     {
       "id": "lift_survey",
       "title": "Survey cargo lift",
-      "summary": "Inspect the cable housing at Freight Yard. The lift needs replacement cable from Benthos.",
-      "intent": "Hold beside the inactive lift; reveal the ruined cable and name Benthos as the source.",
+      "summary": "Inspect the cable housing at Freight Yard.",
+      "intent": "Hold beside the lift to identify the ruined cable and learn that Benthos stocks spare reels.",
       "scenes": [
         "lift-survey"
       ]
@@ -51,7 +51,7 @@ globalThis.StoryMissions = {
       "id": "lift",
       "title": "Repair Cargo Lift",
       "summary": "Carry cable reels from Benthos to the Freight Yard lift.",
-      "intent": "Once repaired the workshops and lower gantry will be running again.",
+      "intent": "Restore workshop freight and reopen Lower Gantry's air berth.",
       "scenes": [
         "lift-pickup",
         "lift-result"
@@ -60,8 +60,8 @@ globalThis.StoryMissions = {
     {
       "id": "beacon",
       "title": "Relight Deep Anchor",
-      "summary": "Deep Anchor has called, their light has gone out.  ",
-      "intent": "Bring them a new beacon light.",
+      "summary": "Carry Cormorant's beacon core to Deep Anchor after both repairs. A pressure seal is required.",
+      "intent": "Food and freight support the deep station again. Relight its beacon to reveal the next lead.",
       "scenes": [
         "beacon-departure",
         "beacon-result"
@@ -70,8 +70,8 @@ globalThis.StoryMissions = {
     {
       "id": "expedition",
       "title": "Survey deep anomaly",
-      "summary": "We have been investigating a strange reading, now that you are here can we ask you to investigate it for us?",
-      "intent": "travel to the lowest depths to examine the mystery.",
+      "summary": "Accept survey work at Deep Anchor and deliver the gear to DEEP RELAY in the lowest eastern caves.",
+      "intent": "Requires cutter, pressure seal, survey lens and thruster. The lens is in the cave above Deep Anchor; the thruster is in the old relay compartment near Benthos. Return to Deep Anchor after recording the mystery.",
       "scenes": [
         "deep-relay-departure",
         "deep-relay-result"
@@ -81,7 +81,7 @@ globalThis.StoryMissions = {
       "id": "home",
       "title": "Return home",
       "summary": "Carry Deep Anchor's physical survey records and return supplies to Tidewall.",
-      "intent": "We need to report these findings, travel back to the shallows with the data",
+      "intent": "The beacon carries simple signals. The records must travel in the hold so the other stations can study the discovery.",
       "scenes": [
         "home-departure",
         "home-result"
