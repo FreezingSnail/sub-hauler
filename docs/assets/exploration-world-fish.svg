@@ -1,8 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2560 1530" width="2560" height="1530" role="img" aria-labelledby="title description">
   <title id="title">Game world and wildlife</title>
-  <desc id="description">The labeled game world with twenty gold markers for fish schools and drifting jellyfish.</desc>
-  <image href="exploration-world-2026-11-09.png" width="2560" height="1530"/>
-  <g fill="#ffd75e" stroke="#162e38" stroke-width="3">
+  <desc id="description">The labeled game world with twenty markers for fish schools and drifting jellyfish.</desc>
+  <defs><filter id="mono" color-interpolation-filters="sRGB"><feColorMatrix type="saturate" values="0"/><feComponentTransfer><feFuncR type="discrete" tableValues="0 1"/><feFuncG type="discrete" tableValues="0 1"/><feFuncB type="discrete" tableValues="0 1"/></feComponentTransfer></filter></defs>
+  <image href="exploration-world-2026-11-09.png" width="2560" height="1530" filter="url(#mono)"/>
+  <g fill="#000" stroke="#fff" stroke-width="3">
     <circle cx="1016" cy="352" r="13"/>
     <circle cx="336" cy="496" r="13"/>
     <circle cx="1048" cy="504" r="13"/>
@@ -24,7 +25,7 @@
     <circle cx="352" cy="1280" r="13"><title>Deep Anchor</title></circle>
     <circle cx="2160" cy="288" r="13"><title>Pump Refuge</title></circle>
   </g>
-  <g font-family="sans-serif" font-size="22" font-weight="bold" fill="#ffe58a" stroke="#162e38" stroke-width="6" paint-order="stroke">
+  <g font-family="monospace" font-size="22" font-weight="bold" fill="#000" stroke="#fff" stroke-width="6" paint-order="stroke">
     <text x="1036" y="346">FISH · UPPER SHELF</text>
     <text x="356" y="490">FISH · MOORING CHIMNEY</text>
     <text x="1068" y="498">FISH · EAST BAY</text>
