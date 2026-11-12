@@ -27,14 +27,14 @@ class DockHintPreviewTest(unittest.TestCase):
 
     def test_every_berth_and_point_has_one_line(self):
         self.assertEqual(len(self.berths), 8)
-        self.assertEqual(len(self.points), 9)
+        self.assertEqual(len(self.points), 14)
         for berth in self.document["berths"]:
             self.assertEqual(len(berth["barks"]), len(self.points), berth["id"])
             for row in berth["barks"]:
                 self.assertTrue(row["text"], berth["id"])
                 self.assertTrue(row["symbol"].startswith("img_dock_barks["), row["symbol"])
                 self.assertGreaterEqual(row["frame"], 1)
-                self.assertLessEqual(row["frame"], 72)
+                self.assertLessEqual(row["frame"], len(self.berths) * len(self.points))
 
     def test_preview_text_is_the_json_not_a_copy(self):
         for berth_id, points in self.hints["berths"].items():
@@ -63,7 +63,7 @@ class DockHintPreviewTest(unittest.TestCase):
 
     def test_every_berth_line_is_present(self):
         texts = [row["text"] for berth in self.document["berths"] for row in berth["barks"]]
-        self.assertEqual(len(texts), 72)
+        self.assertEqual(len(texts), len(self.berths) * len(self.points))
         self.assertTrue(all(texts))
 
     def test_native_layout_constants(self):

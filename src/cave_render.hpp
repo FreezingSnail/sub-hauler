@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdint.h>
+#include <string.h>
 
 #include "cave.hpp"
 #include "world.hpp"
@@ -57,11 +58,15 @@ inline void fillRect(uint8_t *buffer, int16_t x, int16_t y, uint8_t width, uint8
         if (page == lastPage)
             mask &= static_cast<uint8_t>(0xFFu >> (7 - ((bottom - 1) & 7)));
         uint8_t *dest = buffer + page * VIEW_WIDTH + x;
-        for (int16_t px = x; px < right; ++px, ++dest) {
-            if (color)
-                *dest |= mask;
-            else
-                *dest &= static_cast<uint8_t>(~mask);
+        if (mask == 0xFF) {
+            memset(dest, color ? 0xFF : 0, static_cast<uint16_t>(right - x));
+        } else if (color) {
+            for (int16_t px = x; px < right; ++px)
+                *dest++ |= mask;
+        } else {
+            const uint8_t keep = static_cast<uint8_t>(~mask);
+            for (int16_t px = x; px < right; ++px)
+                *dest++ &= keep;
         }
     }
 }

@@ -101,6 +101,6 @@ test('generated editor schema matches the fixed source shape', () => {
   assert.equal(editorSchema.scenes.length, source.scenes.length);
   assert.equal(editorSchema.missions.length, 8);
   assert.equal(editorSchema.berths.length, 8);
-  assert.equal(editorSchema.points.length, 9);
+  assert.equal(editorSchema.points.length, currentFiles().hints.points.length);
   assert.match('FILTERS: TAKE WORK', new RegExp(editorSchema.hintPattern));
 });

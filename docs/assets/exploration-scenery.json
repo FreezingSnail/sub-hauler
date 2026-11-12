@@ -148,45 +148,56 @@
       "id": "cutter-cove-tender",
       "room": "W",
       "kind": "cutter-tender",
-      "mount": "wall",
-      "x": 92,
-      "y": 250
+      "mount": "wreck",
+      "x": 98,
+      "y": 276
     },
     {
       "id": "thruster-cove-pod",
       "room": "BR",
       "kind": "thruster-pod",
-      "mount": "wall",
-      "x": 1426,
-      "y": 42
+      "mount": "wreck",
+      "x": 1444,
+      "y": 56
     },
     {
       "id": "seal-cove-workshop",
       "room": "CW",
       "kind": "workshop-lock",
-      "mount": "wall",
-      "x": 828,
-      "y": 748
+      "mount": "wreck",
+      "x": 846,
+      "y": 728
     },
     {
       "id": "lens-cove-array",
       "room": "DL",
       "kind": "trench-lens",
-      "mount": "wall",
-      "x": 244,
-      "y": 620
+      "mount": "wreck",
+      "x": 250,
+      "y": 646
+    },
+    {
+      "id": "relay-core-wreck",
+      "room": "DC",
+      "kind": "alien-core",
+      "mount": "wreck",
+      "x": 1958,
+      "y": 1200
     }
   ],
   "ambient": {
     "tide": 56,
-    "kelp": 25,
+    "kelp": 279,
     "works": 31,
     "deep": 15,
+    "cutter": 2,
+    "turbine": 3,
     "pressure": 4,
-    "lens": 4
+    "lens": 4,
+    "alien": 3
   },
-  "white_pixels": 10582,
-  "rock_pixels": 44621,
+  "white_pixels": 26964,
+  "rock_pixels": 48873,
   "settlements": [
     {
       "id": 0,

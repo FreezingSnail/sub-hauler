@@ -107,6 +107,10 @@ inline void drawServiceBerths(uint8_t *buffer, const game::State &state, const c
 #else
             drawFlow(buffer, x, static_cast<int16_t>(y + 5));
 #endif
+            // Once repaired, two droplets move along the outer pressure flow.
+            const uint8_t phase = static_cast<uint8_t>((state.ticks >> 4) & 3);
+            cave::setPixel(buffer, static_cast<int16_t>(x - 20), static_cast<int16_t>(y + 6 + phase));
+            cave::setPixel(buffer, static_cast<int16_t>(x + 20), static_cast<int16_t>(y + 9 - phase));
         } else if (berth.milestone == campaign::kMilestoneLift) {
             // Restored cable run: a short vertical hoist above the gantry.
 #if defined(__AVR__)
@@ -116,6 +120,8 @@ inline void drawServiceBerths(uint8_t *buffer, const game::State &state, const c
             cave::fillRect(buffer, static_cast<int16_t>(x - 5), static_cast<int16_t>(y - 14), 11, 1, true);
             cave::fillRect(buffer, static_cast<int16_t>(x - 3), static_cast<int16_t>(y - 11), 7, 1, true);
 #endif
+            // The restored hoist carries a small moving load beside the cable.
+            cave::fillRect(buffer, static_cast<int16_t>(x + 5), static_cast<int16_t>(y - 21 + ((state.ticks >> 5) & 7)), 3, 2, true);
         }
     }
 }

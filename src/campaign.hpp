@@ -223,11 +223,11 @@ inline NextStop nextStopAfter(const State &state, uint8_t completedMissionId) {
     return sealOwned(state) ? kNextStopBeacon : kNextStopSeal;
 }
 
-// One dock-hint point per saved progression shape. The order is the canonical
+// One dock-hint point per saved campaign, survey and equipment shape. The order is the canonical
 // JSON column order in story/dock_hints.json; the station and WORK boards use
 // the same point at every berth so a line always describes the voyage's actual
-// stage. PUMP and LIFT are separate points so either repair order gets its own
-// guidance instead of assuming pump-first.
+// stage. PUMP and LIFT handle either repair order. The appended equipment
+// points keep the post-BEACON lead actionable until DEEP RELAY is available.
 enum DockPoint : uint8_t {
     kDockPointFresh = 0,
     kDockPointFirst,
@@ -238,8 +238,13 @@ enum DockPoint : uint8_t {
     kDockPointCore,
     kDockPointRelay,
     kDockPointHome,
+    kDockPointCutter,
+    kDockPointLens,
+    kDockPointThruster,
+    kDockPointPumpReady,
+    kDockPointLiftReady,
 };
-constexpr uint8_t kDockPointCount = kDockPointHome + 1;
+constexpr uint8_t kDockPointCount = kDockPointLiftReady + 1;
 
 inline DockPoint dockPoint(const State &state) {
     if (!hasMilestone(state, kMilestoneFirst))
@@ -250,9 +255,9 @@ inline DockPoint dockPoint(const State &state) {
     if (!pump && !lift)
         return kDockPointFirst;
     if (pump && !lift)
-        return kDockPointPump;
+        return surveyRecorded(state, kLiftSurveyId) ? kDockPointLiftReady : kDockPointPump;
     if (!pump && lift)
-        return kDockPointLift;
+        return surveyRecorded(state, kPumpSurveyId) ? kDockPointPumpReady : kDockPointLift;
     // Legacy checkpoints can hold HOME without EXPEDITION; HOME is the final
     // presentation state whenever it is set.
     if (hasMilestone(state, kMilestoneHome))
@@ -261,8 +266,17 @@ inline DockPoint dockPoint(const State &state) {
         return kDockPointBoth;
     if (!hasMilestone(state, kMilestoneBeacon))
         return kDockPointSeal;
-    if (!hasMilestone(state, kMilestoneExpedition))
+    if (!hasMilestone(state, kMilestoneExpedition)) {
+        if (!(state.tools & exploration_data::CUTTER))
+            return kDockPointCutter;
+        // The lens is in the cave above Deep Anchor. Name this nearby find
+        // before sending a pilot back to the shallows for the thruster.
+        if (!(state.tools & exploration_data::LENS))
+            return kDockPointLens;
+        if (!(state.tools & exploration_data::THRUSTER))
+            return kDockPointThruster;
         return kDockPointCore;
+    }
     return kDockPointRelay;
 }
 

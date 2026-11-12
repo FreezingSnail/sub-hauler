@@ -55,6 +55,19 @@ class StoryPanelGenerationTest(unittest.TestCase):
         self.assertEqual(sheets["title_menu_128x64"].size, (128 * 8, 64))
         self.assertEqual(sheets["title_replace_128x64"].size, (128, 64))
 
+    def test_title_console_preserves_selection_and_all_save_states(self):
+        frames = [[gen_panels.title_menu_frame(self.strings, status, selection)
+                   for selection in range(2)] for status in range(4)]
+        for first, second in frames:
+            # Selection changes only the menu rows, leaving the instruments,
+            # save state, title and controls unchanged.
+            self.assertNotEqual(first.crop((4, 16, 84, 36)).tobytes(),
+                                second.crop((4, 16, 84, 36)).tobytes())
+            for region in ((0, 0, 128, 16), (88, 16, 127, 42), (0, 42, 128, 64)):
+                self.assertEqual(first.crop(region).tobytes(), second.crop(region).tobytes())
+        self.assertEqual(len({pair[0].crop((1, 43, 127, 54)).tobytes()
+                              for pair in frames}), 4)
+
     def test_restoration_sprites_are_masked_and_non_empty(self):
         for name, image in self.campaign:
             self.assertIn("A", image.getbands(), name)
@@ -103,6 +116,16 @@ class StoryPanelGenerationTest(unittest.TestCase):
         thanks = gen_panels.ending_thanks(self.strings)
         self.assertEqual(thanks.size, (128, 64))
         self.assertEqual(self.preview.crop((128 * 4, 0, 128 * 5, 64)).tobytes(), thanks.tobytes())
+
+    def test_ending_uses_homecoming_art_and_keeps_station_names_apart(self):
+        import json
+        source = json.loads((ROOT / "story/scenes.json").read_text(encoding="utf-8"))
+        row = source["art"]["rows"].index("home-lights")
+        with gen_panels.Image.open(ROOT / "story" / source["art"]["file"]) as sheet:
+            art = sheet.crop((0, row * 64 + 10, 128, row * 64 + 46)).convert("RGBA")
+        self.assertEqual(gen_panels.ending_thanks(self.strings).crop((0, 10, 128, 46)).tobytes(), art.tobytes())
+        network = gen_panels.ending_network(self.strings)
+        self.assertEqual(set(network.crop((58, 30, 62, 38)).getdata()), {gen_panels.BG_COLOR})
 
 
 if __name__ == "__main__":

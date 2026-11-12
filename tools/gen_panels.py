@@ -18,6 +18,7 @@ and no timestamps.
 from __future__ import annotations
 
 import argparse
+import json
 import re
 from pathlib import Path
 
@@ -116,12 +117,14 @@ def add_network(image, strings):
 
 def ending_network(strings):
     image = Image.new("RGBA", SIZE, BG_COLOR)
-    for item in (line(strings, "txt_network_lit", 4, 2),):
-        draw_text(image, item[1], item[2], item[0], item[3])
+    draw_text(image, 16, 2, checked_text(strings, "txt_network_on"))
     add_divider(image, 12)
-    add_network(image, strings)
-    draw_text(image, 4, 46, checked_text(strings, "txt_net_online"))
-    draw_text(image, 3, 56, checked_text(strings, "txt_a_next"))
+    draw_text(image, 4, 18, checked_text(strings, "txt_tidewall"))
+    draw_text(image, 76, 18, checked_text(strings, "txt_benthos"))
+    draw_text(image, 4, 30, checked_text(strings, "txt_cormorant"))
+    draw_text(image, 62, 30, checked_text(strings, "txt_deep_anchor"))
+    draw_text(image, 4, 44, checked_text(strings, "txt_net_online"))
+    draw_text(image, 4, 56, checked_text(strings, "txt_a_next"))
     return image
 
 
@@ -378,8 +381,20 @@ def story_preview(strings):
 
 
 def ending_thanks(strings):
-    """Homecoming recognition: the first Tidewall card after the lit network."""
-    return story_card(strings, "TIDEWALL", ("THEY KNOW YOUR HULL.",), "home")[1]
+    """A closing title over the canonical Tidewall homecoming artwork."""
+    source = Path(__file__).resolve().parents[1] / "story" / "scenes.json"
+    document = json.loads(source.read_text(encoding="utf-8"))
+    row = document["art"]["rows"].index("home-lights")
+    with Image.open(source.parent / document["art"]["file"]) as sheet:
+        image = sheet.crop((0, row * 64, 128, (row + 1) * 64)).convert("RGBA")
+    from PIL import ImageDraw
+    draw = ImageDraw.Draw(image)
+    draw.rectangle((0, 0, 127, 9), fill=BG_COLOR)
+    draw.rectangle((0, 46, 127, 63), fill=BG_COLOR)
+    draw_text(image, 19, 1, "VOYAGE COMPLETE")
+    draw_text(image, 1, 47, "THANK YOU FOR PLAYING")
+    draw_text(image, 28, 56, "A/B CONTINUE")
+    return image
 
 
 def prompt(strings, title, rows, hint, selected):
@@ -484,20 +499,34 @@ TITLE_ROWS = ("txt_continue", "txt_new_voyage")
 
 
 def title_menu_frame(strings, status, selected):
+    from PIL import ImageDraw
     image = Image.new("RGBA", SIZE, BG_COLOR)
-    draw_text(image, 4, 3, checked_text(strings, "txt_sub_hauler"))
-    draw_text(image, 4, 12, checked_text(strings, "txt_hauler"))
+    panel = ImageDraw.Draw(image)
+    # A small instrument console surrounds the actual menu, leaving its
+    # selection and the longest save status unobstructed at native resolution.
+    panel.rectangle((0, 0, 127, 63), outline=TEXT_COLOR)
+    panel.line((1, 12, 126, 12), fill=TEXT_COLOR)
+    panel.line((1, 42, 126, 42), fill=TEXT_COLOR)
+    for x in (3, 124):
+        panel.point((x, 3), fill=TEXT_COLOR)
+    draw_text(image, 8, 3, checked_text(strings, "txt_sub_hauler"))
+    panel.ellipse((94, 15, 116, 37), outline=TEXT_COLOR)
+    panel.ellipse((97, 18, 113, 34), outline=TEXT_COLOR)
+    panel.line((105, 26, 110, 21), fill=TEXT_COLOR)
+    panel.point((105, 26), fill=TEXT_COLOR)
+    panel.line((90, 18, 90, 34), fill=TEXT_COLOR)
+    panel.line((120, 18, 120, 34), fill=TEXT_COLOR)
+    for x in (90, 120):
+        panel.rectangle((x - 1, 27, x + 1, 29), fill=TEXT_COLOR)
     for index, row in enumerate(TITLE_ROWS):
-        y = 22 + index * 9
+        y = 17 + index * 12
         if index == selected:
-            for px in range(128):
-                for py in range(y - 1, y + 7):
-                    image.putpixel((px, py), TEXT_COLOR)
-            draw_text(image, 4, y, checked_text(strings, row), BG_COLOR)
+            panel.rectangle((4, y - 1, 83, y + 6), fill=TEXT_COLOR)
+            draw_text(image, 8, y, checked_text(strings, row), BG_COLOR)
         else:
-            draw_text(image, 4, y, checked_text(strings, row))
-    draw_text(image, 4, 48, checked_text(strings, STATUS_STRINGS[status]))
-    draw_text(image, 4, 57, checked_text(strings, "txt_title_save_hint"))
+            draw_text(image, 8, y, checked_text(strings, row))
+    draw_text(image, 4, 45, checked_text(strings, STATUS_STRINGS[status]))
+    draw_text(image, 4, 55, checked_text(strings, "txt_title_save_hint"))
     return image
 
 
@@ -509,9 +538,15 @@ def title_panels(strings):
             frame = title_menu_frame(strings, status, selected)
             menu.paste(frame, (128 * (status * 2 + selected), 0))
     replace = Image.new("RGBA", SIZE, BG_COLOR)
-    draw_text(replace, 4, 24, checked_text(strings, "txt_replace_voyage"))
-    draw_text(replace, 4, 36, checked_text(strings, "txt_save_ready"))
-    draw_text(replace, 4, 48, checked_text(strings, "txt_yes_no"))
+    from PIL import ImageDraw
+    panel = ImageDraw.Draw(replace)
+    panel.rectangle((0, 0, 127, 63), outline=TEXT_COLOR)
+    panel.line((1, 12, 126, 12), fill=TEXT_COLOR)
+    panel.line((1, 42, 126, 42), fill=TEXT_COLOR)
+    draw_text(replace, 8, 3, checked_text(strings, "txt_sub_hauler"))
+    draw_text(replace, 8, 18, checked_text(strings, "txt_replace_voyage"))
+    draw_text(replace, 8, 30, checked_text(strings, "txt_save_ready"))
+    draw_text(replace, 8, 49, checked_text(strings, "txt_yes_no"))
     return [
         ("title_menu_128x64", menu),
         ("title_replace_128x64", replace),

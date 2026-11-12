@@ -128,6 +128,12 @@ static bool sample(uint8_t id, int16_t x, int16_t y, bool cold) {
     game::resetWorld(state);
     state.x = x;
     state.y = y;
+    if (id == 7)
+        state.vxQ8 = 4 * game::kQ8One; // moving boat and wildlife together
+    if (id == 8)
+        state.campaign = campaign::kMilestonePump;
+    if (id == 9)
+        state.campaign = campaign::kMilestoneLift;
     const cave::Camera camera = cave::cameraCenteredAtPixel(x, y);
     world::clearCache(cache);
     view::frame(state, camera, cache, tables);
@@ -187,6 +193,18 @@ void setup() {
         const auto find = exploration_data::pickup(exploration_data::PICKUP_W);
         ok = sample(4, find.x, find.y, cold) && ok;
         ok = sample(5, exploration_data::DOCK_D_X, exploration_data::DOCK_D_Y, cold) && ok;
+        ok = sample(7, 688, 408, cold) && ok; // Flooded Lock jellyfish
+        world::Berth site;
+        if (world::serviceBerthInfo(0, site))
+            ok = sample(8, site.pixel_x, site.pixel_y, cold) && ok;
+        else
+            ok = false;
+        if (world::serviceBerthInfo(1, site))
+            ok = sample(9, site.pixel_x, site.pixel_y, cold) && ok;
+        else
+            ok = false;
+        ok = sample(10, 1312, 203, cold) && ok; // animated kelp
+        ok = sample(11, 404, 1208, cold) && ok; // animated vent
     }
     Serial.println(ok ? F("P") : F("F"));
 }

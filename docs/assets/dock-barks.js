@@ -37,12 +37,12 @@ globalThis.DockBarks = {
     {
       "id": "pump",
       "label": "PUMP",
-      "facts": "PUMP complete and LIFT still open; the lift survey may or may not be recorded."
+      "facts": "PUMP complete and LIFT incomplete; the lift survey is still missing."
     },
     {
       "id": "lift",
       "label": "LIFT",
-      "facts": "LIFT complete and PUMP still open; the pump survey may or may not be recorded."
+      "facts": "LIFT complete and PUMP incomplete; the pump survey is still missing."
     },
     {
       "id": "both",
@@ -57,7 +57,7 @@ globalThis.DockBarks = {
     {
       "id": "core",
       "label": "CORE",
-      "facts": "BEACON delivered; the beacon core is lit and DEEP RELAY is next."
+      "facts": "BEACON delivered and all four tools owned; DEEP RELAY can be accepted at Deep Anchor."
     },
     {
       "id": "relay",
@@ -68,6 +68,31 @@ globalThis.DockBarks = {
       "id": "home",
       "label": "HOME",
       "facts": "HOME delivered; the four-station network is restored."
+    },
+    {
+      "id": "cutter",
+      "label": "CUTTER",
+      "facts": "BEACON delivered, DEEP RELAY incomplete and the cutter missing; find the tender near Tidewall first."
+    },
+    {
+      "id": "lens",
+      "label": "LENS",
+      "facts": "BEACON delivered, DEEP RELAY incomplete, cutter owned and survey lens missing; search the cave above Deep Anchor."
+    },
+    {
+      "id": "thruster",
+      "label": "THRUSTER",
+      "facts": "BEACON delivered, DEEP RELAY incomplete, cutter and lens owned but thruster missing; search the old relay compartment near Benthos."
+    },
+    {
+      "id": "pump_ready",
+      "label": "PUMP READY",
+      "facts": "LIFT complete, PUMP incomplete and pump survey recorded; collect the impeller at Cormorant."
+    },
+    {
+      "id": "lift_ready",
+      "label": "LIFT READY",
+      "facts": "PUMP complete, LIFT incomplete and lift survey recorded; collect cable at Benthos."
     }
   ],
   "berths": [
@@ -79,55 +104,85 @@ globalThis.DockBarks = {
           "point": "fresh",
           "frame": 1,
           "symbol": "img_dock_barks[1]",
-          "text": "I HEAR THERE IS WORK"
+          "text": "FILTERS TO BENTHOS"
         },
         {
           "point": "first",
           "frame": 2,
           "symbol": "img_dock_barks[2]",
-          "text": "BENTHOS HAS WORK"
+          "text": "PUMP AND LIFT SILENT"
         },
         {
           "point": "pump",
           "frame": 3,
           "symbol": "img_dock_barks[3]",
-          "text": "LIFT NEEDS CABLE"
+          "text": "CHECK FREIGHT YARD"
         },
         {
           "point": "lift",
           "frame": 4,
           "symbol": "img_dock_barks[4]",
-          "text": "LIFT CRANE MOVES"
+          "text": "CHECK PUMP REFUGE"
         },
         {
           "point": "both",
           "frame": 5,
           "symbol": "img_dock_barks[5]",
-          "text": "CUTTER: OLD TENDER"
+          "text": "SEAL: WEST WORKSHOP"
         },
         {
           "point": "seal",
           "frame": 6,
           "symbol": "img_dock_barks[6]",
-          "text": "CHECK CORMORANT"
+          "text": "CORE AT CORMORANT"
         },
         {
           "point": "core",
           "frame": 7,
           "symbol": "img_dock_barks[7]",
-          "text": "SEARCH THE DEPTHS"
+          "text": "WORK AT DEEP ANCHOR"
         },
         {
           "point": "relay",
           "frame": 8,
           "symbol": "img_dock_barks[8]",
-          "text": "ANY NEWS FROM BELOW"
+          "text": "DISPATCH AT ANCHOR"
         },
         {
           "point": "home",
           "frame": 9,
           "symbol": "img_dock_barks[9]",
-          "text": "WHAT A MYSTERY EH"
+          "text": "YOUR BERTH IS LIT"
+        },
+        {
+          "point": "cutter",
+          "frame": 10,
+          "symbol": "img_dock_barks[10]",
+          "text": "CUTTER: OLD TENDER"
+        },
+        {
+          "point": "lens",
+          "frame": 11,
+          "symbol": "img_dock_barks[11]",
+          "text": "LENS: ABOVE ANCHOR"
+        },
+        {
+          "point": "thruster",
+          "frame": 12,
+          "symbol": "img_dock_barks[12]",
+          "text": "THRUSTER: OLD RELAY"
+        },
+        {
+          "point": "pump_ready",
+          "frame": 13,
+          "symbol": "img_dock_barks[13]",
+          "text": "IMPELLER: CORMORANT"
+        },
+        {
+          "point": "lift_ready",
+          "frame": 14,
+          "symbol": "img_dock_barks[14]",
+          "text": "CABLE: BENTHOS"
         }
       ]
     },
@@ -137,57 +192,87 @@ globalThis.DockBarks = {
       "barks": [
         {
           "point": "fresh",
-          "frame": 10,
-          "symbol": "img_dock_barks[10]",
-          "text": "TIDEWALL HAS FILTERS"
+          "frame": 15,
+          "symbol": "img_dock_barks[15]",
+          "text": "FILTERS AT TIDEWALL"
         },
         {
           "point": "first",
-          "frame": 11,
-          "symbol": "img_dock_barks[11]",
-          "text": "WE HAVE SOME WORK"
+          "frame": 16,
+          "symbol": "img_dock_barks[16]",
+          "text": "CHECK PUMP REFUGE"
         },
         {
           "point": "pump",
-          "frame": 12,
-          "symbol": "img_dock_barks[12]",
-          "text": "LIFT NEEDS CABLE"
+          "frame": 17,
+          "symbol": "img_dock_barks[17]",
+          "text": "CHECK FREIGHT YARD"
         },
         {
           "point": "lift",
-          "frame": 13,
-          "symbol": "img_dock_barks[13]",
-          "text": "PUMP AWAITS REPAIR"
+          "frame": 18,
+          "symbol": "img_dock_barks[18]",
+          "text": "CHECK PUMP REFUGE"
         },
         {
           "point": "both",
-          "frame": 14,
-          "symbol": "img_dock_barks[14]",
+          "frame": 19,
+          "symbol": "img_dock_barks[19]",
           "text": "SEAL: WEST WORKSHOP"
         },
         {
           "point": "seal",
-          "frame": 15,
-          "symbol": "img_dock_barks[15]",
-          "text": "HEAD DEEPER"
+          "frame": 20,
+          "symbol": "img_dock_barks[20]",
+          "text": "CORE AT CORMORANT"
         },
         {
           "point": "core",
-          "frame": 16,
-          "symbol": "img_dock_barks[16]",
-          "text": "THRUSTER IN WRECK"
+          "frame": 21,
+          "symbol": "img_dock_barks[21]",
+          "text": "WORK AT DEEP ANCHOR"
         },
         {
           "point": "relay",
-          "frame": 17,
-          "symbol": "img_dock_barks[17]",
-          "text": "ODDITY IN THE DEPTHS"
+          "frame": 22,
+          "symbol": "img_dock_barks[22]",
+          "text": "DISPATCH AT ANCHOR"
         },
         {
           "point": "home",
-          "frame": 18,
-          "symbol": "img_dock_barks[18]",
-          "text": "YOU SAVED OUR SKINS"
+          "frame": 23,
+          "symbol": "img_dock_barks[23]",
+          "text": "THE KELP SWAYS AGAIN"
+        },
+        {
+          "point": "cutter",
+          "frame": 24,
+          "symbol": "img_dock_barks[24]",
+          "text": "CUTTER: OLD TENDER"
+        },
+        {
+          "point": "lens",
+          "frame": 25,
+          "symbol": "img_dock_barks[25]",
+          "text": "LENS: ABOVE ANCHOR"
+        },
+        {
+          "point": "thruster",
+          "frame": 26,
+          "symbol": "img_dock_barks[26]",
+          "text": "THRUSTER: OLD RELAY"
+        },
+        {
+          "point": "pump_ready",
+          "frame": 27,
+          "symbol": "img_dock_barks[27]",
+          "text": "IMPELLER: CORMORANT"
+        },
+        {
+          "point": "lift_ready",
+          "frame": 28,
+          "symbol": "img_dock_barks[28]",
+          "text": "CABLE: TAKE WORK"
         }
       ]
     },
@@ -197,57 +282,87 @@ globalThis.DockBarks = {
       "barks": [
         {
           "point": "fresh",
-          "frame": 19,
-          "symbol": "img_dock_barks[19]",
-          "text": "TIDEWALL HAS WORK"
+          "frame": 29,
+          "symbol": "img_dock_barks[29]",
+          "text": "FILTERS AT TIDEWALL"
         },
         {
           "point": "first",
-          "frame": 20,
-          "symbol": "img_dock_barks[20]",
-          "text": "LIFT NEEDS REPAIR"
+          "frame": 30,
+          "symbol": "img_dock_barks[30]",
+          "text": "CHECK FREIGHT YARD"
         },
         {
           "point": "pump",
-          "frame": 21,
-          "symbol": "img_dock_barks[21]",
-          "text": "LIFT AWAITS REPAIR"
+          "frame": 31,
+          "symbol": "img_dock_barks[31]",
+          "text": "CHECK FREIGHT YARD"
         },
         {
           "point": "lift",
-          "frame": 22,
-          "symbol": "img_dock_barks[22]",
-          "text": "PUMP NEEDS PART"
+          "frame": 32,
+          "symbol": "img_dock_barks[32]",
+          "text": "CHECK PUMP REFUGE"
         },
         {
           "point": "both",
-          "frame": 23,
-          "symbol": "img_dock_barks[23]",
-          "text": "SEARCH WEST FOR SEAL"
+          "frame": 33,
+          "symbol": "img_dock_barks[33]",
+          "text": "SEAL: WEST WORKSHOP"
         },
         {
           "point": "seal",
-          "frame": 24,
-          "symbol": "img_dock_barks[24]",
-          "text": "WE HAVE WORK"
+          "frame": 34,
+          "symbol": "img_dock_barks[34]",
+          "text": "CORE TO DEEP ANCHOR"
         },
         {
           "point": "core",
-          "frame": 25,
-          "symbol": "img_dock_barks[25]",
-          "text": "HEAD TO DEEP ANCHOR"
+          "frame": 35,
+          "symbol": "img_dock_barks[35]",
+          "text": "WORK AT DEEP ANCHOR"
         },
         {
           "point": "relay",
-          "frame": 26,
-          "symbol": "img_dock_barks[26]",
-          "text": "HEAD TO DEEP ANCHOR"
+          "frame": 36,
+          "symbol": "img_dock_barks[36]",
+          "text": "DISPATCH AT ANCHOR"
         },
         {
           "point": "home",
-          "frame": 27,
-          "symbol": "img_dock_barks[27]",
-          "text": "A FINE CAPTAIN"
+          "frame": 37,
+          "symbol": "img_dock_barks[37]",
+          "text": "FREIGHT MOVES AGAIN"
+        },
+        {
+          "point": "cutter",
+          "frame": 38,
+          "symbol": "img_dock_barks[38]",
+          "text": "CUTTER: OLD TENDER"
+        },
+        {
+          "point": "lens",
+          "frame": 39,
+          "symbol": "img_dock_barks[39]",
+          "text": "LENS: ABOVE ANCHOR"
+        },
+        {
+          "point": "thruster",
+          "frame": 40,
+          "symbol": "img_dock_barks[40]",
+          "text": "THRUSTER: OLD RELAY"
+        },
+        {
+          "point": "pump_ready",
+          "frame": 41,
+          "symbol": "img_dock_barks[41]",
+          "text": "IMPELLER: TAKE WORK"
+        },
+        {
+          "point": "lift_ready",
+          "frame": 42,
+          "symbol": "img_dock_barks[42]",
+          "text": "CABLE: BENTHOS"
         }
       ]
     },
@@ -257,57 +372,87 @@ globalThis.DockBarks = {
       "barks": [
         {
           "point": "fresh",
-          "frame": 28,
-          "symbol": "img_dock_barks[28]",
-          "text": "TRY TIDEWALL"
+          "frame": 43,
+          "symbol": "img_dock_barks[43]",
+          "text": "WORK AT TIDEWALL"
         },
         {
           "point": "first",
-          "frame": 29,
-          "symbol": "img_dock_barks[29]",
-          "text": "NOTHING DOWN HERE"
+          "frame": 44,
+          "symbol": "img_dock_barks[44]",
+          "text": "REPAIR PUMP AND LIFT"
         },
         {
           "point": "pump",
-          "frame": 30,
-          "symbol": "img_dock_barks[30]",
-          "text": "HEAD UP TO SHALLOWS"
+          "frame": 45,
+          "symbol": "img_dock_barks[45]",
+          "text": "CHECK FREIGHT YARD"
         },
         {
           "point": "lift",
-          "frame": 31,
-          "symbol": "img_dock_barks[31]",
-          "text": "BEACON NEEDS PUMP"
+          "frame": 46,
+          "symbol": "img_dock_barks[46]",
+          "text": "CHECK PUMP REFUGE"
         },
         {
           "point": "both",
-          "frame": 32,
-          "symbol": "img_dock_barks[32]",
-          "text": "BEACON NEEDS SEAL"
+          "frame": 47,
+          "symbol": "img_dock_barks[47]",
+          "text": "SEAL: WEST WORKSHOP"
         },
         {
           "point": "seal",
-          "frame": 33,
-          "symbol": "img_dock_barks[33]",
-          "text": "ITS TOO DARK HERE"
+          "frame": 48,
+          "symbol": "img_dock_barks[48]",
+          "text": "CORE AT CORMORANT"
         },
         {
           "point": "core",
-          "frame": 34,
-          "symbol": "img_dock_barks[34]",
-          "text": "DEEP RELAY: 4 TOOLS"
+          "frame": 49,
+          "symbol": "img_dock_barks[49]",
+          "text": "DEEP RELAY WORK HERE"
         },
         {
           "point": "relay",
-          "frame": 35,
-          "symbol": "img_dock_barks[35]",
-          "text": "ALERT THE OTHERS"
+          "frame": 50,
+          "symbol": "img_dock_barks[50]",
+          "text": "DISPATCH TO TIDEWALL"
         },
         {
           "point": "home",
-          "frame": 36,
-          "symbol": "img_dock_barks[36]",
-          "text": "GOOD WORK DOWN HERE"
+          "frame": 51,
+          "symbol": "img_dock_barks[51]",
+          "text": "YOUR LIGHT IS SEEN"
+        },
+        {
+          "point": "cutter",
+          "frame": 52,
+          "symbol": "img_dock_barks[52]",
+          "text": "CUTTER: OLD TENDER"
+        },
+        {
+          "point": "lens",
+          "frame": 53,
+          "symbol": "img_dock_barks[53]",
+          "text": "LENS: CAVE ABOVE US"
+        },
+        {
+          "point": "thruster",
+          "frame": 54,
+          "symbol": "img_dock_barks[54]",
+          "text": "THRUSTER: OLD RELAY"
+        },
+        {
+          "point": "pump_ready",
+          "frame": 55,
+          "symbol": "img_dock_barks[55]",
+          "text": "IMPELLER: CORMORANT"
+        },
+        {
+          "point": "lift_ready",
+          "frame": 56,
+          "symbol": "img_dock_barks[56]",
+          "text": "CABLE: BENTHOS"
         }
       ]
     },
@@ -317,57 +462,87 @@ globalThis.DockBarks = {
       "barks": [
         {
           "point": "fresh",
-          "frame": 37,
-          "symbol": "img_dock_barks[37]",
-          "text": "MOORING INACTIVE"
+          "frame": 57,
+          "symbol": "img_dock_barks[57]",
+          "text": "PUMP AWAITS REPAIR"
         },
         {
           "point": "first",
-          "frame": 38,
-          "symbol": "img_dock_barks[38]",
-          "text": "CHECK CORMORANT"
+          "frame": 58,
+          "symbol": "img_dock_barks[58]",
+          "text": "INSPECT THE PUMP"
         },
         {
           "point": "pump",
-          "frame": 39,
-          "symbol": "img_dock_barks[39]",
-          "text": "PUMP REFUGE OPEN"
+          "frame": 59,
+          "symbol": "img_dock_barks[59]",
+          "text": "AIR AND FLOW RETURN"
         },
         {
           "point": "lift",
-          "frame": 40,
-          "symbol": "img_dock_barks[40]",
-          "text": "PUMP STILL DRY"
+          "frame": 60,
+          "symbol": "img_dock_barks[60]",
+          "text": "INSPECT THE PUMP"
         },
         {
           "point": "both",
-          "frame": 41,
-          "symbol": "img_dock_barks[41]",
-          "text": "SEAL NEEDED STILL"
+          "frame": 61,
+          "symbol": "img_dock_barks[61]",
+          "text": "SEAL: WEST WORKSHOP"
         },
         {
           "point": "seal",
-          "frame": 42,
-          "symbol": "img_dock_barks[42]",
-          "text": "DEEP A NEEDS HELP"
+          "frame": 62,
+          "symbol": "img_dock_barks[62]",
+          "text": "CORE AT CORMORANT"
         },
         {
           "point": "core",
-          "frame": 43,
-          "symbol": "img_dock_barks[43]",
-          "text": "WATER FLOWING WELL"
+          "frame": 63,
+          "symbol": "img_dock_barks[63]",
+          "text": "WORK AT DEEP ANCHOR"
         },
         {
           "point": "relay",
-          "frame": 44,
-          "symbol": "img_dock_barks[44]",
-          "text": "HOW YOU DOING TODAY"
+          "frame": 64,
+          "symbol": "img_dock_barks[64]",
+          "text": "DISPATCH AT ANCHOR"
         },
         {
           "point": "home",
-          "frame": 45,
-          "symbol": "img_dock_barks[45]",
-          "text": "PUMP HUMS ALONG"
+          "frame": 65,
+          "symbol": "img_dock_barks[65]",
+          "text": "THE PUMP KEEPS TIME"
+        },
+        {
+          "point": "cutter",
+          "frame": 66,
+          "symbol": "img_dock_barks[66]",
+          "text": "CUTTER: OLD TENDER"
+        },
+        {
+          "point": "lens",
+          "frame": 67,
+          "symbol": "img_dock_barks[67]",
+          "text": "LENS: ABOVE ANCHOR"
+        },
+        {
+          "point": "thruster",
+          "frame": 68,
+          "symbol": "img_dock_barks[68]",
+          "text": "THRUSTER: OLD RELAY"
+        },
+        {
+          "point": "pump_ready",
+          "frame": 69,
+          "symbol": "img_dock_barks[69]",
+          "text": "IMPELLER: CORMORANT"
+        },
+        {
+          "point": "lift_ready",
+          "frame": 70,
+          "symbol": "img_dock_barks[70]",
+          "text": "CABLE: BENTHOS"
         }
       ]
     },
@@ -377,57 +552,87 @@ globalThis.DockBarks = {
       "barks": [
         {
           "point": "fresh",
-          "frame": 46,
-          "symbol": "img_dock_barks[46]",
-          "text": "GANTRY INACTIVE"
+          "frame": 71,
+          "symbol": "img_dock_barks[71]",
+          "text": "GANTRY AWAITS LIFT"
         },
         {
           "point": "first",
-          "frame": 47,
-          "symbol": "img_dock_barks[47]",
-          "text": "FIX THE GANTRY"
+          "frame": 72,
+          "symbol": "img_dock_barks[72]",
+          "text": "CHECK FREIGHT YARD"
         },
         {
           "point": "pump",
-          "frame": 48,
-          "symbol": "img_dock_barks[48]",
-          "text": "GANTRY WAITS LIFT"
+          "frame": 73,
+          "symbol": "img_dock_barks[73]",
+          "text": "CHECK FREIGHT YARD"
         },
         {
           "point": "lift",
-          "frame": 49,
-          "symbol": "img_dock_barks[49]",
-          "text": "GANTRY OPEN"
+          "frame": 74,
+          "symbol": "img_dock_barks[74]",
+          "text": "WORK AT PUMP REFUGE"
         },
         {
           "point": "both",
-          "frame": 50,
-          "symbol": "img_dock_barks[50]",
-          "text": "SEAL STILL MISSING"
+          "frame": 75,
+          "symbol": "img_dock_barks[75]",
+          "text": "SEAL: WEST WORKSHOP"
         },
         {
           "point": "seal",
-          "frame": 51,
-          "symbol": "img_dock_barks[51]",
-          "text": "WE BUILT A BEACON"
+          "frame": 76,
+          "symbol": "img_dock_barks[76]",
+          "text": "CORE AT CORMORANT"
         },
         {
           "point": "core",
-          "frame": 52,
-          "symbol": "img_dock_barks[52]",
-          "text": "NO WORK HERE"
+          "frame": 77,
+          "symbol": "img_dock_barks[77]",
+          "text": "WORK AT DEEP ANCHOR"
         },
         {
           "point": "relay",
-          "frame": 53,
-          "symbol": "img_dock_barks[53]",
-          "text": "SHES WORKING FINE"
+          "frame": 78,
+          "symbol": "img_dock_barks[78]",
+          "text": "DISPATCH AT ANCHOR"
         },
         {
           "point": "home",
-          "frame": 54,
-          "symbol": "img_dock_barks[54]",
-          "text": "THANKS FOR THE HELP"
+          "frame": 79,
+          "symbol": "img_dock_barks[79]",
+          "text": "CRATES CLIMB AGAIN"
+        },
+        {
+          "point": "cutter",
+          "frame": 80,
+          "symbol": "img_dock_barks[80]",
+          "text": "CUTTER: OLD TENDER"
+        },
+        {
+          "point": "lens",
+          "frame": 81,
+          "symbol": "img_dock_barks[81]",
+          "text": "LENS: ABOVE ANCHOR"
+        },
+        {
+          "point": "thruster",
+          "frame": 82,
+          "symbol": "img_dock_barks[82]",
+          "text": "THRUSTER: OLD RELAY"
+        },
+        {
+          "point": "pump_ready",
+          "frame": 83,
+          "symbol": "img_dock_barks[83]",
+          "text": "IMPELLER: CORMORANT"
+        },
+        {
+          "point": "lift_ready",
+          "frame": 84,
+          "symbol": "img_dock_barks[84]",
+          "text": "CABLE: BENTHOS"
         }
       ]
     },
@@ -437,57 +642,87 @@ globalThis.DockBarks = {
       "barks": [
         {
           "point": "fresh",
-          "frame": 55,
-          "symbol": "img_dock_barks[55]",
-          "text": "YARD INACTIVE"
+          "frame": 85,
+          "symbol": "img_dock_barks[85]",
+          "text": "LIFT AWAITS REPAIR"
         },
         {
           "point": "first",
-          "frame": 56,
-          "symbol": "img_dock_barks[56]",
-          "text": "CHECK BENTHOS"
+          "frame": 86,
+          "symbol": "img_dock_barks[86]",
+          "text": "INSPECT THE LIFT"
         },
         {
           "point": "pump",
-          "frame": 57,
-          "symbol": "img_dock_barks[57]",
-          "text": "YARD WAITS CABLE"
+          "frame": 87,
+          "symbol": "img_dock_barks[87]",
+          "text": "INSPECT THE LIFT"
         },
         {
           "point": "lift",
-          "frame": 58,
-          "symbol": "img_dock_barks[58]",
-          "text": "YARD OPEN"
+          "frame": 88,
+          "symbol": "img_dock_barks[88]",
+          "text": "CHECK PUMP REFUGE"
         },
         {
           "point": "both",
-          "frame": 59,
-          "symbol": "img_dock_barks[59]",
-          "text": "SEAL: FIND WORKSHOP"
+          "frame": 89,
+          "symbol": "img_dock_barks[89]",
+          "text": "SEAL: WEST WORKSHOP"
         },
         {
           "point": "seal",
-          "frame": 60,
-          "symbol": "img_dock_barks[60]",
-          "text": "HEAD TO CORMORANT"
+          "frame": 90,
+          "symbol": "img_dock_barks[90]",
+          "text": "CORE AT CORMORANT"
         },
         {
           "point": "core",
-          "frame": 61,
-          "symbol": "img_dock_barks[61]",
-          "text": "HOWS THE SUB RUNNING"
+          "frame": 91,
+          "symbol": "img_dock_barks[91]",
+          "text": "WORK AT DEEP ANCHOR"
         },
         {
           "point": "relay",
-          "frame": 62,
-          "symbol": "img_dock_barks[62]",
-          "text": "HOW ABOUT SOME PAINT"
+          "frame": 92,
+          "symbol": "img_dock_barks[92]",
+          "text": "DISPATCH AT ANCHOR"
         },
         {
           "point": "home",
-          "frame": 63,
-          "symbol": "img_dock_barks[63]",
-          "text": "YARD HUMS ALONG"
+          "frame": 93,
+          "symbol": "img_dock_barks[93]",
+          "text": "THE CABLE SINGS LOW"
+        },
+        {
+          "point": "cutter",
+          "frame": 94,
+          "symbol": "img_dock_barks[94]",
+          "text": "CUTTER: OLD TENDER"
+        },
+        {
+          "point": "lens",
+          "frame": 95,
+          "symbol": "img_dock_barks[95]",
+          "text": "LENS: ABOVE ANCHOR"
+        },
+        {
+          "point": "thruster",
+          "frame": 96,
+          "symbol": "img_dock_barks[96]",
+          "text": "THRUSTER: OLD RELAY"
+        },
+        {
+          "point": "pump_ready",
+          "frame": 97,
+          "symbol": "img_dock_barks[97]",
+          "text": "IMPELLER: CORMORANT"
+        },
+        {
+          "point": "lift_ready",
+          "frame": 98,
+          "symbol": "img_dock_barks[98]",
+          "text": "CABLE: BENTHOS"
         }
       ]
     },
@@ -497,57 +732,87 @@ globalThis.DockBarks = {
       "barks": [
         {
           "point": "fresh",
-          "frame": 64,
-          "symbol": "img_dock_barks[64]",
+          "frame": 99,
+          "symbol": "img_dock_barks[99]",
           "text": "RELAY SLEEPS DEEP"
         },
         {
           "point": "first",
-          "frame": 65,
-          "symbol": "img_dock_barks[65]",
+          "frame": 100,
+          "symbol": "img_dock_barks[100]",
           "text": "RELAY SLEEPS DEEP"
         },
         {
           "point": "pump",
-          "frame": 66,
-          "symbol": "img_dock_barks[66]",
+          "frame": 101,
+          "symbol": "img_dock_barks[101]",
           "text": "RELAY SLEEPS DEEP"
         },
         {
           "point": "lift",
-          "frame": 67,
-          "symbol": "img_dock_barks[67]",
+          "frame": 102,
+          "symbol": "img_dock_barks[102]",
           "text": "RELAY SLEEPS DEEP"
         },
         {
           "point": "both",
-          "frame": 68,
-          "symbol": "img_dock_barks[68]",
+          "frame": 103,
+          "symbol": "img_dock_barks[103]",
           "text": "RELAY SLEEPS DEEP"
         },
         {
           "point": "seal",
-          "frame": 69,
-          "symbol": "img_dock_barks[69]",
+          "frame": 104,
+          "symbol": "img_dock_barks[104]",
           "text": "RELAY SLEEPS DEEP"
         },
         {
           "point": "core",
-          "frame": 70,
-          "symbol": "img_dock_barks[70]",
-          "text": "RELAY SLEEPS DEEP"
+          "frame": 105,
+          "symbol": "img_dock_barks[105]",
+          "text": "SURVEY FROM ANCHOR"
         },
         {
           "point": "relay",
-          "frame": 71,
-          "symbol": "img_dock_barks[71]",
-          "text": "AN OMINOUS FEELING"
+          "frame": 106,
+          "symbol": "img_dock_barks[106]",
+          "text": "BACK TO DEEP ANCHOR"
         },
         {
           "point": "home",
-          "frame": 72,
-          "symbol": "img_dock_barks[72]",
-          "text": "AN OMINOUS FEELING"
+          "frame": 107,
+          "symbol": "img_dock_barks[107]",
+          "text": "THE RING KEEPS QUIET"
+        },
+        {
+          "point": "cutter",
+          "frame": 108,
+          "symbol": "img_dock_barks[108]",
+          "text": "CUTTER: OLD TENDER"
+        },
+        {
+          "point": "lens",
+          "frame": 109,
+          "symbol": "img_dock_barks[109]",
+          "text": "LENS: ABOVE ANCHOR"
+        },
+        {
+          "point": "thruster",
+          "frame": 110,
+          "symbol": "img_dock_barks[110]",
+          "text": "THRUSTER: OLD RELAY"
+        },
+        {
+          "point": "pump_ready",
+          "frame": 111,
+          "symbol": "img_dock_barks[111]",
+          "text": "IMPELLER: CORMORANT"
+        },
+        {
+          "point": "lift_ready",
+          "frame": 112,
+          "symbol": "img_dock_barks[112]",
+          "text": "CABLE: BENTHOS"
         }
       ]
     }

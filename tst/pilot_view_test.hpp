@@ -65,7 +65,7 @@ inline void PilotViewSuite(TestRunner &runner) {
         const cave::Camera camera = pilot_view::cameraForState(state);
         pilot_view::draw(buffer, state, camera);
 
-        const int16_t left = static_cast<int16_t>(pilot_view::screenX(state, camera) - game::kHullHalfW);
+        const int16_t left = static_cast<int16_t>(pilot_view::screenX(state, camera) - game::kHullHalfW - pilot_view::kArtSideBleed);
         const int16_t top = static_cast<int16_t>(pilot_view::screenY(state, camera) - game::kHullHalfH - pilot_view::kArtAboveHull);
 
         uint16_t whitePixels = 0;
@@ -94,9 +94,41 @@ inline void PilotViewSuite(TestRunner &runner) {
 
         test.assertTrue(whitePixels > 60, "HAULER has a solid body");
         test.assertTrue(!outside, "HAULER stays in the art box");
-        test.assertEqual(maxX - minX + 1, static_cast<int16_t>(HAULER_WIDTH), "HAULER art width");
-        test.assertEqual(maxY - minY + 1, static_cast<int16_t>(HAULER_HEIGHT), "HAULER art height");
-        test.assertEqual(maxY, static_cast<int16_t>(top + HAULER_HEIGHT - 1), "HAULER art reaches the hull baseline");
+        test.assertEqual(maxX - minX + 1, static_cast<int16_t>(game::kHullW), "HAULER white body width");
+        test.assertEqual(maxY - minY + 1, static_cast<int16_t>(HAULER_HEIGHT - 2), "HAULER white body height excludes outline rows");
+        test.assertEqual(minX, static_cast<int16_t>(left + pilot_view::kArtSideBleed), "HAULER body is centred inside the outline");
+        test.assertEqual(maxY, static_cast<int16_t>(top + HAULER_HEIGHT - 2), "HAULER body reaches the hull baseline");
+        runner.add(test);
+    }
+
+    {
+        Test test("HAULER white pixels carry a one-pixel black outline");
+        bool outlined = true;
+        for (uint8_t frame = 0; frame < HAULER_FRAMES; ++frame) {
+            for (uint8_t page = 0; page < HAULER_ART_PAGES; ++page) {
+                for (uint8_t x = 0; x < HAULER_WIDTH; ++x) {
+                    const uint8_t data = haulerHostData[frame][page][x];
+                    for (uint8_t bit = 0; bit < 8; ++bit) {
+                        const uint8_t y = static_cast<uint8_t>(page * 8 + bit);
+                        if (y >= HAULER_HEIGHT || !(data & (1u << bit)))
+                            continue;
+                        for (int8_t dy = -1; dy <= 1; ++dy) {
+                            for (int8_t dx = -1; dx <= 1; ++dx) {
+                                const int16_t nx = static_cast<int16_t>(x + dx);
+                                const int16_t ny = static_cast<int16_t>(y + dy);
+                                if (nx < 0 || nx >= HAULER_WIDTH || ny < 0 || ny >= HAULER_HEIGHT)
+                                    continue;
+                                const uint8_t neighborBit = static_cast<uint8_t>(1u << (ny & 7));
+                                if (!(haulerHostMask[frame][ny >> 3][nx] & neighborBit))
+                                    outlined = false;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        test.assertTrue(outlined, "every white pixel is bounded by opaque black or white");
+        test.assertEqual(pilot_view::kArtSideBleed, static_cast<int16_t>(1), "one-pixel side outline");
         runner.add(test);
     }
 
@@ -115,7 +147,7 @@ inline void PilotViewSuite(TestRunner &runner) {
         game::State state;
         game::resetWorld(state);
         const cave::Camera camera = pilot_view::cameraForState(state);
-        const int16_t left = static_cast<int16_t>(pilot_view::screenX(state, camera) - game::kHullHalfW);
+        const int16_t left = static_cast<int16_t>(pilot_view::screenX(state, camera) - game::kHullHalfW - pilot_view::kArtSideBleed);
         const int16_t top = static_cast<int16_t>(pilot_view::screenY(state, camera) - game::kHullHalfH - pilot_view::kArtAboveHull);
         const int16_t hullTop = static_cast<int16_t>(top + pilot_view::kArtAboveHull);
 

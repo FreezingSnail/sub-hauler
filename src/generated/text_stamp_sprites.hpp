@@ -20,7 +20,7 @@ constexpr bool    IMG_CARRY_ROW_MASKED = true;
 
 constexpr uint8_t IMG_DOCK_BARKS_WIDTH  = 128;
 constexpr uint8_t IMG_DOCK_BARKS_HEIGHT = 8;
-constexpr uint8_t IMG_DOCK_BARKS_FRAMES = 73;
+constexpr uint8_t IMG_DOCK_BARKS_FRAMES = 113;
 constexpr bool    IMG_DOCK_BARKS_MASKED = true;
 
 constexpr uint8_t IMG_ROW_LABELS_WIDTH  = 128;

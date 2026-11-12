@@ -1,5 +1,8 @@
 // Host test entry point. `make test` compiles this with the native compiler.
 #include "cave_test.hpp"
+#include "bubble_view_test.hpp"
+#include "ambient_view_test.hpp"
+#include "fish_view_test.hpp"
 #include "collision_test.hpp"
 #include "camera_motion_test.hpp"
 #include "game_test.hpp"
@@ -37,6 +40,9 @@
 int main() {
     TestRunner runner;
     CaveSuite(runner);
+    BubbleViewSuite(runner);
+    AmbientViewSuite(runner);
+    FishViewSuite(runner);
     CollisionSuite(runner);
     CameraMotionSuite(runner);
     PauseSuite(runner);

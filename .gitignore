@@ -14,3 +14,7 @@ compile_commands.json
 
 # Pixelgen transient runs
 .pixelgen/
+
+# Worker scratch
+output.md
+output/

@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2560 1530" width="2560" height="1530" role="img" aria-labelledby="title description">
+  <title id="title">Game world and wildlife</title>
+  <desc id="description">The labeled game world with twenty gold markers for fish schools and drifting jellyfish.</desc>
+  <image href="exploration-world-2026-11-09.png" width="2560" height="1530"/>
+  <g fill="#ffd75e" stroke="#162e38" stroke-width="3">
+    <circle cx="1016" cy="352" r="13"/>
+    <circle cx="336" cy="496" r="13"/>
+    <circle cx="1048" cy="504" r="13"/>
+    <circle cx="1008" cy="1104" r="13"/>
+    <circle cx="632" cy="264" r="13"><title>Lantern Fork</title></circle>
+    <circle cx="688" cy="528" r="13"><title>Flooded Lock</title></circle>
+    <circle cx="1392" cy="496" r="13"><title>Vent Gallery</title></circle>
+    <circle cx="1768" cy="544" r="13"><title>Old Relay</title></circle>
+    <circle cx="2136" cy="528" r="13"><title>Pipe Junction</title></circle>
+    <circle cx="1376" cy="712" r="13"><title>Broken Ribs</title></circle>
+    <circle cx="2192" cy="688" r="13"><title>Freight Yard</title></circle>
+    <circle cx="1344" cy="832" r="13"><title>Workshop Approach</title></circle>
+    <circle cx="2200" cy="880" r="13"><title>Anchor Hall</title></circle>
+    <circle cx="1496" cy="936" r="13"><title>Pressure Boundary</title></circle>
+    <circle cx="1056" cy="1264" r="13"><title>Glass Chimney</title></circle>
+    <circle cx="1688" cy="1232" r="13"><title>Jet Approach</title></circle>
+    <circle cx="1712" cy="328" r="13"><title>Benthos</title></circle>
+    <circle cx="344" cy="1080" r="13"><title>Trench Refuge</title></circle>
+    <circle cx="352" cy="1280" r="13"><title>Deep Anchor</title></circle>
+    <circle cx="2160" cy="288" r="13"><title>Pump Refuge</title></circle>
+  </g>
+  <g font-family="sans-serif" font-size="22" font-weight="bold" fill="#ffe58a" stroke="#162e38" stroke-width="6" paint-order="stroke">
+    <text x="1036" y="346">FISH · UPPER SHELF</text>
+    <text x="356" y="490">FISH · MOORING CHIMNEY</text>
+    <text x="1068" y="498">FISH · EAST BAY</text>
+    <text x="1028" y="1098">FISH · BASALT JUNCTION</text>
+  </g>
+</svg>

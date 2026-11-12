@@ -19,8 +19,10 @@
 //
 // The sub is drawn at world position minus the camera's whole-pixel origin, so
 // it slides with the terrain at single-pixel granularity. Collision semantics
-// still use game::State.x/y and the 26x8 hull in pilot.hpp. Art may be taller
-// than the hull; it is bottom-aligned so a mast extends above the collision box.
+// still use game::State.x/y and the 26x8 hull in pilot.hpp. The art body is
+// centred on the hull, and its one-pixel black outline bleeds outside it. Art
+// may be taller than the hull; the body is bottom-aligned so a mast extends
+// above the collision box.
 //
 // The device reads fixed plus-mask art from FX (right/left x unloaded/loaded).
 // The host uses the same normalized pixels from generated/pilot_host.hpp, so
@@ -57,8 +59,9 @@ inline cave::Camera cameraForState(const game::State &state) {
     return camera;
 }
 
-static_assert(HAULER_WIDTH == game::kHullW, "pilot art width must match the collision hull");
-static_assert(HAULER_HEIGHT >= game::kHullH, "pilot art must cover the collision hull");
+static_assert(HAULER_WIDTH >= game::kHullW, "pilot art must cover the collision hull");
+static_assert((HAULER_WIDTH - game::kHullW) % 2 == 0, "pilot art body must be centred on the hull");
+static_assert(HAULER_HEIGHT >= game::kHullH + 2, "pilot art must hold the hull plus outline rows");
 static_assert(HAULER_FRAMES == 4, "pilot sheet must hold right/left x empty/loaded frames");
 
 inline bool visible(int16_t left, int16_t top) {
@@ -69,9 +72,12 @@ inline bool visibleArt(int16_t left, int16_t top) {
     return left < cave::VIEW_WIDTH && top < cave::VIEW_HEIGHT && static_cast<int16_t>(left + HAULER_WIDTH) > 0 && static_cast<int16_t>(top + HAULER_HEIGHT) > 0;
 }
 
-// The art is bottom-aligned to the 26x8 collision hull, so any extra height
-// (the HAULER mast) hangs above the hull box.
-constexpr int16_t kArtAboveHull = HAULER_HEIGHT - game::kHullH;
+// The one-pixel outline bleeds outside the 26x8 collision hull on every side.
+// Align the body to the hull, not the outline, so the sub keeps its old screen
+// position while the outline clears surrounding terrain.
+constexpr int16_t kArtSideBleed = (HAULER_WIDTH - game::kHullW) / 2;
+constexpr int16_t kArtBottomBleed = 1;
+constexpr int16_t kArtAboveHull = HAULER_HEIGHT - game::kHullH - kArtBottomBleed;
 
 #if !defined(__AVR__)
 inline void drawHauler(uint8_t *buffer, int16_t left, int16_t top, uint8_t frame) {
@@ -110,7 +116,7 @@ inline void drawAt(uint8_t *buffer, int16_t left, int16_t top, bool mirror, bool
 // Draw the HAULER with its 26x8 collision hull on the state position. The state
 // hull byte is a frozen save field, not a selector.
 inline void draw(uint8_t *buffer, const game::State &state, const cave::Camera &camera) {
-    const int16_t left = static_cast<int16_t>(screenX(state, camera) - game::kHullHalfW);
+    const int16_t left = static_cast<int16_t>(screenX(state, camera) - game::kHullHalfW - kArtSideBleed);
     const int16_t top = static_cast<int16_t>(screenY(state, camera) - game::kHullHalfH - kArtAboveHull);
     if (!visibleArt(left, top))
         return;

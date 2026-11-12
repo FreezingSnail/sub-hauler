@@ -54,6 +54,31 @@ def export_regions(native: Image.Image, output: Path) -> None:
     print(f'render-world: {output / "game-world-regions.png"} (eight native game viewports)')
 
 
+def export_equipment(native: Image.Image, output: Path) -> None:
+    """Actual pickup/relay-centered 128x64 views for scenery review."""
+    source = json.loads((ROOT / 'levels/exploration.json').read_text())
+    rooms = {r['id']: r for r in source['rooms']}
+    sites = [('W', 'CUTTER / salvage teeth'), ('BR', 'THRUSTER / turbine housing'),
+             ('CW', 'SEAL / pressure ribs'), ('DL', 'LENS / optical rings'),
+             ('DC', 'DEEP RELAY / alien machinery'),
+             ('relay-berth', 'DEEP RELAY / recovery berth')]
+    sheet = Image.new('RGB', (1056, 960), '#102532')
+    draw = ImageDraw.Draw(sheet)
+    draw.text((16, 10), '128 x 64 GAME VIEWS / equipment and final relay',
+              font=font(21, True), fill='#e4efea')
+    for i, (key, title) in enumerate(sites):
+        position = (next(b['dock'] for b in source['service_berths']
+                         if b['symbol']=='DEEP_RELAY') if key=='relay-berth'
+                    else rooms[key]['position'])
+        cx, cy = (v*8 for v in position)
+        left, top = max(0,min(2432,cx-64)), max(0,min(1216,cy-32))
+        crop = native.crop((left,top,left+128,top+64))
+        x, y = 16+(i%2)*528, 52+(i//2)*300
+        draw.text((x,y), title, font=font(17,True), fill='#c9dedc')
+        sheet.paste(crop.resize((512,256),Image.Resampling.NEAREST).convert('RGB'), (x,y+27))
+    sheet.save(output/'game-world-equipment.png', optimize=True)
+
+
 def export_settlements(native: Image.Image, output: Path) -> None:
     report=json.loads((ROOT/'docs/assets/exploration-scenery.json').read_text())
     sheet=Image.new('RGB',(1056,900),'#102532')
@@ -217,6 +242,7 @@ def export(input_path: Path, output: Path) -> None:
         raise ValueError("expected a 2560x1280 native world panorama")
     native.save(output / "game-world-native.png", optimize=True)
     export_regions(native, output)
+    export_equipment(native, output)
     export_settlements(native, output)
     source = json.loads((ROOT / "levels/exploration.json").read_text())
     objects = (ROOT / "fxdata/tables/exploration-objects.bin").read_bytes()

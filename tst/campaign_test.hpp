@@ -689,7 +689,7 @@ inline void CampaignSuite(TestRunner &runner) {
 
     {
         Test test("dock point follows saved progression in both repair orders");
-        test.assertEqual(campaign::kDockPointCount, 9, "fresh through home");
+        test.assertEqual(campaign::kDockPointCount, 14, "campaign and missing-equipment points");
 
         game::State pumpFirst;
         game::reset(pumpFirst);
@@ -709,6 +709,7 @@ inline void CampaignSuite(TestRunner &runner) {
         pumpFirst.tools = exploration_data::SEAL;
         test.assertEqual(campaign::dockPoint(pumpFirst), campaign::kDockPointSeal, "seal makes the core ready");
         pumpFirst.campaign |= campaign::kMilestoneBeacon;
+        pumpFirst.tools = exploration_data::CUTTER | exploration_data::SEAL | exploration_data::LENS | exploration_data::THRUSTER;
         test.assertEqual(campaign::dockPoint(pumpFirst), campaign::kDockPointCore, "beacon opens the relay");
         pumpFirst.campaign |= campaign::kMilestoneExpedition;
         test.assertEqual(campaign::dockPoint(pumpFirst), campaign::kDockPointRelay, "relay opens HOME");
@@ -732,6 +733,69 @@ inline void CampaignSuite(TestRunner &runner) {
         legacyHome.campaign = static_cast<uint8_t>(campaign::kMilestoneFirst | campaign::kMilestonePump |
                                                  campaign::kMilestoneLift | campaign::kMilestoneBeacon | campaign::kMilestoneHome);
         test.assertEqual(campaign::dockPoint(legacyHome), campaign::kDockPointHome, "legacy HOME without EXPEDITION stays HOME");
+        runner.add(test);
+    }
+
+    {
+        Test test("dock hints stop sending surveyed repairs back to inspection");
+        game::State state;
+        game::reset(state);
+        state.campaign = campaign::kMilestoneFirst | campaign::kMilestonePump;
+        test.assertEqual(campaign::dockPoint(state), campaign::kDockPointPump, "lift survey missing");
+        state.surveys = campaign::kSurveyLift;
+        test.assertEqual(campaign::dockPoint(state), campaign::kDockPointLiftReady, "known cable fault names Benthos");
+        state.campaign = campaign::kMilestoneFirst | campaign::kMilestoneLift;
+        test.assertEqual(campaign::dockPoint(state), campaign::kDockPointLift, "pump survey missing");
+        state.surveys |= campaign::kSurveyPump;
+        test.assertEqual(campaign::dockPoint(state), campaign::kDockPointPumpReady, "known impeller fault names Cormorant");
+        runner.add(test);
+    }
+
+    {
+        Test test("Deep Anchor names missing tools until the relay work is available");
+        game::State state;
+        game::reset(state);
+        state.docked = campaign::kDeepAnchor;
+        state.surveys = campaign::kSurveyMask;
+        const uint8_t core = campaign::kMilestoneFirst | campaign::kMilestonePump |
+                             campaign::kMilestoneLift | campaign::kMilestoneBeacon;
+        const uint8_t tools[] = {exploration_data::CUTTER, exploration_data::SEAL,
+                                 exploration_data::LENS, exploration_data::THRUSTER};
+        for (uint8_t mask = 0; mask < 16; ++mask) {
+            state.campaign = core;
+            state.tools = 0;
+            for (uint8_t bit = 0; bit < 4; ++bit)
+                if (mask & (1u << bit))
+                    state.tools |= tools[bit];
+            const campaign::DockPoint point = campaign::dockPoint(state);
+            test.assertEqual(campaign::missionAvailable(state, campaign::kExpedition),
+                             point == campaign::kDockPointCore, "ready hint agrees with actual job gate");
+            // Check the player's promise: any equipment named by a hint must
+            // actually be missing. Availability above independently rejects a
+            // ready hint when any prerequisite is absent.
+            switch (point) {
+            case campaign::kDockPointBoth:
+                test.assertTrue(!(state.tools & exploration_data::SEAL), "seal lead never names an owned seal");
+                break;
+            case campaign::kDockPointCutter:
+                test.assertTrue(!(state.tools & exploration_data::CUTTER), "cutter lead never names an owned cutter");
+                break;
+            case campaign::kDockPointLens:
+                test.assertTrue(!(state.tools & exploration_data::LENS), "lens lead never names an owned lens");
+                break;
+            case campaign::kDockPointThruster:
+                test.assertTrue(!(state.tools & exploration_data::THRUSTER), "thruster lead never names an owned thruster");
+                break;
+            default:
+                test.assertEqual(point, campaign::kDockPointCore, "relay stage has equipment or available work");
+                break;
+            }
+            state.campaign |= campaign::kMilestoneExpedition;
+            if (state.tools & exploration_data::SEAL)
+                test.assertEqual(campaign::dockPoint(state), campaign::kDockPointRelay, "completed relay never sends player for equipment");
+            state.campaign |= campaign::kMilestoneHome;
+            test.assertEqual(campaign::dockPoint(state), campaign::kDockPointHome, "homecoming always wins over equipment leads");
+        }
         runner.add(test);
     }
 }

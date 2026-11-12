@@ -40,7 +40,7 @@
         {
           "kind": "text",
           "paragraphs": [
-            "you've almost arrived at benthos, make berth and investigate for some work"
+            "Tidewall's lamps glow through the silt. Make berth at Tidewall and ask for work. Benthos is waiting on filters."
           ]
         }
       ],
@@ -56,7 +56,7 @@
         {
           "kind": "text",
           "paragraphs": [
-            "Benthos put in an order for some filters for the grow tanks, we depend on those tanks for food"
+            "Filters for Benthos, sealed inside your hold. Their grow tanks feed these stations. Make berth at Benthos."
           ]
         }
       ],
@@ -72,7 +72,7 @@
         {
           "kind": "text",
           "paragraphs": [
-            "The sub arrives at Benthos with filter supplies inside the hull."
+            "Benthos answers your docking lamp. Your filters pass from the hold into waiting hands."
           ]
         },
         {
@@ -82,7 +82,7 @@
         {
           "kind": "text",
           "paragraphs": [
-            "These tanks grow Benthos food. Your filters help keep them alive."
+            "Behind the glass, kelp grows pale in still water. The filters are here. Now the pump needs to turn."
           ]
         },
         {
@@ -92,7 +92,7 @@
         {
           "kind": "text",
           "paragraphs": [
-            "Benthos asks for help restoring its pump and the remote Cormorant Freight Yard lift."
+            "The Pump Refuge pump and Cormorant's Freight Yard lift are silent. Hold beside each to inspect the damage."
           ]
         }
       ],
@@ -108,7 +108,7 @@
         {
           "kind": "text",
           "paragraphs": [
-            "At Pump Refuge, you hold position beside the pump and peer down."
+            "At Pump Refuge, silt lies thick on the idle pump. You hold position and peer into its housing."
           ]
         },
         {
@@ -118,7 +118,7 @@
         {
           "kind": "text",
           "paragraphs": [
-            "The impeller is cracked, perhaps cormorant will have a replacement."
+            "A crack splits the impeller. Cormorant has a replacement. Collect it there and bring it to Pump Refuge."
           ]
         }
       ],
@@ -134,7 +134,7 @@
         {
           "kind": "text",
           "paragraphs": [
-            "A replacement Impeller is stored in the hull, be quick we need the tanks online."
+            "Cormorant loads an impeller inside your hold. Take it to the pump at Pump Refuge. A whole harvest waits on that wheel."
           ]
         }
       ],
@@ -150,7 +150,7 @@
         {
           "kind": "text",
           "paragraphs": [
-            "Water flows as the kelp begins to sway once more, food wont be an issue for a while."
+            "The pump catches. Kelp sways behind the glass. Pump Refuge's berth is open for air."
           ]
         }
       ],
@@ -166,7 +166,7 @@
         {
           "kind": "text",
           "paragraphs": [
-            "At the Freight Yard, you hold position beside the lift."
+            "At Freight Yard, the crane hangs over a silent loading bay. Nothing moves but drifting silt."
           ]
         },
         {
@@ -176,7 +176,7 @@
         {
           "kind": "text",
           "paragraphs": [
-            "The cable is ruined. A new spool will need to be brought down as a replacement."
+            "Frayed cable drifts from the housing. Collect a spare spool at Benthos and bring it to Freight Yard."
           ]
         }
       ],
@@ -192,7 +192,7 @@
         {
           "kind": "text",
           "paragraphs": [
-            "Loaded with a replacement cable spool, head back to the lift and restore the workyard."
+            "Benthos stows a spool in your hold. Take it to the Freight Yard lift. The workshops are waiting."
           ]
         }
       ],
@@ -208,7 +208,7 @@
         {
           "kind": "text",
           "paragraphs": [
-            "The freight lift lowers materials down to the work yard, you can resupply at the lower gantry now."
+            "The lift shudders, then runs. Materials descend to the workshops. Lower Gantry's berth is open for air."
           ]
         }
       ],
@@ -224,7 +224,7 @@
         {
           "kind": "text",
           "paragraphs": [
-            "We have some work from deep anchor, but your sub needs a new pressure seal to make the trip"
+            "Food and freight move again. For Deep Anchor's next run, find the pressure seal in the workshop west of Cormorant."
           ]
         }
       ],
@@ -240,7 +240,7 @@
         {
           "kind": "text",
           "paragraphs": [
-            "The pressure seal has been installed, prepare to head to the depths."
+            "Food and freight move again. Your seal opens the deep route. Collect the beacon core at Cormorant."
           ]
         }
       ],
@@ -256,7 +256,7 @@
         {
           "kind": "text",
           "paragraphs": [
-            "With the pressure hull installed, the new beacon is loaded as you head for the depths of deep anchor."
+            "Cormorant loads the core in your hold. Deliver it to Deep Anchor. Even down there, a lamp should burn."
           ]
         }
       ],
@@ -272,7 +272,7 @@
         {
           "kind": "text",
           "paragraphs": [
-            "Deep Anchor lights its beacon, as the berth is lit once more in the dark cold depths."
+            "Deep Anchor's beacon cuts the dark. A strange signal answers from deeper still. Ask here for work."
           ]
         }
       ],
@@ -288,7 +288,7 @@
         {
           "kind": "text",
           "paragraphs": [
-            "This reading is strange but we have no means to investigate.  We need you to travel to the sight and see."
+            "Survey gear loaded. Take it to DEEP RELAY in the lowest caves to the east. Find what is answering us."
           ]
         }
       ],
@@ -304,7 +304,8 @@
         {
           "kind": "text",
           "paragraphs": [
-            "As you peer out the window you see rusted ancient and mysterious remains of what looks to be a long lost portal.\nIt's not clear what the remains led to, perhaps you will never know.  you'll leave that up to deep anchor to solve"
+            "Your lens traces an ancient ring beneath the rust. A doorway, perhaps. Nothing stirs beyond it.",
+            "Survey recorded. Return to Deep Anchor for the Tidewall dispatch. Some mysteries need more eyes."
           ]
         }
       ],
@@ -320,7 +321,7 @@
         {
           "kind": "text",
           "paragraphs": [
-            "With the survey records loaded, and a new mystery found you make way back to where the journey started."
+            "Survey records and supplies fill your hold. Deliver to Tidewall. The beacon can blink. It cannot tell this story."
           ]
         }
       ],
@@ -336,7 +337,7 @@
         {
           "kind": "text",
           "paragraphs": [
-            "Tidewall knows your hull as you pull into the berth.  However they know not of the mystery you bring to them."
+            "Tidewall knows your hull. Lights wake one by one. You bring news of food, freight, and a door in the dark."
           ]
         }
       ],

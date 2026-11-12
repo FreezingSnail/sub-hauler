@@ -46,6 +46,34 @@ inline void CampaignViewSuite(TestRunner &runner) {
     static uint8_t b[kBufferBytes];
 
     {
+        Test test("restored pump and lift animate only after their own repairs");
+        for (uint8_t i = 0; i < 2; ++i) {
+            world::Berth berth;
+            test.assertTrue(world::serviceBerthInfo(i, berth), "service berth exists");
+            const cave::Camera camera = cave::cameraCenteredAtPixel(berth.pixel_x, berth.pixel_y);
+            game::State state;
+            game::reset(state);
+            state.surveys = campaign::kSurveyPump | campaign::kSurveyLift;
+            state.ticks = 0;
+            clear(a);
+            campaign_view::drawServiceBerths(a, state, camera);
+            state.ticks = 32;
+            clear(b);
+            campaign_view::drawServiceBerths(b, state, camera);
+            test.assertTrue(same(a, b), "inactive site remains still");
+            state.campaign = i == 0 ? campaign::kMilestonePump : campaign::kMilestoneLift;
+            state.ticks = 0;
+            clear(a);
+            campaign_view::drawServiceBerths(a, state, camera);
+            state.ticks = 32;
+            clear(b);
+            campaign_view::drawServiceBerths(b, state, camera);
+            test.assertTrue(!same(a, b), "restored site changes with time");
+        }
+        runner.add(test);
+    }
+
+    {
         Test test("survey ring appears from generated metadata and quiets once recorded");
         world::Survey survey;
         test.assertTrue(world::surveyInfo(0, survey), "generated pump survey");
