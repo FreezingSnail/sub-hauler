@@ -1,0 +1,87 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  ATMLIB2FX_ROOT: ${{ github.workspace }}/ATMlib2FX
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check out pinned ATMlib2FX
+        uses: actions/checkout@v4
+        with:
+          repository: FreezingSnail/ATMlib2FX
+          ref: b3716eac93c3565414a6902f9e68cc821d2ff210
+          path: ATMlib2FX
+
+      - name: Install Arduino CLI
+        uses: arduino/setup-arduino-cli@v1
+        with:
+          version: 1.2.0
+
+      - name: Install Arduboy board cores
+        run: |
+          arduino-cli config init --overwrite \
+            --additional-urls "https://arduboy.github.io/board-support/package_arduboy_index.json,https://raw.githubusercontent.com/MrBlinky/Arduboy-homemade-package/master/package_arduboy_homemade_index.json"
+          arduino-cli core update-index
+          arduino-cli core install arduino:avr
+          arduino-cli core install arduboy-homemade:avr@1.4.0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install generator dependencies
+        run: python -m pip install --disable-pip-version-check 'Pillow==10.3.0'
+
+      - name: Verify generated data and host tests
+        run: |
+          make gen-check
+          make test
+          make test-tools
+          make docs-check
+
+      - name: Build FX, Mini and release package
+        run: make release-package
+
+      - name: Report image size
+        run: make size
+
+      - name: Upload workflow artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: sub-hauler-${{ github.ref_type == 'tag' && github.ref_name || github.sha }}
+          path: dist/release/*
+          if-no-files-found: error
+
+      - name: Publish GitHub release
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" dist/release/* --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" dist/release/* \
+              --verify-tag --generate-notes --title "Sub-hauler $GITHUB_REF_NAME"
+          fi

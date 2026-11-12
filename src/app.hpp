@@ -966,10 +966,10 @@ static void updateStation() {
     drawPilot();
 }
 
-// Production splash poll. The splash has no work of its own while it waits, so
-// each beat sleeps through timer0 ticks instead of spinning in delay()/micros();
-// one idle() returns on the next ~1 ms overflow, and 16 preserve the 16 ms beat.
-// service() keeps the menu cue's ATMlib2FX ring fed between frames.
+// Production splash poll. The splash has no work of its own while it waits.
+// Audio interrupts can wake idle() far more often than timer0 ticks, so pace
+// against millis() instead of counting idle() calls. service() keeps the menu
+// cue's ATMlib2FX ring fed between frames.
 struct BootPoll {
     static uint8_t buttons() {
         return arduboy.buttonsState();
@@ -978,14 +978,18 @@ struct BootPoll {
         music::service();
     }
     static void delay() {
-        for (uint8_t i = 0; i < 16; ++i)
+        const uint32_t start = millis();
+        while (millis() - start < 16) {
             arduboy.idle();
+            music::service();
+        }
     }
     // Same 50 ms debounce as Arduboy2Base::waitNoButtons(), but idling and
     // still servicing the music ring.
     static void waitNoButtons() {
         do {
-            for (uint8_t i = 0; i < 50; ++i) {
+            const uint32_t start = millis();
+            while (millis() - start < 50) {
                 arduboy.idle();
                 music::service();
             }

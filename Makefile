@@ -1,4 +1,4 @@
-.PHONY: help full gen gen-check build mini size size-line run debug flash flash-data flash-debug save-migrate test test-tools docs-check editor fxtest fxtest-flight fxtest-build fxtest-run clean format music-viewer music-viewer-build render-world
+.PHONY: help full gen gen-check build mini size size-line run debug flash flash-data flash-debug save-migrate test test-tools docs-check editor fxtest fxtest-flight fxtest-build fxtest-run clean format music-viewer music-viewer-build render-world release-package
 
 # ----------------------------------------------------------------------------
 # Project
@@ -23,6 +23,8 @@ BUILD_DIR     ?= $(if $(filter 1,$(DEBUG)),build/debug,build/arduino)
 DIST_DIR      ?= $(if $(filter 1,$(DEBUG)),dist/debug,dist/fx)
 MINI_BUILD_DIR ?= build/arduino-mini
 MINI_DIST_DIR ?= dist/mini
+RELEASE_VERSION ?= $(shell git describe --tags --always)
+RELEASE_DIR ?= dist/release
 FXTEST_BUILD_DIR ?= build/fxtest
 ARDENS_DEFAULT := $(firstword $(wildcard \
                  ../Ardens/build/Ardens.app/Contents/MacOS/Ardens \
@@ -62,7 +64,7 @@ SIZE_FLAGS    ?= --build-property compiler.cpp.extra_flags="$(CPP_EXTRA_FLAGS)" 
                  --build-property compiler.c.extra_flags="$(C_EXTRA_FLAGS)" \
                  --build-property compiler.c.elf.extra_flags="-mrelax"
 
-AVR_SIZE      ?= $(firstword $(wildcard $(HOME)/Library/Arduino15/packages/arduino/tools/avr-gcc/*/bin/avr-size) $(shell command -v avr-size 2>/dev/null))
+AVR_SIZE      ?= $(firstword $(wildcard $(HOME)/Library/Arduino15/packages/arduino/tools/avr-gcc/*/bin/avr-size $(HOME)/.arduino15/packages/arduino/tools/avr-gcc/*/bin/avr-size) $(shell command -v avr-size 2>/dev/null))
 
 # ----------------------------------------------------------------------------
 # Generation
@@ -258,6 +260,9 @@ mini: music-check src/fxdata.h
 		$(MUSIC_LIB) --build-path $(MINI_BUILD_DIR) --output-dir $(MINI_DIST_DIR) \
 		$(SIZE_FLAGS) "$(SKETCH).ino"
 
+release-package: build mini
+	./tools/package_release.sh "$(RELEASE_VERSION)" "$(RELEASE_DIR)"
+
 ELF := $(DIST_DIR)/$(SKETCH).ino.elf
 HEX := $(DIST_DIR)/$(SKETCH).ino.hex
 
@@ -450,6 +455,7 @@ help:
 		'  make gen-check  prove generation is deterministic (run make gen first)' \
 		'  make build      compile the fixed FX firmware into dist/fx/' \
 		'  make mini       compile the fixed Arduboy Mini firmware into dist/mini/' \
+		'  make release-package  build FX + Mini and write dist/release/ assets' \
 		'  make size       whole-image flash/RAM report' \
 		'  make run        build, then launch Ardens with the ELF + FX image' \
 		'  make flash      build, write the FX cart image, then upload the sketch (device in bootloader)' \
