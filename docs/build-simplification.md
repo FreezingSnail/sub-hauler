@@ -10,8 +10,9 @@ design contract and adds measured evidence where the implementation differs.
 **Current status, 2026-11-01:** the shop, currency, job payouts, repeatable
 freight offers and credit caches were removed after this design was executed.
 Later sections that discuss a freight offer, shop row or schema-6 save record
-are the 2026-10-29 implementation record, not current configuration; current
-behavior and the schema-7 save contract are in
+are the 2026-10-29 implementation record, not current configuration. The
+pre-release `sub-hauler-bwg` cleanup later replaced the schema-7 save with a raw
+single-slot contract; current behavior is in
 [platform.md](platform.md), [progression.md](progression.md) and
 [progression-implementation.md](progression-implementation.md).
 

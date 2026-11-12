@@ -1,14 +1,16 @@
 # Voyage progression — implementation contracts
 
-Current status (2026-11-03): the campaign epic is closed. Production uses
-schema 8 in one 512 B cart slot and the ATMlib2FX compact synth with a 32 B
-ring. The fixed build has no feature profiles. The shop, currency, job payouts,
-repeatable freight offers and credit caches are removed; schema 8 has a 25 B
-scalar payload, a fixed 300-unit air tank and signature `0x61`; load does not
-gate on the schema byte. Mines and hull strength are retired. Dated baseline and
-audio-probe sections retain their original measurements and flags, including
-earlier schema and ring figures; use [platform.md](platform.md) for current
-sizes and acceptance limits.
+Current status (2026-11-12): the campaign epic is closed. Production uses one
+raw cart checkpoint slot and the ATMlib2FX compact synth with a 32 B ring. The
+fixed build has no feature profiles. The shop, currency, job payouts,
+repeatable freight offers and credit caches are removed. The `sub-hauler-bwg`
+cleanup removed the serialized header, schema, signature, length, CRC, commit
+byte and skip cache: the slot is now 16 scalar bytes plus the 256-byte chart,
+272 meaningful bytes, with no schema validation. It also removed the hull byte,
+voyage-time, delivered and rescue counters, and the legacy HOME path. Mines and
+hull strength are retired. Dated baseline and audio-probe sections retain their
+original measurements and flags, including earlier schema and ring figures; use
+[platform.md](platform.md) for current sizes and acceptance limits.
 
 Audit and schema freeze for epic `sub-hauler-7px`, task `sub-hauler-7px.1`
 (2026-10-26). The accepted design is [progression.md](progression.md); hardware
@@ -72,8 +74,9 @@ Voyage checkpoints live in the external Arduboy FX cart save partition, not in
 the ATmega32u4's 1,024 B internal EEPROM. `fxdata/fxdata.txt` ends with
 `savesection 4096`; `tools/fxdata-build.py` emits 4 KiB of erased `0xFF` bytes,
 `FX_SAVE_PAGE` and `FX_SAVE_BYTES`, and `FX::begin(FX_DATA_PAGE, FX_SAVE_PAGE)`
-opens both partitions. The data prefix is unchanged, so every shipped FX symbol
-keeps its flash offset. The development cart image (`fxdata/fxdata.bin`) carries
+opens both partitions. The save tail stays at `FX_SAVE_PAGE`; retained FX
+declarations keep their relative order, while deliberate pre-release asset
+removals may shift later offsets. The development cart image (`fxdata/fxdata.bin`) carries
 the save bytes for Ardens; a physical cart erases/programs the same pages.
 
 Internal EEPROM remains audited for non-voyage settings only. The installed
@@ -108,120 +111,83 @@ Library audit result:
 
 ## 3. Cart save layout
 
-The save partition is one 4 KiB erase block (16 pages). It owns one 512 B slot
-at offset 0:
+The save partition is one 4 KiB erase block (16 pages). It owns one raw slot at
+offset 0:
 
-| Slot | Cart offset | Erase block | Page numbers |
+| Slot | Meaningful bytes | Programmed bytes | Page numbers |
 | --- | ---: | ---: | --- |
-| only | 0–511 | 0 | 0–1 |
+| only | 0–271 | 0–511 | 0–1 |
 
-Each slot occupies 512 B: **16-byte header + 495-byte payload area + 1 commit
-byte**. The remaining 3,584 bytes of the block stay erased and are not used.
+The meaningful payload is **272 B**: 16 scalar bytes followed by the 256-byte
+chart. The programmed stream is one 512 B region: 272 meaningful bytes plus 240
+bytes of `0xFF` padding after the payload, preserving the two 256-byte page
+programs. The remaining 3,584 bytes of the block stay erased and are not used.
 
 ```text
-slot +   0  magic 'S' 'H' 'V' 'Y'   (0x53 0x48 0x56 0x59)
-slot +   4  schema version          = 8
-slot +   5  world layout version    = world::LAYOUT_VERSION (3 now)
-slot +   6  campaign content version = 2
-slot +   7  feature/profile signature (bitfield, section 4)
-slot +   8  reserved                = 0xFF 0xFF 0xFF 0xFF
-slot +  12  payload length          u16 little-endian
-slot +  14  CRC-16                  u16 little-endian
-slot +  16  payload (used bytes only)
-slot + 511  commit                  = 0x5A
+slot +   0  scalar bytes 0–15
+slot +  16  chart bytes 0–255
+slot + 272  0xFF padding through slot + 511
 ```
 
-The slot spans two 256 B flash pages: page 0 carries the header and payload
-bytes 0–239; page 1 carries payload bytes 240–494 and the commit byte (the last
-byte programmed). Erased flash is `0xFF`. `0x5A` marks the end of the write, but
-load does not read the commit byte.
+There is no header, magic, schema version, layout version, content version,
+profile signature, length, CRC, commit byte or chartless payload variant.
 
-Payload capacity is 495 B. Schema 8 uses 281 B with a chart (25 scalar + 256
-chart) and 25 B without a chart. Bytes after the used payload are programmed as
-`0xFF`, matching erased flash.
+## 4. No profile signature
 
-CRC is **CRC-16/CCITT-FALSE**: polynomial `0x1021`, init `0xFFFF`, no
-reflection, no final XOR. It is written into the header but never read back or
-checked. The storage tests assert the check vector `"123456789"` = `0x29B1`.
+The former one-byte feature/profile signature is retired with the serialized
+header. The fixed build has no profiles to distinguish and no byte to write or
+check on load. `MUSIC` still has no saved field.
 
-## 4. Profile signature
+## 5. Scalar payload (16 B)
 
-One byte, fixed for schema 8:
+Fixed order, no padding, no raw C++ struct bytes.
 
-| Bit | Feature |
-| --- | --- |
-| 0 | `SH_FEATURE_FOG_CHART` |
-| 1 | retired (sonar), 0 |
-| 2 | retired (mines), 0 |
-| 3 | retired (shop), 0 |
-| 4 | retired (hull damage), 0 |
-| 5 | `SH_FEATURE_MULTI_HULL` |
-| 6 | `SH_FEATURE_EXPLORATION` |
-| 7 | reserved, 0 |
-
-The fixed build always writes `0x61`. The signature is not checked on load, so
-a different value does not prevent Continue. `MUSIC` is not in the signature
-because music has no saved field.
-
-## 5. Scalar payload schema (25 B)
-
-Little-endian, fixed order, no padding, no raw C++ struct bytes.
-
-| Offset | Bytes | Field | Width / rule |
+| Offset | Bytes | Field | Rule |
 | ---: | ---: | --- | --- |
-| 0 | 1 | berth | 0–5 |
-| 1 | 1 | hull class | saves write 1 (HAULER); any byte normalizes to HAULER on load |
-| 2 | 1 | tools | CUTTER/SEAL/THRUSTER/LENS bits |
-| 3 | 1 | pickups | 4 claim bits |
-| 4 | 2 | open gates | 9 bits |
-| 6 | 2 | seen gates | 9 bits |
-| 8 | 1 | campaign milestones | 5 bits |
-| 9 | 1 | surveys | 2 bits |
-| 10 | 1 | active job kind | 0 or 2 |
-| 11 | 1 | active mission ID | 0–6, or 0xFF |
-| 12 | 1 | job origin berth | 0–3, or 0xFF |
-| 13 | 1 | job destination berth | 0–3, or 0xFF |
-| 14 | 1 | job load | 4 for cargo jobs, else 0 |
-| 15 | 4 | voyage ticks | u32, saturating |
-| 19 | 2 | delivered jobs | u16, saturating |
-| 21 | 2 | rescue count | u16, saturating |
-| 23 | 1 | ending presented | 0/1 |
-| 24 | 1 | pending scene | 0 = none, 1–7 = beat/result deck, 8–14 = departure/joint handoff |
+| 0 | 1 | berth | 0–7; the first payload byte is also the blank/written test |
+| 1 | 1 | tools | CUTTER/SEAL/THRUSTER/LENS bits |
+| 2 | 1 | pickups | 4 claim bits |
+| 3 | 2 | open gates | 9 bits |
+| 5 | 2 | seen gates | 9 bits |
+| 7 | 1 | campaign milestones | 5 bits |
+| 8 | 1 | surveys | 2 bits |
+| 9 | 1 | active job kind | 0 or 2 |
+| 10 | 1 | active mission ID | 0–6, or 0xFF |
+| 11 | 1 | job origin berth | 0–3, or 0xFF |
+| 12 | 1 | job destination berth | 0–3, or 0xFF |
+| 13 | 1 | job load | 4 for cargo jobs, else 0 |
+| 14 | 1 | ending presented | 0/1 |
+| 15 | 1 | pending scene | 0 = none, 1–7 = beat/result deck, 8–14 = departure/joint handoff, 15–16 = relay result/briefing |
 
-Chart bytes follow at payload offset 25–280. Scalar total is exactly 25 B.
-Schema 8 removes the retired credits, air level, visited-settlement, job
-reward, offer cursor and board seed fields; the payload comfortably fits the
-frozen 495 B area.
+Chart bytes follow at payload offset 16–271. Scalar total is exactly 16 B; total
+meaningful payload is 272 B. There is no saved hull, voyage-time, delivered-job,
+rescue-count, currency, air-level, visited-settlement, job reward, offer-cursor
+or board-seed field.
 
-Save does not validate the live checkpoint. Load reads the 25 scalar bytes,
-applies them, and reads the chart bytes as-is.
+Save does not validate the live checkpoint. Load reads the 16 scalar bytes,
+applies them, and reads the chart bytes as-is. Memory-safety bounds still keep
+an arbitrary berth, scene index or chart access in range.
 
-Schema 1/2 EEPROM records, schema 3 dual-slot cart records and schema 4/5/6/7
-slots are not migrated. Load ignores the version bytes, so a different layout
-is read as the current payload shape.
+Old schema 1–8 records and the retired standalone chart block are not migrated,
+imported, rejected or repaired. Pre-release development saves are discarded by
+this cleanup. Any non-`0xFF` first byte is read as the current raw payload.
 
-## 6. Commit and interrupted writes
+## 6. Save transaction and interrupted writes
 
 Save transaction (freeze simulation, pause music, ignore departure input):
 
 1. Erase the single 4 KiB cart block. This also removes the previous checkpoint.
-2. Program page 0 (header, scalar, first 204 chart bytes), then page 1
-   (remaining payload and filler), with commit `0x5A` as the last byte. No
-   second payload or chart-sized RAM buffer is allocated.
+2. Program page 0 (scalar and the first 240 chart bytes), then page 1
+   (the remaining 16 chart bytes plus `0xFF` padding). No second payload or
+   chart-sized RAM buffer is allocated.
 3. Wait for each erase/page program to finish before starting the next one.
 4. Report `SAVED` once both page programs finish, then resume music and unfreeze.
    There is no post-write read-back. A write that does not stick is not detected
    at save time.
 
-Before the erase the App compares the live checkpoint's encoded CRC with a RAM
-cache of the last written or loaded checkpoint. If they are equal, the cart
-already holds this byte-identical record, so `requestSave()` reports `SAVED`
-without erasing or programming and leaves the dirty flag clear. The CRC covers
-every serialized field (voyage ticks and the full chart included), so normal
-travel or progress changes always rewrite. The cache is seeded by a save, a
-successful load or a new-voyage save and is invalidated by reset or a blank
-load; it is never stored in the cart and does not change the single-slot schema
-or commit order.
+Each explicit save performs this transaction, including an identical state.
+There is no RAM CRC cache, skip path, dirty flag, commit byte or write-only
+header to preserve.
 
 **This is not power-fail atomic.** An interruption during the erase or page
 program may lose the previous checkpoint or leave a torn record. The torn record
@@ -237,7 +203,7 @@ Load reads the scalar and chart directly into initialized state. It never
 copies a raw struct and never allocates a second chart-sized buffer. Save
 success is assumed after the page programs; without a read-back, a failed erase
 that leaves the old record intact cannot be distinguished from a successful new
-write at save time.
+write at save time. Rescue is load-only: it performs no erase or page program.
 
 Worst case erase is one 4 KiB block (~40 ms) plus two 256 B page programs
 (~3.3 ms each), on a transition only. The 4 KiB partition is `FX_SAVE_BYTES`;
@@ -246,13 +212,13 @@ developer traversal touches it.
 
 ## 7. No legacy chart migration
 
-Schema 5 removes the old standalone chart migration completely. EEPROM
-addresses 0–259 and pre-schema-4 cart slots are never inspected, offered,
-copied or repaired. A NEW VOYAGE resets the chart, applies
-`chart::revealInitial()` at the generated spawn berth, and persists that reveal
-in the first checkpoint. There is no KEEP OLD CHART prompt and no legacy import
-path. The single cart slot is erased and rewritten. Standalone chart save is retired; the fixed build writes only schema 8 voyage
-checkpoints.
+The standalone chart migration and import path are retired completely. EEPROM
+addresses 0–259 and older cart records are never inspected, offered, copied or
+repaired. A NEW VOYAGE resets the chart, applies `chart::revealInitial()` at the
+generated Tidewall spawn berth, writes that docked checkpoint, then plays the
+opening deck and spawns live free flight. There is no KEEP OLD CHART prompt
+and no legacy import path. The single cart slot is erased and rewritten. The
+fixed build writes only the raw single-slot voyage checkpoint.
 
 ## 8. Stable campaign IDs
 
@@ -313,8 +279,7 @@ Mission eligibility:
 - DEEP RELAY requires BEACON plus cutter, pressure seal, thruster and survey
   lens; source Deep Anchor; destination Deep Relay; explicit acceptance.
 - HOME requires BEACON and DEEP RELAY; source Deep Anchor; explicit acceptance,
-  never auto-loaded. A pre-linear in-flight HOME job with only BEACON remains
-  completable as a save-compatibility path.
+  never auto-loaded. There is no pre-linear HOME exception or legacy save path.
 - Completed missions never reappear. Abandoning clears cargo and the active
   job, saves, and lets the source reissue the same mission for free.
 
@@ -358,14 +323,15 @@ to the payload above):
 | --- | ---: | --- |
 | `campaign` | 1 | milestone bits |
 | `surveys` | 1 | survey bits |
-| `voyageTicks` | 4 | u32 saturating |
-| `delivered` | 2 | u16 saturating |
-| `rescues` | 2 | u16 saturating |
 | `ending` | 1 | 0/1 |
-| `pendingStory` | 1 | 0 = none, 1–7 = result/survey deck, 8–14 and 16 = departure/joint handoff, 15 = expedition result |
+| `pendingStory` | 1 | 0 = none, 1–7 = result/survey deck, 8–14 = departure/joint handoff, 15 = expedition result, 16 = relay briefing |
 
-`ActiveJob` is 5 B: the timer fields are gone, `kind`, `mission` and `from`
-replace them, and the reward byte is removed. The saved scalar is 25 B.
+`voyageTicks`, `delivered`, `rescues`, `lastDelivery` and the saved hull byte
+are removed. `ActiveJob` is 5 B: `kind`, `mission`, `from`, `to` and `crates`;
+there is no timer, reward or second validation gate. The saved scalar is 16 B.
+The baseline `sizeof(game::State)` was 77 B; the accepted arithmetic is 67 B
+after the 10 B removal, with the whole-image figure pending the integration
+gate.
 
 ## 11. Fixed build and profiles
 
@@ -473,14 +439,20 @@ production synth fit; the fixed build now ships music):
 
 ## 13. Downstream ownership and gates
 
+This is the original 2026-10 implementation plan. The accepted `sub-hauler-bwg`
+cleanup supersedes its save-format details: there is no header, CRC, commit or
+schema to test.
+
 - `.2` pure campaign/untimed mission rules: use sections 8–9; extend
   `ActiveJob`, add kind/mission/origin, mission and survey
   state, WORK page rules; no save code.
 - `.3` single-slot cart storage: use sections 3–7; host-native tests for
-  save/load, blank detection, clean New Voyage recovery and repeated overwrite
-  cycles; assert saves report success without read-back, any nonblank slot
-  loads its raw payload, old chart bytes are ignored, no voyage byte is written
-  to internal EEPROM, and CRC vector `0x29B1` holds.
+  save/load, blank detection, clean New Voyage recovery, active cargo restore,
+  arbitrary-berth safety and repeated overwrite cycles; assert no header/CRC
+  rejection, every explicit save performs one erase and two page programs even
+  for identical state, rescue performs zero writes, any nonblank first byte
+  loads raw, no voyage byte is written to internal EEPROM, and runtime
+  `FX::programSavePage` addressing is used.
 - `.4` Continue/checkpoints/recovery: use sections 3, 6 and 9; commit on the
   listed transitions only; no midwater suspend.
 - `.5`/`.6` campaign slices: use sections 8 and 10; generated service berth
@@ -491,7 +463,10 @@ production synth fit; the fixed build now ships music):
   whole-image size, stack reserve at least 600 B, and explicit reporting of what
   was not manually or physically tested.
 
-## 14. Unproven items
+## 14. Unproven items at the 2026-10-26 audit
+
+These were open before the later measured campaign/save/music integration; use
+[platform.md](platform.md) for the current evidence.
 
 - Combined campaign + voyage save + music flash/static/stack fit is **not
   measured**. The music marginal cost is measured in isolation; campaign code

@@ -26,18 +26,18 @@ namespace {
 // The suite only ever targets the single slot, so a 512-byte backing store is
 // enough. Reads outside it behave as erased cart bytes.
 struct RamStorage {
-    static uint8_t bytes[voyage_save::kSlotBytes];
+    static uint8_t bytes[voyage_save::kWriteBytes];
     uint16_t pageOffset;
     uint16_t pageIndex;
 
     uint8_t read(uint16_t offset) {
-        if (offset < voyage_save::kSlotBytes)
+        if (offset < voyage_save::kWriteBytes)
             return bytes[offset];
         return 0xFF;
     }
     void eraseBlock(uint8_t block) {
         if (block == 0) {
-            for (uint16_t i = 0; i < voyage_save::kSlotBytes; ++i)
+            for (uint16_t i = 0; i < voyage_save::kWriteBytes; ++i)
                 bytes[i] = 0xFF;
         }
     }
@@ -46,7 +46,7 @@ struct RamStorage {
         pageIndex = 0;
     }
     void pageByte(uint8_t value) {
-        if (pageOffset + pageIndex < voyage_save::kSlotBytes)
+        if (pageOffset + pageIndex < voyage_save::kWriteBytes)
             bytes[pageOffset + pageIndex] &= value;
         ++pageIndex;
     }
@@ -54,7 +54,7 @@ struct RamStorage {
     }
 };
 
-uint8_t RamStorage::bytes[voyage_save::kSlotBytes];
+uint8_t RamStorage::bytes[voyage_save::kWriteBytes];
 RamStorage storage;
 game::State state;
 chart::State chartState;
@@ -85,19 +85,15 @@ void setup() {
     delay(100);
     FX::begin(FX_DATA_PAGE);
     FX::setCursorRange(0, 32767);
-    for (uint16_t i = 0; i < voyage_save::kSlotBytes; ++i)
+    for (uint16_t i = 0; i < voyage_save::kWriteBytes; ++i)
         storage.bytes[i] = 0xFF;
     chart::reset(chartState);
 
     bool ok = true;
     world::Berth tidewall;
     ok = world::berthInfo(static_cast<uint8_t>(campaign::kTidewall), tidewall) && ok;
-    ok = (voyage_save::newVoyage(state
-                                 ,
-                                 chartState
-                                 ,
-                                 storage) == voyage_save::kSaved) &&
-         ok;
+    voyage_save::newVoyage(state, chartState, storage);
+    ok = voyage_save::hasSave(storage) && ok;
     ok = checkPlacement(tidewall) && ok;
 
     // Continue must reproduce the same berth position, camera and visible hull.

@@ -6,8 +6,8 @@ Execution was tracked under beads epic `sub-hauler-7px`; the fixed build now
 implements the campaign, ending, single-slot cart checkpoint and six-cue music
 direction below. Dated measurements in [platform.md](platform.md) are canonical.
 
-Current implementation status (2026-11-03): the fixed build enables campaign,
-schema 8 single-slot cart checkpoints and the ATMlib2FX compact synth; gameplay
+Current implementation status (2026-11-12): the fixed build enables campaign,
+raw single-slot cart checkpoints and the ATMlib2FX compact synth; gameplay
 sonar is retired, and mines and hull strength are removed. The eight
 objectives, both service berths and the homecoming ending ship.
 
@@ -16,8 +16,8 @@ repeatable freight offers and credit caches were removed after the 2026-10-31
 design review. Air is a fixed 300-unit tank with the existing free berth refill
 and free rescue; campaign deliveries are intrinsic restoration work and pay
 nothing. The station board has no SHOP row, WORK lists only story and survey
-rows, and schema 8 drops every currency, air-level, visited, reward and offer
-field. Passages below that mention credits, prices, payouts or freight offers
+rows, and the raw save drops every currency, air-level, visited, reward and
+offer field. Passages below that mention credits, prices, payouts or freight offers
 are the accepted 2026-10-26 design record and describe behavior the fixed build
 does not have.
 
@@ -187,7 +187,9 @@ and tool discoveries do not occupy the active-job state. Acceptance loads the
 story cargo and leaves the player docked; A on UNDOCK or B starts travel.
 Stopping at any other berth retains the job and load. Arrival at the correct
 settlement resolves a loaded campaign delivery automatically and exactly once.
-Missing/short cargo cannot set completion.
+The focused gameplay check uses the mission cargo metadata, the destination
+berth and the fixed four-crate requirement; missing or short cargo cannot set
+completion. Whole-save validators are not part of delivery or load.
 
 Campaign missions have stable IDs; there are no random or repeatable offers.
 Show eligible work at its collection station until completed. Abandoning
@@ -251,27 +253,33 @@ from a written one; it does not validate the record. Developer mode never loads
 or writes saves.
 
 Save on initial voyage creation, arrival at any active berth, accepted or
-abandoned cargo, and immediately before departure
-when saved state changed. A delivery/repair arrival is one transaction:
-resolve cargo, set its completion flag, activate services,
-then commit. Show SAVED after both page programs finish; there is no post-write
-read-back. During a write, freeze simulation, pause music and ignore departure
-input. Resume the cue afterward.
+abandoned cargo, a delivery/repair milestone, and after the ending cards mark
+the presentation flag. New Voyage writes the docked
+Tidewall checkpoint and the initial chart reveal before the opening deck and
+live free-flight spawn. Rescue loads without writing. There is no departure save
+and no dirty-state skip.
 
-The snapshot contains berth ID, the frozen hull-class byte (always written as
-HAULER), tools, pickup claims, open and seen gates, recorded surveys,
-restoration milestones, active job kind
-and mission ID, its origin/destination/load,
-chart discovery, voyage time, delivered-job count and rescue count. No job
-timer, currency, air-level, visited-settlement, reward or offer-cursor field is
-stored. Store no pointers or raw C++ structure bytes. Transient physics, camera,
-particles, dwell timers and notifications reset on load.
+A delivery/repair arrival is one transaction: resolve cargo, set its completion
+flag, activate services, then commit. Show SAVED after both page programs
+finish; there is no post-write read-back. During a write, freeze simulation,
+pause music and ignore departure input. Resume the cue afterward.
 
-The implemented format is schema 8. The header still carries magic, layout,
-schema, length and CRC bytes, but load ignores all of them. An erased first byte
-means no save; any other first byte is read as a payload. A schema 1–7 header, a
-torn record or a changed signature is not migrated, rejected or repaired. The
-hull byte always normalizes to HAULER on load.
+The snapshot contains berth ID, tools, pickup claims, open and seen gates,
+recorded surveys, restoration milestones, active job kind and mission ID, its
+origin/destination/load, the ending-presentation flag, the pending story byte
+and chart discovery. It is 16 scalar bytes followed by the 256-byte chart. No
+job timer, currency, air-level, visited-settlement, reward, offer-cursor, hull,
+voyage-time, delivered-job or rescue-count field is stored. Store no pointers or
+raw C++ structure bytes. Transient physics, camera, particles, dwell timers and
+notifications reset on load.
+
+The implemented format is raw: 272 meaningful payload bytes at cart offset 0,
+with no header, magic, schema, signature, length, CRC or commit byte. The first
+byte is the berth ID. An erased first byte (`0xFF`) means no save; any other
+first byte is read as a raw payload. A torn record or a record from an older
+format is not migrated, rejected or repaired; pre-release development saves are
+discarded. Memory-safety bounds still map an arbitrary berth, scene index or
+chart access safely.
 
 The pause screen offers RESCUE with a confirmation: `RETURN TO LAST BERTH?`
 and `UNSAVED FINDS LOST`. Rescue restores the complete snapshot, including
@@ -283,15 +291,13 @@ Zero air always has a free escape through RESCUE: reaching zero opens the
 pause/rescue menu automatically once, so the boat cannot be stranded without
 the option on screen. Resuming at zero air is allowed; a berth refill re-arms
 the prompt.
-With a valid checkpoint, both recovery paths increment a saturating rescue
-count and commit it before resuming, without changing cargo. The
-counter measures recovery requests, not attempts erased by a power failure.
+Rescue is load-only. It restores the exact last written checkpoint without
+changing cargo, incrementing a counter or writing any bytes. The
+`UNSAVED FINDS LOST` confirmation remains the rollback warning.
 
 Continue after a power-off also returns to the last berth; it is not a
 midwater suspend save. No writes occur for pickups, chart closing, per-frame
-autosaving or music progress. The HUD gives a brief `SAVED AT BERTH` on
-departure and `UNSAVED FIND` on an expedition discovery. Do not display a save
-indicator while unsaved gains exist.
+autosaving or music progress, and no unsaved-progress notice is reachable.
 
 A committed milestone delivery also persists the selected
 FIRST/PUMP/LIFT/BEACON/DEEP RELAY deck in the one-byte `pendingStory` field.
@@ -310,62 +316,61 @@ persisted. Mandatory story missions cannot be voluntarily abandoned.
 
 Keep voyage bytes out of the system EEPROM prefix identified by
 `EEPROM_STORAGE_SPACE_START` (16 in the installed Arduboy2). The implemented
-fresh-voyage layout is one 4 KiB cart save block holding a single 512-byte
-schema 8 slot at offset 0. A save erases the block, programs two 256-byte pages
-and writes the commit byte last. A power interruption may lose the checkpoint or
-leave a torn record; load does not detect that. No voyage byte uses internal
-EEPROM.
+fresh-voyage layout is one 4 KiB cart save block holding a single raw slot at
+offset 0. The slot has **272 meaningful bytes**: 16 scalar bytes followed by
+the 256-byte chart. A save erases the block once and programs two 256-byte
+pages; the second page contains the last 16 chart bytes followed by `0xFF`
+padding. A power interruption may lose the checkpoint or leave a torn record;
+load does not detect that. No voyage byte uses internal EEPROM.
 
-The slot has a 16-byte header, a 495-byte payload area and a final commit byte.
-Header fields are magic `SHVY` (4), schema version 8 (1), world layout version
-(1), campaign content version 2 (1), feature/profile signature (1), four
-reserved/erased bytes, payload length (2) and CRC-16 (2). They are written for
-format stability, but load does not read or check them. Field ranges, progress
-consistency, berth eligibility and the checksum are not validated on load.
+| Offset | Bytes | Field |
+| ---: | ---: | --- |
+| 0 | 1 | berth |
+| 1 | 1 | tools |
+| 2 | 1 | pickup claims |
+| 3 | 2 | open gates |
+| 5 | 2 | seen gates |
+| 7 | 1 | campaign milestones |
+| 8 | 1 | recorded surveys |
+| 9 | 1 | active job kind |
+| 10 | 1 | active mission ID |
+| 11 | 1 | job origin berth |
+| 12 | 1 | job destination berth |
+| 13 | 1 | job load |
+| 14 | 1 | ending presented |
+| 15 | 1 | pending story scene |
+| 16 | 256 | chart discovery |
 
-The fixed-build chart uses 256 payload bytes, so schema 8 uses **281
-payload bytes** with a chart and **25 bytes** without one. The 25-byte scalar
-allocation covers berth/class (2), tools/claims (2),
-gate masks (4), milestones/surveys (2), job kind/ID/origin/destination/
-load (5), voyage ticks (4),
-delivery and rescue counts (4), the ending-presentation flag (1) and the pending
-story deck (1). No job timer, currency, air level or offer cursor is stored. A
-voyage without a chart omits that field and leaves the rest of the payload area
-as `0xFF`. Cross-profile and cross-schema bytes are read as-is; there is no
-migration or rejection.
+No hull byte, job timer, currency, air level, offer cursor, voyage time,
+delivered-job count or rescue count is stored. There is no header,
+magic, schema, signature, length, CRC or commit byte, and no semantic or range
+validation on load. Memory-safety bounds still keep an arbitrary berth, scene
+index or chart access in range; they are not schema validation.
 
 Write the single slot directly: erase the block (which also removes the
-previous checkpoint), stream the new payload from live state, write the header
-and commit byte last. Report success once both pages are
-programmed; there is no post-write read-back. There is no older/inactive slot,
-second copy, sequence, newest-slot selection or fallback. Never allocate another
-chart-sized RAM buffer; decode directly into initialized state. A failed write
-may lose the previous checkpoint because the single block was erased, and a torn
-record is read as-is.
+previous checkpoint), stream the 272-byte payload from live state, then program
+both pages with `0xFF` padding. Report success once both pages are programmed;
+there is no post-write read-back. Each explicit save performs the erase and two
+page programs even when the state is identical to the last save; there is no
+skip cache. There is no older/inactive slot, second copy, sequence,
+newest-slot selection or fallback. Never allocate another chart-sized RAM
+buffer; decode directly into initialized state. A failed write may lose the
+previous checkpoint because the single block was erased, and a torn record is
+read as-is.
 
-The save path is allowed to skip the transaction when the checkpoint it would
-write is byte-identical to the last written or loaded checkpoint,
-because that data is already durable. A 16-bit RAM cache of the exact encoded
-CRC (the same CRC written into the slot, covering every serialized field,
-including voyage ticks and the whole chart) is recorded after a successful
-save, a successful Continue load and a new-voyage save, and is
-invalidated by reset or a blank load. Normal travel
-advances voyage ticks and/or the chart, so ordinary progress always rewrites the
-slot; the skip only removes truly redundant writes. It is not a dirty flag, not
-a second slot and not a power-fail change: the erase/write transaction and
-commit byte are unchanged.
-
-The optional standalone chart writer uses EEPROM addresses 0–259 and is
-disabled whenever voyage saving is built. Old chart bytes are never read or
-imported in schema 8. A new voyage always starts with an empty chart; there is
-no keep-chart prompt. The single cart slot is erased and rewritten. Never write
-system addresses 0–15 or try to reconstruct system settings from old chart
-bytes.
+The standalone chart writer uses EEPROM addresses 0–259 and is retired; the
+fixed build does not compile it. Old chart bytes and pre-release development
+saves are never read or imported. A new voyage always starts with an empty
+chart, applies the initial reveal at the Tidewall spawn berth, writes that docked
+checkpoint, then plays the opening deck and spawns live free flight. There is no keep-chart prompt
+and no migration. Never write system addresses 0–15 or try to reconstruct
+system settings from old chart bytes.
 
 An interrupted delivery save has no atomic two-copy recovery: it can leave the
 previous checkpoint erased or leave a torn new record. There is no validation to
 reject that record, so load reads whatever payload bytes are present. New-voyage
 replacement erases and rewrites the same slot after the title confirmation.
+Rescue does not write a replacement checkpoint.
 
 ## The ending and afterward
 
@@ -376,10 +381,9 @@ recovered. The return to Tidewall lets the player use a remembered route or the
 thruster shortcut; the longer seal-only route works.
 
 Delivering HOME sets the completion flag before
-showing three input-advanced cards: the lit four-station network, a short
-thank-you from the settlements, and voyage statistics. Show time, equipment
-coves found out of four and delivered missions, derived from saved counters and masks.
-Avoid a completion-percentage requirement or a perfect-run ranking.
+showing two fixed input-advanced cards: the lit four-station network, then a
+voyage-complete message over the Tidewall homecoming artwork. There is no
+voyage-statistics card, no completion percentage and no perfect-run ranking.
 
 An ending-presentation flag is separate from campaign completion. Mark it
 after the cards. A reload between the final delivery and the cards resumes

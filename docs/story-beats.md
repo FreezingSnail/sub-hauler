@@ -116,9 +116,8 @@ scenes replace the old departure placeholders; `beacon-descent` and
   controls replay after the cards.
 - The ending presentation is two fixed cards: the four restored stations,
   then a voyage-complete message over the Tidewall homecoming artwork. A or B
-  returns to the station, and VIEW ENDING replays them. The
-  retired voyage-stats panel remains declared in the FX layout so later flash
-  offsets stay stable, but no screen draws it.
+  returns to the station, and VIEW ENDING replays them. There is no
+  voyage-statistics panel or saved counter behind one.
 
 ## Generated outputs
 

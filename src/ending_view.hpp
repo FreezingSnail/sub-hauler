@@ -30,7 +30,7 @@ inline uint8_t nextCard(uint8_t card) {
 
 #include "common.hpp"
 
-inline void draw(uint8_t card, const game::State &) {
+inline void draw(uint8_t card) {
     if (card == kCardThanks)
         panel_view::draw(panel_ending_thanks);
     else

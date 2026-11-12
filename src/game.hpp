@@ -2,7 +2,6 @@
 
 #include <stdint.h>
 
-#include "roster.hpp"
 #include "generated/exploration.hpp"
 
 // Pure submarine rules. No Arduino headers: this file is compiled into the
@@ -161,9 +160,6 @@ struct State {
     uint8_t ballast;   // 0..100
     int16_t air;     // integer units, 0..airCapacity(state)
     uint8_t cargo;   // 0..4
-    // Frozen schema-8 hull-class byte. Always HAULER in the live state; load
-    // normalizes retired Minnow/Leviathan ids.
-    uint8_t hullClass;
     bool facingLeft;
     uint16_t ticks;
     uint8_t ballastCarry;    // 0..59 fractional ballast units
@@ -181,14 +177,10 @@ struct State {
     int8_t docked;          // -1 = free flight, else the settlement id
     uint8_t dockCooldown;   // non-zero while the undock ring latch is armed
     ParticlePool particles;   // fixed debris pool, 4 slots
-    uint8_t lastDelivery;   // jobs::DeliveryResult from the last resolved contract
-    // Campaign/voyage scalar state (the storage payload owns the fixed byte
-    // order; this struct order is not serialized).
+    // Campaign scalar state (the storage payload owns the fixed byte order;
+    // this struct order is not serialized).
     uint8_t campaign;       // milestone bits FIRST..HOME
     uint8_t surveys;        // recorded survey bits PUMP..LIFT
-    uint32_t voyageTicks;   // flight ticks, saturating
-    uint16_t delivered;     // completed campaign deliveries, saturating
-    uint16_t rescues;       // recovery requests, saturating
     uint8_t ending;         // ending cards presented
     uint8_t pendingStory;   // selected milestone deck awaiting presentation, 0 = none
     ActiveJob activeJob;
@@ -196,17 +188,6 @@ struct State {
 
 inline bool hasActiveJob(const State &state) {
     return state.activeJob.kind != kJobKindNone;
-}
-
-// Charge one flight tick to the campaign voyage clock. Job age is not part of
-// the simulation: every story delivery is untimed. Docked/chart frames never
-// call a world step, and the station guard keeps a direct step() call honest
-// too.
-inline void tickVoyage(State &state) {
-    if (state.docked >= 0)
-        return;
-    if (state.voyageTicks != 0xFFFFFFFFu)
-        ++state.voyageTicks;
 }
 
 // True only for an x/y wall impact at or above the hard-hit speed. The impact
@@ -369,7 +350,6 @@ inline void reset(State &state) {
     state.y = kSpawnY;
     state.ballast = static_cast<uint8_t>(neutralForNormalized(0));
     state.air = airCapacity(state);
-    state.hullClass = roster::kDefault;
     state.docked = -1;
     state.activeJob.to = kJobNone;
     state.activeJob.kind = kJobKindNone;
@@ -457,8 +437,6 @@ inline void step(State &state, const Input &input) {
     advanceAxis(state.x, state.xFrac, state.vxQ8);
     advanceAxis(state.y, state.yFrac, state.vyQ8);
     ++state.ticks;
-    // Campaign voyage clock; job timers are gone.
-    tickVoyage(state);
 }
 
 }   // namespace game

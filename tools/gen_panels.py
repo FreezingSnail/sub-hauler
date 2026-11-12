@@ -397,23 +397,6 @@ def ending_thanks(strings):
     return image
 
 
-def prompt(strings, title, rows, hint, selected):
-    """Compose a two-row prompt, baking either row's inverted selection bar."""
-    image = Image.new("RGBA", SIZE, BG_COLOR)
-    draw_text(image, 4, 8, checked_text(strings, title))
-    for index, row in enumerate(rows):
-        y = 24 + index * 12
-        if index == selected:
-            for px in range(128):
-                for py in range(y - 1, y - 1 + 8):
-                    image.putpixel((px, py), TEXT_COLOR)
-            draw_text(image, 4, y, checked_text(strings, row), BG_COLOR)
-        else:
-            draw_text(image, 4, y, checked_text(strings, row))
-    draw_text(image, 4, 57, checked_text(strings, hint))
-    return image
-
-
 def confirm(strings, title, body, y_body, y_line):
     image = Image.new("RGBA", SIZE, BG_COLOR)
     draw_text(image, 4, 8, checked_text(strings, title))
@@ -426,10 +409,7 @@ def panels(strings):
     rows = [
         ("panel_ending_network_128x64", ending_network(strings)),
         ("panel_ending_thanks_128x64", ending_thanks(strings)),
-        ("panel_save_retry_128x64", prompt(strings, "txt_save_failed", ("txt_retry", "txt_continue_unsaved"), "txt_save_hint", 0)),
-        ("panel_save_continue_128x64", prompt(strings, "txt_save_failed", ("txt_retry", "txt_continue_unsaved"), "txt_save_hint", 1)),
         ("panel_rescue_confirm_128x64", confirm(strings, "txt_back_last_berth", "txt_unsaved_lost", 24, 38)),
-        ("panel_abandon_confirm_128x64", confirm(strings, "txt_abandon_job", "txt_yes_no", 24, 24)),
     ]
     return rows
 
@@ -492,8 +472,6 @@ def lift_cable():
 STATUS_STRINGS = (
     "txt_no_save",
     "txt_save_ready",
-    "txt_save_corrupt",
-    "txt_save_incompatible",
 )
 TITLE_ROWS = ("txt_continue", "txt_new_voyage")
 
@@ -531,12 +509,13 @@ def title_menu_frame(strings, status, selected):
 
 
 def title_panels(strings):
-    """Eight menu frames (four boot states x two rows) and one replace prompt."""
-    menu = Image.new("RGBA", (128 * 8, 64), BG_COLOR)
+    """Four menu frames (blank/written boot state x two rows) and one replace prompt."""
+    frames = len(STATUS_STRINGS) * len(TITLE_ROWS)
+    menu = Image.new("RGBA", (128 * frames, 64), BG_COLOR)
     for status in range(len(STATUS_STRINGS)):
         for selected in range(len(TITLE_ROWS)):
             frame = title_menu_frame(strings, status, selected)
-            menu.paste(frame, (128 * (status * 2 + selected), 0))
+            menu.paste(frame, (128 * (status * len(TITLE_ROWS) + selected), 0))
     replace = Image.new("RGBA", SIZE, BG_COLOR)
     from PIL import ImageDraw
     panel = ImageDraw.Draw(replace)

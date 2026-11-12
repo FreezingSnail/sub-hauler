@@ -39,18 +39,18 @@ static_assert(kRowY0 + kRowStep + kRowInvertH <= kStatusY, "two title rows clear
 static_assert(kStatusY + 7 <= kHintY, "status clears the hint");
 static_assert(kHintY + 7 <= 64, "hint stays on screen");
 
-inline bool continueAvailable(const voyage_flow::BootStatus &status) {
-    return status.hasValid;
+inline bool continueAvailable(voyage_flow::BootState status) {
+    return status == voyage_flow::kBootWritten;
 }
 
-// Skip CONTINUE when no valid slot exists. NEW VOYAGE is always selectable.
-inline uint8_t nextRow(uint8_t selected, const voyage_flow::BootStatus &status) {
+// Skip CONTINUE when no written slot exists. NEW VOYAGE is always selectable.
+inline uint8_t nextRow(uint8_t selected, voyage_flow::BootState status) {
     if (selected == kTitleContinue)
         return kTitleNewVoyage;
     return continueAvailable(status) ? kTitleContinue : kTitleNewVoyage;
 }
 
-inline uint8_t previousRow(uint8_t selected, const voyage_flow::BootStatus &status) {
+inline uint8_t previousRow(uint8_t selected, voyage_flow::BootState status) {
     if (selected == kTitleContinue)
         return kTitleNewVoyage;
     return continueAvailable(status) ? kTitleContinue : kTitleNewVoyage;
@@ -61,12 +61,12 @@ inline uint8_t previousRow(uint8_t selected, const voyage_flow::BootStatus &stat
 
 // Baked title frames: blank/written boot state x selected row, HAULER fixed. The
 // replace prompt exists only when a valid save is present, so it is one frame.
-inline void drawTitle(const voyage_flow::BootStatus &status, uint8_t selected, TitleMode mode) {
+inline void drawTitle(voyage_flow::BootState status, uint8_t selected, TitleMode mode) {
     if (mode == kTitleConfirmReplace) {
         panel_view::draw(title_replace, 0, 64);
         return;
     }
-    const uint16_t frame = static_cast<uint16_t>(status.state * 2u + selected);
+    const uint16_t frame = static_cast<uint16_t>(static_cast<uint8_t>(status) * 2u + selected);
     panel_view::draw(title_menu, frame, 64);
 }
 
@@ -80,10 +80,6 @@ inline void drawPauseRescue(uint8_t selected, bool musicOn = true) {
 
 inline void drawRescueConfirm() {
     panel_view::draw(panel_rescue_confirm);
-}
-
-inline void drawAbandonConfirm() {
-    panel_view::draw(panel_abandon_confirm);
 }
 
 #endif   // __AVR__

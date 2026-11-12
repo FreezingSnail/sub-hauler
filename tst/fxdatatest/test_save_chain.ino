@@ -32,12 +32,12 @@ uint16_t readStackPointer() {
 
 bool s_saveOk;
 bool s_audioOk;
-bool s_skipOk;
+bool s_repeatOk;
 uint16_t s_reserve;
 
-// Counts the cart transaction through the exact cached-save helper the sketch
-// uses, so the device test can prove the second identical checkpoint performs
-// no erase and no page program.
+// Counts the cart transaction through the exact save helper the sketch uses,
+// so the device test can prove an identical repeat still erases once and
+// programs both pages.
 struct CountingStorage {
     voyage_save::FxStorage storage;
     uint8_t erases;
@@ -68,7 +68,6 @@ void runProductionChain() {
     chart::reset(s_chart);
     s_screen = Screen::Work;
     s_uiRow.work = 0;
-    s_voyageDirty = true;
     Arduboy2Base::previousButtonState = 0;
     Arduboy2Base::currentButtonState = A_BUTTON;
     s_just = A_BUTTON;
@@ -88,26 +87,20 @@ void runProductionChain() {
 
     updateWork();
     s_saveOk = game::hasActiveJob(s_state) && s_state.docked == static_cast<int8_t>(campaign::kTidewall) &&
-               s_screen == Screen::Story && !s_voyageDirty;
+               s_screen == Screen::Story;
     voyage_save::FxStorage storage;
     s_saveOk = s_saveOk && voyage_save::hasSave(storage);
 
     // The production chain just committed this exact state. A second identical
-    // checkpoint must be skipped: the cache matches, so the cart sees no erase
-    // and no page program. Music is paused around the helper exactly as the
-    // production save path does, then resumed for the refill window below.
+    // checkpoint must still erase once and program both pages. Music is paused
+    // around the helper exactly as the production save path does, then resumed
+    // for the refill window below.
     CountingStorage counted;
-    const music_logic::PauseToken skipToken = music::pauseForTransaction();
-    const voyage_save::SaveResult repeat = voyage_flow::saveCheckpointIfChanged(s_state
-                                                                                ,
-                                                                                s_chart
-                                                                                ,
-                                                                                counted
-                                                                                ,
-                                                                                s_checkpoint);
-    music::resumeAfterTransaction(skipToken);
-    s_skipOk = repeat == voyage_save::kSaved && counted.erases == 0 && counted.pages == 0;
-    s_saveOk = s_saveOk && s_skipOk;
+    const music_logic::PauseToken repeatToken = music::pauseForTransaction();
+    voyage_flow::saveCheckpoint(s_state, s_chart, counted);
+    music::resumeAfterTransaction(repeatToken);
+    s_repeatOk = counted.erases == 1 && counted.pages == 2;
+    s_saveOk = s_saveOk && s_repeatOk;
 
     // Let the real streaming player refill after the synchronous cart write.
     for (uint8_t frame = 0; frame < 24; ++frame) {
@@ -140,8 +133,8 @@ void setup() {
     Serial.println(s_reserve);
     Serial.print(F("save_chain="));
     Serial.println(s_saveOk ? 1 : 0);
-    Serial.print(F("save_skip="));
-    Serial.println(s_skipOk ? 1 : 0);
+    Serial.print(F("save_repeat="));
+    Serial.println(s_repeatOk ? 1 : 0);
     Serial.print(F("audio_after_save="));
     Serial.println(s_audioOk ? 1 : 0);
 #if ATM_FX_COMPACT_DIAG

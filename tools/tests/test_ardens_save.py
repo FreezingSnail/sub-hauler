@@ -37,7 +37,7 @@ class ArdensSaveTest(unittest.TestCase):
     def test_migrate_rewrites_only_the_hash_field(self):
         BUILD.mkdir(parents=True, exist_ok=True)
         source = BUILD / "absim_0000000000000001.save"
-        payload = b"schema7-payload"
+        payload = b"opaque-payload"
         source.write_bytes(struct.pack("<Q", 1) + payload)
 
         target = ardens_save.migrate_save(source, BUILD, 0x0123456789ABCDEF, force=True)

@@ -78,14 +78,12 @@ inline void JobsSuite(TestRunner &runner) {
         game::State state;
         game::reset(state);
         test.assertTrue(!game::hasActiveJob(state), "reset leaves no contract");
-        test.assertEqual(state.lastDelivery, jobs::kDeliveryNone, "a fresh run has no delivery note");
 
         campaign::MissionSpec spec;
         test.assertTrue(campaign::missionInfo(campaign::kFirst, spec), "FIRST metadata loads");
         test.assertEqual(spec.from, campaign::kTidewall, "FIRST loads at Tidewall");
         test.assertEqual(spec.to, campaign::kBenthos, "FIRST delivers at Benthos");
         test.assertEqual(game::kJobCrates, 4, "the story contract requires four units");
-        test.assertEqual(state.delivered, 0, "fresh run has no deliveries");
         runner.add(test);
     }
 
@@ -122,15 +120,12 @@ inline void JobsSuite(TestRunner &runner) {
         game::reset(state);
         test.assertTrue(dockAt(state, campaign::kTidewall), "dock succeeds");
         test.assertTrue(campaign::accept(state, campaign::kFirst), "contract accepted");
-        state.lastDelivery = jobs::kDeliveryFailed;
 
         test.assertEqual(station::activate(station::kActiveWorkRow, state), station::kActionWork, "WORK does not clear the load");
         test.assertEqual(station::activate(station::kActiveUndockRow, state), station::kActionUndocked, "UNDOCK leaves with the load");
         test.assertTrue(station::jobActive(state), "contract survives every available row");
         test.assertEqual(state.cargo, game::kJobCrates, "hold is retained");
         test.assertEqual(state.ballast, game::neutralFor(state.cargo), "loaded trim is retained");
-        test.assertEqual(state.delivered, 0, "no delivery is counted");
-        test.assertEqual(state.lastDelivery, jobs::kDeliveryFailed, "the short note is not cleared by leaving");
         runner.add(test);
     }
 
@@ -145,9 +140,6 @@ inline void JobsSuite(TestRunner &runner) {
         test.assertEqual(state.docked, static_cast<int8_t>(campaign::kBenthos), "destination station is current");
         test.assertTrue(!station::jobActive(state), "contract is cleared after delivery");
         test.assertEqual(state.cargo, 0, "delivered hold is cleared");
-        test.assertEqual(state.delivered, 1, "delivered count increments");
-        test.assertEqual(state.lastDelivery, jobs::kDeliveryDelivered, "delivery records success");
-        test.assertTrue(!jobs::deliveryFailed(state), "a completed delivery has no failure note");
         test.assertEqual(state.campaign & campaign::kMilestoneFirst, campaign::kMilestoneFirst, "FIRST milestone set");
         test.assertTrue(campaign::missionCompleted(state, campaign::kFirst), "FIRST completion flag");
         runner.add(test);
@@ -170,7 +162,6 @@ inline void JobsSuite(TestRunner &runner) {
         // step, then select the one-shot beat from the post-delivery mask.
         const uint8_t before = state.campaign;
         test.assertTrue(travelTo(state, campaign::kFreightYard), "dock at the Freight Yard work site with the load");
-        test.assertEqual(state.lastDelivery, jobs::kDeliveryDelivered, "cable reels delivered");
         test.assertEqual(state.campaign & campaign::kMilestoneLift, campaign::kMilestoneLift, "the dock sets the LIFT milestone");
         test.assertEqual(story_view::cardForNewMilestone(before, state.campaign), story_view::kCardLift, "fresh LIFT selects the LIFT deck");
         test.assertEqual(story_view::cardCount(story_view::kCardLift), 2, "LIFT result deck is two cards after pickup");
@@ -223,11 +214,9 @@ inline void JobsSuite(TestRunner &runner) {
         for (uint16_t i = 0; i < 10 * 60 * 60; ++i)
             game::step(state, idle());
         test.assertEqual(state.docked, static_cast<int8_t>(-1), "the long trip stays in open water");
-        test.assertEqual(state.voyageTicks, 10 * 60 * 60, "the voyage clock still advances");
 
         test.assertTrue(travelTo(state, campaign::kBenthos), "dock after the long trip");
-        test.assertEqual(state.lastDelivery, jobs::kDeliveryDelivered, "a late-looking trip still completes");
-        test.assertEqual(state.delivered, 1, "the long trip counts one delivery");
+        test.assertTrue(campaign::missionCompleted(state, campaign::kFirst), "a late-looking trip still completes");
         runner.add(test);
     }
 
@@ -242,9 +231,6 @@ inline void JobsSuite(TestRunner &runner) {
         test.assertTrue(travelTo(state, campaign::kBenthos), "dock at destination");
         test.assertTrue(!station::jobActive(state), "failed contract is cleared");
         test.assertEqual(state.cargo, 0, "failed hold is cleared");
-        test.assertEqual(state.delivered, 0, "a short hold counts no delivery");
-        test.assertEqual(state.lastDelivery, jobs::kDeliveryFailed, "short hold records the failure");
-        test.assertTrue(jobs::deliveryFailed(state), "short hold shows the SHORT note");
         test.assertEqual(state.campaign & campaign::kMilestoneFirst, 0, "short cargo sets no milestone");
         test.assertTrue(campaign::missionAvailable(state, campaign::kFirst), "source can reissue after a short load");
         runner.add(test);
@@ -260,13 +246,11 @@ inline void JobsSuite(TestRunner &runner) {
         test.assertTrue(travelTo(state, campaign::kTidewall), "dock back at the origin");
         test.assertTrue(station::jobActive(state), "origin dock keeps the contract");
         test.assertEqual(state.cargo, game::kJobCrates, "origin dock keeps the hold");
-        test.assertEqual(state.delivered, 0, "origin dock delivers nothing");
 
         test.assertTrue(travelTo(state, campaign::kCormorant), "dock at a third station");
         test.assertTrue(station::jobActive(state), "wrong-station dock keeps the contract");
         test.assertEqual(state.activeJob.to, campaign::kBenthos, "contract destination is unchanged");
         test.assertEqual(state.cargo, game::kJobCrates, "wrong-station dock keeps the hold");
-        test.assertEqual(state.delivered, 0, "wrong-station dock delivers nothing");
         runner.add(test);
     }
 
@@ -309,6 +293,36 @@ inline void JobsSuite(TestRunner &runner) {
         test.assertEqual(station::rowKind(station::kActiveUndockRow, state), station::kRowUndock, "UNDOCK row");
         test.assertEqual(station::activate(station::kActiveSummaryRow, state), station::kActionNone, "summary row is inert");
         test.assertTrue(station::jobActive(state), "no selectable row clears the contract");
+        runner.add(test);
+    }
+
+    {
+        Test test("delivery checks cargo mission metadata, destination and fixed crates");
+        game::State state;
+        game::reset(state);
+        test.assertTrue(dockAt(state, campaign::kTidewall), "dock at origin");
+        test.assertTrue(campaign::accept(state, campaign::kFirst), "contract accepted");
+        test.assertTrue(campaign::cargoJobMatches(state.activeJob), "accepted FIRST metadata matches");
+
+        state.activeJob.crates = 3;
+        test.assertTrue(!campaign::cargoJobMatches(state.activeJob), "fixed four-crate requirement is enforced");
+        state.activeJob.crates = game::kJobCrates;
+        state.activeJob.to = campaign::kCormorant;
+        test.assertTrue(!campaign::cargoJobMatches(state.activeJob), "wrong destination metadata is rejected");
+        state.activeJob.to = campaign::kBenthos;
+        state.activeJob.mission = campaign::kPump;
+        test.assertTrue(!campaign::cargoJobMatches(state.activeJob), "non-matching mission metadata is rejected");
+        state.activeJob.mission = campaign::kFirst;
+        state.activeJob.kind = 3;
+        test.assertTrue(!campaign::cargoJobMatches(state.activeJob), "unknown job kind is rejected");
+
+        state.activeJob.kind = game::kJobKindCampaign;
+        state.activeJob.to = campaign::kBenthos;
+        state.activeJob.crates = 3;
+        test.assertTrue(travelTo(state, campaign::kBenthos), "dock at destination with malformed crates");
+        test.assertTrue(!campaign::missionCompleted(state, campaign::kFirst), "malformed load cannot complete the mission");
+        test.assertTrue(!station::jobActive(state), "malformed load is cleared");
+        test.assertEqual(state.cargo, 0, "malformed hold is cleared");
         runner.add(test);
     }
 }

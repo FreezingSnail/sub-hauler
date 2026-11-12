@@ -35,18 +35,16 @@ void setup() {
         ++cases;
     }
     // Title and replacement panels changed readers to recover program flash.
-    // The compact title sheet has four generated boot-state slots x two
-    // selected rows with HAULER fixed; only blank and written states are
-    // reachable. The replace prompt is one frame because it only exists when a
-    // written save is present.
-    for (uint8_t statusIndex = 0; statusIndex < 4; ++statusIndex) {
+    // The compact title sheet has two boot states x two selected rows with
+    // HAULER fixed. The replace prompt is one frame because it only exists when
+    // a written save is present.
+    for (uint8_t statusIndex = 0; statusIndex < 2; ++statusIndex) {
         for (uint8_t selected = 0; selected < 2; ++selected) {
             const uint16_t frame = static_cast<uint16_t>(statusIndex * 2u + selected);
             background(0xA5);
             Blit::draw(0, 0, TITLE_MENU_WIDTH, TITLE_MENU_HEIGHT, title_menu + 2, frame, Blit::OVERWRITE);
             const uint16_t expected = checksum();
-            voyage_flow::BootStatus status = {};
-            status.state = static_cast<voyage_flow::BootState>(statusIndex);
+            const voyage_flow::BootState status = static_cast<voyage_flow::BootState>(statusIndex);
             background(0x5A);
             voyage_view::drawTitle(status, selected, voyage_view::kTitleMenu);
             ok = (checksum() == expected) && ok;
@@ -56,10 +54,8 @@ void setup() {
     background(0xA5);
     Blit::draw(0, 0, TITLE_REPLACE_WIDTH, TITLE_REPLACE_HEIGHT, title_replace + 2, 0, Blit::OVERWRITE);
     const uint16_t replaceExpected = checksum();
-    voyage_flow::BootStatus replaceStatus = {};
-    replaceStatus.state = voyage_flow::kBootValid;
     background(0x5A);
-    voyage_view::drawTitle(replaceStatus, 0, voyage_view::kTitleConfirmReplace);
+    voyage_view::drawTitle(voyage_flow::kBootWritten, 0, voyage_view::kTitleConfirmReplace);
     ok = (checksum() == replaceExpected) && ok;
     ++cases;
     // Drive the production startup sequence without a physical button.

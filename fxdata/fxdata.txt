@@ -74,29 +74,24 @@ string txt_seal_rumor = 'SEAL: WEST WORKSHOP'
 // Static rock only; stations and dynamic overlays compose after streaming.
 raw_t explorationTerrain = "../fxdata/tables/exploration-terrain.bin"
 
-// Voyage app integration (sub-hauler-7px.4): Continue, checkpoints, rescue and
-// save-failure UX. Appended after every shipped symbol so all prior FX offsets
-// remain flash ABI.
+// Voyage app integration (sub-hauler-7px.4): Continue, checkpoints and rescue.
+// Appended after every shipped symbol so all prior FX offsets remain flash ABI.
+// The pre-release save-failure retry/continue panels and their labels were
+// retired by sub-hauler-bwg.3; there is no save-failure screen or save path to
+// answer. Retained title/rescue wording keeps its original relative order.
 string txt_sub_hauler = 'SUB-HAULER'
 string txt_continue = 'CONTINUE'
 string txt_new_voyage = 'NEW VOYAGE'
 string txt_save_ready = 'SAVE READY'
 string txt_no_save = 'NO SAVE'
-string txt_save_corrupt = 'SAVE CORRUPT'
-string txt_save_incompatible = 'SAVE INCOMPATIBLE'
 string txt_replace_voyage = 'REPLACE VOYAGE?'
 string txt_yes_no = 'A YES  B NO'
-string txt_save_failed = 'SAVE FAILED'
-string txt_retry = 'RETRY'
-string txt_continue_unsaved = 'CONTINUE UNSAVED'
 string txt_resume = 'RESUME'
 string txt_rescue = 'RESCUE'
 string txt_back_last_berth = 'BACK TO LAST BERTH?'
 string txt_unsaved_lost = 'UNSAVED FINDS LOST'
 string txt_pause_hint = 'UP/DN A OK  B RESUME'
-string txt_save_hint = 'UP/DN A OK'
 string txt_title_save_hint = 'A SELECT          '
-string txt_abandon_job = 'ABANDON JOB?'
 
 // Campaign first slice (sub-hauler-7px.5): WORK page, survey and restoration
 // clues, service berths. Appended after every shipped string so all earlier FX
@@ -165,9 +160,9 @@ raw_t musicRegions = "../fxdata/tables/music-regions.bin"
 // .7 three-row pause menu with live MUSIC ON/OFF state.
 include "PauseSprites.txt"
 
-// .7 HUD notices; appended after every shipped symbol.
+// .7 HUD notices; appended after every shipped symbol. The unreachable
+// UNSAVED FIND notice was retired with the dead dirty flag by sub-hauler-bwg.3.
 string txt_saved_berth = 'SAVED AT BERTH'
-string txt_unsaved_find = 'UNSAVED FIND'
 
 // .27 single WORK board; appended after every shipped symbol so earlier FX
 // offsets remain flash ABI. There is no express label or clock any more.

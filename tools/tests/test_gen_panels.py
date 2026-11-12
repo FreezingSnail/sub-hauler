@@ -43,6 +43,9 @@ class StoryPanelGenerationTest(unittest.TestCase):
             "panel_ending_stats_128x64",
             "panel_pause_resume_128x64",
             "panel_pause_rescue_128x64",
+            "panel_save_retry_128x64",
+            "panel_save_continue_128x64",
+            "panel_abandon_confirm_128x64",
             "title_keep_128x64",
             "work_details_128x64",
             "work_active_128x44",
@@ -50,14 +53,35 @@ class StoryPanelGenerationTest(unittest.TestCase):
         ):
             self.assertNotIn(retired, names)
 
+    def test_retired_panel_outputs_are_deleted(self):
+        for retired in ("panel_save_retry_128x64", "panel_save_continue_128x64",
+                        "panel_abandon_confirm_128x64"):
+            self.assertFalse((ROOT / "images/panels" / (retired + ".png")).exists(), retired)
+
     def test_title_sheets_cover_boot_state_and_selection(self):
         sheets = dict(self.titles)
-        self.assertEqual(sheets["title_menu_128x64"].size, (128 * 8, 64))
+        frames = len(gen_panels.STATUS_STRINGS) * len(gen_panels.TITLE_ROWS)
+        self.assertEqual(frames, 4)
+        self.assertEqual(sheets["title_menu_128x64"].size, (128 * frames, 64))
         self.assertEqual(sheets["title_replace_128x64"].size, (128, 64))
 
-    def test_title_console_preserves_selection_and_all_save_states(self):
+    def test_title_sheet_frames_follow_boot_state_then_selection(self):
+        menu = dict(self.titles)["title_menu_128x64"]
+        frame = 0
+        for status in range(len(gen_panels.STATUS_STRINGS)):
+            for selected in range(len(gen_panels.TITLE_ROWS)):
+                expected = gen_panels.title_menu_frame(self.strings, status, selected)
+                self.assertEqual(
+                    menu.crop((128 * frame, 0, 128 * (frame + 1), 64)).tobytes(),
+                    expected.tobytes(),
+                    (status, selected),
+                )
+                frame += 1
+
+    def test_title_console_preserves_selection_and_both_save_states(self):
         frames = [[gen_panels.title_menu_frame(self.strings, status, selection)
-                   for selection in range(2)] for status in range(4)]
+                   for selection in range(len(gen_panels.TITLE_ROWS))]
+                  for status in range(len(gen_panels.STATUS_STRINGS))]
         for first, second in frames:
             # Selection changes only the menu rows, leaving the instruments,
             # save state, title and controls unchanged.
@@ -65,8 +89,42 @@ class StoryPanelGenerationTest(unittest.TestCase):
                                 second.crop((4, 16, 84, 36)).tobytes())
             for region in ((0, 0, 128, 16), (88, 16, 127, 42), (0, 42, 128, 64)):
                 self.assertEqual(first.crop(region).tobytes(), second.crop(region).tobytes())
+        # Blank and written boot states keep visibly different status lines.
         self.assertEqual(len({pair[0].crop((1, 43, 127, 54)).tobytes()
-                              for pair in frames}), 4)
+                              for pair in frames}), 2)
+
+    def test_retired_save_failure_strings_are_not_inputs(self):
+        for retired in ("txt_save_corrupt", "txt_save_incompatible", "txt_save_failed",
+                        "txt_retry", "txt_continue_unsaved", "txt_save_hint",
+                        "txt_unsaved_find", "txt_abandon_job"):
+            self.assertNotIn(retired, self.strings)
+
+    def test_title_status_lines_use_retained_blank_written_labels(self):
+        self.assertEqual(gen_panels.STATUS_STRINGS, ("txt_no_save", "txt_save_ready"))
+        for status, symbol in enumerate(gen_panels.STATUS_STRINGS):
+            frame = gen_panels.title_menu_frame(self.strings, status, 0)
+            text = self.strings[symbol]
+            expected = gen_panels.Image.new("RGBA", gen_panels.SIZE, gen_panels.BG_COLOR)
+            gen_panels.draw_text(expected, 4, 45, text)
+            width = gen_panels.text_width(text)
+            self.assertEqual(
+                frame.crop((4, 45, 4 + width, 53)).tobytes(),
+                expected.crop((4, 45, 4 + width, 53)).tobytes(),
+                symbol,
+            )
+
+    def test_rescue_confirmation_wording_is_retained(self):
+        rescue = dict(self.panels)["panel_rescue_confirm_128x64"]
+        body = self.strings["txt_unsaved_lost"]
+        self.assertEqual(body, "UNSAVED FINDS LOST")
+        expected = gen_panels.Image.new("RGBA", gen_panels.SIZE, gen_panels.BG_COLOR)
+        gen_panels.draw_text(expected, 4, 24, body)
+        width = gen_panels.text_width(body)
+        self.assertEqual(
+            rescue.crop((4, 24, 4 + width, 32)).tobytes(),
+            expected.crop((4, 24, 4 + width, 32)).tobytes(),
+        )
+        self.assertEqual(self.strings["txt_back_last_berth"], "BACK TO LAST BERTH?")
 
     def test_restoration_sprites_are_masked_and_non_empty(self):
         for name, image in self.campaign:

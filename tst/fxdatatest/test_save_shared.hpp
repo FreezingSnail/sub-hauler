@@ -16,8 +16,8 @@ static game::State s_state;
 static chart::State s_chart;
 static voyage_save::FxStorage s_storage;
 
-static bool saveNow() {
-    return voyage_save::save(s_state, s_chart, s_storage) == voyage_save::kSaved;
+static void saveNow() {
+    voyage_save::save(s_state, s_chart, s_storage);
 }
 
 static bool loadNow() {
@@ -39,22 +39,22 @@ static bool runSaveTests(bool runtimePage) {
     chart::reset(s_chart);
     game::reset(s_state);
     s_state.docked = static_cast<int8_t>(campaign::kTidewall);
-    ok = ok && saveNow();
+    saveNow();
     ok = ok && voyage_save::hasSave(s_storage);
 
     // Continue restores the berth checkpoint.
     game::reset(s_state);
-    s_state.voyageTicks = 0;
+    s_state.pendingStory = 0;
     ok = ok && loadNow();
     ok = ok && s_state.docked == campaign::kTidewall;
 
-    // Repeated cycles on the single slot.
+    // Repeated cycles on the single slot, including identical saves.
     for (uint8_t i = 0; i < 8; ++i) {
-        s_state.voyageTicks = static_cast<uint32_t>(100 + i);
-        ok = ok && saveNow();
+        s_state.pendingStory = static_cast<uint8_t>(i + 1);
+        saveNow();
         ok = ok && voyage_save::hasSave(s_storage);
         ok = ok && loadNow();
-        ok = ok && s_state.voyageTicks == static_cast<uint32_t>(100 + i);
+        ok = ok && s_state.pendingStory == static_cast<uint8_t>(i + 1);
     }
 
     if (runtimePage) {
@@ -68,7 +68,7 @@ static bool runSaveTests(bool runtimePage) {
         chart::reset(s_chart);
         game::reset(s_state);
         s_state.docked = static_cast<int8_t>(campaign::kTidewall);
-        ok = ok && saveNow();
+        saveNow();
         ok = ok && voyage_save::hasSave(s_storage);
         ok = ok && loadNow();
     }

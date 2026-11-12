@@ -34,7 +34,6 @@
 #include "src/game.hpp"
 #include "src/hud.hpp"
 #include "src/pilot.hpp"
-#include "src/roster.hpp"
 #include "src/render.hpp"
 #include "src/world_fx.hpp"
 #include "src/chart.hpp"
@@ -54,10 +53,10 @@ extern "C" char __bss_end;
 
 Arduboy2Base arduboy;
 
-// The full AVR state budget is pinned here at 77 B after the gl1.3/gl1.4
-// compaction, the economy strip and schema 8's pending-story byte: diagnostic
-// counters, job clocks, offers, rewards and the retired shop fields are gone.
-static_assert(sizeof(game::State) == 77, "full campaign+save run state is 77 bytes on AVR");
+// The full AVR state budget is pinned here at 67 B after removing the voyage
+// counters, lastDelivery and hull byte: diagnostic counters, job clocks,
+// offers, rewards and the retired shop fields are gone.
+static_assert(sizeof(game::State) == 67, "full campaign+save run state is 67 bytes on AVR");
 
 // The firmware owns the persistent explored set statically. Keeping the probe's
 // copy here (rather than as a local in the measured path) charges those 257 B
@@ -69,7 +68,7 @@ namespace {
 
 // Re-baselined from 800 B to 600 B on 2026-10-23, after the 258 B persistent
 // chart slice entered the full image. The chart+current+particle+station+
-// title/roster+contract/undock/reset probe measures the cargo-free reserve;
+// title+contract/undock/reset probe measures the cargo-free reserve;
 // 600 B stays the pass line.
 constexpr uint16_t kReserveTarget = 600;   // bytes of stack reserve required
 constexpr uint8_t kFrameGuard = 64;        // active-frame headroom, never painted
@@ -96,12 +95,8 @@ __attribute__((noinline)) void runRepresentativePath() {
 
     // Title path: draw the baked HAULER title panel (no cart reads), then fly
     // the same body for the pilot frames below.
-    voyage_flow::BootStatus titleStatus;
-    titleStatus.state = voyage_flow::kBootValid;
-    titleStatus.hasValid = true;
-    voyage_view::drawTitle(titleStatus, voyage_view::kTitleContinue, voyage_view::kTitleMenu);
+    voyage_view::drawTitle(voyage_flow::kBootWritten, voyage_view::kTitleContinue, voyage_view::kTitleMenu);
     FX::display(CLEAR_BUFFER);
-    state.hullClass = static_cast<uint8_t>(roster::kHauler);
 
     for (uint16_t frame = 0; frame < kRepresentativeFrames; ++frame) {
         arduboy.pollButtons();
@@ -247,7 +242,7 @@ __attribute__((noinline)) void runRepresentativePath() {
     FX::display(CLEAR_BUFFER);
 
     for (uint8_t card = 0; card < ending_view::kCardCount; ++card) {
-        ending_view::draw(card, state);
+        ending_view::draw(card);
         FX::display(CLEAR_BUFFER);
     }
     state.ending = 1;
@@ -255,13 +250,9 @@ __attribute__((noinline)) void runRepresentativePath() {
     // Title and recovery prompts: each is now a baked panel, but
     // the stack window still needs the real panel burst plus the surrounding
     // fixed-hull title code.
-    voyage_flow::BootStatus boot;
-    boot.state = voyage_flow::kBootValid;
-    boot.hasValid = true;
-
-    voyage_view::drawTitle(boot, voyage_view::kTitleContinue, voyage_view::kTitleMenu);
+    voyage_view::drawTitle(voyage_flow::kBootWritten, voyage_view::kTitleContinue, voyage_view::kTitleMenu);
     FX::display(CLEAR_BUFFER);
-    voyage_view::drawTitle(boot, voyage_view::kTitleNewVoyage, voyage_view::kTitleConfirmReplace);
+    voyage_view::drawTitle(voyage_flow::kBootWritten, voyage_view::kTitleNewVoyage, voyage_view::kTitleConfirmReplace);
     FX::display(CLEAR_BUFFER);
     voyage_view::drawPauseRescue(0);
     FX::display(CLEAR_BUFFER);
@@ -269,21 +260,11 @@ __attribute__((noinline)) void runRepresentativePath() {
     FX::display(CLEAR_BUFFER);
     voyage_view::drawRescueConfirm();
     FX::display(CLEAR_BUFFER);
-    voyage_view::drawAbandonConfirm();
-    FX::display(CLEAR_BUFFER);
 
     // Real cart checkpoint transaction in the measured window.
     voyage_save::FxStorage saveStorage;
-    voyage_save::newVoyage(state
-                           ,
-                           probeChart
-                           ,
-                           saveStorage);
-    voyage_save::load(state
-                      ,
-                      probeChart
-                      ,
-                      saveStorage);
+    voyage_save::newVoyage(state, probeChart, saveStorage);
+    voyage_save::load(state, probeChart, saveStorage);
 
     // Contract path: accept the FIRST campaign story at Tidewall (auto-load),
     // draw the active station board, then undock through the board action and

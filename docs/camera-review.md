@@ -60,8 +60,9 @@ fractional position and velocity lead. Normal corrections are bounded to
 2 px/tick; explicit developer traversal allows 6. The transient view camera
 retains a signed fractional residual so the sub is projected before rounding,
 avoiding independent rounding jitter. Terrain and integer-world objects share
-the rounded origin. Berth snaps, save schema, physics and music quality remain
-unchanged. Temporal tests check exact steady-speed travel, complete slow pixel
+the rounded origin. Berth snaps, physics and music quality remain unchanged.
+The save format was later replaced by the raw single-slot contract in
+[platform.md](platform.md). Temporal tests check exact steady-speed travel, complete slow pixel
 intervals, stable hull framing, both vertical directions, monotonic settling,
 negative projections and far-world Q4 bounds.
 
