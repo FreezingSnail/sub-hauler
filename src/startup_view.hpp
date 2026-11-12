@@ -11,8 +11,12 @@
 
 namespace startup_view {
 
-// Boot-only: before voyage time advances. The brand logo keeps its short
-// one-second beat; the game splash then waits indefinitely for a fresh press.
+// The Snailware brand screen holds for three seconds, or advances immediately
+// when any player input is present.
+constexpr uint16_t kBrandFrames = 180;
+
+// Boot-only: before voyage time advances. The brand logo keeps its three-second
+// beat; the game splash then waits indefinitely for a fresh press.
 // A button already held to skip the logo must be released first, so that held
 // input can never leak into the title menu. The final release is consumed
 // before returning.
@@ -24,7 +28,9 @@ namespace startup_view {
 template <typename Poll> inline void run(Poll &poll) {
     panel_view::draw(startup, 0, 64);
     FX::display(CLEAR_BUFFER);
-    for (uint8_t tick = 0; tick < 60; ++tick) {
+    for (uint16_t tick = 0; tick < kBrandFrames; ++tick) {
+        if (poll.buttons() != 0)
+            break;
         poll.delay();
         poll.service();
     }

@@ -1,11 +1,12 @@
 # Startup splashes — 2026-10-28
 
 Normal voyage builds show the original Snailware logo and then a Sub-hauler
-title scene before the existing title menu. The logo lasts 60 × 16 ms (about
-1 s); the title splash waits for a fresh button press. A held button used to
-skip the logo must be released first, and its release is consumed before menu
-input. The title/menu music cue starts before the logos and keeps playing
-through the introduction; voyage time starts afterward.
+title scene before the existing title menu. The logo holds for 180 × 16 ms
+(about 3 s), or advances immediately on any player input; the title splash then
+waits for a fresh button press. A held button used to skip the logo must be
+released first, and its release is consumed before menu input. The title/menu
+music cue starts before the logos and keeps playing through the introduction;
+voyage time starts afterward.
 
 The generated preview is `build/splash-preview.png` (written by
 `tools/gen_splash.py` during `make gen`; `build/` is disposable and not

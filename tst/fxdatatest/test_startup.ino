@@ -61,21 +61,19 @@ void setup() {
     voyage_view::drawTitle(replaceStatus, 0, voyage_view::kTitleConfirmReplace);
     ok = (checksum() == replaceExpected) && ok;
     ++cases;
-    // Drive the production startup sequence without a physical button. The
-    // script holds A through the logo, releases it, waits on the game splash,
-    // then gives one fresh press. It proves the held logo input cannot skip the
-    // splash, that the fresh release is consumed before returning, and that the
-    // splash services its poll on every waiting frame.
-    struct ScriptedPoll {
+    // Drive the production startup sequence without a physical button.
+    // First: any input advances the brand screen immediately, then the held
+    // input must be released before the game splash accepts a fresh press.
+    struct SkipPoll {
         uint16_t ticks = 0;
         uint16_t held = 0;
         uint16_t serviced = 0;
         uint8_t buttons() const {
-            if (ticks < 64)
-                return A_BUTTON;   // held through and just past the logo
-            if (ticks < 160)
+            if (ticks < 2)
+                return A_BUTTON;   // pressed on the brand screen
+            if (ticks < 8)
                 return 0;          // released; splash must keep waiting
-            if (ticks < 162)
+            if (ticks < 10)
                 return A_BUTTON;   // fresh press
             return 0;
         }
@@ -88,13 +86,47 @@ void setup() {
         void waitNoButtons() {
             ++held;
         }
-    } poll;
-    startup_view::run(poll);
-    ok = poll.ticks >= 160 && poll.held == 1 && poll.serviced >= 160 && ok;
+    } skip;
+    startup_view::run(skip);
+    ok = skip.ticks <= 12 && skip.held == 1 && skip.serviced >= 8 && ok;
+
+    // Second: no input lets the three-second brand timer expire. A held input
+    // at the splash boundary is still consumed by the release policy.
+    struct TimeoutPoll {
+        static constexpr uint16_t kPressTick = startup_view::kBrandFrames + 12;
+        uint16_t ticks = 0;
+        uint16_t held = 0;
+        uint16_t serviced = 0;
+        uint8_t buttons() const {
+            if (ticks < startup_view::kBrandFrames)
+                return 0;          // let the brand timer expire
+            if (ticks < startup_view::kBrandFrames + 2)
+                return A_BUTTON;   // held as the splash appears
+            if (ticks < kPressTick)
+                return 0;          // release arms the splash
+            if (ticks < kPressTick + 2)
+                return A_BUTTON;   // fresh press dismisses the splash
+            return 0;
+        }
+        void delay() {
+            ++ticks;
+        }
+        void service() {
+            ++serviced;
+        }
+        void waitNoButtons() {
+            ++held;
+        }
+    } timeout;
+    startup_view::run(timeout);
+    ok = timeout.ticks >= TimeoutPoll::kPressTick && timeout.held == 1 &&
+         timeout.serviced >= TimeoutPoll::kPressTick && ok;
+
     Serial.print(F("startup pixels=")); Serial.print(cases);
-    Serial.print(F(" startup_ticks=")); Serial.print(poll.ticks);
-    Serial.print(F(" releases=")); Serial.print(poll.held);
-    Serial.print(F(" serviced=")); Serial.println(poll.serviced);
+    Serial.print(F(" startup_skip_ticks=")); Serial.print(skip.ticks);
+    Serial.print(F(" startup_timeout_ticks=")); Serial.print(timeout.ticks);
+    Serial.print(F(" releases=")); Serial.print(skip.held + timeout.held);
+    Serial.print(F(" serviced=")); Serial.println(skip.serviced + timeout.serviced);
     Serial.println(ok ? F("P") : F("F"));
 }
 
