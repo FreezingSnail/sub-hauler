@@ -15,18 +15,18 @@
 //   * one 512 B slot at offset 0: 16 B header + 495 B payload area + one commit
 //     byte at slot+511;
 //   * schema 8 scalar payload is 25 B, followed by the optional chart;
-//   * CRC-16/CCITT-FALSE over header bytes 0..13 and exactly payload_length
-//     payload bytes; the commit byte is outside the CRC;
 //   * payload is encoded field by field, never as a raw C++ struct;
-//   * load validates first and only then mutates the caller's state;
+//   * load only distinguishes an erased first byte (0xFF) from a written slot,
+//     then reads the payload as-is; there is no CRC, schema or semantic check;
 //   * a save erases the single 4 KiB block, writes page 0 then page 1 with the
-//     commit byte last, and re-reads the slot. A power interruption during that
-//     erase/write may lose the current checkpoint; it can never present invalid
-//     data as loadable, and the title offers a clean New Voyage instead;
+//     commit byte last, and reports success once both page programs finish;
+//     there is no post-write read-back. A power interruption during that
+//     erase/write may lose the current checkpoint or leave a torn record that
+//     load will still read;
 //   * no legacy chart/EEPROM block or migration path is read.
 //
-// The fixed build always stores schema 8 voyage checkpoints. Schema 7 slots are
-// incompatible and are never migrated or partially applied.
+// The fixed build always writes the schema 8 layout. Load does not gate on the
+// schema, CRC or commit bytes.
 
 
 
@@ -34,7 +34,6 @@
 
 #include "campaign.hpp"
 #include "game.hpp"
-#include "jobs.hpp"
 #include "pilot.hpp"
 #include "roster.hpp"
 #include "world.hpp"
@@ -100,37 +99,13 @@ constexpr uint8_t kProfileSignature =
     kSignatureFogChart | kSignatureMultiHull | kSignatureExploration;
 static_assert(kProfileSignature == 0x61, "schema 8 fixed-build signature is frozen");
 
-// Result vocabulary shared by the storage transaction and the title
-// integration. A missing slot is not a corrupt save; the title needs to tell
-// blank, incompatible and corrupt data apart before offering NEW VOYAGE.
-enum SlotStatus : uint8_t {
-    kSlotBlank,
-    kSlotValid,
-    kSlotCorrupt,
-    kSlotIncompatible,
-};
-
-struct SlotInfo {
-    SlotStatus status;
-};
-
-// Single-slot inventory. There is no sequence, newest selection or fallback:
-// one block erase owns the only checkpoint.
-struct Inventory {
-    SlotStatus status;
-};
-
 enum LoadResult : uint8_t {
     kLoaded,
     kNoSave,
-    kCorruptSave,
-    kIncompatibleSave,
 };
 
 enum SaveResult : uint8_t {
     kSaved,
-    kInvalidState,
-    kWriteFailed,
 };
 
 // ---------------------------------------------------------------------------
@@ -212,13 +187,6 @@ inline uint32_t scalarU32(const Scalar &scalar, uint8_t offset) {
     return value;
 }
 
-// The frozen schema-8 byte accepts the two retired ids (Minnow 0, Leviathan 2)
-// so older voyages still validate and load; they are normalized to HAULER when
-// applied. Unknown ids above 2 remain corrupt.
-inline bool validHullClass(uint8_t value) {
-    return roster::isValidId(value);
-}
-
 inline uint8_t toolsMask() {
     return static_cast<uint8_t>(exploration_data::CUTTER | exploration_data::SEAL | exploration_data::THRUSTER | exploration_data::LENS);
 }
@@ -229,33 +197,6 @@ inline uint8_t pickupsMask() {
 
 inline uint16_t gatesMask() {
     return static_cast<uint16_t>((1u << exploration_data::GATE_COUNT) - 1u);
-}
-
-// Validate the live checkpoint before erasing anything.
-inline bool stateValidForSave(const State &state) {
-    if (state.docked < 0 || state.docked >= static_cast<int8_t>(campaign::kBerthCount))
-        return false;
-    world::Berth berthInfo;
-    if (!world::berthInfo(static_cast<uint8_t>(state.docked), berthInfo))
-        return false;
-    if (!validHullClass(state.hullClass))
-        return false;
-    if ((state.tools & static_cast<uint8_t>(~toolsMask())) != 0 || (state.pickups & static_cast<uint8_t>(~pickupsMask())) != 0)
-        return false;
-    if ((state.openGates & static_cast<uint16_t>(~gatesMask())) != 0 || (state.seenGates & static_cast<uint16_t>(~gatesMask())) != 0)
-        return false;
-    if (state.pendingStory > kPendingStoryMax)
-        return false;
-    if (!campaign::checkpointValid(state.campaign, state.surveys, state.ending, state.activeJob, state.tools))
-        return false;
-    // Restoration normally gates a service berth. A matching repair load can
-    // legitimately occupy its work site before the milestone, and a short load
-    // can leave the boat there after the job is cleared; the failed-delivery
-    // note covers that second case. Loading still derives position from the
-    // frozen berth table.
-    if (!campaign::berthAvailable(state, static_cast<uint8_t>(state.docked)) && !jobs::deliveryFailed(state))
-        return false;
-    return world::berthInfo(static_cast<uint8_t>(state.docked), berthInfo);
 }
 
 // Serialize one scalar byte directly from live state. This replaces the former
@@ -382,51 +323,6 @@ inline uint16_t checkpointCrc(const State &state, const chart::State &chart) {
     return crc;
 }
 
-template <typename Storage> inline uint8_t readPayloadU8(Storage &storage, uint16_t payload, uint8_t offset) {
-    return storage.read(static_cast<uint16_t>(payload + offset));
-}
-
-template <typename Storage> inline uint16_t readPayloadU16(Storage &storage, uint16_t payload, uint8_t offset) {
-    return static_cast<uint16_t>(readPayloadU8(storage, payload, offset) | (static_cast<uint16_t>(readPayloadU8(storage, payload, offset + 1)) << 8));
-}
-
-// Validate the serialized scalar fields in place. No Scalar or State temporary
-// is built, so boot inspection and post-write read-back keep the save path's
-// stack frame small.
-template <typename Storage> inline bool payloadValid(Storage &storage, uint16_t payload) {
-    const uint8_t berth = readPayloadU8(storage, payload, kFieldBerth);
-    const uint8_t hullClass = readPayloadU8(storage, payload, kFieldHullClass);
-    const uint8_t tools = readPayloadU8(storage, payload, kFieldTools);
-    const uint8_t pickups = readPayloadU8(storage, payload, kFieldPickups);
-    const uint8_t campaignMask = readPayloadU8(storage, payload, kFieldCampaign);
-    const uint8_t surveys = readPayloadU8(storage, payload, kFieldSurveys);
-    const uint8_t ending = readPayloadU8(storage, payload, kFieldEnding);
-    const uint8_t pendingStory = readPayloadU8(storage, payload, kFieldPendingStory);
-
-    if (pendingStory > kPendingStoryMax)
-        return false;
-    if (berth >= campaign::kBerthCount || !validHullClass(hullClass))
-        return false;
-    world::Berth berthInfo;
-    if (!world::berthInfo(berth, berthInfo))
-        return false;
-    if ((tools & static_cast<uint8_t>(~toolsMask())) != 0 || (pickups & static_cast<uint8_t>(~pickupsMask())) != 0)
-        return false;
-    if ((readPayloadU16(storage, payload, kFieldOpenGates) & static_cast<uint16_t>(~gatesMask())) != 0 ||
-        (readPayloadU16(storage, payload, kFieldSeenGates) & static_cast<uint16_t>(~gatesMask())) != 0)
-        return false;
-
-    game::ActiveJob job;
-    job.kind = readPayloadU8(storage, payload, kFieldJobKind);
-    job.mission = readPayloadU8(storage, payload, kFieldJobMission);
-    job.from = readPayloadU8(storage, payload, kFieldJobFrom);
-    job.to = readPayloadU8(storage, payload, kFieldJobTo);
-    job.crates = readPayloadU8(storage, payload, kFieldJobCrates);
-    if (!campaign::checkpointValid(campaignMask, surveys, ending, job, tools))
-        return false;
-    return campaign::berthAvailable(campaignMask, berth);
-}
-
 template <typename Storage> inline void readScalar(Storage &storage, uint16_t payload, Scalar &scalar) {
     for (uint8_t i = 0; i < kScalarBytes; ++i)
         scalar.bytes[i] = storage.read(static_cast<uint16_t>(payload + i));
@@ -461,65 +357,10 @@ inline void writeSlot(Storage &storage, uint16_t crc, const State &state
     storage.pageEnd();
 }
 
-// Read the 16-byte header once. Header fields and the CRC share these bytes,
-// so validation does not issue the same cart reads twice.
-template <typename Storage> inline void readHeader(Storage &storage, uint16_t base, uint8_t *header) {
-    for (uint8_t i = 0; i < kHeaderBytes; ++i)
-        header[i] = storage.read(static_cast<uint16_t>(base + i));
-}
-
-template <typename Storage> inline SlotInfo inspectSlot(Storage &storage) {
-    SlotInfo info;
-    info.status = kSlotBlank;
-
-    uint8_t header[kHeaderBytes];
-    readHeader(storage, kSlotOffset, header);
-    const uint8_t commit = storage.read(static_cast<uint16_t>(kSlotOffset + kCommitOffset));
-
-    // Blank requires both a non-magic prefix and a non-committed byte. A
-    // present magic or commit byte means the slot belongs to this game even if
-    // it is torn, corrupt, incompatible or in progress.
-    const bool magic = header[kMagicOffset] == kMagic0 && header[kMagicOffset + 1] == kMagic1 && header[kMagicOffset + 2] == kMagic2 && header[kMagicOffset + 3] == kMagic3;
-    if (!magic) {
-        info.status = commit == kCommitValid ? kSlotCorrupt : kSlotBlank;
-        return info;
-    }
-    if (commit != kCommitValid) {
-        info.status = kSlotCorrupt;
-        return info;
-    }
-    if (header[kSchemaOffset] != kSchemaVersion || header[kLayoutOffset] != world::LAYOUT_VERSION || header[kContentOffset] != kCampaignContentVersion ||
-        header[kSignatureOffset] != kProfileSignature) {
-        info.status = kSlotIncompatible;
-        return info;
-    }
-
-    const uint16_t length = static_cast<uint16_t>(header[kLengthOffset] | (static_cast<uint16_t>(header[kLengthOffset + 1]) << 8));
-    if (length != kPayloadBytes) {
-        info.status = kSlotCorrupt;
-        return info;
-    }
-
-    uint16_t crc = 0xFFFF;
-    for (uint8_t i = 0; i < kCrcOffset; ++i)
-        crc = crc16Update(crc, header[i]);
-    for (uint16_t i = 0; i < length; ++i)
-        crc = crc16Update(crc, storage.read(static_cast<uint16_t>(kSlotOffset + kPayloadOffset + i)));
-    const uint16_t expected = static_cast<uint16_t>(header[kCrcOffset] | (static_cast<uint16_t>(header[kCrcOffset + 1]) << 8));
-    if (crc != expected) {
-        info.status = kSlotCorrupt;
-        return info;
-    }
-
-    const uint16_t payload = static_cast<uint16_t>(kSlotOffset + kPayloadOffset);
-    info.status = payloadValid(storage, payload) ? kSlotValid : kSlotCorrupt;
-    return info;
-}
-
-template <typename Storage> inline Inventory inspect(Storage &storage) {
-    Inventory inventory;
-    inventory.status = inspectSlot(storage).status;
-    return inventory;
+// The first byte is written as the magic prefix, so an erased slot reads
+// 0xFF. There is no further validation: a written slot is loaded as-is.
+template <typename Storage> inline bool hasSave(Storage &storage) {
+    return storage.read(kSlotOffset) != 0xFF;
 }
 
 // ---------------------------------------------------------------------------
@@ -571,28 +412,21 @@ inline void applyScalar(const Scalar &scalar, State &state) {
     state.ballast = static_cast<uint8_t>(game::neutralForNormalized(state.cargo));
     state.air = game::airCapacity(state);
 
-    // Restore both freight settlements and generated service berths. The
-    // scalar validator has already accepted the berth only when its
-    // restoration milestone is present. Position and camera must both be
-    // derived from the berth table; leaving cameraXQ4/YQ4 at reset()'s origin
-    // renders the sealed map corner after Continue undocks.
+    // Position and camera are derived from the berth table. A corrupt berth
+    // byte leaves the boat at the reset position; load does not reject it.
     (void)positionAtBerth(state, scalarU8(scalar, kFieldBerth));
 }
 
+// Read a written slot as-is. The first byte is only used to distinguish an
+// erased slot from a written one; no header, CRC or payload checks run.
 template <typename Storage>
 inline LoadResult load(State &state
                        ,
                        chart::State &chart
                        ,
                        Storage &storage) {
-    const Inventory inventory = inspect(storage);
-    if (inventory.status != kSlotValid) {
-        if (inventory.status == kSlotIncompatible)
-            return kIncompatibleSave;
-        if (inventory.status == kSlotCorrupt)
-            return kCorruptSave;
+    if (!hasSave(storage))
         return kNoSave;
-    }
 
     Scalar scalar;
     readScalar(storage, static_cast<uint16_t>(kSlotOffset + kPayloadOffset), scalar);
@@ -609,25 +443,24 @@ inline LoadResult load(State &state
 // Transaction order:
 //   1. erase the single 4 KiB block (commit and payload become 0xFF);
 //   2. write page 0 (header, scalar, first chart bytes);
-//   3. write page 1 (remaining payload, filler, commit byte last);
-//   4. re-read and validate before reporting success.
+//   3. write page 1 (remaining payload, filler, commit byte last).
+// Success is reported after both page programs finish. There is no post-write
+// read-back, so a write that does not stick is not detected at save time.
 // This is not power-fail atomic: an interruption after erase can lose the
-// previous checkpoint. It never leaves a slot that validates with partial data;
-// boot/load reject any torn record and the title offers a clean New Voyage.
+// previous checkpoint or leave a torn record. Load does not detect a torn
+// record; it reads any slot whose first byte is not 0xFF.
 template <typename Storage>
 inline SaveResult save(const State &state
                        ,
                        const chart::State &chart
                        ,
                        Storage &storage) {
-    if (!stateValidForSave(state))
-        return kInvalidState;
-
     storage.eraseBlock(0);
 
     // The CRC covers header bytes 0..13 and exactly payload_length payload
-    // bytes. Both are generated directly from live state, so the transaction
-    // needs neither a payload nor a header temporary.
+    // bytes. It is written for the skip cache and header format, but load does
+    // not verify it. Both are generated directly from live state, so the
+    // transaction needs neither a payload nor a header temporary.
     const uint16_t crc = checkpointCrc(state
                                        ,
                                        chart);
@@ -637,11 +470,6 @@ inline SaveResult save(const State &state
               chart
     );
 
-    const SlotInfo written = inspectSlot(storage);
-    const uint16_t slotCrc =
-        static_cast<uint16_t>(storage.read(static_cast<uint16_t>(kSlotOffset + kCrcOffset)) | (static_cast<uint16_t>(storage.read(static_cast<uint16_t>(kSlotOffset + kCrcOffset + 1))) << 8));
-    if (written.status != kSlotValid || slotCrc != crc)
-        return kWriteFailed;
     return kSaved;
 }
 
@@ -653,8 +481,7 @@ template <typename Storage> inline SaveResult newVoyage(State &state, chart::Sta
     game::reset(state);
     state.hullClass = static_cast<uint8_t>(roster::kDefault);
     state.docked = static_cast<int8_t>(campaign::kTidewall);
-    if (!positionAtBerth(state, static_cast<uint8_t>(campaign::kTidewall)))
-        return kInvalidState;
+    (void)positionAtBerth(state, static_cast<uint8_t>(campaign::kTidewall));
 
     // A new voyage always starts with an empty chart plus the deterministic
     // spawn reveal, and that first checkpoint includes both. No legacy bytes are
@@ -696,7 +523,7 @@ struct FxStorage {
     void pageBegin(uint16_t page) {
         // programSavePage is the runtime source used by seekSave and
         // eraseSaveBlock; using the compile-time FX_SAVE_PAGE here would write a
-        // different page from the one the read-back checks.
+        // different page from the one seekSave reads.
         FX::writeEnable();
         FX::seekCommand(SFC_WRITE, static_cast<uint24_t>(FX::programSavePage + page) << 8);
     }

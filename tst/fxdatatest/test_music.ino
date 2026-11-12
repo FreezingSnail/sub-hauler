@@ -161,10 +161,6 @@ void setup() {
     noteGap(timedService());
     FX::display(CLEAR_BUFFER);
     noteGap(timedService());
-    voyage_view::drawSaveFailed(1);
-    noteGap(timedService());
-    FX::display(CLEAR_BUFFER);
-    noteGap(timedService());
 
     // The chart is a frozen world, not a frozen soundtrack. Compose real chart
     // bursts against the cart while the flight cue stays active; each redraw

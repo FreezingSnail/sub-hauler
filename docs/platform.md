@@ -304,22 +304,24 @@ keep their offsets.
 
 The partition is one 4 KiB erase block. The only 512 B slot is at offset 0:
 16 B header, 495 B payload area and commit byte at offset 511, programmed as two
-256 B pages with the commit last. Schema 8 payloads are 25 B scalar (281 B with
-the chart; 25 B without). `voyage_save::FxStorage` wraps `FX::seekSave`,
+256 B pages with the commit last. Save success is reported after both page
+programs; there is no post-write read-back. Schema 8 payloads are 25 B scalar
+(281 B with the chart; 25 B without). `voyage_save::FxStorage` wraps `FX::seekSave`,
 `FX::eraseSaveBlock`, `FX::programSavePage` + `FX::seekCommand(SFC_WRITE)` +
 `FX::writeByte` and `FX::waitWhileBusy`; all four use the same runtime save page
 selected by `FX::begin(FX_DATA_PAGE, FX_SAVE_PAGE)`.
 
 Saving erases the single block, so **a power interruption during erase/write
-may lose the previous checkpoint**. A torn slot never validates: boot/load
-distinguish blank, incompatible and corrupt data, never mutate live state on a
-rejected load, and the title offers a clean New Voyage (a valid record still
-needs replacement confirmation). This is intentionally not a power-fail atomic
-two-copy protocol. No voyage byte is written to internal EEPROM. The 4 KiB
-region adds 0 B of static SRAM and no data-image bytes; the adapter is a
-stateless stack object and the page stream is generated from live state.
-Schema 1/2 EEPROM records, schema 3 dual-slot carts, schema 4 and schema 7
-slots, and the retired chart block are intentionally not migrated.
+may lose the previous checkpoint or leave a torn record**. Load only checks
+whether the first byte is `0xFF`: erased means no save, any other value is read
+as the raw payload. There is no CRC, schema, commit or semantic validation, and
+no corrupt or incompatible title state. A written record still needs replacement
+confirmation. This is intentionally not a power-fail atomic two-copy protocol.
+No voyage byte is written to internal EEPROM. The 4 KiB region adds 0 B of
+static SRAM and no data-image bytes; the adapter is a stateless stack object and
+the page stream is generated from live state. Schema 1/2 EEPROM records, schema
+3 dual-slot carts, schema 4/5/6/7 slots and the retired chart block are not
+migrated; their version bytes are ignored on load.
 
 ### Optional standalone chart save
 

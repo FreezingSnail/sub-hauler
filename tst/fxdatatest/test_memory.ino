@@ -252,7 +252,7 @@ __attribute__((noinline)) void runRepresentativePath() {
     }
     state.ending = 1;
 
-    // Title, save-failure and recovery prompts: each is now a baked panel, but
+    // Title and recovery prompts: each is now a baked panel, but
     // the stack window still needs the real panel burst plus the surrounding
     // fixed-hull title code.
     voyage_flow::BootStatus boot;
@@ -262,10 +262,6 @@ __attribute__((noinline)) void runRepresentativePath() {
     voyage_view::drawTitle(boot, voyage_view::kTitleContinue, voyage_view::kTitleMenu);
     FX::display(CLEAR_BUFFER);
     voyage_view::drawTitle(boot, voyage_view::kTitleNewVoyage, voyage_view::kTitleConfirmReplace);
-    FX::display(CLEAR_BUFFER);
-    voyage_view::drawSaveFailed(0);
-    FX::display(CLEAR_BUFFER);
-    voyage_view::drawSaveFailed(1);
     FX::display(CLEAR_BUFFER);
     voyage_view::drawPauseRescue(0);
     FX::display(CLEAR_BUFFER);

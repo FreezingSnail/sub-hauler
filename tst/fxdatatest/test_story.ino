@@ -1,5 +1,5 @@
 // Production story playback: exact decoded pixels, cadence, fresh button
-// edges, frozen world, station/pilot returns, save-failure continuation, HOME.
+// edges, frozen world, station/pilot returns, cold reload, HOME.
 #include "boot_driver.hpp"
 #include "story_frame_crc.hpp"
 #include <util/crc16.h>
@@ -92,11 +92,6 @@ bool playback() {
 
     s_state.docked = static_cast<int8_t>(campaign::kTidewall);
     s_pendingStory = story_view::kCardLift;
-    beginSaveFailure(kSaveResumeStation);
-    s_uiRow.save = 1;
-    s_just = A_BUTTON;
-    updateSaveFailed();
-    ok = s_screen == Screen::Story && s_pendingStory == story_view::kCardLift && s_voyageDirty && ok;
 
     s_state.campaign = campaign::kMilestoneMask;
     s_state.ending = 0;
@@ -186,7 +181,7 @@ bool coldReload() {
     // Before the cold reload the fresh LIFT bit selects the four-card deck.
     bool ok = story_view::cardForNewMilestone(static_cast<uint8_t>(kLiftCheckpoint & ~campaign::kMilestoneLift), kLiftCheckpoint) ==
               story_view::kCardLift;
-    ok = saveVoyageNow() == voyage_save::kSaved && ok;
+    saveVoyageNow();
 
     // Cold boot: wipe the live run and chart, then use the real Continue path.
     resetRun();

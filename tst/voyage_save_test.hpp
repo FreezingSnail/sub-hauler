@@ -302,8 +302,7 @@ inline void VoyageSaveSuite(TestRunner &runner) {
         test.assertEqual(storage.pageBytes, 2 * voyage_save::kPageBytes, "two full pages");
         test.assertTrue(allBytesAre(storage, voyage_save::kSlotBytes, kSaveBytes - 1, 0xFF), "slot tail stays erased");
 
-        const voyage_save::Inventory inventory = voyage_save::inspect(storage);
-        test.assertEqual(inventory.status, voyage_save::kSlotValid, "slot is valid");
+        test.assertTrue(voyage_save::hasSave(storage), "slot is written");
 
         Fixture restored;
         restored.reset();
@@ -330,7 +329,7 @@ inline void VoyageSaveSuite(TestRunner &runner) {
             // checkpoint written by the retired selector would contain.
             storage.bytes[payload + voyage_save::kFieldHullClass] = legacy;
             refreshCrc(storage);
-            test.assertEqual(voyage_save::inspect(storage).status, voyage_save::kSlotValid, "legacy hull id still validates");
+            test.assertEqual(voyage_save::hasSave(storage), true, "legacy hull id still written");
 
             Fixture restored;
             restored.reset();
@@ -355,7 +354,7 @@ inline void VoyageSaveSuite(TestRunner &runner) {
     }
 
     {
-        Test test("unknown hull ids above the frozen range remain corrupt");
+        Test test("unknown hull byte loads as HAULER");
         const uint16_t payload = static_cast<uint16_t>(voyage_save::kSlotOffset + voyage_save::kPayloadOffset);
         FakeStorage storage(0xFF);
         Fixture source;
@@ -363,15 +362,11 @@ inline void VoyageSaveSuite(TestRunner &runner) {
         test.assertEqual(source.save(storage), voyage_save::kSaved, "baseline save");
 
         storage.bytes[payload + voyage_save::kFieldHullClass] = 3;
-        refreshCrc(storage);
-        test.assertEqual(voyage_save::inspect(storage).status, voyage_save::kSlotCorrupt, "unknown hull id is corrupt");
-
         Fixture probe;
         probe.reset();
-        probe.state.delivered = 4242;
-        const State before = probe.state;
-        test.assertEqual(probe.load(storage), voyage_save::kCorruptSave, "unknown hull id never loads");
-        test.assertTrue(checkpointMatches(probe.state, before), "rejected load leaves live state untouched");
+        test.assertEqual(probe.load(storage), voyage_save::kLoaded, "unknown hull byte loads");
+        test.assertEqual(probe.state.hullClass, roster::kHauler, "unknown hull normalizes to HAULER");
+        test.assertEqual(probe.state.delivered, source.state.delivered, "other fields survive");
         runner.add(test);
     }
 
@@ -468,7 +463,7 @@ inline void VoyageSaveSuite(TestRunner &runner) {
         setValidPayload(fixture);
         fixture.state.pendingStory = story_view::kHandoffJointMissing;
         test.assertEqual(fixture.save(storage), voyage_save::kSaved, "pending handoff checkpoint saves");
-        test.assertEqual(voyage_save::inspect(storage).status, voyage_save::kSlotValid, "pending handoff checkpoint is valid");
+        test.assertEqual(voyage_save::hasSave(storage), true, "pending handoff checkpoint is written");
 
         Fixture restored;
         restored.reset();
@@ -486,31 +481,6 @@ inline void VoyageSaveSuite(TestRunner &runner) {
     }
 
     {
-        Test test("out-of-range pending story is rejected on save and load");
-        Fixture bad;
-        setValidPayload(bad);
-        bad.state.pendingStory = static_cast<uint8_t>(story_view::kSceneMax + 1);
-        FakeStorage rejected(0xFF);
-        rejected.resetCounters();
-        test.assertEqual(bad.save(rejected), voyage_save::kInvalidState, "invalid pending deck is not saved");
-        test.assertEqual(rejected.pageBytes, 0, "invalid pending deck writes nothing");
-
-        FakeStorage storage(0xFF);
-        Fixture source;
-        setValidPayload(source);
-        test.assertEqual(source.save(storage), voyage_save::kSaved, "valid baseline saves");
-        storage.bytes[voyage_save::kSlotOffset + voyage_save::kPayloadOffset + voyage_save::kFieldPendingStory] = 0xFF;
-        refreshCrc(storage);
-        test.assertEqual(voyage_save::inspect(storage).status, voyage_save::kSlotCorrupt, "invalid pending deck is semantically corrupt");
-        Fixture probe;
-        probe.reset();
-        probe.state.delivered = 4242;
-        test.assertEqual(probe.load(storage), voyage_save::kCorruptSave, "invalid pending deck is not loaded");
-        test.assertEqual(probe.state.delivered, 4242, "rejected pending deck leaves live state untouched");
-        runner.add(test);
-    }
-
-    {
         Test test("repeated saves overwrite the single slot and load the latest payload");
         FakeStorage storage(0xFF);
         Fixture first;
@@ -520,7 +490,7 @@ inline void VoyageSaveSuite(TestRunner &runner) {
         first.state.delivered = 0xCAFEu;
         test.assertEqual(first.save(storage), voyage_save::kSaved, "second save");
         test.assertEqual(storage.eraseOps, 2, "each save erases the block");
-        test.assertEqual(voyage_save::inspect(storage).status, voyage_save::kSlotValid, "single slot valid");
+        test.assertEqual(voyage_save::hasSave(storage), true, "single slot written");
 
         Fixture restored;
         restored.reset();
@@ -539,7 +509,7 @@ inline void VoyageSaveSuite(TestRunner &runner) {
         test.assertTrue(campaign::recordSurvey(fixture.state, campaign::kLiftSurveyId), "lift survey records before FIRST");
         test.assertEqual(fixture.state.campaign, 0, "no milestone yet");
         test.assertEqual(fixture.save(storage), voyage_save::kSaved, "early-survey checkpoint saves");
-        test.assertEqual(voyage_save::inspect(storage).status, voyage_save::kSlotValid, "early-survey checkpoint is valid");
+        test.assertEqual(voyage_save::hasSave(storage), true, "early-survey checkpoint is written");
 
         Fixture restored;
         restored.reset();
@@ -550,199 +520,24 @@ inline void VoyageSaveSuite(TestRunner &runner) {
     }
 
     {
-        Test test("blank, torn, corrupt and incompatible slots are distinguished");
+        Test test("blank slot is missing and written slot loads");
         FakeStorage blank(0xFF);
         Fixture probe;
         probe.reset();
         probe.state.delivered = 7;
         test.assertEqual(probe.load(blank), voyage_save::kNoSave, "blank storage is missing");
         test.assertEqual(probe.state.delivered, 7, "missing save leaves state untouched");
-        test.assertEqual(voyage_save::inspect(blank).status, voyage_save::kSlotBlank, "blank slot");
+        test.assertEqual(voyage_save::hasSave(blank), false, "blank slot");
 
-        FakeStorage base(0xFF);
+        FakeStorage storage(0xFF);
         Fixture saved;
         setValidPayload(saved);
-        test.assertEqual(saved.save(base), voyage_save::kSaved, "baseline save");
-
-        {
-            FakeStorage storage = base;
-            storage.bytes[voyage_save::kSlotOffset] ^= 0xFF;
-            test.assertEqual(voyage_save::inspect(storage).status, voyage_save::kSlotCorrupt, "torn magic with committed byte is corrupt");
-            test.assertEqual(probe.load(storage), voyage_save::kCorruptSave, "torn magic load result");
-        }
-        {
-            FakeStorage storage = base;
-            storage.bytes[voyage_save::kSlotOffset + voyage_save::kCommitOffset] = 0;
-            test.assertEqual(voyage_save::inspect(storage).status, voyage_save::kSlotCorrupt, "valid magic with in-progress commit is corrupt");
-            test.assertEqual(probe.load(storage), voyage_save::kCorruptSave, "torn commit load result");
-        }
-        {
-            FakeStorage storage = base;
-            storage.bytes[voyage_save::kSlotOffset + voyage_save::kPayloadOffset + 3] ^= 0x01;
-            test.assertEqual(voyage_save::inspect(storage).status, voyage_save::kSlotCorrupt, "payload CRC mismatch is corrupt");
-        }
-        {
-            FakeStorage storage = base;
-            writeU16(storage, voyage_save::kSlotOffset + voyage_save::kLengthOffset, voyage_save::kPayloadBytes + 1);
-            test.assertEqual(voyage_save::inspect(storage).status, voyage_save::kSlotCorrupt, "wrong payload length is corrupt");
-        }
-        {
-            FakeStorage storage = base;
-            storage.bytes[voyage_save::kSlotOffset + voyage_save::kSignatureOffset] ^= 0x80;
-            test.assertEqual(voyage_save::inspect(storage).status, voyage_save::kSlotIncompatible, "signature mismatch is incompatible");
-            test.assertEqual(probe.load(storage), voyage_save::kIncompatibleSave, "incompatible load result");
-        }
-        {
-            FakeStorage storage = base;
-            storage.bytes[voyage_save::kSlotOffset + voyage_save::kSchemaOffset] = 3;
-            test.assertEqual(voyage_save::inspect(storage).status, voyage_save::kSlotIncompatible, "old schema 3 is incompatible");
-        }
-        {
-            FakeStorage storage = base;
-            storage.bytes[voyage_save::kSlotOffset + voyage_save::kSchemaOffset] = 1;
-            test.assertEqual(voyage_save::inspect(storage).status, voyage_save::kSlotIncompatible, "old schema 1 voyage is incompatible");
-            test.assertEqual(probe.load(storage), voyage_save::kIncompatibleSave, "old save is not silently loaded");
-        }
-        {
-            FakeStorage storage = base;
-            storage.bytes[voyage_save::kSlotOffset + voyage_save::kSchemaOffset] = 6;
-            test.assertEqual(voyage_save::inspect(storage).status, voyage_save::kSlotIncompatible, "schema 6 is incompatible");
-            test.assertEqual(probe.load(storage), voyage_save::kIncompatibleSave, "schema 6 is never migrated or partially applied");
-        }
-        {
-            FakeStorage storage = base;
-            storage.bytes[voyage_save::kSlotOffset + voyage_save::kSchemaOffset] = 7;
-            test.assertEqual(voyage_save::inspect(storage).status, voyage_save::kSlotIncompatible, "schema 7 is incompatible with schema 8");
-            test.assertEqual(probe.load(storage), voyage_save::kIncompatibleSave, "schema 7 is never migrated or partially applied");
-        }
-        {
-            FakeStorage storage = base;
-            storage.bytes[voyage_save::kSlotOffset + voyage_save::kLayoutOffset] ^= 0x01;
-            test.assertEqual(voyage_save::inspect(storage).status, voyage_save::kSlotIncompatible, "layout mismatch is incompatible");
-        }
-        {
-            FakeStorage storage = base;
-            storage.bytes[voyage_save::kSlotOffset + voyage_save::kContentOffset] = 3;
-            test.assertEqual(voyage_save::inspect(storage).status, voyage_save::kSlotIncompatible, "content mismatch is incompatible");
-        }
-        {
-            FakeStorage storage = base;
-            storage.bytes[voyage_save::kSlotOffset + voyage_save::kPayloadOffset] = 9;
-            refreshCrc(storage);
-            test.assertEqual(voyage_save::inspect(storage).status, voyage_save::kSlotCorrupt, "out-of-range berth is semantically corrupt");
-        }
-        runner.add(test);
-    }
-
-    {
-        Test test("interrupted erase or page write loses the checkpoint and never loads invalid data");
-        FakeStorage baseline(0xFF);
-        Fixture oldState;
-        setValidPayload(oldState);
-        oldState.state.delivered = 444;
-        test.assertEqual(oldState.save(baseline), voyage_save::kSaved, "baseline save");
-
-        Fixture nextState;
-        setValidPayload(nextState);
-        nextState.state.delivered = 555;
-        const uint16_t boundaries = writeBoundaries(nextState, baseline);
-        test.assertEqual(boundaries, 2 * voyage_save::kPageBytes, "checkpoint writes two full flash pages");
-
-        bool allFailedCleanly = true;
-        bool neverLoadedInvalid = true;
-        for (uint16_t fail = 0; fail < boundaries; ++fail) {
-            FakeStorage storage = baseline;
-            storage.resetCounters();
-            storage.failedAt = fail;
-            if (nextState.save(storage) != voyage_save::kWriteFailed)
-                allFailedCleanly = false;
-
-            Fixture restored;
-            restored.reset();
-            const State before = restored.state;
-            if (restored.load(storage) == voyage_save::kLoaded || !checkpointMatches(restored.state, before))
-                neverLoadedInvalid = false;
-        }
-        test.assertTrue(allFailedCleanly, "every interrupted page save reports failure, never optimistic success");
-        test.assertTrue(neverLoadedInvalid, "an interrupted save never loads partial state");
-
-        bool eraseFailuresSafe = true;
-        for (uint16_t erased = 0; erased <= voyage_save::kBlockBytes; erased += 513) {
-            FakeStorage storage = baseline;
-            storage.resetCounters();
-            storage.failErase = true;
-            storage.eraseBytes = erased;
-            if (nextState.save(storage) != voyage_save::kWriteFailed)
-                eraseFailuresSafe = false;
-            Fixture restored;
-            restored.reset();
-            const State before = restored.state;
-            const voyage_save::LoadResult loaded = restored.load(storage);
-            const bool oldCheckpoint = loaded == voyage_save::kLoaded && checkpointMatches(restored.state, oldState.state);
-            const bool nothingLoaded = loaded != voyage_save::kLoaded && checkpointMatches(restored.state, before);
-            if (!oldCheckpoint && !nothingLoaded)
-                eraseFailuresSafe = false;
-        }
-        test.assertTrue(eraseFailuresSafe, "an interrupted erase loads either the intact old record or nothing");
-
-        FakeStorage complete = baseline;
-        complete.resetCounters();
-        test.assertEqual(nextState.save(complete), voyage_save::kSaved, "uninterrupted save succeeds");
-        Fixture restored;
-        restored.reset();
-        test.assertEqual(restored.load(complete), voyage_save::kLoaded, "uninterrupted save loads");
-        test.assertTrue(checkpointMatches(restored.state, nextState.state), "uninterrupted payload");
-        runner.add(test);
-    }
-
-    {
-        Test test("interrupted delivery is rejected rather than mixing pre and post state");
-        FakeStorage baseline(0xFF);
-        Fixture pre;
-        test.assertTrue(makeFirstJob(pre), "FIRST accepted at Tidewall");
-        test.assertEqual(pre.state.delivered, 0, "pre-delivery has no count");
-        test.assertEqual(pre.state.cargo, game::kJobCrates, "pre-delivery cargo is loaded");
-        test.assertEqual(pre.save(baseline), voyage_save::kSaved, "pre-delivery checkpoint saved");
-
-        Fixture post = pre;
-        test.assertTrue(travelTo(post.state, campaign::kBenthos), "dock at Benthos");
-        test.assertEqual(post.state.delivered, 1, "delivery counts once");
-        test.assertEqual(post.state.cargo, 0, "delivery clears cargo");
-        test.assertTrue(campaign::missionCompleted(post.state, campaign::kFirst), "delivery sets FIRST");
-        test.assertTrue(!game::hasActiveJob(post.state), "delivery clears the active job");
-
-        const uint16_t boundaries = writeBoundaries(post, baseline);
-        test.assertEqual(boundaries, 2 * voyage_save::kPageBytes, "post-delivery writes two flash pages");
-
-        bool exact = true;
-        for (uint16_t fail = 0; fail < boundaries; ++fail) {
-            FakeStorage storage = baseline;
-            storage.resetCounters();
-            storage.failedAt = fail;
-            test.assertEqual(post.save(storage), voyage_save::kWriteFailed, "interrupted delivery reports failure");
-            Fixture restored;
-            restored.reset();
-            const State before = restored.state;
-            if (restored.load(storage) == voyage_save::kLoaded || !checkpointMatches(restored.state, before))
-                exact = false;
-        }
-        test.assertTrue(exact, "no interrupted delivery can load a mixed checkpoint");
-
-        FakeStorage complete = baseline;
-        complete.resetCounters();
-        test.assertEqual(post.save(complete), voyage_save::kSaved, "delivery checkpoint completes");
-        Fixture restored;
-        restored.reset();
-        test.assertEqual(restored.load(complete), voyage_save::kLoaded, "delivery checkpoint loads");
-        test.assertEqual(restored.state.delivered, 1, "delivery count is present once");
-        test.assertEqual(restored.state.cargo, 0, "cargo is clear");
-        test.assertTrue(campaign::missionCompleted(restored.state, campaign::kFirst), "completion is present once");
-
-        test.assertEqual(post.save(complete), voyage_save::kSaved, "repeat save does not re-run delivery");
-        Fixture again;
-        again.reset();
-        test.assertEqual(again.load(complete), voyage_save::kLoaded, "repeat save loads");
-        test.assertEqual(again.state.delivered, 1, "repeat load does not count twice");
+        test.assertEqual(saved.save(storage), voyage_save::kSaved, "baseline save");
+        test.assertEqual(voyage_save::hasSave(storage), true, "written slot");
+        Fixture loaded;
+        loaded.reset();
+        test.assertEqual(loaded.load(storage), voyage_save::kLoaded, "written slot loads");
+        test.assertTrue(checkpointMatches(loaded.state, saved.state), "written payload loads");
         runner.add(test);
     }
 
@@ -753,7 +548,7 @@ inline void VoyageSaveSuite(TestRunner &runner) {
 
         Fixture fresh;
         test.assertEqual(fresh.newVoyage(storage), voyage_save::kSaved, "new voyage saves");
-        test.assertEqual(voyage_save::inspect(storage).status, voyage_save::kSlotValid, "new voyage is valid");
+        test.assertEqual(voyage_save::hasSave(storage), true, "new voyage is written");
         test.assertTrue(spawnExplored(fresh.state, fresh.chart), "new voyage persists the spawn reveal");
         test.assertEqual(fresh.state.campaign, 0, "new voyage grants no campaign progress");
         test.assertEqual(fresh.state.delivered, 0, "new voyage starts with no deliveries");
@@ -768,84 +563,6 @@ inline void VoyageSaveSuite(TestRunner &runner) {
         Fixture replacement;
         test.assertEqual(replacement.newVoyage(existing), voyage_save::kSaved, "replacement new voyage saves");
         test.assertTrue(spawnExplored(replacement.state, replacement.chart), "replacement persists the spawn reveal");
-        runner.add(test);
-    }
-
-    {
-        Test test("new voyage replacement is rejected when interrupted");
-        FakeStorage baseline(0xFF);
-        Fixture oldVoyage;
-        setValidPayload(oldVoyage);
-        oldVoyage.state.delivered = 808;
-        test.assertEqual(oldVoyage.save(baseline), voyage_save::kSaved, "existing voyage");
-
-        Fixture fresh;
-        fresh.state.delivered = 1010;
-        Fixture boundaryProbe = fresh;
-        FakeStorage boundaryStorage = baseline;
-        boundaryStorage.resetCounters();
-        boundaryStorage.failedAt = kNoFault;
-        boundaryProbe.newVoyage(boundaryStorage);
-        const uint16_t boundaries = boundaryStorage.pageBytes;
-        bool neverLoadsPartial = true;
-        for (uint16_t fail = 0; fail < boundaries; ++fail) {
-            FakeStorage storage = baseline;
-            storage.resetCounters();
-            storage.failedAt = fail;
-            test.assertEqual(fresh.newVoyage(storage), voyage_save::kWriteFailed, "interrupted new voyage reports failure");
-            Fixture restored;
-            restored.reset();
-            const State before = restored.state;
-            if (restored.load(storage) == voyage_save::kLoaded || !checkpointMatches(restored.state, before))
-                neverLoadsPartial = false;
-        }
-        test.assertTrue(neverLoadsPartial, "an interrupted replacement never loads partial state");
-
-        FakeStorage eraseProbe = baseline;
-        eraseProbe.resetCounters();
-        eraseProbe.failErase = true;
-        eraseProbe.eraseBytes = voyage_save::kBlockBytes / 2;
-        test.assertEqual(fresh.newVoyage(eraseProbe), voyage_save::kWriteFailed, "interrupted replacement erase reports failure");
-        Fixture eraseRestored;
-        eraseRestored.reset();
-        const State eraseBefore = eraseRestored.state;
-        test.assertTrue(eraseRestored.load(eraseProbe) != voyage_save::kLoaded, "interrupted replacement erase does not load");
-        test.assertTrue(checkpointMatches(eraseRestored.state, eraseBefore), "interrupted replacement leaves live state untouched");
-
-        FakeStorage complete = baseline;
-        complete.resetCounters();
-        test.assertEqual(fresh.newVoyage(complete), voyage_save::kSaved, "replacement completes");
-        Fixture restored;
-        restored.reset();
-        test.assertEqual(restored.load(complete), voyage_save::kLoaded, "replacement loads");
-        test.assertTrue(checkpointMatches(restored.state, fresh.state), "replacement payload");
-        runner.add(test);
-    }
-
-    {
-        Test test("service berth checkpoints require their restoration milestone");
-        Fixture fixture;
-        fixture.state.docked = static_cast<int8_t>(campaign::kPumpRefuge);
-        fixture.state.campaign = 0;
-        FakeStorage storage(0xFF);
-        storage.resetCounters();
-        test.assertEqual(fixture.save(storage), voyage_save::kInvalidState, "Pump Refuge without PUMP is invalid");
-        test.assertEqual(storage.pageBytes, 0, "invalid service checkpoint writes nothing");
-
-        fixture.state.campaign = campaign::kMilestonePump;
-        test.assertEqual(fixture.save(storage), voyage_save::kSaved, "Pump Refuge after PUMP saves");
-        Fixture loaded;
-        loaded.reset();
-        test.assertEqual(loaded.load(storage), voyage_save::kLoaded, "Pump Refuge checkpoint loads");
-        test.assertEqual(loaded.state.docked, campaign::kPumpRefuge, "Pump Refuge berth restored");
-
-        fixture.state.docked = static_cast<int8_t>(campaign::kLowerGantry);
-        fixture.state.campaign = campaign::kMilestonePump;
-        test.assertEqual(fixture.save(storage), voyage_save::kInvalidState, "Lower Gantry without LIFT is invalid");
-        fixture.state.campaign = static_cast<uint8_t>(campaign::kMilestonePump | campaign::kMilestoneLift);
-        test.assertEqual(fixture.save(storage), voyage_save::kSaved, "Lower Gantry after LIFT saves");
-        test.assertEqual(loaded.load(storage), voyage_save::kLoaded, "Lower Gantry checkpoint loads");
-        test.assertEqual(loaded.state.docked, campaign::kLowerGantry, "Lower Gantry berth restored");
         runner.add(test);
     }
 
@@ -902,68 +619,6 @@ inline void VoyageSaveSuite(TestRunner &runner) {
     }
 
     {
-        Test test("invalid state combinations are rejected before any storage write");
-        Fixture base;
-        setValidPayload(base);
-        FakeStorage storage(0xFF);
-
-        const auto expectInvalid = [&](const Fixture &fixture, const char *message) {
-            FakeStorage probe = storage;
-            probe.resetCounters();
-            Test local(message);
-            local.assertEqual(fixture.save(probe), voyage_save::kInvalidState, message);
-            local.assertEqual(probe.pageBytes, 0, "invalid save writes nothing");
-            local.assertEqual(probe.eraseOps, 0, "invalid save erases nothing");
-            runner.add(local);
-        };
-
-        Fixture bad = base;
-        bad.state.tools = 0x80;
-        expectInvalid(bad, "out-of-mask tools");
-
-        bad = base;
-        bad.state.openGates = 0x200;
-        expectInvalid(bad, "out-of-mask open gates");
-
-        bad = base;
-        bad.state.seenGates = 0x200;
-        expectInvalid(bad, "out-of-mask seen gates");
-
-        bad = base;
-        bad.state.ending = 1;
-        expectInvalid(bad, "ending without HOME");
-
-        bad = base;
-        bad.state.campaign = campaign::kMilestoneHome;
-        expectInvalid(bad, "HOME without BEACON");
-
-        bad = base;
-        bad.state.docked = -1;
-        expectInvalid(bad, "midwater checkpoint");
-
-        bad = base;
-        bad.state.docked = static_cast<int8_t>(campaign::kBerthCount);
-        expectInvalid(bad, "out-of-range berth");
-
-        bad = base;
-        bad.state.activeJob.kind = 1;   // retired ordinary kind
-        bad.state.activeJob.mission = game::kMissionNone;
-        bad.state.activeJob.from = campaign::kTidewall;
-        bad.state.activeJob.to = campaign::kBenthos;
-        bad.state.activeJob.crates = game::kJobCrates;
-        expectInvalid(bad, "retired ordinary job kind is invalid");
-
-        bad = base;
-        bad.state.activeJob.crates = 200;
-        expectInvalid(bad, "active job crates above kCargoMax");
-
-        bad = base;
-        bad.state.activeJob.kind = 3;   // retired express kind
-        expectInvalid(bad, "retired timed job kind is invalid");
-        runner.add(test);
-    }
-
-    {
         Test test("profile signature and absent chart/shop/roster behavior");
         uint8_t expected = 0;
         expected |= voyage_save::kSignatureFogChart;
@@ -973,18 +628,11 @@ inline void VoyageSaveSuite(TestRunner &runner) {
         test.assertEqual(voyage_save::kProfileSignature, 0x61, "shop bit is retired");
         test.assertEqual(voyage_save::kPayloadBytes, 281, "chart profile payload is 281 B");
         test.assertEqual(voyage_save::kChartBytes, world::CHART_BYTES, "chart bytes are part of the payload");
-
-        FakeStorage storage(0xFF);
-        Fixture fixture;
-        setValidPayload(fixture);
-        test.assertEqual(fixture.save(storage), voyage_save::kSaved, "signature baseline save");
-        storage.bytes[voyage_save::kSlotOffset + voyage_save::kSignatureOffset] ^= 0x01;
-        test.assertEqual(voyage_save::inspect(storage).status, voyage_save::kSlotIncompatible, "changed profile signature is incompatible");
         runner.add(test);
     }
 
     {
-        Test test("load validates before mutating live state or chart");
+        Test test("blank load leaves live state and written load applies payload");
         FakeStorage blank(0xFF);
         Fixture probe;
         probe.reset();
@@ -1001,17 +649,13 @@ inline void VoyageSaveSuite(TestRunner &runner) {
         Fixture source;
         setValidPayload(source);
         test.assertEqual(source.save(storage), voyage_save::kSaved, "valid baseline");
-        storage.bytes[voyage_save::kSlotOffset + voyage_save::kPayloadOffset + voyage_save::kFieldHullClass] = 3;
-        refreshCrc(storage);
         probe.reset();
         probe.state.delivered = 4242;
         probe.state.campaign = campaign::kMilestoneFirst;
         fillPattern(probe.chart.explored, world::CHART_BYTES, 71);
-        chartBefore = probe.chart;
-        const State corruptBefore = probe.state;
-        test.assertEqual(probe.load(storage), voyage_save::kCorruptSave, "corrupt load");
-        test.assertTrue(checkpointMatches(probe.state, corruptBefore), "corrupt load leaves state");
-        test.assertTrue(sameChart(probe.chart, chartBefore), "corrupt load leaves chart");
+        test.assertEqual(probe.load(storage), voyage_save::kLoaded, "written load");
+        test.assertTrue(checkpointMatches(probe.state, source.state), "written load applies state");
+        test.assertTrue(sameChart(probe.chart, source.chart), "written load applies chart");
         runner.add(test);
     }
 

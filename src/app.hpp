@@ -54,8 +54,8 @@ static bool s_debugNoClip = false;
 #endif
 
 // The screen tag exists whenever more than one screen can be reached. The
-// fixed build may show the title, pilot, station, work, story, ending, chart
-// and failure screens; there is no multi-hull variant.
+// fixed build may show the title, pilot, station, work, story, ending and chart
+// screens; there is no multi-hull variant.
 enum class Screen : uint8_t {
     Title,
     Pilot,
@@ -65,7 +65,6 @@ enum class Screen : uint8_t {
     Story,
     Ending,
     Chart,
-    SaveFailed,
 };
 
 static Screen s_screen = Screen::Title;
@@ -75,12 +74,11 @@ static Screen s_screen = Screen::Title;
 // is no extra selection state.
 static uint8_t s_stationRow = station::kFirstRow;
 
-// Mutually exclusive screen transients share one row byte: only one of WORK,
-// pause and save-failure can be active at a time.
+// Mutually exclusive screen transients share one row byte: only one of WORK or
+// pause can be active at a time.
 union UiRow {
     uint8_t work;
     uint8_t pause;
-    uint8_t save;
 };
 static UiRow s_uiRow;
 union UiAux {
@@ -91,7 +89,7 @@ static UiAux s_uiAux = {0};
 // New restoration beat awaiting its deck. bss zero is kCardNone; the byte is
 // set only by a dock/survey transition and cleared when the deck finishes.
 // The New Voyage opening deck is also staged here, but never written to the
-// checkpoint: Continue restores the committed berth and resumes without it.
+// checkpoint: Continue restores the written berth and resumes without it.
 static uint8_t s_pendingStory;
 
 // Story deck progress. The card/phase/ticks are transient; a reload never
@@ -102,23 +100,15 @@ static uint8_t s_storyTicks;
 static uint8_t s_storyPhase;
 static uint8_t s_storyReturnPilot;
 
-// Save integration state. Writes are synchronous transitions; while the save
-// failure frame is showing the world is frozen and departure input is ignored.
-enum SaveResume : uint8_t {
-    kSaveResumeStation,
-    kSaveResumePilot,
-};
-
 static voyage_flow::BootStatus s_bootStatus;
 static voyage_view::TitleMode s_titleMode = voyage_view::kTitleMenu;
 static uint8_t s_titleRow = voyage_view::kTitleNewVoyage;
 static bool s_voyageDirty = false;
-// Last committed checkpoint CRC (RAM only). requestSave() skips the cart
+// Last written or loaded checkpoint CRC (RAM only). requestSave() skips the cart
 // transaction when the live state would rewrite a byte-identical checkpoint;
 // normal travel changes voyage ticks or the chart, so this only removes truly
 // redundant writes (for example re-docking or a no-op station action).
 static voyage_flow::CheckpointCache s_checkpoint;
-static SaveResume s_saveResume = kSaveResumeStation;
 static bool s_pauseConfirm = false;
 static bool s_airEmptyShown = false;
 static uint8_t s_savedNoticeTicks = 0;
@@ -245,45 +235,27 @@ static void resetRun() {
 }
 
 
-// One checkpoint transaction. Storage touches only the cart save partition;
-// the caller owns the UI decision after the result. The write is synchronous,
-// and music is paused first, so no world step, chart read, audio refill or
-// departure input can run during an erase/page program. The cached variant
-// returns success without erasing or programming when the live checkpoint has
-// the exact CRC of the last committed one.
-static voyage_save::SaveResult saveVoyageNow() {
+// One checkpoint transaction. Storage touches only the cart save partition.
+// The write is synchronous, and music is paused first, so no world step, chart
+// read, audio refill or departure input can run during an erase/page program.
+// The cached variant skips the cart when the live checkpoint has the exact CRC
+// of the last written one.
+static void saveVoyageNow() {
     voyage_save::FxStorage storage;
     const music_logic::PauseToken musicToken = music::pauseForTransaction();
-    const voyage_save::SaveResult result = voyage_flow::saveCheckpointIfChanged(s_state
-                                                                               ,
-                                                                               s_chart
-                                                                               ,
-                                                                               storage
-                                                                               ,
-                                                                               s_checkpoint);
+    voyage_flow::saveCheckpointIfChanged(s_state
+                                         ,
+                                         s_chart
+                                         ,
+                                         storage
+                                         ,
+                                         s_checkpoint);
     music::resumeAfterTransaction(musicToken);
-    return result;
 }
 
-static void beginSaveFailure(SaveResume resume) {
-    music::pause();
-    s_saveResume = resume;
-    s_uiRow.save = 0;
-    s_voyageDirty = true;
-    s_screen = Screen::SaveFailed;
-    voyage_view::drawSaveFailed(0);
-}
-
-// Report SAVED only after read-back validation. A failed write keeps the live
-// state and the previous checkpoint intact, then freezes on RETRY/CONTINUE
-// UNSAVED. No caller may show a success notice before this returns true.
-static bool requestSave(SaveResume resume) {
-    if (saveVoyageNow() == voyage_save::kSaved) {
-        s_voyageDirty = false;
-        return true;
-    }
-    beginSaveFailure(resume);
-    return false;
+static void requestSave() {
+    saveVoyageNow();
+    s_voyageDirty = false;
 }
 
 // HOME is paid and committed by the normal dock checkpoint before any card is
@@ -311,7 +283,7 @@ static void drawStory() {
     story_view::draw(s_pendingStory, s_storyCard, phase);
 }
 
-// A scene is shown after the successful dock checkpoint, after a cargo
+// A scene is shown after the dock checkpoint, after a cargo
 // acceptance checkpoint, or immediately after an in-world survey dwell. A or B
 // advances one card. Delivery/acceptance scenes are already in the checkpoint;
 // survey scenes are transient field finds.
@@ -400,8 +372,7 @@ static void beginEnding() {
 static void finishEnding() {
     if (s_state.ending == 0) {
         campaign::markEndingPresented(s_state);
-        if (!requestSave(kSaveResumeStation))
-            return;
+        requestSave();
     }
     showStation();
 }
@@ -418,27 +389,6 @@ static void updateEnding() {
     }
     s_uiAux.endingCard = next;
     drawEnding();
-}
-
-static void finishSaveResume() {
-    switch (s_saveResume) {
-    case kSaveResumePilot:
-        if (s_state.docked >= 0)
-            station::undock(s_state);
-        showPilot();
-        return;
-    default:
-        if (endingPending()) {
-            beginEnding();
-            return;
-        }
-        if (s_pendingStory != story_view::kCardNone) {
-            beginStory();
-            return;
-        }
-        showStation();
-        return;
-    }
 }
 
 static void drawTitleScreen() {
@@ -458,28 +408,24 @@ static void refreshBootStatus() {
 static void startNewVoyage() {
     voyage_save::FxStorage storage;
     const music_logic::PauseToken musicToken = music::pauseForTransaction();
-    const voyage_save::SaveResult result = voyage_flow::startNewVoyage(s_state
-                                                                       ,
-                                                                       s_chart
-                                                                       ,
-                                                                       storage
-                                                                       ,
-                                                                       s_checkpoint);
+    voyage_flow::startNewVoyage(s_state
+                                ,
+                                s_chart
+                                ,
+                                storage
+                                ,
+                                s_checkpoint);
     music::resumeAfterTransaction(musicToken);
     s_airEmptyShown = false;
-    if (result == voyage_save::kSaved) {
-        // newVoyage() persisted the spawn reveal in the first checkpoint and
-        // left the live boat in free flight beside the home dock. The opening
-        // deck is RAM-only and plays before the first pilot frame; a cold
-        // reload from here resumes the saved berth without replaying it.
-        s_voyageDirty = false;
-        s_savedNoticeTicks = 0;
-        s_pendingStory = story_view::kSceneOpening;
-        s_storyReturnPilot = 1;
-        beginStory();
-    } else {
-        beginSaveFailure(kSaveResumeStation);
-    }
+    // newVoyage() persisted the spawn reveal in the first checkpoint and left
+    // the live boat in free flight beside the home dock. The opening deck is
+    // RAM-only and plays before the first pilot frame; a cold reload from here
+    // resumes the saved berth without replaying it.
+    s_voyageDirty = false;
+    s_savedNoticeTicks = 0;
+    s_pendingStory = story_view::kSceneOpening;
+    s_storyReturnPilot = 1;
+    beginStory();
 }
 
 static void continueVoyage() {
@@ -519,47 +465,39 @@ static void continueVoyage() {
 }
 
 // Free rescue recovery. The complete checkpoint is restored first, then the
-// rescue count is committed before the station board resumes. A failed commit
-// keeps the restored state live and asks honestly.
+// rescue count is committed before the station board resumes.
 static void performRecovery() {
     voyage_save::FxStorage storage;
     const music_logic::PauseToken musicToken = music::pauseForTransaction();
-    const voyage_flow::Recovery result = voyage_flow::recoverCheckpoint(s_state
-                                                                        ,
-                                                                        s_chart
-                                                                        ,
-                                                                        storage
-                                                                        ,
-                                                                        s_checkpoint);
+    const voyage_save::LoadResult result = voyage_flow::recoverCheckpoint(s_state
+                                                                          ,
+                                                                          s_chart
+                                                                          ,
+                                                                          storage
+                                                                          ,
+                                                                          s_checkpoint);
     music::resumeAfterTransaction(musicToken);
     s_airEmptyShown = false;
-    if (result.load != voyage_save::kLoaded) {
+    if (result != voyage_save::kLoaded) {
         refreshBootStatus();
         drawTitleScreen();
         return;
     }
-    if (result.save == voyage_save::kSaved) {
-        s_voyageDirty = false;
-        if (endingPending()) {
-            beginEnding();
-            return;
-        }
-        if (s_state.pendingStory != story_view::kSceneNone) {
-            s_pendingStory = s_state.pendingStory;
-            s_storyReturnPilot = 0;
-            beginStory();
-            return;
-        }
-        showStation();
-    } else {
-        // The ending stays pending in the restored state. RETRY re-enters
-        // finishSaveResume(), which shows the ending only after the commit
-        // succeeds.
-        beginSaveFailure(kSaveResumeStation);
+    s_voyageDirty = false;
+    if (endingPending()) {
+        beginEnding();
+        return;
     }
+    if (s_state.pendingStory != story_view::kSceneNone) {
+        s_pendingStory = s_state.pendingStory;
+        s_storyReturnPilot = 0;
+        beginStory();
+        return;
+    }
+    showStation();
 }
 
-// Paused/save-failure frames deliberately draw no world and read no cart: the
+// Pause frames deliberately draw no world and read no cart: the
 // buffer is blank after the previous FX::display(CLEAR_BUFFER), so one short
 // text line is enough at 128x64.
 static void drawPause() {
@@ -574,8 +512,8 @@ static void drawPause() {
 }
 
 // Title with CONTINUE/NEW VOYAGE. No world step and no cart reads. CONTINUE is
-// only selectable for a valid checkpoint; replacing a valid checkpoint asks for
-// confirmation. Blank, corrupt and incompatible partitions start a clean New
+// selectable when the save region has been written; replacing a written
+// checkpoint asks for confirmation. An erased partition starts a clean New
 // Voyage immediately. A new voyage always starts with HAULER and an empty
 // chart; no hull selector or legacy chart prompt exists. Bootloader entry is
 // the library's DOWN check at power-on only; the title has no loader row.
@@ -677,32 +615,6 @@ static void updatePause() {
     s_present = false;
 }
 
-// SAVE FAILED freezes the world. RETRY re-runs the same checkpoint transaction;
-// CONTINUE UNSAVED resumes the already-applied live state and keeps it dirty,
-// so the HUD/title never claim it is safely stored.
-static void updateSaveFailed() {
-    if (just(UP_BUTTON) || just(DOWN_BUTTON)) {
-        s_uiRow.save = s_uiRow.save == 0 ? 1 : 0;
-        voyage_view::drawSaveFailed(s_uiRow.save);
-        return;
-    }
-    if (just(A_BUTTON)) {
-        if (s_uiRow.save == 0) {
-            if (saveVoyageNow() == voyage_save::kSaved) {
-                s_voyageDirty = false;
-                finishSaveResume();
-            } else {
-                voyage_view::drawSaveFailed(s_uiRow.save);
-            }
-        } else {
-            s_voyageDirty = true;
-            finishSaveResume();
-        }
-        return;
-    }
-    s_present = false;
-}
-
 // Flight frame: step once, then either redraw the cave or switch to the
 // station board on the frame that docked.
 static void updateFlight() {
@@ -750,9 +662,7 @@ static void updateFlight() {
     chart::revealOnStep(s_chart, s_state);
     if (docked) {
         s_stationRow = station::initialRow(s_state);
-        // Remember the one-shot beat before the dock checkpoint. If the save
-        // fails, the pending card resumes only after RETRY succeeds or the
-        // player explicitly continues unsaved.
+        // Remember the one-shot beat before the dock checkpoint.
         const uint8_t milestoneStory = story_view::cardForNewMilestone(beforeCampaign, s_state.campaign);
         s_pendingStory = milestoneStory;
         s_storyReturnPilot = 0;
@@ -764,9 +674,8 @@ static void updateFlight() {
         s_state.pendingStory = milestoneStory;
         // Delivery/repair/service are resolved inside the dock step. Commit
         // that complete post-delivery checkpoint before any board celebration
-        // or further input. A failed write stays frozen on the save prompt.
-        if (!requestSave(kSaveResumeStation))
-            return;
+        // or further input.
+        requestSave();
         if (endingPending()) {
             beginEnding();
             return;
@@ -835,13 +744,11 @@ static void updateChart() {
         s_present = false;
 }
 
-// Departure is a save boundary only when the live state is dirty (for example
-// after CONTINUE UNSAVED on an earlier failed write). Save while still docked:
-// a checkpoint is never midwater. A failed write freezes on the prompt instead
-// of leaving the berth.
+// Departure is a save boundary only when the live state is dirty. Save while
+// still docked: a checkpoint is never midwater.
 static void leaveStation() {
-    if (s_voyageDirty && !requestSave(kSaveResumePilot))
-        return;
+    if (s_voyageDirty)
+        requestSave();
     if (station::undock(s_state)) {
         s_savedNoticeTicks = 90;
         showPilot();
@@ -906,8 +813,7 @@ static void updateWork() {
             s_pendingStory = story_view::handoffForMission(row.mission);
             s_state.pendingStory = s_pendingStory;
             s_storyReturnPilot = 0;
-            if (!requestSave(kSaveResumeStation))
-                return;
+            requestSave();
             if (s_pendingStory != story_view::kSceneNone) {
                 beginStory();
                 return;
@@ -1016,7 +922,7 @@ template <typename Poll> static void applicationBootWith(Poll &poll) {
 
 
     // Never read voyage storage in developer mode. Normal boot inspects once so
-    // the title can distinguish blank, corrupt and incompatible records before
+    // the title can distinguish an erased save region from a written one before
     // offering CONTINUE or NEW VOYAGE; the checkpoint itself loads only after
     // an explicit CONTINUE.
     refreshBootStatus();
