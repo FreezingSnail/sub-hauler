@@ -58,8 +58,8 @@ simulation storage with UI transients.
 
 At that 2026-10-29 baseline the task was to keep schema 6, its
 feature-signature value, scalar/payload layout, CRC and commit
-semantics, validation of untrusted save bytes, the then-current freight boards,
-and all shipped FX declarations and bytes. Internal structs can change while
+semantics, the save transaction behavior then in force, the then-current freight
+boards, and all shipped FX declarations and bytes. Internal structs can change while
 explicit serialization preserves the on-cart format. Do not remove generated
 ADPCM assets or their declarations just because the comparison player retires;
 `make gen` must reproduce the existing image and offsets. The reference capture
@@ -144,10 +144,10 @@ in the listed order. These are opportunities, not promised byte savings.
 
 | Candidate | Concrete change | Expected opportunity | Required proof |
 | --- | --- | --- | --- |
-| Boot status | Keep one BootState; derive valid/corrupt/incompatible predicates | 3 B less declared state | Same four title states, Continue availability and replacement confirmation |
+| Boot status | Keep one BootState; derive blank/written into one predicate | 3 B less declared state | Same title states, Continue availability and replacement confirmation |
 | Freight offer | Store destination and reward for the single ordinary four-crate row; derive kind, crates and origin from rules/current berth | Up to 3 B less declared state; simpler acceptance | Same destinations, rewards, acceptance, abandonment, delivery and reload boards |
 | Screen transients | Audit title row/mode, ending card and confirmation lifetimes against existing UiRow | A few bytes possible; unmeasured | Transition/lifetime table including failure retry/resume, title return and ending replay |
-| Save/music operations | Factor repeated transaction pause/resume and result handling into direct named operations | Flash saving possible; unknown | PauseToken semantics, mute/pause retention, readback and failure screens identical |
+| Save/music operations | Factor repeated transaction pause/resume and result handling into direct named operations | Flash saving possible; unknown | PauseToken semantics, mute/pause retention, save prompt and page-program order identical |
 | Contract handling | Share proven common freight/campaign cargo setup and clearing | Flash saving possible; unknown | Mission eligibility, single payment, intermediate berths and trim behavior identical |
 
 Boot-status and freight estimates are nominal AVR field counts. Whole-image

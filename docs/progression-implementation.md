@@ -4,8 +4,8 @@ Current status (2026-11-03): the campaign epic is closed. Production uses
 schema 8 in one 512 B cart slot and the ATMlib2FX compact synth with a 32 B
 ring. The fixed build has no feature profiles. The shop, currency, job payouts,
 repeatable freight offers and credit caches are removed; schema 8 has a 25 B
-scalar payload, a fixed 300-unit air tank and signature `0x61`, and schema 7
-slots are incompatible. Mines and hull strength are retired. Dated baseline and
+scalar payload, a fixed 300-unit air tank and signature `0x61`; load does not
+gate on the schema byte. Mines and hull strength are retired. Dated baseline and
 audio-probe sections retain their original measurements and flags, including
 earlier schema and ring figures; use [platform.md](platform.md) for current
 sizes and acceptance limits.
@@ -133,18 +133,16 @@ slot + 511  commit                  = 0x5A
 
 The slot spans two 256 B flash pages: page 0 carries the header and payload
 bytes 0–239; page 1 carries payload bytes 240–494 and the commit byte (the last
-byte programmed). Erased flash is `0xFF`, so an uncommitted slot has commit
-`0xFF`, not `0x00`. `0x5A` means committed; any other value is invalid.
+byte programmed). Erased flash is `0xFF`. `0x5A` marks the end of the write, but
+load does not read the commit byte.
 
 Payload capacity is 495 B. Schema 8 uses 281 B with a chart (25 scalar + 256
 chart) and 25 B without a chart. Bytes after the used payload are programmed as
-`0xFF`, matching erased flash, and are not read.
+`0xFF`, matching erased flash.
 
 CRC is **CRC-16/CCITT-FALSE**: polynomial `0x1021`, init `0xFFFF`, no
-reflection, no final XOR. It covers header bytes 0–13 (including magic,
-versions, signature, reserved bytes and length) followed by exactly
-`payload_length` payload bytes. It excludes the CRC field and the commit byte.
-Check value for `"123456789"` is `0x29B1`; the storage tests assert that vector.
+reflection, no final XOR. It is written into the header but never read back or
+checked. The storage tests assert the check vector `"123456789"` = `0x29B1`.
 
 ## 4. Profile signature
 
@@ -161,12 +159,9 @@ One byte, fixed for schema 8:
 | 6 | `SH_FEATURE_EXPLORATION` |
 | 7 | reserved, 0 |
 
-The fixed build always writes `0x61`. A slot whose signature differs is
-**incompatible**, not corrupt, and the title must say so before offering NEW
-VOYAGE. `MUSIC` is not in the signature because music has no saved field.
-
-Chart presence is derived from bit 0, not stored separately. Expected payload
-length is `25 + (bit0 ? 256 : 0)`.
+The fixed build always writes `0x61`. The signature is not checked on load, so
+a different value does not prevent Continue. `MUSIC` is not in the signature
+because music has no saved field.
 
 ## 5. Scalar payload schema (25 B)
 
@@ -175,7 +170,7 @@ Little-endian, fixed order, no padding, no raw C++ struct bytes.
 | Offset | Bytes | Field | Width / rule |
 | ---: | ---: | --- | --- |
 | 0 | 1 | berth | 0–5 |
-| 1 | 1 | hull class | 0–2 accepted; saves write 1 (HAULER); 0/2 normalize to HAULER on load |
+| 1 | 1 | hull class | saves write 1 (HAULER); any byte normalizes to HAULER on load |
 | 2 | 1 | tools | CUTTER/SEAL/THRUSTER/LENS bits |
 | 3 | 1 | pickups | 4 claim bits |
 | 4 | 2 | open gates | 9 bits |
@@ -193,97 +188,56 @@ Little-endian, fixed order, no padding, no raw C++ struct bytes.
 | 23 | 1 | ending presented | 0/1 |
 | 24 | 1 | pending scene | 0 = none, 1–7 = beat/result deck, 8–14 = departure/joint handoff |
 
-Chart bytes follow at payload offset 25–280 when bit 0 of the signature is set.
-Scalar total is exactly 25 B. Schema 8 removes the retired credits, air level,
-visited-settlement, job reward, offer cursor and board seed fields; the payload
-comfortably fits the frozen 495 B area. `pendingStory` is range-checked on save
-and load; schema 7 slots are incompatible.
+Chart bytes follow at payload offset 25–280. Scalar total is exactly 25 B.
+Schema 8 removes the retired credits, air level, visited-settlement, job
+reward, offer cursor and board seed fields; the payload comfortably fits the
+frozen 495 B area.
 
-Semantic validation, in addition to CRC and header checks:
+Save does not validate the live checkpoint. Load reads the 25 scalar bytes,
+applies them, and reads the chart bytes as-is.
 
-- berth 0–5; berths 4 and 5 require their restoration milestone (section 8).
-- hull class 0–2: the retired Minnow(0) and Leviathan(2) ids load and
-  normalize to HAULER(1); values above 2 are corrupt.
-- tools/claims/gates/milestones/surveys only within their masks.
-- milestones are monotonic: BEACON requires PUMP and LIFT; DEEP RELAY requires
-  BEACON; new HOME requires BEACON and DEEP RELAY; ending-presented requires
-  HOME. Legacy pre-linear checkpoints may hold HOME without DEEP RELAY and stay
-  valid; they cannot create a new HOME acceptance.
-- job kind NONE: mission/origin/destination are 0xFF, load is 0.
-- campaign job: mission 0–7, origin/destination match the mission table,
-  load 4. A pre-linear in-flight HOME job with only BEACON remains loadable and
-  completable but cannot be newly accepted. There is no reward or ordinary-job
-  field.
-- `pendingStory` is 0 (none) or a valid scene id 1–16 (seven result/survey decks, eight departure/joint handoffs and the DEEP RELAY result).
-- no ordinary, timed or express kind exists in schema 8. Schema 1/2 EEPROM
-  records, a schema 3 dual-slot cart and schema 4/5/6/7 slots are incompatible
-  and are not migrated.
-- Surveys are facts, not jobs: `recordSurvey()` accepts PUMP or LIFT before
-  FIRST and the saved mask keeps either/both bits. Only accepting a survey
-  mission from the WORK board requires FIRST; never reject an early recorded
-  survey on load or save.
-- `voyageTicks`, delivered and rescue counts are unsigned saturating values.
-- A checkpoint at a service berth may carry an active job; service berths
-  refill, repair and save loaded cargo.
-
-Any failed semantic check invalidates that slot as a whole. It is not partially
-applied.
-
-### Schema 3 invalidation
-
-### Schema 3 invalidation
-
-Schema 5 keeps the single-slot cart layout but removes the dual-copy sequence
-and fallback; schema 8 removes the economy fields and adds the pending deck.
-Schema 1/2 EEPROM records,
-schema 3 cart records, old EEPROM bytes
-and the retired standalone chart block are **incompatible or absent, not
-migrated**. A player with an older record or a torn current record sees the
-normal incompatible/corrupt message and may start a clean NEW VOYAGE; no old
-job, payment, chart or elapsed age is preserved. Current schema 8 slots
-still receive the full magic, length, CRC and semantic checks, so corruption is
-never silently accepted or loaded.
+Schema 1/2 EEPROM records, schema 3 dual-slot cart records and schema 4/5/6/7
+slots are not migrated. Load ignores the version bytes, so a different layout
+is read as the current payload shape.
 
 ## 6. Commit and interrupted writes
 
 Save transaction (freeze simulation, pause music, ignore departure input):
 
-1. Validate the live checkpoint and reject invalid state before any erase.
-2. Erase the single 4 KiB cart block. This also removes the previous checkpoint.
-3. Program page 0 (header, scalar, first 204 chart bytes), then page 1
+1. Erase the single 4 KiB cart block. This also removes the previous checkpoint.
+2. Program page 0 (header, scalar, first 204 chart bytes), then page 1
    (remaining payload and filler), with commit `0x5A` as the last byte. No
    second payload or chart-sized RAM buffer is allocated.
-4. Wait for each erase/page program to finish before starting the next one.
-5. Re-read the slot, validate CRC/schema/payload semantics, and require the
-   read-back CRC to equal the CRC just written.
-6. Only after that check report `SAVED`, resume music and unfreeze. On failure
-   offer `RETRY` or `CONTINUE UNSAVED`; never report success optimistically.
+3. Wait for each erase/page program to finish before starting the next one.
+4. Report `SAVED` once both page programs finish, then resume music and unfreeze.
+   There is no post-write read-back. A write that does not stick is not detected
+   at save time.
 
-Before step 1 the App compares the live checkpoint's encoded CRC with a RAM
-cache of the last successfully written or loaded checkpoint. If they are equal,
-the cart already holds this byte-identical record, so `requestSave()` reports
-`SAVED` without erasing or programming and leaves the dirty flag clear. The CRC
-covers every serialized field (voyage ticks and the full chart included), so
-normal travel or progress changes always rewrite. The cache is seeded by a
-successful save, a successful load or a successful new-voyage save and is
-invalidated by reset or any failed save/load; it is never stored in the cart and
-does not change the single-slot schema, commit order or failure contract.
+Before the erase the App compares the live checkpoint's encoded CRC with a RAM
+cache of the last written or loaded checkpoint. If they are equal, the cart
+already holds this byte-identical record, so `requestSave()` reports `SAVED`
+without erasing or programming and leaves the dirty flag clear. The CRC covers
+every serialized field (voyage ticks and the full chart included), so normal
+travel or progress changes always rewrite. The cache is seeded by a save, a
+successful load or a new-voyage save and is invalidated by reset or a blank
+load; it is never stored in the cart and does not change the single-slot schema
+or commit order.
 
 **This is not power-fail atomic.** An interruption during the erase or page
-program may lose the previous checkpoint. The contract is weaker and explicit:
-a torn record never validates, `load()` returns corrupt/incompatible/no-save
-without mutating live state, and the title offers a clean NEW VOYAGE. There is
-no second copy, sequence, newest-slot selection or fallback.
+program may lose the previous checkpoint or leave a torn record. The torn record
+is not detected: load reads whatever payload bytes are present. There is no
+second copy, sequence, newest-slot selection or fallback.
 
-Blank vs incompatible: the slot is blank when its magic is not `SHVY` and its
-commit is not `0x5A`. If it carries the magic or commit but does not validate,
-show the corrupt/incompatible message and allow a clean NEW VOYAGE; do not load
-it. Replacing a valid checkpoint still requires the title confirmation.
+Blank vs written: the slot is blank when its first byte is `0xFF`. Any other
+first byte is treated as a written save and loaded. There is no corrupt or
+incompatible title state. Replacing a written checkpoint still requires the
+title confirmation.
 
-Load validates the header, CRC and semantic fields before decoding into
-initialized state. It never copies a raw struct and never allocates a second
-chart-sized buffer. Because the read-back must match the intended CRC, an
-unchanged old record cannot be mistaken for a successful write.
+Load reads the scalar and chart directly into initialized state. It never
+copies a raw struct and never allocates a second chart-sized buffer. Save
+success is assumed after the page programs; without a read-back, a failed erase
+that leaves the old record intact cannot be distinguished from a successful new
+write at save time.
 
 Worst case erase is one 4 KiB block (~40 ms) plus two 256 B page programs
 (~3.3 ms each), on a transition only. The 4 KiB partition is `FX_SAVE_BYTES`;
@@ -523,11 +477,10 @@ production synth fit; the fixed build now ships music):
   `ActiveJob`, add kind/mission/origin, mission and survey
   state, WORK page rules; no save code.
 - `.3` single-slot cart storage: use sections 3–7; host-native tests for
-  every interrupted erase/page-write boundary, torn header/commit, corrupt
-  payload, incompatible signature/version, invalid field combinations, clean
-  New Voyage recovery and repeated overwrite cycles; assert a torn record never
-  loads or mutates live state, old chart bytes are ignored, no voyage byte is
-  written to internal EEPROM, and CRC vector `0x29B1` holds.
+  save/load, blank detection, clean New Voyage recovery and repeated overwrite
+  cycles; assert saves report success without read-back, any nonblank slot
+  loads its raw payload, old chart bytes are ignored, no voyage byte is written
+  to internal EEPROM, and CRC vector `0x29B1` holds.
 - `.4` Continue/checkpoints/recovery: use sections 3, 6 and 9; commit on the
   listed transitions only; no midwater suspend.
 - `.5`/`.6` campaign slices: use sections 8 and 10; generated service berth

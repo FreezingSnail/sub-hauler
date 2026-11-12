@@ -175,17 +175,19 @@ ATmega32u4's internal EEPROM. `fxdata/fxdata.txt` ends with
 partitions, and every earlier FX offset stays unchanged.
 
 The current schema is **8**. It stores a 25-byte scalar payload with a schema
-signature (`0x61`), CRC and commit semantics. A save:
+signature (`0x61`), CRC and commit bytes. A save:
 
 1. erases the 4 KiB block;
 2. programs two 256-byte pages;
 3. writes the commit byte last.
 
-A power interruption may lose the checkpoint; a torn record is rejected and the
-title offers a clean New Voyage. Untrusted save bytes are validated before use.
-The retired hull byte stays at its frozen offset and is normalized to HAULER on
-load. Music is paused around the synchronous erase/program transaction. No save
-or cart write belongs in the per-frame path.
+Success is reported after the second page; there is no post-write read-back. A
+power interruption may lose the checkpoint or leave a torn record. Load only
+checks whether the first byte is `0xFF`; any other value is read as the raw
+payload. There is no CRC, schema, commit or semantic validation, and no corrupt
+or incompatible title state. The retired hull byte stays at its frozen offset
+and is normalized to HAULER on load. Music is paused around the synchronous
+erase/program transaction. No save or cart write belongs in the per-frame path.
 
 `make gen` must be re-run after changing the save section; `make gen-check`
 compares the packed image, save partition and header. The EEPROM chart writer

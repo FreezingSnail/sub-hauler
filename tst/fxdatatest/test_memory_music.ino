@@ -118,10 +118,6 @@ void storyPanels() {
     music::service();
     FX::display(CLEAR_BUFFER);
     music::service();
-    voyage_view::drawSaveFailed(1);
-    music::service();
-    FX::display(CLEAR_BUFFER);
-    music::service();
 }
 
 uint16_t measureReserve() {

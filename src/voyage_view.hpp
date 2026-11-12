@@ -59,7 +59,7 @@ inline uint8_t previousRow(uint8_t selected, const voyage_flow::BootStatus &stat
 #if defined(__AVR__)
 #include "common.hpp"
 
-// Baked title frames: boot state 0..3 x selected row 0..1, HAULER fixed. The
+// Baked title frames: blank/written boot state x selected row, HAULER fixed. The
 // replace prompt exists only when a valid save is present, so it is one frame.
 inline void drawTitle(const voyage_flow::BootStatus &status, uint8_t selected, TitleMode mode) {
     if (mode == kTitleConfirmReplace) {
@@ -68,13 +68,6 @@ inline void drawTitle(const voyage_flow::BootStatus &status, uint8_t selected, T
     }
     const uint16_t frame = static_cast<uint16_t>(status.state * 2u + selected);
     panel_view::draw(title_menu, frame, 64);
-}
-
-// The prompt body, both row labels, the hint and the selected-row bar are all
-// baked into one generated panel. Selecting the other row is a different image,
-// not a second composition pass.
-inline void drawSaveFailed(uint8_t selected) {
-    panel_view::draw(selected == 0 ? panel_save_retry : panel_save_continue);
 }
 
 // Pause keeps the frozen prompt chrome and adds a live MUSIC row. With music

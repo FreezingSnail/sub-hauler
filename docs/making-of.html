@@ -174,13 +174,13 @@
 <p>Tests are permanent and co-located with the code they cover. Device suites are separate fixed <code>.ino</code> sketches that keep USB for serial markers; the release sketch does not. The stack probe paints the free SRAM with <code>0xA5</code>, runs the real path, scans for the high-water mark, and requires at least <strong>600 B</strong> of reserve above <code>__bss_end</code>. Static free bytes alone are not accepted as proof of stack fit.</p>
 <h2 id="6-save-system">6. Save system</h2>
 <p>Voyage checkpoints live in the external FX cart save partition, not the ATmega32u4's internal EEPROM. <code>fxdata/fxdata.txt</code> ends with <code>savesection 4096</code>; the generator emits 4 KiB of erased bytes and <code>FX_SAVE_PAGE = 0xFFF0</code>. <code>FX::begin(FX_DATA_PAGE, FX_SAVE_PAGE)</code> opens both partitions, and every earlier FX offset stays unchanged.</p>
-<p>The current schema is <strong>8</strong>. It stores a 25-byte scalar payload with a schema signature (<code>0x61</code>), CRC and commit semantics. A save:</p>
+<p>The current schema is <strong>8</strong>. It stores a 25-byte scalar payload with a schema signature (<code>0x61</code>), CRC and commit bytes. A save:</p>
 <ol>
 <li>erases the 4 KiB block;</li>
 <li>programs two 256-byte pages;</li>
 <li>writes the commit byte last.</li>
 </ol>
-<p>A power interruption may lose the checkpoint; a torn record is rejected and the title offers a clean New Voyage. Untrusted save bytes are validated before use. The retired hull byte stays at its frozen offset and is normalized to HAULER on load. Music is paused around the synchronous erase/program transaction. No save or cart write belongs in the per-frame path.</p>
+<p>Success is reported after the second page; there is no post-write read-back. A power interruption may lose the checkpoint or leave a torn record. Load only checks whether the first byte is <code>0xFF</code>; any other value is read as the raw payload. There is no CRC, schema, commit or semantic validation, and no corrupt or incompatible title state. The retired hull byte stays at its frozen offset and is normalized to HAULER on load. Music is paused around the synchronous erase/program transaction. No save or cart write belongs in the per-frame path.</p>
 <p><code>make gen</code> must be re-run after changing the save section; <code>make gen-check</code> compares the packed image, save partition and header. The EEPROM chart writer and the schema-6 economy fields are retired.</p>
 <h2 id="7-music">7. Music</h2>
 <p>Six original underwater loops are authored as <code>atmlib-score</code> v1 JSON under <a href="https://github.com/FreezingSnail/sub-hauler/tree/main/music"><code>music/</code></a>. The score sources define tempo, meter, voices, effects and loop length; the generated streams are packed into FX and referenced by symbolic offsets and lengths.</p>

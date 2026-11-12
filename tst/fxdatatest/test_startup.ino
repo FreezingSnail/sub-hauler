@@ -35,9 +35,10 @@ void setup() {
         ++cases;
     }
     // Title and replacement panels changed readers to recover program flash.
-    // The compact title sheet has four boot states x two selected rows with
-    // HAULER fixed; the replace prompt is one frame because it only exists when
-    // a valid save is present.
+    // The compact title sheet has four generated boot-state slots x two
+    // selected rows with HAULER fixed; only blank and written states are
+    // reachable. The replace prompt is one frame because it only exists when a
+    // written save is present.
     for (uint8_t statusIndex = 0; statusIndex < 4; ++statusIndex) {
         for (uint8_t selected = 0; selected < 2; ++selected) {
             const uint16_t frame = static_cast<uint16_t>(statusIndex * 2u + selected);

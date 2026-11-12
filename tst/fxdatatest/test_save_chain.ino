@@ -90,7 +90,7 @@ void runProductionChain() {
     s_saveOk = game::hasActiveJob(s_state) && s_state.docked == static_cast<int8_t>(campaign::kTidewall) &&
                s_screen == Screen::Story && !s_voyageDirty;
     voyage_save::FxStorage storage;
-    s_saveOk = s_saveOk && voyage_save::inspect(storage).status == voyage_save::kSlotValid;
+    s_saveOk = s_saveOk && voyage_save::hasSave(storage);
 
     // The production chain just committed this exact state. A second identical
     // checkpoint must be skipped: the cache matches, so the cart sees no erase

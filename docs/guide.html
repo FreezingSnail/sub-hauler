@@ -156,7 +156,7 @@
             <tr><td>Logo</td><td><kbd>Any press</kbd></td><td>Skip the three-second logo. The title screen still waits for a fresh press.</td></tr>
             <tr><td>Title screen</td><td><kbd>Fresh press</kbd></td><td>Dismiss the splash. Let go of any held button first; that release is used up.</td></tr>
             <tr><td>Title menu</td><td><kbd>Up / Down</kbd></td><td>Pick CONTINUE or NEW VOYAGE.</td></tr>
-            <tr><td>Title menu</td><td><kbd>A</kbd></td><td>Confirm. NEW VOYAGE asks before replacing a valid save.</td></tr>
+            <tr><td>Title menu</td><td><kbd>A</kbd></td><td>Confirm. NEW VOYAGE asks before replacing a written save.</td></tr>
             <tr><td>Flight</td><td><kbd>Left / Right</kbd></td><td>Thrust. Reverse is half forward. Let go to coast down.</td></tr>
             <tr><td>Flight</td><td><kbd>Up</kbd></td><td>Blow ballast to rise; spends air.</td></tr>
             <tr><td>Flight</td><td><kbd>Down</kbd></td><td>Flood ballast to sink; no blow cost.</td></tr>
@@ -223,9 +223,8 @@
         <li>The game keeps one voyage in one slot. It saves when you start a new voyage, when you dock, and when you accept a story job. If you are carrying unsaved progress, it also saves before you leave a berth.</li>
         <li><strong>CONTINUE</strong> returns you to the last saved berth with your tools, active delivery and chart. The tank is full and the boat is trimmed. There are no midwater saves.</li>
         <li><strong>RESCUE</strong> is on the pause menu: A+B, choose RESCUE, press A. It costs nothing and returns you to the last checkpoint. Finds and progress since that save are lost.</li>
-        <li>If the game rejects a checkpoint, <strong>RETRY</strong> runs it again. <strong>CONTINUE UNSAVED</strong> lets you keep playing, but the progress only lives in memory until the next checkpoint.</li>
-        <li>Do not cut the power while the game is saving. An interrupted write can lose the slot.</li>
-        <li><strong>NEW VOYAGE</strong> asks before it replaces a valid save. A corrupt save is not patched up; the game starts a clean voyage.</li>
+        <li>Do not cut the power while the game is saving. An interrupted write can lose or damage the slot.</li>
+        <li><strong>NEW VOYAGE</strong> asks before it replaces a written save. An erased save region starts a clean voyage.</li>
       </ul>
     </section>
 

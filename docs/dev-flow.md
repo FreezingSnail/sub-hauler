@@ -117,11 +117,12 @@ before title input. See
   image ends with a 4 KiB `savesection`.
 - Voyage checkpoints live in one 4 KiB cart erase block with a single slot. A
   save erases the block, programs two 256 B pages and writes the commit byte
-  last. A power interruption may lose the checkpoint; a torn record is rejected
-  and the title offers a clean New Voyage. Music is paused around the
+  last. A power interruption may lose the checkpoint or leave a torn record.
+  Load only treats `0xFF` in the first byte as no save; any other slot is read
+  raw, with no CRC, schema or semantic validation. Music is paused around the
   synchronous erase/page transaction; no read or write belongs in the per-frame
   path.
-- The standalone EEPROM chart writer is retired; schema 7 voyage checkpoints
+- The standalone EEPROM chart writer is retired; schema 8 voyage checkpoints
   are the only save path.
 - `make fxtest-save-chain` runs the exact production
   `updateStation()`→`requestSave()`→`saveVoyageNow()` path with the real sketch

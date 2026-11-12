@@ -25,9 +25,6 @@ void loop() {
     case Screen::Title:
         updateTitle();
         break;
-    case Screen::SaveFailed:
-        updateSaveFailed();
-        break;
     case Screen::Pause:
         updatePause();
         break;
