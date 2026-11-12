@@ -235,5 +235,54 @@ inline void CampaignViewSuite(TestRunner &runner) {
         test.assertTrue(lit(b) > firstLit, "PUMP completes the lamp row");
         runner.add(test);
     }
+
+    {
+        Test test("restored lamps glint and the beacon sweeps only after their milestones");
+        world::Settlement benthos;
+        test.assertTrue(world::settlementInfo(campaign::kBenthos, benthos), "Benthos settlement");
+        game::State state;
+        game::reset(state);
+        const cave::Camera benthosCamera = cave::cameraCenteredAtPixel(benthos.pixel_x, benthos.pixel_y);
+
+        state.ticks = 0;
+        clear(a);
+        campaign_view::drawRestoration(a, state, benthosCamera);
+        state.ticks = 64;
+        clear(b);
+        campaign_view::drawRestoration(b, state, benthosCamera);
+        test.assertTrue(same(a, b), "unrestored site never glints");
+
+        state.campaign = campaign::kMilestoneFirst;
+        state.ticks = 0;
+        clear(a);
+        campaign_view::drawRestoration(a, state, benthosCamera);
+        state.ticks = 64;
+        clear(b);
+        campaign_view::drawRestoration(b, state, benthosCamera);
+        test.assertTrue(!same(a, b), "restored lamp glints on the slow beat");
+
+        world::Settlement anchor;
+        test.assertTrue(world::settlementInfo(campaign::kDeepAnchor, anchor), "Deep Anchor settlement");
+        const cave::Camera anchorCamera = cave::cameraCenteredAtPixel(anchor.pixel_x, anchor.pixel_y);
+        game::reset(state);
+        state.campaign = static_cast<uint8_t>(campaign::kMilestonePump | campaign::kMilestoneLift);
+        state.ticks = 0;
+        clear(a);
+        campaign_view::drawRestoration(a, state, anchorCamera);
+        state.ticks = 32;
+        clear(b);
+        campaign_view::drawRestoration(b, state, anchorCamera);
+        test.assertTrue(same(a, b), "unlit beacon stays still");
+
+        state.campaign |= campaign::kMilestoneBeacon;
+        state.ticks = 0;
+        clear(a);
+        campaign_view::drawRestoration(a, state, anchorCamera);
+        state.ticks = 32;
+        clear(b);
+        campaign_view::drawRestoration(b, state, anchorCamera);
+        test.assertTrue(!same(a, b), "lit beacon sweeps its lamp");
+        runner.add(test);
+    }
 }
 

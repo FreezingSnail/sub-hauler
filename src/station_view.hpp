@@ -29,6 +29,7 @@
 //         row or screen.
 namespace station_view {
 
+constexpr uint8_t kScreenW = 128;
 constexpr uint8_t kNameX = 2;
 constexpr uint8_t kHeaderY = 2;
 constexpr uint8_t kDividerY = 11;
@@ -42,6 +43,23 @@ constexpr uint8_t kRowInvertH = 7;
 constexpr uint8_t kHintX = 3;
 constexpr uint8_t kBarkY = 56;
 constexpr uint8_t kHintChars = 20;
+
+// A real dock carries one short bright sweep along the header divider. The app
+// sets the countdown on the dock frame and clears it on the first station input
+// edge, so the board is interactive immediately and returning from WORK or the
+// chart never replays the accent. Presentation only: no save or story delay.
+constexpr uint8_t kArrivalTicks = 28;
+constexpr uint8_t kArrivalSweepW = 12;
+constexpr uint8_t kArrivalSweepStep = 4;
+constexpr uint8_t kArrivalSweepX0 = 3;
+
+inline uint8_t arrivalSweepX(uint8_t ticks) {
+    if (ticks == 0 || ticks > kArrivalTicks)
+        return kScreenW;
+    const uint8_t elapsed = static_cast<uint8_t>(kArrivalTicks - ticks);
+    const uint8_t x = static_cast<uint8_t>(kArrivalSweepX0 + elapsed * kArrivalSweepStep);
+    return x < kScreenW ? x : kScreenW;
+}
 
 // Native console chrome. The header keeps the longest berth label
 // ("LOWER GANTRY" / "FREIGHT YARD", 12 cells) clear of a 16x8 berth icon, and
@@ -75,6 +93,8 @@ static_assert(kIconX + kIconW <= 128, "header icon fits inside the display");
 static_assert(kIconY + kIconH <= kDividerY, "header icon stays above the divider");
 static_assert(kSummaryMarkX + kSummaryMarkW <= kRowX, "summary marker leaves the row label clear");
 static_assert(kSelectMarkX + kSelectMarkW <= 128, "selection marker stays inside the display");
+static_assert(kArrivalSweepX0 + (kArrivalTicks - 1) * kArrivalSweepStep + kArrivalSweepW <= kScreenW, "arrival sweep stays inside the divider");
+static_assert(kDividerY >= 1, "arrival sweep clears the top edge");
 static_assert(text_layout::kDockBarkBerths == campaign::kBerthCount, "dock hints cover every berth");
 static_assert(text_layout::kDockBarkPoints == campaign::kDockPointCount, "dock hints cover every progression point");
 
@@ -138,8 +158,10 @@ inline void drawSelectionMark(uint8_t y) {
 }
 
 // Native board: name, berth icon, live rows and the baked bark row. The
-// active summary shows only the destination; there is no payout.
-inline void draw(const game::State &state, uint8_t selected) {
+// active summary shows only the destination; there is no payout. `arrivalTicks`
+// is nonzero only on the first board after a real dock; it sweeps a bright
+// segment across the divider without changing row state or input.
+inline void draw(const game::State &state, uint8_t selected, uint8_t arrivalTicks = 0) {
     if (state.docked < 0)
         return;
 
@@ -170,6 +192,15 @@ inline void draw(const game::State &state, uint8_t selected) {
     const uint8_t bark = dockBarkFrame(static_cast<uint8_t>(state.docked), campaign::dockPoint(state));
     if (bark != 0)
         text::stampFrame(img_dock_barks, bark, kHintX, kBarkY);
+
+    // Arrival accent sits on the divider, above every row and the bark, so it
+    // never competes with menu copy or the selection bar.
+    const uint8_t sweepX = arrivalSweepX(arrivalTicks);
+    if (sweepX < kScreenW) {
+        const uint8_t remaining = static_cast<uint8_t>(kScreenW - sweepX);
+        const uint8_t width = remaining < kArrivalSweepW ? remaining : kArrivalSweepW;
+        arduboy.fillRect(sweepX, static_cast<int16_t>(kDividerY - 1), width, 2, WHITE);
+    }
 }
 
 #endif   // __AVR__

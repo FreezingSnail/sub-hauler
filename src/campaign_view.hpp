@@ -148,8 +148,13 @@ constexpr RestorationSite kRestorationSites[3] = {
 };
 #endif
 
-inline void drawLamp(uint8_t *buffer, int16_t x, int16_t y) {
+inline void drawLamp(uint8_t *buffer, int16_t x, int16_t y, bool glint) {
     cave::fillRect(buffer, x, y, 2, 2, true);
+    // A single pixel above the bank catches the flight clock on alternate
+    // beats. It is deliberately slow and sparse so a restored lamp reads as
+    // working light, not as an objective marker.
+    if (glint)
+        cave::setPixel(buffer, static_cast<int16_t>(x + 1), static_cast<int16_t>(y - 2));
 }
 
 inline void drawRestoration(uint8_t *buffer, const game::State &state, const cave::Camera &camera) {
@@ -174,20 +179,26 @@ inline void drawRestoration(uint8_t *buffer, const game::State &state, const cav
         if (!cave::gantryVisible(x, y))
             continue;
 
+        const bool glint = ((state.ticks >> 6) & 1) != 0;
         if (berth == campaign::kBenthos) {
             // FIRST lights one bank; PUMP completes the row.
-            drawLamp(buffer, static_cast<int16_t>(x - 8), static_cast<int16_t>(y - 17));
-            drawLamp(buffer, x, static_cast<int16_t>(y - 17));
+            drawLamp(buffer, static_cast<int16_t>(x - 8), static_cast<int16_t>(y - 17), glint);
+            drawLamp(buffer, x, static_cast<int16_t>(y - 17), glint);
             if (restored(state, campaign::kMilestonePump))
-                drawLamp(buffer, static_cast<int16_t>(x + 8), static_cast<int16_t>(y - 17));
+                drawLamp(buffer, static_cast<int16_t>(x + 8), static_cast<int16_t>(y - 17), glint);
         } else if (berth == campaign::kCormorant) {
             // LIFT lights the workshop hoist.
-            drawLamp(buffer, static_cast<int16_t>(x - 8), static_cast<int16_t>(y - 17));
-            drawLamp(buffer, static_cast<int16_t>(x + 8), static_cast<int16_t>(y - 17));
+            drawLamp(buffer, static_cast<int16_t>(x - 8), static_cast<int16_t>(y - 17), glint);
+            drawLamp(buffer, static_cast<int16_t>(x + 8), static_cast<int16_t>(y - 17), glint);
         } else {
             // BEACON lights the mast; HOME completes the signal arm.
             cave::fillRect(buffer, static_cast<int16_t>(x - 1), static_cast<int16_t>(y - 22), 3, 6, true);
             cave::fillRect(buffer, x, static_cast<int16_t>(y - 21), 1, 4, false);
+            // One slow lamp pixel sweeps the mast head. It exists only after
+            // BEACON, so the dark wreck never gains a false signal.
+            const uint8_t sweep = static_cast<uint8_t>((state.ticks >> 5) & 3);
+            const int16_t lampX = static_cast<int16_t>(x + (sweep == 1 ? 2 : sweep == 3 ? -2 : 0));
+            cave::setPixel(buffer, lampX, static_cast<int16_t>(y - 23));
             if (restored(state, campaign::kMilestoneHome))
                 cave::fillRect(buffer, static_cast<int16_t>(x - 5), static_cast<int16_t>(y - 20), 3, 1, true);
         }

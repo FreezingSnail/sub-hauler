@@ -343,5 +343,36 @@ inline void ParticlesSuite(TestRunner &runner) {
         test.assertTrue(!drawn, "expired particles draw nothing");
         runner.add(test);
     }
+
+    {
+        Test test("fresh impact specks grow an outward spark head");
+        constexpr uint16_t kBufferBytes = cave::VIEW_WIDTH * cave::VIEW_HEIGHT / 8;
+        game::State state;
+        game::reset(state);
+        place(state, 1000, 500);
+        particles::spawn(state);
+        const cave::Camera camera = pilot_view::cameraForState(state);
+
+        uint8_t buffer[kBufferBytes];
+        clearBuffer(buffer);
+        particles_view::draw(buffer, state, camera);
+
+        const game::Particle &particle = state.particles.particle[0];
+        const int16_t x = static_cast<int16_t>(state.particles.x + particle.dx - cave::pixelOriginX(camera));
+        const int16_t y = static_cast<int16_t>(state.particles.y + particle.dy - cave::pixelOriginY(camera));
+        test.assertTrue(pixelSet(buffer, x, y), "speck centre stays lit");
+        test.assertTrue(pixelSet(buffer, static_cast<int16_t>(x - 1), y), "fresh speck adds an outward x head");
+        test.assertTrue(pixelSet(buffer, x, static_cast<int16_t>(y - 1)), "fresh speck adds an outward y head");
+
+        for (uint8_t tick = 0; tick < 4; ++tick)
+            particles::tick(state);
+        clearBuffer(buffer);
+        particles_view::draw(buffer, state, camera);
+        const int16_t fadedX = static_cast<int16_t>(x - 4);
+        const int16_t fadedY = static_cast<int16_t>(y - 4);
+        test.assertTrue(pixelSet(buffer, fadedX, fadedY), "faded speck keeps its centre");
+        test.assertTrue(!pixelSet(buffer, static_cast<int16_t>(fadedX - 1), fadedY), "faded speck drops the spark head");
+        runner.add(test);
+    }
 }
 

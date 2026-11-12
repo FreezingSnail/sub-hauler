@@ -106,6 +106,10 @@ static uint8_t s_titleRow = voyage_view::kTitleNewVoyage;
 static bool s_pauseConfirm = false;
 static bool s_airEmptyShown = false;
 static uint8_t s_savedNoticeTicks = 0;
+// One-shot dock arrival accent. Set on the dock frame and consumed by the
+// first station board draw or the first station input edge; it never delays
+// the checkpoint, story deck or menu, and internal board returns start at zero.
+static uint8_t s_dockArrival = 0;
 
 
 // Static screens own a mutating buffer: they are composed once on entry and
@@ -176,19 +180,21 @@ static void drawNextStopHint(uint8_t finishedDeck) {
         drawVoyageNotice(label);
 }
 
-static void drawPilot() {
+static void drawPilot(uint8_t cues = 0) {
     const cave::Camera camera = pilot_view::cameraForState(s_state);
-    view::frame(s_state, camera, s_cache, s_tables);
+    view::frame(s_state, camera, s_cache, s_tables, cues);
     hud::draw(s_state);
     if (s_savedNoticeTicks != 0)
         drawVoyageNotice(img_txt_saved_berth);
 }
 
-// One station-board entry: shared screen tag, row and draw sequence.
+// One station-board entry: shared screen tag, row and draw sequence. The
+// arrival countdown survives a dock-to-story handoff so the board that finally
+// appears still marks the arrival; internal returns have already cleared it.
 static void showStationBoard(uint8_t row) {
     s_stationRow = row;
     s_screen = Screen::Station;
-    station_view::draw(s_state, s_stationRow);
+    station_view::draw(s_state, s_stationRow, s_dockArrival);
 }
 
 static void showPilot() {
@@ -220,6 +226,7 @@ static void resetRun() {
     s_airEmptyShown = false;
     s_storyPhase = 0;
     s_storyReturnPilot = 0;
+    s_dockArrival = 0;
 }
 
 
@@ -375,7 +382,8 @@ static void drawTitleScreen() {
     music::overrideCue(music_logic::kHarbor);
     music::resume();
     s_screen = Screen::Title;
-    voyage_view::drawTitle(s_bootState, s_titleRow, s_titleMode);
+    voyage_view::drawTitle(s_bootState, s_titleRow, s_titleMode,
+                           voyage_view::titleEchoRadius(Arduboy2Base::frameCount));
 }
 
 static void refreshBootState() {
@@ -603,6 +611,9 @@ static void updateFlight() {
     // ballast valve rate in release and debug builds.
     const uint8_t held = Arduboy2Base::currentButtonState;
     const game::Input input{static_cast<bool>(held & UP_BUTTON), static_cast<bool>(held & DOWN_BUTTON), static_cast<bool>(held & LEFT_BUTTON), static_cast<bool>(held & RIGHT_BUTTON), static_cast<bool>(held & A_BUTTON)};
+    // Sample the same rules the step consumes, before the step mutates air and
+    // ballast, so a valve that is working this frame still shows its cue.
+    const uint8_t cues = bubble_view::cuesFor(s_state, input);
 
     const uint8_t beforeCampaign = s_state.campaign;
     const uint8_t beforeSurveys = s_state.surveys;
@@ -620,6 +631,9 @@ static void updateFlight() {
     chart::revealOnStep(s_chart, s_state);
     if (docked) {
         s_stationRow = station::initialRow(s_state);
+        // Presentation-only arrival marker. The save below still runs on this
+        // frame, and a milestone/survey deck takes over without waiting for it.
+        s_dockArrival = station_view::kArrivalTicks;
         // Remember the one-shot beat before the dock checkpoint.
         const uint8_t milestoneStory = story_view::cardForNewMilestone(beforeCampaign, s_state.campaign);
         s_pendingStory = milestoneStory;
@@ -669,7 +683,7 @@ static void updateFlight() {
         return;
     }
 
-    drawPilot();
+    drawPilot(cues);
 }
 
 // Chart frame: no world step, so travel time/air/ballast/jobClock are frozen
@@ -786,9 +800,21 @@ static void updateWork() {
 // D-pad moves the selection, A confirms, B always undocks.
 static void updateStation() {
     if (!justChord(UP_BUTTON | DOWN_BUTTON | A_BUTTON | B_BUTTON)) {
+        // The arrival sweep is the only reason to recompose an idle board. It
+        // runs a fixed handful of frames, then the normal static-screen skip
+        // resumes; music service lives in the main loop and is unaffected.
+        if (s_dockArrival != 0) {
+            --s_dockArrival;
+            station_view::draw(s_state, s_stationRow, s_dockArrival);
+            return;
+        }
         s_present = false;
         return;
     }
+
+    // The first station edge ends the arrival accent before it acts, so no
+    // later board return can replay it.
+    s_dockArrival = 0;
 
     if (just(UP_BUTTON))
         s_stationRow = station::selectPrevious(s_stationRow, s_state);

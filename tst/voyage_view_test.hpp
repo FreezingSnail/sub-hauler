@@ -37,4 +37,18 @@ inline void VoyageViewSuite(TestRunner &runner) {
         test.assertTrue(voyage_view::kHintY + 7 <= 64, "hint stays on screen");
         runner.add(test);
     }
+
+    {
+        Test test("voyage title: sonar echo pulses inward and clears");
+        test.assertEqual(voyage_view::titleEchoRadius(0), 2, "first frame starts the ring");
+        test.assertEqual(voyage_view::titleEchoRadius(8), 3, "ring grows after eight frames");
+        test.assertEqual(voyage_view::titleEchoRadius(16), 4, "ring keeps growing");
+        test.assertEqual(voyage_view::titleEchoRadius(24), 5, "ring reaches the needle");
+        test.assertEqual(voyage_view::titleEchoRadius(32), 6, "ring reaches the inner dial");
+        test.assertEqual(voyage_view::titleEchoRadius(40), 7, "ring tops out inside the dial");
+        test.assertEqual(voyage_view::titleEchoRadius(48), 0, "ring clears without touching the dial");
+        test.assertEqual(voyage_view::titleEchoRadius(56), 0, "blank frame holds before the next pulse");
+        test.assertEqual(voyage_view::titleEchoRadius(64), 2, "echo restarts from the centre");
+        runner.add(test);
+    }
 }
