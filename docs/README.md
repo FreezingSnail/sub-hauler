@@ -14,7 +14,8 @@
 - [Development history](history.md) — the browser-to-device arc, measured cuts,
   playtest wave and resource history.
 - [How sub-hauler is built](making-of.md) — generation, rendering, save, story,
-  music, testing and the working method.
+  music, testing and the working method. Published as
+  [`making-of.html`](making-of.html), generated from the Markdown source.
 
 ## Reference
 

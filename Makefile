@@ -1,4 +1,4 @@
-.PHONY: help full gen gen-check build mini size size-line run debug flash flash-data flash-debug save-migrate test test-tools docs-check editor fxtest fxtest-flight fxtest-build fxtest-run clean format music-viewer music-viewer-build render-world release-package
+.PHONY: help full gen gen-check build mini size size-line run debug flash flash-data flash-debug save-migrate test test-tools docs-page docs-check editor fxtest fxtest-flight fxtest-build fxtest-run clean format music-viewer music-viewer-build render-world release-package
 
 # ----------------------------------------------------------------------------
 # Project
@@ -349,7 +349,11 @@ test:
 test-tools:
 	python3 -m unittest discover -s tools/tests -p 'test_*.py' -v
 
+docs-page:
+	python3 tools/gen_making_of.py
+
 docs-check:
+	python3 tools/gen_making_of.py --check
 	python3 tools/check_docs.py
 	node --check docs/assets/story-editor/editor.js
 	node --test tools/tests/story_animation.test.cjs tools/tests/story_editor.test.cjs
@@ -467,7 +471,8 @@ help:
 		'  make music-viewer audition the underwater tracks in the ATMlib2FX jukebox' \
 		'  make test       host C++ tests (g++, no device required)' \
 		'  make test-tools Python tooling unittest suite' \
-		'  make docs-check local links, active selectors and story-preview tests' \
+		'  make docs-page  rebuild docs/making-of.html from docs/making-of.md' \
+		'  make docs-check rebuilt page, local links, active selectors and story-preview tests' \
 		'  make editor     serve the local story text editor on port 8000' \
 		'  make fxtest     compile and run device suites through Ardens' \
 		'  make fxtest-save-chain  exact production save-chain stack/audio probe' \

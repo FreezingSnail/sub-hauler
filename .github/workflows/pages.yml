@@ -5,6 +5,9 @@ on:
     branches: [main]
     paths:
       - 'docs/guide.html'
+      - 'docs/making-of.md'
+      - 'docs/making-of.html'
+      - 'tools/gen_making_of.py'
       - 'docs/assets/**'
       - '.github/workflows/pages.yml'
   workflow_dispatch:
@@ -28,11 +31,13 @@ jobs:
       - uses: actions/checkout@v4
       - name: Prepare manual
         run: |
-          mkdir -p _site/assets/first-beat-animation/all-beats-v3
+          mkdir -p _site/assets/first-beat-animation
           cp docs/guide.html _site/index.html
           cp docs/guide.html _site/guide.html
-          cp docs/assets/first-beat-animation/all-beats-v3/arrival-0.png _site/assets/first-beat-animation/all-beats-v3/
-          cp docs/assets/exploration-world-fish.svg docs/assets/exploration-world-2026-11-09.png docs/assets/exploration-world-music-2026-11-09.png docs/assets/exploration-world-native-2026-11-09.png docs/assets/exploration-equipment.png _site/assets/
+          python3 tools/gen_making_of.py
+          cp docs/making-of.html _site/making-of.html
+          cp -R docs/assets/first-beat-animation/all-beats-v3 _site/assets/first-beat-animation/
+          cp docs/assets/exploration-world-fish.svg docs/assets/exploration-world-2026-11-09.png docs/assets/exploration-world-native-2026-11-09.png docs/assets/exploration-equipment.png _site/assets/
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
