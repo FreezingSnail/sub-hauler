@@ -276,7 +276,7 @@ Changes shipped in this wave:
 | Opening | `646.6` | New Voyage plays a Benthos-direction cutscene; Continue skips it |
 | Music | `646.7` | 160 ms fades at cue, dock, story and pause transitions |
 | Cove art | `646.8`, `646.9` | Four unique wreck landmarks and a lens-cave retexture; collision unchanged |
-| Air/thruster | `646.10`, `646.11` | 300-unit tank, 4 air/s blow cost; thruster doubles speed/accel and ballast rate |
+| Air/thruster | `646.10`, `646.11` | 300-unit tank, 4 air/s blow cost; held A with the thruster doubles speed/accel and ballast rate |
 | Relay/HOME art | `646.12`, `646.13`, `646.15` | Unique DEEP RELAY briefing/result and HOME departure art |
 | Survey notice | `646.14` | Survey bark outranks the inactive-berth repair notice |
 | Ending | `646.16` | Voyage-stats card cut; network and thanks remain |

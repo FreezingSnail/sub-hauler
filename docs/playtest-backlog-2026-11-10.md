@@ -23,7 +23,7 @@ All sixteen notes are filed under epic **sub-hauler-646**. Decision summary:
 | 8 | sub-hauler-646.8 | Distinct in-world wreck/scenery art at all four equipment coves. |
 | 9 | sub-hauler-646.9 | Retexture the Hidden trench cove (lens pickup room). |
 | 11 | sub-hauler-646.10 | Air tank 270; blowing costs 4 air/s; flooding stays free. |
-| 12 | sub-hauler-646.11 | Thruster doubles horizontal speed/accel both ways and doubles ballast rate. |
+| 12 | sub-hauler-646.11 | Holding A with the thruster doubles horizontal speed/accel both ways and the ballast rate. |
 | 13 | sub-hauler-646.12 | Unique DEEP RELAY acceptance art. |
 | 14 | sub-hauler-646.13 | Unique DEEP RELAY site result art. |
 | 15 | sub-hauler-646.14 | Survey interaction outranks the inactive-berth repair notice. |
@@ -339,9 +339,9 @@ first-delivery playthrough check.
 **Original note:** "let a make the ship move left and rate 2x speed after
 getting the truster, and change balast faster."
 
-**Decision:** after the thruster is owned, double horizontal top speed and
-acceleration in both directions, and double the ballast change rate. Reverse
-already exists; this makes it fast too.
+**Decision:** after the thruster is owned, holding A doubles horizontal top
+speed and acceleration in both directions, and doubles the ballast change rate.
+Reverse already exists; this makes it fast too.
 
 **Current evidence**
 
@@ -362,6 +362,11 @@ already exists; this makes it fast too.
 **Filed:** sub-hauler-646.11. Feature/balance in `game.hpp`, `pilot.hpp`,
 HUD/camera tests, and `docs/platform.md` if tuning becomes canonical. The
 multiplier applies after the cargo penalty and to both directions.
+
+**Follow-up (2026-11-11):** the boost is A-gated, not passive. Holding A while
+the thruster is owned doubles thrust both directions and the ballast valve rate
+in both release and `DEBUG=1`; without A the thruster keeps base handling. The
+debug image also keeps its A position fast-traverse.
 
 ## 13. Lens-job acceptance art at the survey lens location
 

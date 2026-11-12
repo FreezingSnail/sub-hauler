@@ -38,6 +38,10 @@ inline game::Input right() {
     return game::Input{false, false, false, true};
 }
 
+inline game::Input rightBoost() {
+    return game::Input{false, false, false, true, true};
+}
+
 inline game::Input down() {
     return game::Input{false, true, false, false};
 }
@@ -108,6 +112,47 @@ inline void CollisionSuite(TestRunner &runner) {
         test.assertEqual(fast.vxQ8, normal.vxQ8, "stored velocity keeps production physics");
         test.assertEqual(fast.air, normal.air, "air drain is one tick");
         test.assertEqual(fast.ticks, normal.ticks, "simulation ticks are one step");
+        runner.add(test);
+    }
+
+    {
+        Test test("developer speed scale advances three fixed steps in reverse");
+        Fixture fake;
+        game::State normal;
+        game::State fast;
+        game::resetWorld(normal);
+        game::resetWorld(fast);
+        place(normal, 100, 80);
+        place(fast, 100, 80);
+        normal.vxQ8 = static_cast<int16_t>(-game::topSpeedQ8For(0));
+        fast.vxQ8 = normal.vxQ8;
+
+        game::stepWorld(normal, idle(), fake);
+        game::stepWorld(fast, idle(), fake, nullptr, true, game::kDevSpeedScale);
+
+        const int32_t normalTravel = static_cast<int32_t>(100 - normal.x) * game::kSubpixelOne - normal.xFrac;
+        const int32_t fastTravel = static_cast<int32_t>(100 - fast.x) * game::kSubpixelOne - fast.xFrac;
+        test.assertEqual(fastTravel, normalTravel * game::kDevSpeedScale, "reverse position advance is exactly 3x");
+        test.assertEqual(fast.vxQ8, normal.vxQ8, "reverse stored velocity keeps production physics");
+        runner.add(test);
+    }
+
+    {
+        Test test("developer speed scale keeps the boosted hull on screen");
+        Fixture fake;
+        game::State state;
+        game::resetWorld(state);
+        place(state, 100, 80);
+        state.tools = exploration_data::THRUSTER;
+        state.vxQ8 = game::kMaxVxBoostQ8;
+
+        for (int i = 0; i < 120; ++i)
+            game::stepWorld(state, rightBoost(), fake, nullptr, true, game::kDevSpeedScale);
+
+        const cave::Camera camera = pilot_view::cameraForState(state);
+        const int16_t left = static_cast<int16_t>(pilot_view::screenX(state, camera) - game::kHullHalfW);
+        const int16_t top = static_cast<int16_t>(pilot_view::screenY(state, camera) - game::kHullHalfH);
+        test.assertTrue(pilot_view::visible(left, top), "3x boosted advance keeps the hull visible");
         runner.add(test);
     }
 
@@ -187,7 +232,7 @@ inline void CollisionSuite(TestRunner &runner) {
 
         bool crossed = false;
         for (int i = 0; i < 60; ++i) {
-            game::stepWorld(state, right(), fake);
+            game::stepWorld(state, rightBoost(), fake);
             if (state.x > 67)
                 crossed = true;
         }

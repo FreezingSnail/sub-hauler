@@ -73,6 +73,8 @@ compartment (`BR`), `workshop-lock` at the Sealed workshop (`CW`) and
 ambient growths and wall markings without re-theming a neighbour or its region.
 The Hidden trench cove uses `texture: "lens"`: `lens-shard` wall growths plus
 concentric lens rings and facet arcs mark the lens cave.
+The wider Sealed workshop pickup pocket uses `texture: "pressure"`, with
+buckled ribs, rivets and layered bulkhead outlines marking the seal cave.
 `tools/gen_scenery.py` adds region-specific rock markings and hollow background
 motifs during `make gen`: strata/coral/moorings, kelp/pumps, weathered plating and
 wreck machinery, and fractured basalt/crystals/vents. Scenery does not alter

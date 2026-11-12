@@ -204,6 +204,38 @@ class AuthoredLevelTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,'texture'):
             gen_scenery.decorate(gen_level.build(bad),base,spines)
 
+    def test_pressure_seal_winding_approach_requires_cutter(self):
+        route=next(r for r in self.source['routes'] if r['from']=='Z' and r['to']=='CW')
+        self.assertGreaterEqual(len(route['via']), 5)
+        pickup=tuple(next(r for r in self.source['rooms'] if r['id']=='CW')['position'])
+        self.assertNotIn(pickup,gen_level.reachable_tiles(self.level,0))
+        self.assertIn(pickup,gen_level.reachable_tiles(self.level,1))
+
+    def test_pressure_cave_texture_stays_near_the_seal(self):
+        room=next(r for r in self.source['rooms'] if r['id']=='CW')
+        self.assertEqual(room['texture'],'pressure')
+        self.assertEqual(room['radius'],5)
+        base=gen_level.base_terrain_bytes(self.level)
+        spines=gen_level.scenery_spines(self.level)
+        decorated,stats=gen_scenery.decorate(self.level,base,spines)
+        self.assertGreater(stats['ambient']['pressure'],0)
+        plain=copy.deepcopy(self.level)
+        next(r for r in plain.source['rooms'] if r['id']=='CW').pop('texture')
+        bare,_=gen_scenery.decorate(plain,base,spines)
+        cx,cy=(v*8 for v in room['position'])
+        # Wall-mounted ribs extend beyond their placement anchor.
+        limit=(room['radius']+gen_scenery.TEXTURE_RADIUS_TILES)*8+32
+        changed=0
+        for i,(a,b) in enumerate(zip(decorated,bare)):
+            delta=a^b
+            if not delta: continue
+            x,page=i%2560,i//2560
+            for bit in range(8):
+                if delta & (1<<bit):
+                    self.assertLessEqual(math.hypot(x-cx,page*8+bit-cy),limit)
+                    changed+=1
+        self.assertGreater(changed,100)
+
     def test_service_berths_and_surveys_are_stable_generated_metadata(self):
         self.assertEqual([b.id for b in self.level.service_berths],[4,5,6,7])
         self.assertEqual([b.symbol for b in self.level.service_berths],['PUMP_REFUGE','LOWER_GANTRY','FREIGHT_YARD','DEEP_RELAY'])

@@ -100,6 +100,7 @@
             <tr><td>Flight</td><td><kbd>Left / Right</kbd></td><td>Thrust. Left is weaker. Release to slow down.</td></tr>
             <tr><td>Flight</td><td><kbd>Up</kbd></td><td>Blow ballast to rise; spends air.</td></tr>
             <tr><td>Flight</td><td><kbd>Down</kbd></td><td>Flood ballast to sink; no extra air cost.</td></tr>
+            <tr><td>Flight</td><td><kbd>A</kbd></td><td>With the thruster owned, hold to boost thrust both ways and the ballast valve rate.</td></tr>
             <tr><td>Flight</td><td><kbd>B</kbd></td><td>Open chart. B closes. Travel and air use pause.</td></tr>
             <tr><td>Flight</td><td><kbd>A+B</kbd></td><td>Press together to pause.</td></tr>
             <tr><td>Menus</td><td><kbd>Up / Down</kbd></td><td>Select row.</td></tr>
@@ -113,7 +114,7 @@
       <ul>
         <li>Releasing Up/Down holds ballast. Adjust toward the gauge notch for neutral trim; allow time to stop drifting.</li>
         <li>Air drains throughout flight. Carrying a delivery reduces acceleration and top speed.</li>
-        <li>Owning the thruster doubles forward and reverse thrust and doubles the ballast valve rate. Blowing still spends 4 air units per second, so a full blow now costs about half the air.</li>
+        <li>With the thruster owned, holding A doubles forward and reverse thrust and doubles the ballast valve rate. Blowing still spends 4 air units per second, so a full boosted blow costs about half the air. Without the thruster, A does nothing in flight.</li>
         <li>Fast rock impacts puff debris. Brake before narrow passages.</li>
         <li>HUD: AIR = tank; ballast gauge notch = neutral trim; C/P/T = cutter/seal/thruster.</li>
       </ul>
@@ -141,7 +142,7 @@
           <tbody>
             <tr><td>Cutter</td><td>Opens grates. Western cove near Tidewall; old tender clue. <a href="#map-cutter">Map</a></td></tr>
             <tr><td>Pressure seal</td><td>Opens deep routes. Workshop beyond a cutter grate. <a href="#map-seal">Map</a></td></tr>
-            <tr><td>Thruster</td><td>Required for DEEP RELAY. Doubles thrust and the ballast valve rate, disables every tide wall and opens the lower-right jet route. <a href="#map-thruster">Map</a></td></tr>
+            <tr><td>Thruster</td><td>Required for DEEP RELAY. Hold A to double thrust in both directions and the ballast valve rate, disables every tide wall and opens the lower-right jet route. <a href="#map-thruster">Map</a></td></tr>
             <tr><td>Survey lens</td><td>Hidden upper-west Trench Cove, above Deep Anchor, at the end of a long jagged switchback side route. Reads the buried Deep Relay in the lower-right wreck; required for DEEP RELAY. <a href="#map-expedition">Map</a></td></tr>
           </tbody>
         </table>
@@ -270,24 +271,24 @@
 </details>
 <details class="route-map" id="map-seal">
 <summary>Pressure seal: Cormorant → sealed workshop</summary>
-<p>Requires cutter. Cut the workshop grate; collect seal at stop 4. Return to Cormorant to save.</p>
+<p>Requires cutter. Follow the winding cave and cut the grate; collect seal at stop 4. Return to Cormorant to save.</p>
 <p>1 Cormorant → 2 Broken Ribs → 3 Workshop Approach → 4 Sealed workshop</p>
 <input class="map-zoom" type="checkbox" id="zoom-seal"> <label for="zoom-seal">Enlarge map</label>
 <div class="map-scroll" tabindex="0" aria-label="Pressure seal: Cormorant → sealed workshop map; scroll when enlarged">
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="518 216 440 200" width="440" height="200" role="img" aria-labelledby="title-seal desc-seal" data-tools="1" data-waypoints="222,82;172,73;168,89;147,86">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="400 216 558 220" width="558" height="220" role="img" aria-labelledby="title-seal desc-seal" data-tools="1" data-waypoints="222,82;172,73;168,89;110,90">
 <title id="title-seal">Pressure seal: Cormorant → sealed workshop</title>
-<desc id="desc-seal">Yellow route through the encoded cave. Numbered stops: 1 Cormorant → 2 Broken Ribs → 3 Workshop Approach → 4 Sealed workshop. Requires cutter. Cut the workshop grate; collect seal at stop 4. Return to Cormorant to save.</desc>
+<desc id="desc-seal">Yellow route through the encoded cave. Numbered stops: 1 Cormorant → 2 Broken Ribs → 3 Workshop Approach → 4 Sealed workshop. Requires cutter. Follow the winding cave and cut the grate; collect seal at stop 4. Return to Cormorant to save.</desc>
 <image href="assets/exploration-world-native-2026-11-09.png" x="0" y="0" width="1280" height="640"/>
-<polyline class="route-line" points="888,328 888,316 812,316 812,312 808,312 808,308 776,308 776,304 772,304 772,300 768,300 768,292 764,292 764,284 760,284 760,276 720,276 720,292 688,292 688,296 676,296 676,300 660,300 660,340 664,340 664,356 672,356 644,356 644,352 616,352 616,348 596,348 596,344 588,344"/>
-<text class="gate-label" x="641.5" y="343" fill="#edb96a">C</text>
+<polyline class="route-line" points="888,328 888,316 812,316 812,312 808,312 808,308 776,308 776,304 772,304 772,300 768,300 768,292 764,292 764,284 760,284 760,276 720,276 720,292 688,292 688,296 676,296 676,300 660,300 660,340 664,340 664,356 672,356 644,356 644,352 640,352 640,336 636,336 636,328 632,328 632,324 628,324 628,320 624,320 624,316 620,316 620,308 616,308 616,304 612,304 612,300 608,300 608,296 600,296 600,292 536,292 536,332 540,332 540,340 544,340 544,344 548,344 548,348 552,348 552,392 548,392 548,396 532,396 532,400 480,400 480,396 476,396 476,392 468,392 468,388 464,388 464,380 460,380 460,376 440,376 440,360"/>
+<text class="gate-label" x="600.5" y="280" fill="#edb96a">C</text>
 <circle class="route-stop" cx="888" cy="328" r="17"/>
 <text class="route-number" x="888" y="328">1</text>
 <circle class="route-stop" cx="688" cy="292" r="17"/>
 <text class="route-number" x="688" y="292">2</text>
 <circle class="route-stop" cx="672" cy="356" r="17"/>
 <text class="route-number" x="672" y="356">3</text>
-<circle class="route-stop" cx="588" cy="344" r="17"/>
-<text class="route-number" x="588" y="344">4</text>
+<circle class="route-stop" cx="440" cy="360" r="17"/>
+<text class="route-number" x="440" y="360">4</text>
 </svg>
 </div>
 </details>

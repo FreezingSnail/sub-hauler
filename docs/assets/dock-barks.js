@@ -91,7 +91,7 @@ globalThis.DockBarks = {
           "point": "pump",
           "frame": 3,
           "symbol": "img_dock_barks[3]",
-          "text": "A WRECK IS NEAR"
+          "text": "LIFT NEEDS CABLE"
         },
         {
           "point": "lift",
@@ -103,7 +103,7 @@ globalThis.DockBarks = {
           "point": "both",
           "frame": 5,
           "symbol": "img_dock_barks[5]",
-          "text": "YOU NEED A CUTTER"
+          "text": "CUTTER: OLD TENDER"
         },
         {
           "point": "seal",
@@ -151,7 +151,7 @@ globalThis.DockBarks = {
           "point": "pump",
           "frame": 12,
           "symbol": "img_dock_barks[12]",
-          "text": "CHECK CORMORANT"
+          "text": "LIFT NEEDS CABLE"
         },
         {
           "point": "lift",
@@ -163,7 +163,7 @@ globalThis.DockBarks = {
           "point": "both",
           "frame": 14,
           "symbol": "img_dock_barks[14]",
-          "text": "SEARCH A WRECK ABOVE"
+          "text": "SEAL: WEST WORKSHOP"
         },
         {
           "point": "seal",
@@ -175,7 +175,7 @@ globalThis.DockBarks = {
           "point": "core",
           "frame": 16,
           "symbol": "img_dock_barks[16]",
-          "text": "I HEARD OF A WRECK"
+          "text": "THRUSTER IN WRECK"
         },
         {
           "point": "relay",
@@ -205,7 +205,7 @@ globalThis.DockBarks = {
           "point": "first",
           "frame": 20,
           "symbol": "img_dock_barks[20]",
-          "text": "HEAD TO SHALLOWS"
+          "text": "LIFT NEEDS REPAIR"
         },
         {
           "point": "pump",
@@ -217,7 +217,7 @@ globalThis.DockBarks = {
           "point": "lift",
           "frame": 22,
           "symbol": "img_dock_barks[22]",
-          "text": "CHECK BENTHOS"
+          "text": "PUMP NEEDS PART"
         },
         {
           "point": "both",
@@ -235,7 +235,7 @@ globalThis.DockBarks = {
           "point": "core",
           "frame": 25,
           "symbol": "img_dock_barks[25]",
-          "text": "BLOW THE BALAST "
+          "text": "HEAD TO DEEP ANCHOR"
         },
         {
           "point": "relay",
@@ -247,7 +247,7 @@ globalThis.DockBarks = {
           "point": "home",
           "frame": 27,
           "symbol": "img_dock_barks[27]",
-          "text": "A FINE CAPTIAN "
+          "text": "A FINE CAPTAIN"
         }
       ]
     },
@@ -259,7 +259,7 @@ globalThis.DockBarks = {
           "point": "fresh",
           "frame": 28,
           "symbol": "img_dock_barks[28]",
-          "text": "TRY TIDEWALL "
+          "text": "TRY TIDEWALL"
         },
         {
           "point": "first",
@@ -283,7 +283,7 @@ globalThis.DockBarks = {
           "point": "both",
           "frame": 32,
           "symbol": "img_dock_barks[32]",
-          "text": "HOW DID YOU GET HERE"
+          "text": "BEACON NEEDS SEAL"
         },
         {
           "point": "seal",
@@ -295,7 +295,7 @@ globalThis.DockBarks = {
           "point": "core",
           "frame": 34,
           "symbol": "img_dock_barks[34]",
-          "text": "LOOK FOR THE CAVE"
+          "text": "DEEP RELAY: 4 TOOLS"
         },
         {
           "point": "relay",
@@ -337,7 +337,7 @@ globalThis.DockBarks = {
           "point": "lift",
           "frame": 40,
           "symbol": "img_dock_barks[40]",
-          "text": "PUMP: CORMORANT"
+          "text": "PUMP STILL DRY"
         },
         {
           "point": "both",
@@ -541,13 +541,13 @@ globalThis.DockBarks = {
           "point": "relay",
           "frame": 71,
           "symbol": "img_dock_barks[71]",
-          "text": "AN OMMINOUS FEELING"
+          "text": "AN OMINOUS FEELING"
         },
         {
           "point": "home",
           "frame": 72,
           "symbol": "img_dock_barks[72]",
-          "text": "AN OMMINOUS FEELING"
+          "text": "AN OMINOUS FEELING"
         }
       ]
     }

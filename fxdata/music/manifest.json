@@ -11,12 +11,12 @@
       "source": "music/harbor_bubbles/song.json",
       "folder": "Sub-hauler",
       "bytes": 3586,
-      "sha256": "e16cb5cdc8480ddf9087bec63c410defbf098b8628cf9881c7182bd59d621993",
-      "source_sha256": "d8235af53758af58d4eda5ce12136470c8992f530a7f0df462f44047b8e14a07",
+      "sha256": "1263e8933bbe5a5ec5ed3233e5b2c7ec74dea6a12883da9c42d4715049d79e01",
+      "source_sha256": "c9e45e6f49c7df45097f8930748a149364e74a50859e658cbecb00ac0718c16f",
       "event_digest": {
         "algorithm": "sha256",
         "canonicalization": "atmlib-canonical-events-v1",
-        "hex": "fa0e328ddde5d28b67d92bbb67cf1e9f1817115b1eeb774961b5952d8c68ea6d"
+        "hex": "979169986c7ed6ba2524dec2091a0c682a89adb33dd4192bbf3479f2e7bde6da"
       },
       "clock": {
         "tick_rate": 50,
@@ -29,7 +29,7 @@
       "stream": {
         "file": "stream.bin",
         "bytes": 3586,
-        "sha256": "e16cb5cdc8480ddf9087bec63c410defbf098b8628cf9881c7182bd59d621993",
+        "sha256": "1263e8933bbe5a5ec5ed3233e5b2c7ec74dea6a12883da9c42d4715049d79e01",
         "stream_bytes": 3586,
         "ticks": 3072,
         "passes": 163,
@@ -72,12 +72,12 @@
       "source": "music/kelp_drift/song.json",
       "folder": "Sub-hauler",
       "bytes": 3442,
-      "sha256": "4b5036a6d9b6a99436bf4370bc4283340dcc118a5251b07cf30c7a066072f3f7",
-      "source_sha256": "32f935d7ddeb9179462aedc316cad3d3bf11536592b543a1a0b33f3c440f914f",
+      "sha256": "0a700d6cd435e9aedf67e0031462729a126cf0c40cebcb55091c246832e0ca13",
+      "source_sha256": "da452612418b65dfb8cf6dae580d87268bee689016083bfddf8cb66b97f1d92d",
       "event_digest": {
         "algorithm": "sha256",
         "canonicalization": "atmlib-canonical-events-v1",
-        "hex": "e465e934ae702179ca91784afc0f7159889666f14d1019ea0bc54986d1db0fcb"
+        "hex": "6afab9b5aa425c6b0d892ac64be69010fae29147477efdd1fd54e6cdd249a6bb"
       },
       "clock": {
         "tick_rate": 50,
@@ -90,7 +90,7 @@
       "stream": {
         "file": "stream.bin",
         "bytes": 3442,
-        "sha256": "4b5036a6d9b6a99436bf4370bc4283340dcc118a5251b07cf30c7a066072f3f7",
+        "sha256": "0a700d6cd435e9aedf67e0031462729a126cf0c40cebcb55091c246832e0ca13",
         "stream_bytes": 3442,
         "ticks": 3456,
         "passes": 148,
@@ -133,12 +133,12 @@
       "source": "music/sonar_lullaby/song.json",
       "folder": "Sub-hauler",
       "bytes": 2794,
-      "sha256": "05781332b0a1f637d91bfe8dcc9543e4da857e5f28e07f2bacf640b0b30d3a4f",
-      "source_sha256": "f48dd594eafad35f5a24cf5370e61608047adb6773954023bcf21cf7ae75e334",
+      "sha256": "4635e09786431c427d3b719561d98e7ada025d985eaab9849b068c0bb8fc68a8",
+      "source_sha256": "98b39df893d736d985b65e3e97775b755b72963238662bb22321b3d41c13d63b",
       "event_digest": {
         "algorithm": "sha256",
         "canonicalization": "atmlib-canonical-events-v1",
-        "hex": "94e64d59002bb10f34237c5902a14f0b753768e51a80a4308213ecd81472ae85"
+        "hex": "5412ab1c56cb916f091857697d99e1d9d54370d9c55735ed151fae2c03c2a2be"
       },
       "clock": {
         "tick_rate": 50,
@@ -151,7 +151,7 @@
       "stream": {
         "file": "stream.bin",
         "bytes": 2794,
-        "sha256": "05781332b0a1f637d91bfe8dcc9543e4da857e5f28e07f2bacf640b0b30d3a4f",
+        "sha256": "4635e09786431c427d3b719561d98e7ada025d985eaab9849b068c0bb8fc68a8",
         "stream_bytes": 2794,
         "ticks": 3840,
         "passes": 130,
@@ -194,12 +194,12 @@
       "source": "music/abyssal_glass/song.json",
       "folder": "Sub-hauler",
       "bytes": 2504,
-      "sha256": "56aa14f6c9ead9cfcc687ee9aa678088357f74f44349757e0f2ace0805612b09",
-      "source_sha256": "ee0ac64dbe75d905c7eb8701af263ae56661f6c050e394e918580fc355a9fd70",
+      "sha256": "219a13ebaa6d45b554846b01d4461ca0fda4a77168c2f01fc33f6e83a6999112",
+      "source_sha256": "c394c3727aa8322a1afb3664134aff7834c595b0ceeb47cf3824cdf74f742aca",
       "event_digest": {
         "algorithm": "sha256",
         "canonicalization": "atmlib-canonical-events-v1",
-        "hex": "60128db60e8d00ad099a309a16fcacb2c029e034113b3a1f70dc8acdf6ce94e7"
+        "hex": "7fb7ab46173c4f18289d50270c59096b3b14fbbda494eed8b914325a3c8b377e"
       },
       "clock": {
         "tick_rate": 50,
@@ -212,7 +212,7 @@
       "stream": {
         "file": "stream.bin",
         "bytes": 2504,
-        "sha256": "56aa14f6c9ead9cfcc687ee9aa678088357f74f44349757e0f2ace0805612b09",
+        "sha256": "219a13ebaa6d45b554846b01d4461ca0fda4a77168c2f01fc33f6e83a6999112",
         "stream_bytes": 2504,
         "ticks": 3600,
         "passes": 147,
@@ -255,12 +255,12 @@
       "source": "music/tidepool_waltz/song.json",
       "folder": "Sub-hauler",
       "bytes": 3254,
-      "sha256": "6d299766d46d3e3672b74a07ac87677021f911614ce8c3cac654f8509d7aba70",
-      "source_sha256": "9a77e8d2395db5de8ac6aa230364486aa26d9cbb7561e51efd0ce2183a512fc1",
+      "sha256": "13c2c41b53c66c14b0a864a3cecdc9c8392d9ea7cbdfe27044e3b0f8b63b5697",
+      "source_sha256": "87ee8fe478eb8a42957073aa6cc51e2b36b27007c56f9bdc03e1015b19e2289c",
       "event_digest": {
         "algorithm": "sha256",
         "canonicalization": "atmlib-canonical-events-v1",
-        "hex": "dba64f5483a803acac73e7ce0d48d481042af9960511c6b944374d127c152ac6"
+        "hex": "2fd8c05dbc19eccad7fd6c4501ac0eb8444f27697885681e3764c6ec89a232c1"
       },
       "clock": {
         "tick_rate": 50,
@@ -273,7 +273,7 @@
       "stream": {
         "file": "stream.bin",
         "bytes": 3254,
-        "sha256": "6d299766d46d3e3672b74a07ac87677021f911614ce8c3cac654f8509d7aba70",
+        "sha256": "13c2c41b53c66c14b0a864a3cecdc9c8392d9ea7cbdfe27044e3b0f8b63b5697",
         "stream_bytes": 3254,
         "ticks": 1920,
         "passes": 183,
@@ -316,12 +316,12 @@
       "source": "music/bubblejet_run/song.json",
       "folder": "Sub-hauler",
       "bytes": 5948,
-      "sha256": "8a8ac7f807407bcb9c7fae01551c03a40044dee5e0b0245b0f72db8319901167",
-      "source_sha256": "3c5e8ad6f8462cddb78ba91c3026be59979a68e2157dee60ac9c79440c16f6a4",
+      "sha256": "81caaec93bb2163b41fcb574a22ddad4cc70a236df7c6f9a79ee9bef74e3de13",
+      "source_sha256": "6c29dafcb5f2a3c8d9df8007d07b9cda5b93bec24e57b6f0d8fafe1f8597a7c2",
       "event_digest": {
         "algorithm": "sha256",
         "canonicalization": "atmlib-canonical-events-v1",
-        "hex": "fcf811ec2123d034255954e5e7f5fd3c379ccf71a9db9760c7a605417e8edaa5"
+        "hex": "95e26e3e3d7664eb18531da19fcb34e88dac0524ed13e35192bd32fa809129a8"
       },
       "clock": {
         "tick_rate": 100,
@@ -334,7 +334,7 @@
       "stream": {
         "file": "stream.bin",
         "bytes": 5948,
-        "sha256": "8a8ac7f807407bcb9c7fae01551c03a40044dee5e0b0245b0f72db8319901167",
+        "sha256": "81caaec93bb2163b41fcb574a22ddad4cc70a236df7c6f9a79ee9bef74e3de13",
         "stream_bytes": 5948,
         "ticks": 3840,
         "passes": 349,

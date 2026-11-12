@@ -55,19 +55,10 @@ Individual `song.json` files are editable `atmlib-score` v1 sources.
 ```sh
 make gen
 make gen-check
-make gen-audio   # archival reference PCM/ADPCM evidence only
 ```
 
-The sibling `../ATMlib2FX` checkout is required for `make gen`. `make gen-audio`
-additionally needs an Ardens checkout with the absim core. Override their
-locations with
-`ATMLIB2FX_ROOT=/path/to/ATMlib2FX ARDENS_ROOT=/path/to/Ardens make gen-audio`
-(also works for the viewer). `make gen-audio` writes deterministic offline
-8 kHz reference PCM/WAV files under `build/audio-reference/` and a compact
-source/tool/calibration manifest at `fxdata/music/reference-manifest.json`; see
-[`tools/audio_reference/README.md`](../tools/audio_reference/README.md). The
-references are not packed into the cart and are not part of `make run`.
-The exporter uses `--ring 64 --streaming-loops` for the generated asset
+The sibling `../ATMlib2FX` checkout is required for `make gen`. The exporter
+uses `--ring 64 --streaming-loops` for the generated asset
 metadata; the shipping game compiles the runtime ring at **32 B**. `make gen`
 writes compact
 streams and a source/event/stream hash manifest into `fxdata/music/`, appends
@@ -84,15 +75,12 @@ defines region/berth cues, pause and save behavior, and mute. Asset bytes are
 external cart storage; the measured AVR backend cost and combined image are in
 [platform.md](../docs/platform.md).
 
-`make gen-audio` also writes raw 4-bit IMA ADPCM loops under
-[`fxdata/music/adpcm/`](../fxdata/music/adpcm/) (1,424,640 B total), a manifest,
-generated device descriptors, and decoded listening WAVs under
-`build/audio-adpcm/`.
-Those are the sampled-audio admission assets; see
-[`docs/audio-admission.md`](../docs/audio-admission.md) for the codec, player,
-metrics and timing. They are archival evidence only: since `sub-hauler-646.18`
-the streams are no longer declared in `fxdata/fxdata.txt`, so they do not add
-cart bytes or alter the existing C1 streams.
+The former sampled-audio reference pipeline (reference PCM/WAV, IMA ADPCM
+evidence and its admission docs) has been retired and removed; see
+[`docs/archive/audio-admission.md`](../docs/archive/audio-admission.md) for the
+historical admission record. Since `sub-hauler-646.18` the streams are no
+longer declared in `fxdata/fxdata.txt`, so they never added cart bytes or
+altered the existing C1 streams.
 
 
 Validation/export and host decoder loop checks establish timing and stream

@@ -10,17 +10,17 @@
   "instruments": {
     "bloop": {
       "voice": "pulse",
-      "volume": 60,
+      "volume": 90,
       "duty": 128
     },
     "echo": {
       "voice": "pulse",
-      "volume": 24,
+      "volume": 36,
       "duty": 112
     },
     "keel": {
       "voice": "pulse",
-      "volume": 36,
+      "volume": 54,
       "duty": 128
     },
     "bubble": {

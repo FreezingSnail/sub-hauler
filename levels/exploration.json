@@ -582,11 +582,12 @@
       "id": "CW",
       "name": "Sealed workshop",
       "region": "works",
+      "texture": "pressure",
       "position": [
-        147,
-        86
+        110,
+        90
       ],
-      "radius": 4,
+      "radius": 5,
       "pickup": {
         "kind": "seal"
       }
@@ -1172,14 +1173,12 @@
       "from": "Z",
       "to": "CW",
       "radius": 2.8,
-      "requires": [
-        "cutter"
-      ],
+      "requires": ["cutter"],
+      "gate_at": 0.2,
       "via": [
-        [
-          157,
-          88
-        ]
+        [161, 89], [158, 81], [149, 72], [137, 72],
+        [132, 80], [138, 89], [136, 99], [124, 100],
+        [116, 94], [119, 84], [115, 78], [107, 79], [104, 86]
       ]
     },
     {

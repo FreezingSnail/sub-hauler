@@ -21,7 +21,7 @@ globalThis.StoryMissions = {
     },
     {
       "id": "pump_survey",
-      "title": "Survey The Pump Station",
+      "title": "Survey Pump Station",
       "summary": "Inspect the pump at Pump Refuge. ",
       "intent": "Hold beside the inactive pump, see what is wrong.",
       "scenes": [
@@ -30,7 +30,7 @@ globalThis.StoryMissions = {
     },
     {
       "id": "pump",
-      "title": "Repair the Pump Station",
+      "title": "Repair Pump Station",
       "summary": "Carry the replacement impeller from Cormorant to the Pump Refuge pump. ",
       "intent": "Once fixed the grow tanks will be online.",
       "scenes": [
@@ -69,7 +69,7 @@ globalThis.StoryMissions = {
     },
     {
       "id": "expedition",
-      "title": "Survey the deep anomoly",
+      "title": "Survey deep anomaly",
       "summary": "We have been investigating a strange reading, now that you are here can we ask you to investigate it for us?",
       "intent": "travel to the lowest depths to examine the mystery.",
       "scenes": [

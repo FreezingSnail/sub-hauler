@@ -1,4 +1,4 @@
-.PHONY: help full gen gen-check gen-audio build mini size size-line run debug save-migrate test test-tools docs-check editor fxtest fxtest-flight fxtest-build fxtest-run clean format music-viewer music-viewer-build render-world
+.PHONY: help full gen gen-check build mini size size-line run debug flash flash-data flash-debug save-migrate test test-tools docs-check editor fxtest fxtest-flight fxtest-build fxtest-run clean format music-viewer music-viewer-build render-world
 
 # ----------------------------------------------------------------------------
 # Project
@@ -38,6 +38,8 @@ endif
 # build/Ardens.app/Contents/MacOS/Ardens; accept either an app path or a root.
 ARDENS_ROOT   ?= $(if $(wildcard $(dir $(ARDENS))/../../../../src/absim.hpp),$(abspath $(dir $(ARDENS))/../../../..),$(abspath $(ARDENS)))
 
+ARDUGOTOOLS   ?= ardugotools
+ARDUBOY_DEVICE ?= any
 FXDATA_BIN    ?= fxdata/fxdata.bin
 FXTEST_MS     ?= 3000
 FXTEST_ONLY   ?=
@@ -71,7 +73,6 @@ WORLD_TABLES  := fxdata/tables/world.bin fxdata/tables/world-chart.bin
 LEVEL_OUTPUTS := fxdata/tables/exploration.bin fxdata/tables/exploration-chart.bin fxdata/tables/exploration-objects.bin fxdata/tables/exploration-terrain.bin src/generated/level.hpp src/generated/exploration.hpp docs/assets/exploration-terrain.svg docs/assets/exploration-scenery.json
 CARGO_TABLES  := fxdata/tables/cargo.bin
 MUSIC_SOURCES := music/catalog.json $(wildcard music/*/song.json)
-ADPCM_BINS    := $(addprefix fxdata/music/adpcm/,harbor_bubbles.bin kelp_drift.bin sonar_lullaby.bin abyssal_glass.bin tidepool_waltz.bin bubblejet_run.bin)
 REGION_OUTPUTS := src/generated/music_regions.hpp fxdata/tables/music-regions.bin
 MUSIC_OUTPUTS := $(addprefix fxdata/music/sh_,harbor_bubbles.bin kelp_drift.bin sonar_lullaby.bin abyssal_glass.bin tidepool_waltz.bin bubblejet_run.bin) fxdata/music/manifest.json
 STORY_BEAT_INPUTS := tools/gen_story_beats.py story/scenes.json story/art.png
@@ -79,7 +80,7 @@ STORY_BEAT_OUTPUTS := fxdata/tables/story-beats.bin fxdata/tables/story-meta.bin
 DOCK_BARK_INPUTS := tools/gen_dock_barks.py tools/gen_text_images.py story/dock_hints.json src/campaign.hpp src/station_view.hpp src/text.hpp fxdata/fxdata.txt
 DOCK_BARK_OUTPUTS := docs/assets/dock-barks.js
 STORY_EDITOR_OUTPUTS := docs/assets/story-editor/schema.js docs/assets/story-editor/missions.js
-TEXT_STAMP_INPUTS := tools/gen_text_images.py story/dock_hints.json tools/gen_font.py tools/gen_panels.py src/campaign.hpp fxdata/fxdata.txt
+TEXT_STAMP_INPUTS := tools/gen_text_images.py story/missions.json story/dock_hints.json tools/gen_font.py tools/gen_panels.py src/campaign.hpp fxdata/fxdata.txt
 TEXT_STAMP_OUTPUTS := src/generated/text_layout.hpp fxdata/TextData.txt src/generated/text_stamp_sprites.hpp
 FX_INPUTS     := $(IMAGES) $(PILOT_IMAGES) fxdata/fxdata.txt tools/gen.sh tools/gen_sprites.py \
                  tools/gen_hud.py images/hud/*.png \
@@ -94,7 +95,7 @@ FX_INPUTS     := $(IMAGES) $(PILOT_IMAGES) fxdata/fxdata.txt tools/gen.sh tools/
                  tools/gen_music_regions.py levels/exploration.json $(REGION_OUTPUTS) \
                  tools/gen_font.py tools/gen_pilot.py tools/gen_world.py \
                  tools/gen_cargo.py tools/gen_level.py tools/gen_scenery.py tools/gen_contours.py tools/gen_settlements.py levels/exploration.json $(WORLD_TABLES) $(CARGO_TABLES) \
-                 tools/fxdata-build.py tools/gen_music.py tools/gen_music_viewer.py $(MUSIC_SOURCES) $(ADPCM_BINS)
+                 tools/fxdata-build.py tools/gen_music.py tools/gen_music_viewer.py $(MUSIC_SOURCES)
 
 full: gen build
 
@@ -103,9 +104,6 @@ gen:
 
 # Archival streaming-audio evidence only. The game ships the ATMlib2FX synth,
 # so this is not part of `gen`, `build`, `run` or `gen-check`.
-gen-audio:
-	python3 tools/gen_audio_ref.py
-	python3 tools/gen_audio_adpcm.py
 
 # Determinism gate: regenerate from committed inputs and require every
 # generated artifact to be byte-identical. Run `make gen` once before using it
@@ -261,6 +259,7 @@ mini: music-check src/fxdata.h
 		$(SIZE_FLAGS) "$(SKETCH).ino"
 
 ELF := $(DIST_DIR)/$(SKETCH).ino.elf
+HEX := $(DIST_DIR)/$(SKETCH).ino.hex
 
 size: build
 	@printf 'size: image=%s\n' "$(ELF)"
@@ -276,6 +275,29 @@ run: build
 
 debug:
 	$(MAKE) --no-print-directory run DEBUG=1
+
+# Physical device flashing. The release firmware disables USB, so the uploader
+# cannot reset it: enter the bootloader by holding DOWN at power-on/reset.
+flash-data: build
+	@command -v "$(ARDUGOTOOLS)" >/dev/null 2>&1 || { \
+		echo "flash-data: ardugotools not found; set ARDUGOTOOLS=/path/to/ardugotools" >&2; exit 1; }
+	@test -f "$(FXDATA_BIN)" || { \
+		echo "flash-data: FX image missing at $(FXDATA_BIN); run make gen" >&2; exit 1; }
+	@echo "flash-data: put the Arduboy in bootloader mode (hold DOWN, then tap reset/power-cycle)"
+	"$(ARDUGOTOOLS)" flashcart writedev "$(ARDUBOY_DEVICE)" -i "$(FXDATA_BIN)"
+
+flash: flash-data
+	@test -f "$(HEX)" || { \
+		echo "flash: sketch hex missing at $(HEX); run make build" >&2; exit 1; }
+	@test -f "$(FXDATA_BIN)" || { \
+		echo "flash: FX image missing at $(FXDATA_BIN); run make gen" >&2; exit 1; }
+	@echo "flash: writing sketch $(HEX)"
+	"$(ARDUGOTOOLS)" sketch write "$(ARDUBOY_DEVICE)" -i "$(HEX)" --runnow
+
+# Developer no-clip image in isolated debug paths. Writes the same cart image
+# first, then the DEBUG=1 sketch.
+flash-debug:
+	$(MAKE) --no-print-directory flash DEBUG=1
 
 # Ardens keys saves by a hash of the program and cart. Copy an existing save
 # under the current image's key without changing its payload or the source.
@@ -315,11 +337,10 @@ CXXFLAGS      ?= -std=c++17 -O0 -g3 -Wall -Wextra
 
 test:
 	@mkdir -p $(dir $(TEST_OUT))
-	$(CXX) $(CXXFLAGS) -Isrc -Itools/audio_reference -DTEST $(TEST_SOURCES) -o $(TEST_OUT)
+	$(CXX) $(CXXFLAGS) -Isrc -DTEST $(TEST_SOURCES) -o $(TEST_OUT)
 	./$(TEST_OUT)
 
 test-tools:
-	@test -f build/audio-reference/sh_harbor_bubbles.pcm || $(MAKE) --no-print-directory gen-audio
 	python3 -m unittest discover -s tools/tests -p 'test_*.py' -v
 
 docs-check:
@@ -426,11 +447,13 @@ help:
 		'  make full       generate FX data, then build the FX firmware' \
 		'  make gen        regenerate fxdata/Sprites.txt, fxdata.bin and headers' \
 		'  make gen-check  prove generation is deterministic (run make gen first)' \
-		'  make gen-audio  rebuild archival reference PCM + ADPCM evidence only' \
 		'  make build      compile the fixed FX firmware into dist/fx/' \
 		'  make mini       compile the fixed Arduboy Mini firmware into dist/mini/' \
 		'  make size       whole-image flash/RAM report' \
 		'  make run        build, then launch Ardens with the ELF + FX image' \
+		'  make flash      build, write the FX cart image, then upload the sketch (device in bootloader)' \
+		'  make flash-data build, then write only the FX cart image (device in bootloader)' \
+		'  make flash-debug build, write the FX cart image, then upload the developer no-clip sketch (DEBUG=1)' \
 		'  make debug      build the developer no-clip image and launch Ardens (DEBUG=1)' \
 		'  make save-migrate SAVE=...  copy an Ardens save to the current image hash' \
 		'  make render-world export the native world, annotated overview and music map' \
@@ -445,4 +468,4 @@ help:
 		'  make fxtest-save-runtime-page  emulator-only runtime page probe (erases alternate page)' \
 		'  make clean      remove build/ and dist/' \
 		'' \
-		'Overrides: DEBUG=0|1, SAVE, SKETCH, FQBN, MINI_FQBN, ARDUINO_CLI, ARDENS, FXTEST_ONLY, FXTEST_MS, CXX.'
+		'Overrides: DEBUG=0|1, SAVE, SKETCH, FQBN, MINI_FQBN, ARDUINO_CLI, ARDENS, ARDUGOTOOLS, ARDUBOY_DEVICE, FXTEST_ONLY, FXTEST_MS, CXX.'

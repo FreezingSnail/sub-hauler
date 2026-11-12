@@ -10,17 +10,17 @@
   "instruments": {
     "glass": {
       "voice": "pulse",
-      "volume": 42,
+      "volume": 63,
       "duty": 128
     },
     "water": {
       "voice": "pulse",
-      "volume": 22,
+      "volume": 33,
       "duty": 128
     },
     "ballast": {
       "voice": "pulse",
-      "volume": 28,
+      "volume": 42,
       "duty": 128
     },
     "silt": {

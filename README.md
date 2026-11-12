@@ -54,9 +54,8 @@ device suites print `P`, and the flight probe covers **842** complete frames at
 **11.788 ms maximum**, zero 16 ms misses, **gap=1 tick**, and zero audio
 underruns/errors. `make gen-check` is deterministic. The latest generation
 produces 17 scenes, 43 cards and 106 frames in a **67,468 B** story blob; the
-FX payload/image are **658,682 / 662,784 B**. The six archival ADPCM streams are
-no longer in the shipping layout; their `.bin` files, manifest and descriptors
-remain archival evidence.
+FX payload/image are **658,682 / 662,784 B**. The sampled IMA ADPCM backend and
+its reference-audio pipeline have been retired and removed.
 
 Story prose comes from editable UTF-8 JSON:
 [`story/scenes.json`](story/scenes.json) for scene text and
@@ -91,8 +90,8 @@ which travel cue plays in each area. A 41,544-byte payload prefix precedes the u
 native terrain section; later music, menu, splash, story and save sections make
 the current payload/image **658,682 / 662,784 B** (**1,434,368 B** below 2 MiB).
 The six sampled IMA ADPCM streams were removed from the shipping cart
-(`sub-hauler-646.18`); `make gen-audio` and the `fxdata/music/adpcm/` files stay
-as archival evidence and are not compiled into firmware or tests.
+(`sub-hauler-646.18`); the remaining sampled-audio reference pipeline was later
+retired and removed entirely.
 
 Normal startup shows Snailware for about 1 s, then the Sub-hauler game splash.
 The title/menu music plays through the introduction and continues into the
@@ -155,7 +154,6 @@ Historical 2026-10-24 profile measurements are retained in
 ```sh
 make gen          # images/fonts -> Sprites/PilotSprites/fxdata.bin + headers
 make gen-check    # regeneration must be byte-identical
-make gen-audio    # archival reference PCM/ADPCM evidence only
 make build        # dist/fx/sub-hauler.ino.hex + .elf
 make test         # host rules tests (217)
 make test-tools   # Python tooling tests (135)
@@ -178,8 +176,8 @@ The editable music scores and viewer catalog live in [`music/`](music/README.md)
 (40 BPM) through Tidepool Waltz (75 BPM, 3/4) to Bubblejet Run (100 BPM), with
 the original Harbor Bubbles, Kelp Drift and Sonar Lullaby loops included. The
 jukebox plays the packed assets; the game decodes the same six cues with the
-ATMlib2FX compact synth. The `make gen-audio` reference ADPCM files are
-archival only and are not part of the shipping `fxdata.txt` layout.
+ATMlib2FX compact synth. The former sampled-audio reference pipeline has been
+retired and is not part of the shipping `fxdata.txt` layout.
 
 ## Fixed build
 

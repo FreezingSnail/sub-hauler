@@ -128,9 +128,9 @@ inline EquipmentClue equipmentClue(const game::State &state) {
 
 #if defined(__AVR__)
 
-// Frame index for the STORY/CARRY composite sheets. Mission ids 0..7 map
-// directly; the VIEW ENDING row uses the final frame (kWorkEnding is outside
-// the frozen mission ids).
+// Frame index for the mission-row sheets. Mission ids 0..7 map directly; the
+// VIEW ENDING row uses the final frame (kWorkEnding is outside the frozen
+// mission ids). Titles come from story/missions.json.
 inline uint8_t missionFrame(uint8_t mission) {
     if (mission == campaign::kWorkEnding)
         return static_cast<uint8_t>(text_layout::kMissionFrames - 1);

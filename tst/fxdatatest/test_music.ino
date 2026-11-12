@@ -65,16 +65,6 @@ void noteGap(uint16_t gap) {
         s_gapMax = gap;
 }
 
-// A cue change fades the old stream out before the new stream loads, so a
-// transition assertion must let the real timer and foreground service run.
-bool waitForCue(uint8_t cue) {
-    for (uint8_t attempt = 0; attempt < 48 && !playingCue(cue); ++attempt) {
-        noteGap(timedService());
-        delay(8);
-    }
-    return playingCue(cue);
-}
-
 void worldFrame(uint8_t frame) {
     arduboy.pollButtons();
     game::Input input;
@@ -124,7 +114,7 @@ void setup() {
     bool ok = true;
     for (uint8_t cue = 0; cue < music::backend::kCueCount; ++cue) {
         music::setCue(cue);
-        ok = waitForCue(cue) && music::currentCue() == cue && ok;
+        ok = playingCue(cue) && music::currentCue() == cue && ok;
         for (uint8_t frame = 0; frame < kFramesPerCue; ++frame) {
             noteGap(timedService());
             delay(6);
@@ -181,7 +171,6 @@ void setup() {
     // must service the ring between water reads.
     bool mapContinues = true;
     music::setCue(music_logic::kHarbor);
-    waitForCue(music_logic::kHarbor);
     const uint8_t mapCue = music::currentCue();
     chart::State chartState;
     chart::reset(chartState);
@@ -225,7 +214,6 @@ void setup() {
     // Actual backend transitions: same-cue continuity, station->flight
     // hysteresis, pause/resume and MUSIC OFF/ON.
     music::setCue(music_logic::kHarbor);
-    waitForCue(music_logic::kHarbor);
     for (uint8_t tick = 0; tick < 8; ++tick) {
         delay(6);
         noteGap(timedService());
@@ -243,17 +231,17 @@ void setup() {
     s_state.y = 18 * 8 + 4;
     for (uint8_t frame = 0; frame < 130; ++frame)
         music::updateFlight(s_state);
-    const bool flightSwitched = music::currentCue() == music_logic::kKelp && waitForCue(music_logic::kKelp);
+    const bool flightSwitched = music::currentCue() == music_logic::kKelp && playingCue(music_logic::kKelp);
 
     // Dock override resets the pending flight candidate; undocking must not
     // inherit the old hysteresis count and switch immediately.
     music::overrideCue(music_logic::kTidepool);
-    const bool dockedOverride = music::currentCue() == music_logic::kTidepool && waitForCue(music_logic::kTidepool);
+    const bool dockedOverride = music::currentCue() == music_logic::kTidepool && playingCue(music_logic::kTidepool);
     for (uint8_t frame = 0; frame < 120; ++frame)
         music::updateFlight(s_state);
     const bool dockedHold = music::currentCue() == music_logic::kTidepool && playingCue(music_logic::kTidepool);
     music::updateFlight(s_state);
-    const bool undockedSwitchReset = music::currentCue() == music_logic::kKelp && waitForCue(music_logic::kKelp);
+    const bool undockedSwitchReset = music::currentCue() == music_logic::kKelp && playingCue(music_logic::kKelp);
 
     music::pause();
     const bool pausedBackend = music::paused();

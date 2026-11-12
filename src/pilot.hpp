@@ -23,10 +23,10 @@ constexpr int16_t kCameraScreenX = 44;
 constexpr int16_t kCameraScreenY = 32;
 
 // Directional look-ahead: shift the target half a pixel per px/s of Q8.8
-// velocity. Base top speed (30 px/s) gives 15 px right, and the owned-thruster
-// 60 px/s gives 30 px; max vertical (20 px/s) gives 10 px down. Reverse
-// velocity mirrors that exactly. In Q4 the same lead is velocityQ8 / 32, so
-// 30 px/s = 240 Q4 = 15 px. The look-ahead is stateless, so a stop immediately
+// velocity. Base top speed (30 px/s) gives 15 px right, and the A-held
+// thruster boost 60 px/s gives 30 px; max vertical (20 px/s) gives 10 px down.
+// Reverse velocity mirrors that exactly. In Q4 the same lead is velocityQ8 / 32,
+// so 30 px/s = 240 Q4 = 15 px. The look-ahead is stateless, so a stop immediately
 // recentres the target while the camera itself still eases back, and a reversal
 // flips the target without a camera snap.
 constexpr uint8_t kCameraLookAheadShiftQ4 = 5;
@@ -48,7 +48,7 @@ constexpr uint16_t kCameraScreenXQ4 = static_cast<uint16_t>(kCameraScreenX) << k
 constexpr uint16_t kCameraScreenYQ4 = static_cast<uint16_t>(kCameraScreenY) << kCameraQ4Shift;
 
 // Correction bounds. Pre-thruster flight tops out at 0.5 px/frame and the
-// owned-thruster boost at 1 px/frame, so 2 px/frame is twice the fastest
+// A-held thruster boost at 1 px/frame, so 2 px/frame is twice the fastest
 // tracking requirement and still bounds a 30 px look-ahead drop (stop or
 // collision) to a 2 px terrain step instead of a jolt. Developer direct
 // traversal moves 6 px/frame, so only that explicit path may use the larger
@@ -347,7 +347,9 @@ template <typename Reader> inline void stepWorld(State &state, const Input &inpu
     if (freeFlight)
         particles::tick(state);
     exploration::update(state);
-    updateCamera(state);
+    // The developer fast-traverse needs the wider correction bound so a 3x
+    // position advance does not outrun the camera and push the hull offscreen.
+    updateCamera(state, speedScale > 1 ? kDevCameraMaxStepQ4 : kCameraMaxStepQ4);
     ++state.ticks;
     // Flight tick for the campaign voyage clock (docked frames never step).
     tickVoyage(state);

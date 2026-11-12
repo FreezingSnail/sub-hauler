@@ -213,12 +213,15 @@ replace that load. The chart highlights the active delivery destination. The pro
 and has no saved field.
 
 Use text lengths that fit the current 6x8 font (at most 20 characters per
-line). The shipped WORK page lists selectable rows directly; for example:
+prose line). WORK rows render the mission titles from `story/missions.json`,
+uppercased and without a STORY/CARRY prefix; `tools/gen_text_images.py` rejects
+a title wider than 21 columns. The shipped WORK page lists selectable rows
+directly; for example:
 
 ```text
 BENTHOS WORK
-STORY PUMP SURVEY
-STORY LIFT
+SURVEY PUMP STATION
+REPAIR CARGO LIFT
 A CHART  B BACK
 ```
 
@@ -401,7 +404,7 @@ The fixed build links the **ATMlib2FX compact synth**
 authored C1 streams; the earlier ArduboyStreamFX ADPCM comparison build is
 historical and no longer selectable. The sampled-audio work in
 [`story-resource-design.md`](archive/story-resource-design.md) and
-[`audio-admission.md`](audio-admission.md) is an admission/comparison track, not
+[`archive/audio-admission.md`](archive/audio-admission.md) is an admission/comparison track, not
 the shipping decoder. The six score sources and cue behavior below remain
 authoritative; dated measurements are in [platform.md](platform.md).
 

@@ -93,8 +93,8 @@
       "room": "Z",
       "kind": "winch",
       "mount": "water",
-      "x": 1316,
-      "y": 752
+      "x": 1324,
+      "y": 760
     },
     {
       "id": "lower-gantry-wreck",
@@ -165,8 +165,8 @@
       "room": "CW",
       "kind": "workshop-lock",
       "mount": "wall",
-      "x": 1124,
-      "y": 688
+      "x": 828,
+      "y": 748
     },
     {
       "id": "lens-cove-array",
@@ -178,14 +178,15 @@
     }
   ],
   "ambient": {
-    "tide": 55,
+    "tide": 56,
     "kelp": 25,
-    "works": 29,
+    "works": 31,
     "deep": 15,
+    "pressure": 4,
     "lens": 4
   },
-  "white_pixels": 10421,
-  "rock_pixels": 43591,
+  "white_pixels": 10582,
+  "rock_pixels": 44621,
   "settlements": [
     {
       "id": 0,

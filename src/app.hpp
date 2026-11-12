@@ -728,17 +728,18 @@ static void updateFlight() {
     music::updateFlight(s_state);
     music::resume();
 
-    // D-pad only: left/right thrust, up blows ballast (rise), down floods
-    // (sink). A/B stay free for station actions once docked.
+    // D-pad: left/right thrust, up blows ballast (rise), down floods (sink).
+    // With the thruster owned, holding A doubles thrust both ways and the
+    // ballast valve rate in release and debug builds.
     const uint8_t held = Arduboy2Base::currentButtonState;
-    const game::Input input{static_cast<bool>(held & UP_BUTTON), static_cast<bool>(held & DOWN_BUTTON), static_cast<bool>(held & LEFT_BUTTON), static_cast<bool>(held & RIGHT_BUTTON)};
+    const game::Input input{static_cast<bool>(held & UP_BUTTON), static_cast<bool>(held & DOWN_BUTTON), static_cast<bool>(held & LEFT_BUTTON), static_cast<bool>(held & RIGHT_BUTTON), static_cast<bool>(held & A_BUTTON)};
 
     const uint8_t beforeCampaign = s_state.campaign;
     const uint8_t beforeSurveys = s_state.surveys;
 #if SH_DEV_MODE
     // A is otherwise free in flight. Hold it for a fast traverse; only the
     // boat's position advance scales, so air, currents and the voyage clock
-    // keep production pacing.
+    // keep production pacing. The same held A also drives the thruster boost.
     const uint8_t speedScale = (held & A_BUTTON) ? game::kDevSpeedScale : 1;
     const bool docked = station::stepFlight(s_state, input, s_tables, &s_cache, !s_debugNoClip, speedScale);
 #else
