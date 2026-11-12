@@ -56,18 +56,34 @@ inline uint8_t previousRow(uint8_t selected, voyage_flow::BootState status) {
     return continueAvailable(status) ? kTitleContinue : kTitleNewVoyage;
 }
 
+// The baked title scope gets one slow sonar echo: the ring steps one pixel
+// every eight frames, then clears before it reaches the baked inner dial. The
+// effect is pure overdraw on the panel already streamed for this frame, so idle
+// cadence and music servicing are unchanged.
+constexpr uint8_t kScopeCX = 105;
+constexpr uint8_t kScopeCY = 26;
+
+inline uint8_t titleEchoRadius(uint16_t frame) {
+    const uint8_t step = static_cast<uint8_t>((frame >> 3) & 7u);
+    return step < 6 ? static_cast<uint8_t>(step + 2) : 0;
+}
+
 #if defined(__AVR__)
 #include "common.hpp"
 
 // Baked title frames: blank/written boot state x selected row, HAULER fixed. The
 // replace prompt exists only when a valid save is present, so it is one frame.
-inline void drawTitle(voyage_flow::BootState status, uint8_t selected, TitleMode mode) {
+// `echoRadius` is presentation-only overdraw; callers that compare the raw
+// panel (device fixtures) leave it at zero.
+inline void drawTitle(voyage_flow::BootState status, uint8_t selected, TitleMode mode, uint8_t echoRadius = 0) {
     if (mode == kTitleConfirmReplace) {
         panel_view::draw(title_replace, 0, 64);
         return;
     }
     const uint16_t frame = static_cast<uint16_t>(static_cast<uint8_t>(status) * 2u + selected);
     panel_view::draw(title_menu, frame, 64);
+    if (echoRadius != 0)
+        arduboy.drawCircle(kScopeCX, kScopeCY, echoRadius, WHITE);
 }
 
 // Pause keeps the frozen prompt chrome and adds a live MUSIC row. With music

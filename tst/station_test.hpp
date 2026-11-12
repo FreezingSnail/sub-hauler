@@ -353,5 +353,26 @@ inline void StationSuite(TestRunner &runner) {
         }
         runner.add(test);
     }
+
+    {
+        Test test("station arrival sweep is one bounded left-to-right pass");
+        test.assertEqual(station_view::arrivalSweepX(0), station_view::kScreenW, "idle board has no accent");
+        test.assertEqual(station_view::arrivalSweepX(station_view::kArrivalTicks), station_view::kArrivalSweepX0, "first arrival frame starts at the left");
+        test.assertEqual(station_view::arrivalSweepX(static_cast<uint8_t>(station_view::kArrivalTicks - 1)),
+                         static_cast<uint8_t>(station_view::kArrivalSweepX0 + station_view::kArrivalSweepStep),
+                         "sweep advances one step per countdown tick");
+        test.assertEqual(station_view::arrivalSweepX(1),
+                         static_cast<uint8_t>(station_view::kArrivalSweepX0 + (station_view::kArrivalTicks - 1) * station_view::kArrivalSweepStep),
+                         "last tick reaches the right side");
+        test.assertTrue(station_view::arrivalSweepX(1) + station_view::kArrivalSweepW <= station_view::kScreenW, "sweep stays on screen at the end");
+        test.assertEqual(station_view::arrivalSweepX(static_cast<uint8_t>(station_view::kArrivalTicks + 1)), station_view::kScreenW, "out-of-range count is idle");
+        uint8_t previous = 0;
+        for (uint8_t ticks = station_view::kArrivalTicks; ticks > 0; --ticks) {
+            const uint8_t x = station_view::arrivalSweepX(ticks);
+            test.assertTrue(ticks == station_view::kArrivalTicks || x > previous, "sweep moves right each tick");
+            previous = x;
+        }
+        runner.add(test);
+    }
 }
 

@@ -26,12 +26,12 @@
 // finish before the single FX::display(CLEAR_BUFFER) in the sketch.
 namespace view {
 
-inline void frame(const game::State &state, const cave::Camera &camera, world::TileCache &cache, world::FxTables &tables) {
+inline void frame(const game::State &state, const cave::Camera &camera, world::TileCache &cache, world::FxTables &tables, uint8_t cues = 0) {
     world::refreshCache(cache, tables, cave::cacheOriginTileX(camera), cave::cacheOriginTileY(camera));
     cave::streamFrame(camera, tables, Arduboy2Base::sBuffer);
     ambient_view::draw(Arduboy2Base::sBuffer, camera, state.ticks);
     fish_view::draw(Arduboy2Base::sBuffer, camera, state.ticks);
-    bubble_view::draw(Arduboy2Base::sBuffer, state, camera);
+    bubble_view::draw(Arduboy2Base::sBuffer, state, camera, cues);
     campaign_view::drawRestoration(Arduboy2Base::sBuffer, state, camera);
     hazard_view::drawCurrents(Arduboy2Base::sBuffer, state, camera);
     exploration_view::draw(Arduboy2Base::sBuffer, state, camera);

@@ -6,17 +6,20 @@
 #include "test.hpp"
 
 inline void AmbientViewSuite(TestRunner &runner) {
-    Test test("kelp and vent animations stay in clear scenery and change over time");
+    Test test("kelp, vent and drifting motes stay in clear scenery and change over time");
     std::ifstream input("fxdata/tables/exploration-terrain.bin", std::ios::binary);
     std::vector<uint8_t> terrain((std::istreambuf_iterator<char>(input)), std::istreambuf_iterator<char>());
     test.assertEqual(terrain.size(), cave::TERRAIN_BYTES, "terrain loaded");
     for (uint8_t i = 0; i < ambient_view::kSiteCount; ++i) {
         int16_t x, y;
         ambient_view::site(i, x, y);
+        const bool kelp = i < ambient_view::kKelpCount;
+        const bool vent = i >= ambient_view::kKelpCount &&
+                          i < ambient_view::kKelpCount + ambient_view::kVentCount;
+        const int16_t bottom = kelp ? static_cast<int16_t>(y - 1) : (vent ? y : static_cast<int16_t>(y + 5));
+        const int16_t top = kelp ? static_cast<int16_t>(y - 8) : (vent ? static_cast<int16_t>(y - 15) : static_cast<int16_t>(y - 6));
+        const int16_t width = kelp ? 3 : (vent ? 1 : 8);
         if (terrain.size() == cave::TERRAIN_BYTES) {
-            const int16_t bottom = i < 2 ? y - 1 : y;
-            const int16_t top = i < 2 ? y - 8 : y - 15;
-            const int16_t width = i < 2 ? 3 : 1;
             for (int16_t py = top; py <= bottom; ++py)
                 for (int16_t px = x - width; px <= x + width; ++px)
                     test.assertTrue((terrain[(py / 8) * cave::TERRAIN_ROW_BYTES + px] & (1u << (py & 7))) == 0, "animation envelope is clear");
