@@ -51,9 +51,9 @@
     "tidewall": {
       "fresh": "I HEAR THERE IS WORK",
       "first": "BENTHOS HAS WORK",
-      "pump": "A WRECK IS NEAR",
+      "pump": "LIFT NEEDS CABLE",
       "lift": "LIFT CRANE MOVES",
-      "both": "YOU NEED A CUTTER",
+      "both": "CUTTER: OLD TENDER",
       "seal": "CHECK CORMORANT",
       "core": "SEARCH THE DEPTHS",
       "relay": "ANY NEWS FROM BELOW",
@@ -62,33 +62,33 @@
     "benthos": {
       "fresh": "TIDEWALL HAS FILTERS",
       "first": "WE HAVE SOME WORK",
-      "pump": "CHECK CORMORANT",
+      "pump": "LIFT NEEDS CABLE",
       "lift": "PUMP AWAITS REPAIR",
-      "both": "SEARCH A WRECK ABOVE",
+      "both": "SEAL: WEST WORKSHOP",
       "seal": "HEAD DEEPER",
-      "core": "I HEARD OF A WRECK",
+      "core": "THRUSTER IN WRECK",
       "relay": "ODDITY IN THE DEPTHS",
       "home": "YOU SAVED OUR SKINS"
     },
     "cormorant": {
       "fresh": "TIDEWALL HAS WORK",
-      "first": "HEAD TO SHALLOWS",
+      "first": "LIFT NEEDS REPAIR",
       "pump": "LIFT AWAITS REPAIR",
-      "lift": "CHECK BENTHOS",
+      "lift": "PUMP NEEDS PART",
       "both": "SEARCH WEST FOR SEAL",
       "seal": "WE HAVE WORK",
-      "core": "BLOW THE BALAST ",
+      "core": "HEAD TO DEEP ANCHOR",
       "relay": "HEAD TO DEEP ANCHOR",
-      "home": "A FINE CAPTIAN "
+      "home": "A FINE CAPTAIN"
     },
     "deep_anchor": {
-      "fresh": "TRY TIDEWALL ",
+      "fresh": "TRY TIDEWALL",
       "first": "NOTHING DOWN HERE",
       "pump": "HEAD UP TO SHALLOWS",
       "lift": "BEACON NEEDS PUMP",
-      "both": "HOW DID YOU GET HERE",
+      "both": "BEACON NEEDS SEAL",
       "seal": "ITS TOO DARK HERE",
-      "core": "LOOK FOR THE CAVE",
+      "core": "DEEP RELAY: 4 TOOLS",
       "relay": "ALERT THE OTHERS",
       "home": "GOOD WORK DOWN HERE"
     },
@@ -96,7 +96,7 @@
       "fresh": "MOORING INACTIVE",
       "first": "CHECK CORMORANT",
       "pump": "PUMP REFUGE OPEN",
-      "lift": "PUMP: CORMORANT",
+      "lift": "PUMP STILL DRY",
       "both": "SEAL NEEDED STILL",
       "seal": "DEEP A NEEDS HELP",
       "core": "WATER FLOWING WELL",
@@ -133,8 +133,8 @@
       "both": "RELAY SLEEPS DEEP",
       "seal": "RELAY SLEEPS DEEP",
       "core": "RELAY SLEEPS DEEP",
-      "relay": "AN OMMINOUS FEELING",
-      "home": "AN OMMINOUS FEELING"
+      "relay": "AN OMINOUS FEELING",
+      "home": "AN OMINOUS FEELING"
     }
   }
 }

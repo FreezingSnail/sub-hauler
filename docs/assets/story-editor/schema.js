@@ -337,14 +337,14 @@ globalThis.StoryEditorSchema = {
     },
     {
       "id": "pump_survey",
-      "title": "Survey The Pump Station",
+      "title": "Survey Pump Station",
       "scenes": [
         "pump-survey"
       ]
     },
     {
       "id": "pump",
-      "title": "Repair the Pump Station",
+      "title": "Repair Pump Station",
       "scenes": [
         "pump-pickup",
         "pump-result"
@@ -375,7 +375,7 @@ globalThis.StoryEditorSchema = {
     },
     {
       "id": "expedition",
-      "title": "Survey the deep anomoly",
+      "title": "Survey deep anomaly",
       "scenes": [
         "deep-relay-departure",
         "deep-relay-result"

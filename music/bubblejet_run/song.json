@@ -10,17 +10,17 @@
   "instruments": {
     "jet": {
       "voice": "pulse",
-      "volume": 52,
+      "volume": 78,
       "duty": 128
     },
     "bubble": {
       "voice": "pulse",
-      "volume": 26,
+      "volume": 39,
       "duty": 128
     },
     "motor": {
       "voice": "pulse",
-      "volume": 32,
+      "volume": 48,
       "duty": 128
     },
     "wake": {

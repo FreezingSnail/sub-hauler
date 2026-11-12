@@ -12,8 +12,7 @@ project, `docs/platform.md` for the hardware/resource contract, and
 - `sub-hauler.ino` is the release entry; shared game operations live in `src/app.hpp`.
 - There is one fixed game build. Do not add feature, profile, development,
   backend, USB or instrumentation selectors.
-- `make gen` is the only shipping generation entry; `make gen-audio` rebuilds
-  archival reference PCM/ADPCM evidence only. Never hand-edit
+- `make gen` is the only shipping generation entry. Never hand-edit
   `fxdata/Sprites.txt`, `fxdata/fxdata.bin`, `src/fxdata.h`, or
   `src/generated/`.
 - `fxdata/fxdata.txt` declaration order is flash ABI. Append entries; never
@@ -27,7 +26,6 @@ project, `docs/platform.md` for the hardware/resource contract, and
 ```sh
 make gen                  # images + FX layout -> packed image + headers
 make gen-check            # regeneration must be byte-identical
-make gen-audio            # archival reference PCM/ADPCM evidence only
 make test                 # host C++ tests
 make test-tools           # Python tooling tests
 make docs-check           # local doc links + active selector guard

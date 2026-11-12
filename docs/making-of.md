@@ -75,7 +75,7 @@ save section.
 | Text | String sources and font | `tools/gen_text_images.py`, `gen_font.py` | `fxdata/TextData.txt`, text-stamp sheets |
 | Music | `music/*/song.json` | `tools/gen_music.py` using ATMlib2FX | Six synth streams, region map, manifest |
 | Cargo (archival) | Generator constants | `tools/gen_cargo.py` | Historical cargo bank, no runtime reader |
-| Audio evidence | Reference PCM | `tools/gen_audio_adpcm.py` | Archival ADPCM, not in the shipping cart |
+| Audio evidence | Retired | removed | Sampled-audio reference pipeline retired and removed |
 
 The Python tools have their own `unittest` suites under `tools/tests/`. Python
 is never used as a harness to drive the C++ tests; the host tests are compiled
@@ -204,13 +204,14 @@ the FX refill between complete SPI transactions. The sample ISR decodes from
 SRAM and does not read FX, SPI or the OLED.
 
 Cue selection follows the region and berth; music starts with the first splash
-and keeps its position through the title. The playtest wave added 160 ms fades
-at cue, dock, story and pause transitions. Save pauses the music because the
-cart transaction is synchronous.
+and keeps its position through the title. Cue, dock, story and pause transitions
+switch tracks directly; playtest found the 160 ms fade envelope unpleasant, so
+the wrapper has no gain ramp. Save pauses the music because the cart transaction
+is synchronous.
 
 The sampled IMA ADPCM path was implemented, measured and admitted as comparison
-evidence. It is not the shipping backend. `make gen-audio` rebuilds the
-reference PCM/WAV files and ADPCM evidence, but the streams are no longer
+evidence. It is not the shipping backend. That reference pipeline was later
+retired and removed, and the streams are no longer
 declared in `fxdata/fxdata.txt`; they add no cart bytes. This is archival
 evidence, deliberately kept out of `gen`, `build`, `run` and `gen-check`.
 
@@ -362,8 +363,8 @@ make render-world # overview + exact native scene pixels
 make music-viewer # six-song FX jukebox in Ardens
 ```
 
-`make gen-audio` is archival and requires the Ardens absim source; it rebuilds
-the reference PCM/ADPCM and listening WAVs but is not part of the shipping
+The retired reference pipeline used the Ardens absim source to rebuild
+reference PCM/ADPCM and listening WAVs; it was not part of the shipping
 build or `gen-check`.
 
 For a first read of the code, start with `sub-hauler.ino`, then `src/app.hpp`,

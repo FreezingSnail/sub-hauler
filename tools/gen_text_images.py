@@ -20,7 +20,9 @@ passes the same screen x as the retired ``text::at(x, y)`` path. Composites and 
 runtime passes their exact screen x to ``text::stampFrame``.
 
 Text is read from ``fxdata/fxdata.txt`` and enum order from
-``src/campaign.hpp``. The per-berth dock hints are read from the human-editable
+``src/campaign.hpp``. Work-board mission names come from the human-editable
+``story/missions.json``; titles must render in 21 columns without the retired
+STORY/CARRY prefix. The per-berth dock hints are read from
 ``story/dock_hints.json``; every berth gets one frame at every ``DockPoint``.
 """
 
@@ -40,6 +42,7 @@ from gen_panels import EXTRA_GLYPHS
 ROOT = Path(__file__).resolve().parents[1]
 FXDATA = ROOT / "fxdata/fxdata.txt"
 CAMPAIGN = ROOT / "src/campaign.hpp"
+MISSIONS = ROOT / "story/missions.json"
 DOCK_HINTS = ROOT / "story/dock_hints.json"
 OUTPUT = ROOT / "images/text"
 LAYOUT = ROOT / "src/generated/text_layout.hpp"
@@ -52,20 +55,10 @@ CLEAR = (0, 0, 0, 0)
 
 STRING_RE = re.compile(r"^string\s+(?P<name>[A-Za-z_][A-Za-z0-9_]*)\s*=\s*'(?P<text>[^']*)'\s*$", re.M)
 
-# Mission ids 0..7 plus kWorkEnding render one STORY/CARRY row each. The
-# display strings are the existing fxdata labels (DEEP RELAY and VIEW ENDING do
-# not follow camel-case derivation).
-MISSION_STRINGS = (
-    "txt_first",
-    "txt_pump_survey",
-    "txt_pump",
-    "txt_lift_survey",
-    "txt_lift",
-    "txt_beacon",
-    "txt_home",
-    "txt_deep_relay",
-    "txt_view_ending",
-)
+# Campaign mission ids render one WORK row each; the ending row appends after
+# them. Titles come from story/missions.json and must fit the 128 px row.
+MAX_MISSION_COLUMNS = 21
+ENDING_LABEL = "txt_view_ending"
 
 ROW_LABELS = ("txt_work", "txt_undock")
 
@@ -117,6 +110,27 @@ def load_dock_hints() -> dict:
         if not isinstance(point, dict) or not all(isinstance(point.get(key), str) for key in ("id", "label", "facts")):
             raise ValueError("{}: every point needs id, label and facts".format(DOCK_HINTS))
     return document
+
+
+def load_missions() -> dict[str, str]:
+    document = json.loads(MISSIONS.read_text(encoding="utf-8"))
+    if not isinstance(document, dict) or document.get("schema") != 1:
+        raise ValueError("{}: expected schema 1".format(MISSIONS))
+    missions = document.get("missions")
+    if not isinstance(missions, list):
+        raise ValueError("{}: missions must be an array".format(MISSIONS))
+    titles = {}
+    for mission in missions:
+        if not isinstance(mission, dict) or not isinstance(mission.get("id"), str) or not isinstance(mission.get("title"), str):
+            raise ValueError("{}: every mission needs a string id and title".format(MISSIONS))
+        mission_id = mission["id"]
+        title = mission["title"].strip()
+        if not title:
+            raise ValueError("{}: mission {} has an empty title".format(MISSIONS, mission_id))
+        if mission_id in titles:
+            raise ValueError("{}: duplicate mission id {}".format(MISSIONS, mission_id))
+        titles[mission_id] = title
+    return titles
 
 
 def dock_hint_layout(campaign_text: str, document: dict):
@@ -206,11 +220,26 @@ def berth_symbols(campaign_text: str, strings) -> list[str]:
     return symbols
 
 
-def mission_texts(strings) -> list[str]:
-    return [checked(strings, symbol) for symbol in MISSION_STRINGS]
+def mission_texts(campaign_text: str, strings, missions: dict[str, str]) -> list[str]:
+    mission_ids = [enum_id(name, "") for name in parse_enum(campaign_text, "MissionId", CAMPAIGN)]
+    if set(missions) != set(mission_ids):
+        raise ValueError("{}: mission ids {} do not match campaign::MissionId {}".format(
+            MISSIONS, sorted(missions), mission_ids))
+    texts = []
+    for mission_id in mission_ids:
+        text = missions[mission_id].upper()
+        if len(text) > MAX_MISSION_COLUMNS:
+            raise ValueError("{}: mission {} title {!r} exceeds {} columns".format(
+                MISSIONS, mission_id, text, MAX_MISSION_COLUMNS))
+        if not DOCK_TEXT_RE.fullmatch(text):
+            raise ValueError("{}: mission {} title uses characters outside the 6x8 font: {!r}".format(
+                MISSIONS, mission_id, text))
+        texts.append(text)
+    texts.append(checked(strings, ENDING_LABEL))
+    return texts
 
 
-def build_rows(strings, campaign_text, dock_hints):
+def build_rows(strings, campaign_text, dock_hints, missions):
     rows = []
     for symbol in ordered_strings(FXDATA):
         rows.append(("img_" + symbol, two_frame_row(checked(strings, symbol))))
@@ -238,9 +267,9 @@ def build_rows(strings, campaign_text, dock_hints):
         )
     )
 
-    missions = mission_texts(strings)
-    rows.append(("img_story_row", sheet([stamp_image("STORY " + text, 0) for text in missions] + [stamp_image("STORY " + text, 0, invert=True) for text in missions])))
-    rows.append(("img_carry_row", sheet([stamp_image("CARRY " + text, 0) for text in missions])))
+    mission_rows = mission_texts(campaign_text, strings, missions)
+    rows.append(("img_story_row", sheet([stamp_image(text, 0) for text in mission_rows] + [stamp_image(text, 0, invert=True) for text in mission_rows])))
+    rows.append(("img_carry_row", sheet([stamp_image(text, 0) for text in mission_rows])))
     rows.append(("img_berth_work", sheet([stamp_image(text + " WORK", 0) for text in berth_texts[:-1]])))
     return rows
 
@@ -284,7 +313,7 @@ constexpr uint8_t kRowLabelWork = 0;
 constexpr uint8_t kRowLabelUndock = 1;
 constexpr uint8_t kRowLabelInvertedBase = 2;
 
-// img_story_row: nine normal mission rows, then nine inverted rows.
+// img_story_row: one row per mission plus the ending, then the inverted rows.
 constexpr uint8_t kMissionFrames = {mission_frames};
 constexpr uint8_t kStoryRowFrames = {story_frames};
 constexpr uint8_t kStoryRowInvertedBase = {mission_frames};
@@ -311,7 +340,7 @@ def render_layout(rows, dock_hints, campaign_text) -> str:
         bark_points=len(point_ids),
         bark_frames=counts["img_dock_barks"],
         row_label_frames=counts["img_row_labels"],
-        mission_frames=len(MISSION_STRINGS),
+        mission_frames=counts["img_carry_row"],
         story_frames=counts["img_story_row"],
         berth_work_frames=counts["img_berth_work"],
     )
@@ -331,11 +360,12 @@ def write_images(directory, rows) -> list[Path]:
     return [directory / ("{}_128x8.png".format(name)) for name, _image in rows]
 
 
-def build(campaign_text: str | None = None):
+def build(campaign_text: str | None = None, missions: dict[str, str] | None = None):
     strings = load_strings(FXDATA)
     campaign = CAMPAIGN.read_text(encoding="utf-8") if campaign_text is None else campaign_text
     dock_hints = load_dock_hints()
-    rows = build_rows(strings, campaign, dock_hints)
+    mission_titles = load_missions() if missions is None else missions
+    rows = build_rows(strings, campaign, dock_hints, mission_titles)
     return rows, render_layout(rows, dock_hints, campaign)
 
 

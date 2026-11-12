@@ -37,8 +37,9 @@ hardware and resource facts live in `docs/platform.md`.
 
 ## Generated artifacts
 
-- `make gen` is the only shipping generation entry. `make gen-audio` rebuilds
-  archival reference PCM/ADPCM evidence only and is not part of build or run.
+- `make gen` is the only shipping generation entry. The former sampled-audio
+  reference pipeline (`make gen-audio`, reference PCM/ADPCM evidence) was
+  retired and removed.
 - `make gen-check` snapshots the generated set, re-runs `gen`, and fails on any
   byte change. Run `make gen` once before using it the first time.
 - `fxdata/fxdata.txt` is an ordered flash layout. Declaration order is ABI:

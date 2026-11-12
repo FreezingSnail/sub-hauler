@@ -16,6 +16,7 @@ class TextStampGenerationTest(unittest.TestCase):
     def setUpClass(cls):
         cls.strings = gen.load_strings(gen.FXDATA)
         cls.campaign = gen.CAMPAIGN.read_text(encoding="utf-8")
+        cls.missions = gen.load_missions()
         cls.dock_hints = gen.load_dock_hints()
         cls.rows, cls.layout = gen.build()
 
@@ -90,21 +91,21 @@ class TextStampGenerationTest(unittest.TestCase):
                 gen.stamp_image(text, 0, invert=True).tobytes(),
                 text,
             )
-        missions = gen.mission_texts(self.strings)
+        missions = gen.mission_texts(self.campaign, self.strings, self.missions)
         story = self.image("img_story_row")
         carry = self.image("img_carry_row")
         for index, text in enumerate(missions):
             self.assertEqual(
                 story.crop((index * 128, 0, (index + 1) * 128, 8)).tobytes(),
-                gen.stamp_image("STORY " + text, 0).tobytes(),
+                gen.stamp_image(text, 0).tobytes(),
             )
             self.assertEqual(
                 story.crop(((index + len(missions)) * 128, 0, (index + len(missions) + 1) * 128, 8)).tobytes(),
-                gen.stamp_image("STORY " + text, 0, invert=True).tobytes(),
+                gen.stamp_image(text, 0, invert=True).tobytes(),
             )
             self.assertEqual(
                 carry.crop((index * 128, 0, (index + 1) * 128, 8)).tobytes(),
-                gen.stamp_image("CARRY " + text, 0).tobytes(),
+                gen.stamp_image(text, 0).tobytes(),
             )
         berths = [self.strings[symbol] for symbol in gen.berth_symbols(self.campaign, self.strings)]
         work = self.image("img_berth_work")
@@ -135,15 +136,32 @@ class TextStampGenerationTest(unittest.TestCase):
         self.assertIn("constexpr uint8_t dockBarkFrame", self.layout)
         self.assertIn("kRowLabelFrames = {}".format(counts["img_row_labels"]), self.layout)
         self.assertIn("kStoryRowFrames = {}".format(counts["img_story_row"]), self.layout)
-        self.assertIn("kMissionFrames = {}".format(len(gen.MISSION_STRINGS)), self.layout)
+        self.assertIn("kMissionFrames = {}".format(counts["img_carry_row"]), self.layout)
         self.assertEqual(counts["img_carry_row"], counts["img_berth_work"] + 1)
+
+    def test_mission_labels_follow_missions_json_in_campaign_order(self):
+        ids = [gen.enum_id(name, "") for name in gen.parse_enum(self.campaign, "MissionId", gen.CAMPAIGN)]
+        texts = gen.mission_texts(self.campaign, self.strings, self.missions)
+        self.assertEqual(texts[:-1], [self.missions[mission_id].upper() for mission_id in ids])
+        self.assertEqual(texts[-1], self.strings[gen.ENDING_LABEL])
+
+    def test_mission_validation_rejects_overlong_and_unknown_titles(self):
+        overlong = dict(self.missions)
+        overlong["first"] = "X" * (gen.MAX_MISSION_COLUMNS + 1)
+        with self.assertRaises(ValueError):
+            gen.mission_texts(self.campaign, self.strings, overlong)
+
+        unknown = dict(self.missions)
+        unknown.pop("home")
+        with self.assertRaises(ValueError):
+            gen.mission_texts(self.campaign, self.strings, unknown)
 
     def test_mission_labels_match_the_work_view_dispatch(self):
         source = (ROOT / "src/work_view.hpp").read_text(encoding="utf-8")
         block = re.search(r"inline uint8_t missionFrame\(uint8_t mission\) \{(.*?)\n\}", source, re.S).group(1)
         self.assertIn("campaign::kWorkEnding", block)
         self.assertIn("text_layout::kMissionFrames - 1", block)
-        self.assertEqual(gen.MISSION_STRINGS[-1], "txt_view_ending")
+        self.assertEqual(len(gen.mission_texts(self.campaign, self.strings, self.missions)), 9)
 
 
 if __name__ == "__main__":

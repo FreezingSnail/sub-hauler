@@ -37,7 +37,7 @@ constexpr uint8_t kRowLabelWork = 0;
 constexpr uint8_t kRowLabelUndock = 1;
 constexpr uint8_t kRowLabelInvertedBase = 2;
 
-// img_story_row: nine normal mission rows, then nine inverted rows.
+// img_story_row: one row per mission plus the ending, then the inverted rows.
 constexpr uint8_t kMissionFrames = 9;
 constexpr uint8_t kStoryRowFrames = 18;
 constexpr uint8_t kStoryRowInvertedBase = 9;

@@ -23,7 +23,7 @@
 - [Render performance](render-performance.md)
 - [Camera review](camera-review.md)
 - [Startup splashes](startup-splashes.md)
-- [Audio admission](audio-admission.md)
+- [Audio admission](archive/audio-admission.md)
 - [Menu flash design](menu-flash-design.md)
 - [Fixed-build consolidation](build-simplification.md)
 - [Offline player guide](guide.html)

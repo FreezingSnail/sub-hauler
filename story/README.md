@@ -3,15 +3,18 @@
 Edit these source files, then run `make gen`:
 
 - [scenes.json](scenes.json): story text, scene/card order and named artwork rows.
-- [missions.json](missions.json): mission summaries, sequence intent and scene groups.
+- [missions.json](missions.json): mission titles, summaries, sequence intent and
+  scene groups. Titles render as the in-game WORK rows, so keep each at 21
+  characters or fewer; the generator uppercases them.
 - [art.png](art.png): the canonical artwork sheet for Piskel.
 - [dock_hints.json](dock_hints.json): one station/WORK hint line per berth at
   each `campaign::DockPoint` (fresh through home). Keep every line at 20
   characters or fewer; duplicate lines are allowed.
 
 Use the local [story editor](../docs/story-editor.html) for text-only edits:
-open the repository root or this `story` folder, edit scene text, mission copy
-and dock hints beside the native previews, then save and run `make gen`. The
+open the repository root or this `story` folder, edit scene text, mission titles
+and copy, and dock hints beside the native previews, then save and run
+`make gen`. The
 editor writes only these JSON files; scene/card counts and image rows are fixed.
 The dock-hint grid is campaign-wide: rows are berths and columns are completion
 points, so it is not filtered by the selected scene.

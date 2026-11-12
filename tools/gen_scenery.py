@@ -15,10 +15,10 @@ REGIONS = ('tide', 'kelp', 'works', 'deep')
 # A room may override its region's ambient growths and wall markings with a
 # named texture. The override is scoped to the room's own pocket, so it never
 # re-themes a whole region or another room.
-TEXTURES = REGIONS + ('lens',)
+TEXTURES = REGIONS + ('lens', 'pressure')
 TEXTURE_RADIUS_TILES = 4
 AMBIENT = {'tide': 'coral', 'kelp': 'kelp', 'works': 'scrap',
-           'deep': 'crystal', 'lens': 'lens-shard'}
+           'deep': 'crystal', 'lens': 'lens-shard', 'pressure': 'pressure-rib'}
 
 
 def protection(level, spines):
@@ -172,18 +172,15 @@ def motif(kind, seed):
         line([(-8, -5), (-6, -9)])
         line([(6, -5), (4, -9)])
     elif kind == 'workshop-lock':
-        # Sealed bulkhead with an arched top and a dogged pressure hatch.
-        line([(-19, 0), (-19, -24), (-15, -30), (15, -30), (19, -24), (19, 0)])
-        oval(-9, -25, 19, 19)
-        line([(0, -22), (0, -9)])
-        line([(-6, -15), (7, -15)])
-        line([(-4, -19), (5, -11)])
-        line([(-4, -11), (5, -19)])
-        for y in (-19, -11):
-            line([(-15, y), (-11, y)])
-            line([(11, y), (15, y)])
-        line([(-22, 0), (-15, 0)])
-        line([(15, 0), (22, 0)])
+        # Compact pressure hatch fits the wall around the winding seal cove.
+        line([(-12, 0), (-12, -15), (-9, -19), (9, -19), (12, -15), (12, 0)])
+        oval(-6, -16, 13, 13)
+        line([(0, -14), (0, -5)])
+        line([(-4, -10), (4, -10)])
+        line([(-3, -13), (3, -7)])
+        line([(-3, -7), (3, -13)])
+        line([(-15, 0), (-10, 0)])
+        line([(10, 0), (15, 0)])
     elif kind == 'trench-lens':
         # Sunken survey-lens array on a wreck tripod. The big ring and focus
         # ticks match the lens-cave wall texture.
@@ -198,6 +195,12 @@ def motif(kind, seed):
         line([(13, -23), (21, -26), (23, -23)])
         line([(-3, -32), (3, -32)])
         line([(-1, -34), (1, -34)])
+    elif kind == 'pressure-rib':
+        # A short pair of buckled hull ribs with a bolted seam.
+        line([(-10, 0), (-10, -9), (-6, -14), (6, -14), (10, -9), (10, 0)])
+        line([(-6, -2), (-6, -8), (-3, -11), (3, -11), (6, -8), (6, -2)])
+        line([(-12, -1), (-8, -1)])
+        line([(8, -1), (12, -1)])
     elif kind == 'lens-shard':
         # Low faceted glass shards; the ambient growth inside the lens cave.
         line([(-11, 0), (-9, -9), (-4, -13), (-2, -4), (-1, 0)])
@@ -354,8 +357,9 @@ def decorate(level, base, spines):
                 visible = sum(cx-64 <= p[0]+px < cx+64 and
                               cy-32 <= p[1]+py < cy+32 for px, py in pixels)
                 return (-visible, (p[0]-tx)**2+(p[1]-ty)**2)
-            candidates = sorted(((x, y) for y in range(ty-56, ty+57, 4)
-                                 for x in range(tx-56, tx+57, 4)), key=wall_score)
+            reach = 96 if item['kind'] == 'workshop-lock' else 56
+            candidates = sorted(((x, y) for y in range(ty-reach, ty+reach+1, 4)
+                                 for x in range(tx-reach, tx+reach+1, 4)), key=wall_score)
         else:
             candidates = sorted(((p[0], p[1]) for p in floors
                                  if p[2] == theme and abs(p[0]-cx) < 100 and abs(p[1]-cy) < 100),
@@ -432,6 +436,14 @@ def decorate(level, base, spines):
                 gradient = (int(distance[ty*320+tx+1])-int(distance[ty*320+tx-1]),
                             int(distance[(ty+1)*320+tx])-int(distance[(ty-1)*320+tx]))
                 worn_plating(d,x,y,seed,gradient)
+            elif theme == 'pressure':
+                # Broken parallel bulkhead ribs and rivets distinguish this
+                # pocket from both the works plating and the lens rings.
+                d.line([(x-13,y-7), (x-7,y-10), (x+7,y-10), (x+13,y-7)], fill=255)
+                d.line([(x-11,y-3), (x-6,y-6), (x+6,y-6), (x+11,y-3)], fill=255)
+                d.line([(x-8,y+5), (x+8,y+5)], fill=255)
+                d.point((x-5,y+1), fill=255)
+                d.point((x+5,y+1), fill=255)
             elif theme == 'lens':
                 # Concentric lens rings with a facet glint, etched into the
                 # cave wall. Distinct from strata, coral and plating.
@@ -446,9 +458,15 @@ def decorate(level, base, spines):
     # Textured rooms carry one large, coherent wall signature so the pocket
     # reads as its own place, not just a tinted copy of the region.
     for room in rooms.values():
-        if room.get('texture') != 'lens':
+        texture = room.get('texture')
+        if texture not in ('lens', 'pressure'):
             continue
         cx, cy = (v*8 for v in room['position'])
+        if texture == 'pressure':
+            for radius in (42, 51, 60):
+                d.rounded_rectangle((cx-radius, cy-radius//2, cx+radius, cy+radius//2),
+                                    radius=13, outline=255)
+            continue
         for radius in (40, 50, 60):
             d.ellipse((cx-radius, cy-radius, cx+radius, cy+radius), outline=255)
         for dx, dy in ((-26, -44), (26, -44), (-30, 40), (30, 40)):

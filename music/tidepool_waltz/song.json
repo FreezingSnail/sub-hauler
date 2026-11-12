@@ -10,17 +10,17 @@
   "instruments": {
     "pearl": {
       "voice": "pulse",
-      "volume": 54,
+      "volume": 81,
       "duty": 120
     },
     "ripple": {
       "voice": "pulse",
-      "volume": 19,
+      "volume": 29,
       "duty": 128
     },
     "anchor": {
       "voice": "pulse",
-      "volume": 32,
+      "volume": 48,
       "duty": 128
     },
     "foam": {

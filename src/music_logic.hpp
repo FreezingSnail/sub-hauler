@@ -29,35 +29,6 @@ constexpr uint8_t kRegionCount = 4;
 constexpr uint8_t kHysteresisTicks = 120;
 constexpr uint8_t kEvaluateFrames = 30;
 
-// Integer music fade envelope shared by the device boundary and host tests.
-// The bundled ATMlib2FX compact backend has no master gain, so the wrapper
-// scales the four oscillator `vol` bytes (0..127) itself. The device timer
-// callback calls fadeStep() once per kFadeStepTicks of its 2 kHz callback;
-// one full ramp therefore takes kFadeMs. All arithmetic is uint8/uint16: no
-// float, no heap, and no per-frame work beyond the bounded timer callback.
-constexpr uint8_t kFadeMax = 128;
-constexpr uint8_t kFadeStep = 8;
-constexpr uint8_t kFadeStepTicks = 20;
-constexpr uint16_t kFadeTickHz = 2000;
-constexpr uint8_t kFadeSteps = static_cast<uint8_t>(kFadeMax / kFadeStep);
-// AVR `int` is 16 bits, so keep the millisecond product in uint32.
-constexpr uint16_t kFadeMs = static_cast<uint16_t>(
-    static_cast<uint32_t>(kFadeSteps) * kFadeStepTicks * 1000 / kFadeTickHz);
-static_assert(kFadeMs == 160, "music fade ramps stay inside the 150-300 ms target");
-
-// Move one bounded step toward `target`. Returns the new gain; never
-// overshoots and never wraps.
-inline uint8_t fadeStep(uint8_t gain, uint8_t target) {
-    if (gain < target) {
-        const uint8_t next = static_cast<uint8_t>(gain + kFadeStep);
-        return next > target ? target : next;
-    }
-    if (gain > target) {
-        return static_cast<uint8_t>(gain - target > kFadeStep ? gain - kFadeStep : target);
-    }
-    return gain;
-}
-
 struct FlightState {
     uint8_t currentCue;
     uint8_t candidateCue;

@@ -1,6 +1,4 @@
 // Host test entry point. `make test` compiles this with the native compiler.
-#include "audio_reference_test.hpp"
-#include "adpcm_test.hpp"
 #include "cave_test.hpp"
 #include "collision_test.hpp"
 #include "camera_motion_test.hpp"
@@ -38,8 +36,6 @@
 
 int main() {
     TestRunner runner;
-    audio_reference_test::suite(runner);
-    adpcm_test::suite(runner);
     CaveSuite(runner);
     CollisionSuite(runner);
     CameraMotionSuite(runner);
