@@ -1,0 +1,41 @@
+name: Publish player manual
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/guide.html'
+      - 'docs/assets/**'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare manual
+        run: |
+          mkdir -p _site/assets/first-beat-animation/all-beats-v3
+          cp docs/guide.html _site/index.html
+          cp docs/guide.html _site/guide.html
+          cp docs/assets/first-beat-animation/all-beats-v3/arrival-0.png _site/assets/first-beat-animation/all-beats-v3/
+          cp docs/assets/exploration-world-fish.svg docs/assets/exploration-world-2026-11-09.png docs/assets/exploration-world-music-2026-11-09.png docs/assets/exploration-world-native-2026-11-09.png docs/assets/exploration-equipment.png _site/assets/
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@v4
