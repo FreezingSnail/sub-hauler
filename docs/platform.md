@@ -12,7 +12,7 @@ Keep dated measurements in the checkpoint table instead of copying them around.
 | MCU | ATmega32u4 |
 | Display | 128×64 SSD1306 OLED, native 1-bit |
 | Framebuffer | 1,024 B (`Arduboy2Base::sBuffer`) |
-| Cart | external FX flash; current `fxdata/fxdata.bin` image is 675,840 B; the unpadded 671,528 B payload is `fxdata/fxdata-data.bin`, with the 4,096 B save partition at `FX_SAVE_PAGE = 0xFFF0` |
+| Cart | external FX flash; current `fxdata/fxdata.bin` image is 664,320 B; the unpadded 660,106 B payload is `fxdata/fxdata-data.bin`, with the 4,096 B save partition at `FX_SAVE_PAGE = 0xFFF0` |
 | Display mode | native 1-bit via `Arduboy2Base` |
 | Logical frame | `FRAME(x)` = `x`; one image per frame |
 | Blitting | `Blit::draw` plus-mask blits into `sBuffer`; no OLED access |
@@ -157,25 +157,25 @@ remains 600 B.
 
 ## Stack measurement
 
-Current fixed-build checkpoint (2026-11-03): **`stack_reserve=665`** for the
-exact production `updateStation()`→`requestSave()`→`saveVoyageNow()` chain
-with active synth music (`make fxtest-save-chain`), and **642** for the
+Stack checkpoint (2026-11-12, `sub-hauler-bwg`): **`stack_reserve=738`** for
+the exact production `updateStation()`→`requestSave()`→`saveVoyageNow()` chain
+with active synth music (`make fxtest-save-chain`), and **676** for the
 combined `test_memory_music` probe, which also renders a fractional camera
-through the terrain shift path and decodes every one of the 90 story-deck
+through the terrain shift path and decodes every one of the 106 story-deck
 frames through a 16 B scratch chunk; both exceed the 600 B target.
 The device suites compile the serial marker with `SERIAL_BUFFER_SIZE=8` so their
 USB-only RX buffer is not charged against the production no-USB stack path. All
 fifteen default device suites print `P`, plus the separate `test_flight` probe.
 The representative path includes salvage, cutter operation, object rendering,
 chart gate markers and discovery HUD messages in addition to the earlier
-flight/chart/hazard/roster/contract paths. The additional
-`make fxtest-flight` probe passes at **11.096 ms maximum** over **842**
-complete flight frames with active music, zero 16 ms deadline misses and zero
-audio underruns/errors; `fail_mask=0` and `cases_ok=1`. See
-`docs/camera-review.md` for coverage limits. AVR
-`game::State` is **77 B**, including run-local tools, claims, gate
-masks and interaction/notice state plus the campaign counters. The following method and older probe coverage explain the
-measurement; dated older figures remain historical checkpoints.
+flight/chart/hazard/contract paths. The additional `make fxtest-flight` probe
+passes at **12.416 ms maximum** over **842** complete flight frames with active
+music, zero 16 ms deadline misses, zero audio underruns/errors and
+`fail_mask=0`. See `docs/camera-review.md` for coverage limits. AVR
+`game::State` is **67 B** after the `sub-hauler-bwg` cleanup removed the three
+counters (8 B), `lastDelivery` and the saved hull byte (2 B). The following
+method and older probe coverage explain the measurement; dated older figures
+remain historical checkpoints.
 
 Static free SRAM (`.data` + `.bss`) does not prove stack fit: the stack, locals,
 and interrupt frames share the remaining bytes. The painted-stack probe is
@@ -299,29 +299,41 @@ region. `fxdata/fxdata.txt` ends with
 `savesection 4096`; `make gen` emits `FX_SAVE_PAGE = 0xFFF0`,
 `FX_SAVE_BYTES = 4096`, and `fxdata/fxdata-save.bin` (all `0xFF`). The packed
 development image `fxdata/fxdata.bin` contains that region, so Ardens and a
-physical cart see the same pages. The data prefix and every earlier FX symbol
-keep their offsets.
+physical cart see the same pages. Retained FX declarations keep their relative
+order; a pre-release asset removal may deliberately shift later offsets.
 
-The partition is one 4 KiB erase block. The only 512 B slot is at offset 0:
-16 B header, 495 B payload area and commit byte at offset 511, programmed as two
-256 B pages with the commit last. Save success is reported after both page
-programs; there is no post-write read-back. Schema 8 payloads are 25 B scalar
-(281 B with the chart; 25 B without). `voyage_save::FxStorage` wraps `FX::seekSave`,
-`FX::eraseSaveBlock`, `FX::programSavePage` + `FX::seekCommand(SFC_WRITE)` +
-`FX::writeByte` and `FX::waitWhileBusy`; all four use the same runtime save page
-selected by `FX::begin(FX_DATA_PAGE, FX_SAVE_PAGE)`.
+The partition is one 4 KiB erase block. The only slot is at offset 0 and has
+**272 meaningful bytes**: 16 scalar bytes followed by the 256-byte chart. The
+programmed region is still two 256-byte pages; after the 272 payload bytes the
+image writes `0xFF` padding through offset 511. There is no header, magic,
+schema, signature, length, CRC or commit byte. Save success is reported after
+both page programs; there is no post-write read-back.
+
+`voyage_save::FxStorage` wraps `FX::seekSave`, `FX::eraseSaveBlock`,
+`FX::programSavePage` + `FX::seekCommand(SFC_WRITE)` + `FX::writeByte` and
+`FX::waitWhileBusy`; all four use the same runtime save page selected by
+`FX::begin(FX_DATA_PAGE, FX_SAVE_PAGE)`. Each explicit save erases once and
+programs the two pages, including when the state is identical to the previous
+save; there is no CRC cache or skip path. Music is paused around the synchronous
+erase/page transaction and resumed afterward.
 
 Saving erases the single block, so **a power interruption during erase/write
 may lose the previous checkpoint or leave a torn record**. Load only checks
-whether the first byte is `0xFF`: erased means no save, any other value is read
-as the raw payload. There is no CRC, schema, commit or semantic validation, and
-no corrupt or incompatible title state. A written record still needs replacement
-confirmation. This is intentionally not a power-fail atomic two-copy protocol.
+whether the first byte is `0xFF`: erased means no save, and every other value is
+read as a raw written record with no CRC, schema, commit or semantic validation.
+A torn record is read as-is; there is no corrupt or incompatible title state. A
+written record still needs replacement confirmation, and the rescue
+confirmation still warns that unsaved finds are lost. This is intentionally not
+a power-fail atomic two-copy protocol. Rescue loads only and writes zero bytes;
+Continue repositions the boat at its saved berth with full air and neutral trim.
+New Voyage writes the docked Tidewall checkpoint plus the initial chart reveal
+before the opening deck and live free-flight spawn.
+
 No voyage byte is written to internal EEPROM. The 4 KiB region adds 0 B of
 static SRAM and no data-image bytes; the adapter is a stateless stack object and
-the page stream is generated from live state. Schema 1/2 EEPROM records, schema
-3 dual-slot carts, schema 4/5/6/7 slots and the retired chart block are not
-migrated; their version bytes are ignored on load.
+the page stream is generated from live state. Old schema-era records, the retired
+chart block and pre-release development saves are not migrated or imported.
+There is no old-save compatibility contract for this cleanup.
 
 ### Optional standalone chart save
 
@@ -357,8 +369,14 @@ or EEPROM chart save describe retired variants, not the shipping build. The
 current developer-only `DEBUG=1` image is documented in
 [dev-flow.md](dev-flow.md) and is not part of the shipped matrix.
 
+The `sub-hauler-bwg` cleanup's final whole-image flash/static, cart, stack and
+flight figures are pending the integration worker's full gate. The dated rows
+below are baseline/history; do not read the last pre-cleanup row as post-cleanup
+headroom.
+
 | Date | Flash | Static RAM | Toolchain / notes |
 | --- | --- | --- | --- |
+| 2026-11-12 | 26,586 B | 1,622 B | Protections cleanup (`sub-hauler-bwg`): removed the voyage counters/`lastDelivery`/hull byte, `activeJobValid` and legacy HOME validators, serialized save header/CRC/commit, RAM CRC skip cache, one-value `SaveResult`, duplicate boot status and the dirty/departure save path. The checkpoint is now a raw **16 B scalar + 256 B chart at offset 0**, **272 meaningful bytes**, with no magic/schema/length/CRC/commit; every explicit save erases once and programs two 256 B pages with `0xFF` padding, including identical saves. Rescue loads only; runtime `FX::programSavePage` and music pause boundaries are retained. Whole image **26,586 B flash / 1,622 B static** (`.text/.data/.bss` **26,582 / 4 / 1,618 B**), **3,110 B** hardware flash free and **78 B** static headroom. AVR `game::State` **67 B**. FX payload/image **660,106 / 664,320 B**, **1,432,832 B** below 2 MiB; `FX_DATA_PAGE=0xF5DD`, `FX_SAVE_PAGE=0xFFF0`, `storyBeats=0x07C8DD`, `storyMeta=0x08DA56`; 17 scenes / 43 cards / 106 frames, story blob **70,009 B**. Host **243**, tooling **189**, docs **18**; **15/15** default device suites P; save-chain **738 B** (`save_repeat=1`), combined music **676 B**, runtime-page P; flight **842 frames**, **12,416 µs max**, 0 misses, gap 1, 0 underruns/errors. Gen-check deterministic; Mini **26,586 / 1,622 B**. Logs `build/protections-final-*.log`. No physical playthrough claimed. |
 | 2026-11-11 | 27,120 B | 1,640 B | Story guidance and prose (`sub-hauler-a7s`, including current cave scenery): opening names the Tidewall spawn berth; suppliers, receiving sites, seal/core handoff, relay return and physical HOME dispatch are explicit. Five appended presentation-only dock points add missing cutter/lens/thruster and surveyed repair-collection leads, shared by station and WORK boards. Lens clue points above Deep Anchor and vanishes when owned. Scene, mission and save IDs unchanged; 17 scenes / 43 cards / 106 frames, story blob **70,042 B**. FX/Mini `.text/.data/.bss` **27,116 / 4 / 1,636 B**, **2,576 B** flash free, **60 B** static headroom. Host **257**, tooling **173**, docs/Node **18**; 15 default device suites P; save-chain **683 B**, combined music **640 B**, runtime-page P; flight **842 frames**, **12,628 µs max**, 0 misses, gap 1, 0 underruns/errors. Gen-check deterministic; FX payload/image **671,496 / 675,840 B**; **1,421,312 B** below 2 MiB, save page **0xFFF0**. Logs `build/story-hints-*.log`. No physical playthrough claimed. |
 | 2026-11-11 | 27,784 B | 1,655 B | Story deck 24-bit frame offsets: refreshed `story/art.png` and `story/scenes.json` produced **106 frames** whose combined RLE payload plus the old two-byte offset table exceeded the 65,535 B ceiling. `story-beats.bin` now begins with 106 little-endian three-byte frame offsets (318 B), and `story_view::frameOffset` reads three bytes and returns `uint24_t`. `STORY_BEAT_BYTES` is 32-bit. Final story blob **67,468 B**; `.text/.data/.bss` **27,776 / 8 / 1,647 B**, **1,912 B** hardware flash free. `make gen` 17 scenes / 43 cards / 106 frames / 21 images; FX payload/image **658,682 / 662,784 B**, **1,434,368 B** below 2 MiB; `storyBeats=0x07E52A`, `storyMeta=0x08ECB6`, `FX_DATA_PAGE=0xF5E3`, `FX_SAVE_PAGE=0xFFF0` unchanged. `make gen-check` deterministic; host **264**, tooling **181**, docs **18**; all **15/15** default device suites print `P`, with `test_story` decoding **106** frame CRCs at **10,772 µs** max; Mini **27,784 / 1,655 B**. No physical playthrough or human art review claimed. |
 | 2026-11-11 | 27,792 B | 1,655 B | Baked runtime text stamps (`sub-hauler-2va`): every production label is a static 128x8 plus-mask FX image, so release code issues no `text::print`/`number`/`character`/`begin` call and `text::begin()` leaves the production boot path. `tools/gen_text_images.py` bakes the 6x8 glyph table into 83 two-frame `img_txt_*` rows (white/black, 3 px inset) plus `img_berth_names` (9), `img_dock_barks` (16), `img_row_labels` (4), `img_story_row` (18), `img_carry_row` (9) and `img_berth_work` (8) sheets; `gen_sprites` packs `fxdata/TextData.txt` with a two-byte header and 256 B frame stride. The retired `dockBarks` cart blob and `generated/dock_barks.hpp` are gone; `tools/dock_bark_table.py` is the shared bark order. Before `.text/.data/.bss` **29,130 / 16 / 1,649 B**, **29,146 B flash / 1,665 B static**, debug **29,456 B / 1,666 B**, FX payload/image **579,005 / 583,168 B**, `FX_DATA_PAGE=0xF71A`. After **27,792 B flash / 1,655 B static**, `.text/.data/.bss` **27,784 / 8 / 1,647 B** (−1,354 B flash, −10 B static), **1,904 B** hardware flash free, debug **28,102 B / 1,656 B**, FX payload/image **637,779 / 642,048 B** (+58,774/+58,880 B, 83 text rows + six sheets), `FX_DATA_PAGE=0xF634`, `FX_SAVE_PAGE=0xFFF0` unchanged at the 4 KiB save tail. The external 6x8 font and `print`/`number`/`character` stay for reference tests only; no font-renderer symbol remains in the release ELF. `make gen-check` deterministic; host **262**, tooling **169**, docs **33** + preview **8**; all 15 default device suites P plus save-chain, runtime-page and flight. No physical playthrough claimed. |

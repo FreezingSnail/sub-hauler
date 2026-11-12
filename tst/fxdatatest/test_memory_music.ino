@@ -22,7 +22,6 @@
 #include "src/hud.hpp"
 #include "src/music.hpp"
 #include "src/pilot.hpp"
-#include "src/roster.hpp"
 #include "src/render.hpp"
 #include "src/station.hpp"
 #include "src/voyage_flow.hpp"
@@ -102,15 +101,12 @@ void storyPanels() {
     FX::display(CLEAR_BUFFER);
     music::service();
     for (uint8_t card = 0; card < ending_view::kCardCount; ++card) {
-        ending_view::draw(card, s_state);
+        ending_view::draw(card);
         music::service();
         FX::display(CLEAR_BUFFER);
         music::service();
     }
-    voyage_flow::BootStatus boot;
-    boot.state = voyage_flow::kBootValid;
-    boot.hasValid = true;
-    voyage_view::drawTitle(boot, voyage_view::kTitleContinue, voyage_view::kTitleMenu);
+    voyage_view::drawTitle(voyage_flow::kBootWritten, voyage_view::kTitleContinue, voyage_view::kTitleMenu);
     music::service();
     FX::display(CLEAR_BUFFER);
     music::service();
@@ -182,13 +178,9 @@ uint16_t measureReserve() {
     music::service();
     voyage_save::FxStorage storage;
     const music_logic::PauseToken saveToken = music::pauseForTransaction();
-    const voyage_save::SaveResult saveResult = voyage_flow::startNewVoyage(s_state
-                                                                           ,
-                                                                           s_chart
-                                                                           ,
-                                                                           storage);
+    voyage_flow::startNewVoyage(s_state, s_chart, storage);
     music::resumeAfterTransaction(saveToken);
-    s_saveChainOk = saveResult == voyage_save::kSaved;
+    s_saveChainOk = voyage_save::hasSave(storage);
     for (uint8_t frame = 0; frame < 20; ++frame) {
         music::service();
         delay(4);

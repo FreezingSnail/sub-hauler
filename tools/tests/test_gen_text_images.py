@@ -38,6 +38,15 @@ class TextStampGenerationTest(unittest.TestCase):
             self.assertEqual(frame0.tobytes(), reference.tobytes(), symbol)
             self.assertEqual(frame1.tobytes(), inverted.tobytes(), symbol)
 
+    def test_retired_save_failure_stamps_are_not_emitted(self):
+        names = dict(self.rows)
+        for retired in ("txt_save_corrupt", "txt_save_incompatible", "txt_save_failed",
+                        "txt_retry", "txt_continue_unsaved", "txt_save_hint",
+                        "txt_unsaved_find", "txt_abandon_job"):
+            self.assertNotIn("img_" + retired, names)
+            self.assertFalse((ROOT / "images/text" / ("img_" + retired + "_128x8.png")).exists(),
+                             retired)
+
     def test_text_inset_and_transparent_background(self):
         for symbol in gen.ordered_strings(gen.FXDATA):
             image = self.image("img_" + symbol)

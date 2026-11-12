@@ -38,11 +38,6 @@ constexpr uint8_t IMG_TXT_A_NEXT_HEIGHT = 8;
 constexpr uint8_t IMG_TXT_A_NEXT_FRAMES = 2;
 constexpr bool    IMG_TXT_A_NEXT_MASKED = true;
 
-constexpr uint8_t IMG_TXT_ABANDON_JOB_WIDTH  = 128;
-constexpr uint8_t IMG_TXT_ABANDON_JOB_HEIGHT = 8;
-constexpr uint8_t IMG_TXT_ABANDON_JOB_FRAMES = 2;
-constexpr bool    IMG_TXT_ABANDON_JOB_MASKED = true;
-
 constexpr uint8_t IMG_TXT_AIR_WIDTH  = 128;
 constexpr uint8_t IMG_TXT_AIR_HEIGHT = 8;
 constexpr uint8_t IMG_TXT_AIR_FRAMES = 2;
@@ -102,11 +97,6 @@ constexpr uint8_t IMG_TXT_CONTINUE_WIDTH  = 128;
 constexpr uint8_t IMG_TXT_CONTINUE_HEIGHT = 8;
 constexpr uint8_t IMG_TXT_CONTINUE_FRAMES = 2;
 constexpr bool    IMG_TXT_CONTINUE_MASKED = true;
-
-constexpr uint8_t IMG_TXT_CONTINUE_UNSAVED_WIDTH  = 128;
-constexpr uint8_t IMG_TXT_CONTINUE_UNSAVED_HEIGHT = 8;
-constexpr uint8_t IMG_TXT_CONTINUE_UNSAVED_FRAMES = 2;
-constexpr bool    IMG_TXT_CONTINUE_UNSAVED_MASKED = true;
 
 constexpr uint8_t IMG_TXT_CORMORANT_WIDTH  = 128;
 constexpr uint8_t IMG_TXT_CORMORANT_HEIGHT = 8;
@@ -328,35 +318,10 @@ constexpr uint8_t IMG_TXT_RESUME_HEIGHT = 8;
 constexpr uint8_t IMG_TXT_RESUME_FRAMES = 2;
 constexpr bool    IMG_TXT_RESUME_MASKED = true;
 
-constexpr uint8_t IMG_TXT_RETRY_WIDTH  = 128;
-constexpr uint8_t IMG_TXT_RETRY_HEIGHT = 8;
-constexpr uint8_t IMG_TXT_RETRY_FRAMES = 2;
-constexpr bool    IMG_TXT_RETRY_MASKED = true;
-
 constexpr uint8_t IMG_TXT_SALVAGE_HINT_WIDTH  = 128;
 constexpr uint8_t IMG_TXT_SALVAGE_HINT_HEIGHT = 8;
 constexpr uint8_t IMG_TXT_SALVAGE_HINT_FRAMES = 2;
 constexpr bool    IMG_TXT_SALVAGE_HINT_MASKED = true;
-
-constexpr uint8_t IMG_TXT_SAVE_CORRUPT_WIDTH  = 128;
-constexpr uint8_t IMG_TXT_SAVE_CORRUPT_HEIGHT = 8;
-constexpr uint8_t IMG_TXT_SAVE_CORRUPT_FRAMES = 2;
-constexpr bool    IMG_TXT_SAVE_CORRUPT_MASKED = true;
-
-constexpr uint8_t IMG_TXT_SAVE_FAILED_WIDTH  = 128;
-constexpr uint8_t IMG_TXT_SAVE_FAILED_HEIGHT = 8;
-constexpr uint8_t IMG_TXT_SAVE_FAILED_FRAMES = 2;
-constexpr bool    IMG_TXT_SAVE_FAILED_MASKED = true;
-
-constexpr uint8_t IMG_TXT_SAVE_HINT_WIDTH  = 128;
-constexpr uint8_t IMG_TXT_SAVE_HINT_HEIGHT = 8;
-constexpr uint8_t IMG_TXT_SAVE_HINT_FRAMES = 2;
-constexpr bool    IMG_TXT_SAVE_HINT_MASKED = true;
-
-constexpr uint8_t IMG_TXT_SAVE_INCOMPATIBLE_WIDTH  = 128;
-constexpr uint8_t IMG_TXT_SAVE_INCOMPATIBLE_HEIGHT = 8;
-constexpr uint8_t IMG_TXT_SAVE_INCOMPATIBLE_FRAMES = 2;
-constexpr bool    IMG_TXT_SAVE_INCOMPATIBLE_MASKED = true;
 
 constexpr uint8_t IMG_TXT_SAVE_READY_WIDTH  = 128;
 constexpr uint8_t IMG_TXT_SAVE_READY_HEIGHT = 8;
@@ -417,11 +382,6 @@ constexpr uint8_t IMG_TXT_UNDOCK_WIDTH  = 128;
 constexpr uint8_t IMG_TXT_UNDOCK_HEIGHT = 8;
 constexpr uint8_t IMG_TXT_UNDOCK_FRAMES = 2;
 constexpr bool    IMG_TXT_UNDOCK_MASKED = true;
-
-constexpr uint8_t IMG_TXT_UNSAVED_FIND_WIDTH  = 128;
-constexpr uint8_t IMG_TXT_UNSAVED_FIND_HEIGHT = 8;
-constexpr uint8_t IMG_TXT_UNSAVED_FIND_FRAMES = 2;
-constexpr bool    IMG_TXT_UNSAVED_FIND_MASKED = true;
 
 constexpr uint8_t IMG_TXT_UNSAVED_LOST_WIDTH  = 128;
 constexpr uint8_t IMG_TXT_UNSAVED_LOST_HEIGHT = 8;

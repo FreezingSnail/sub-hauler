@@ -3,9 +3,14 @@
 
 Ardens keys each save file by an FNV-1a hash of the program flash and the
 16 MiB FX chip image. Rebuilding the game or regenerating the cart changes that
-key even when the schema-7 save payload is still compatible. `migrate` copies a
-save under the new key and rewrites only the embedded 64-bit hash, leaving the
-save payload and the source file untouched.
+key. `migrate` copies an emulator save under the new key and rewrites only the
+embedded 64-bit hash, leaving the save payload and the source file untouched.
+
+This is a container-key copy, not a payload converter or validator. The source
+save must already contain a record whose payload is exactly compatible with the
+target build. The `sub-hauler-bwg` pre-release cleanup changed the raw save
+format and removed old-save compatibility, so development saves from the former
+schema/header era are discarded and must be recreated rather than migrated.
 """
 
 from __future__ import annotations
@@ -141,8 +146,16 @@ def main(argv=None) -> int:
     hash_parser.add_argument("--hex", required=True, type=Path)
     hash_parser.add_argument("--fxdata", required=True, type=Path)
 
-    migrate_parser = sub.add_parser("migrate", help="copy a save to the current game hash")
-    migrate_parser.add_argument("--save", required=True, type=Path)
+    migrate_parser = sub.add_parser(
+        "migrate",
+        help="copy an Ardens save to the current game hash (payload must already match)",
+    )
+    migrate_parser.add_argument(
+        "--save",
+        required=True,
+        type=Path,
+        help="source save whose payload already matches the target build",
+    )
     migrate_parser.add_argument("--hex", required=True, type=Path)
     migrate_parser.add_argument("--fxdata", required=True, type=Path)
     migrate_parser.add_argument("--force", action="store_true")

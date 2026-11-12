@@ -138,7 +138,6 @@ bool noticeBacking() {
     game::reset(s_state);
     s_screen = Screen::Pilot;
     s_savedNoticeTicks = 90;
-    s_voyageDirty = false;
     s_state.discoveryTicks = 0;
     drawPilot();
     for (uint8_t y = hud::kHintBackingY; y < 64; ++y) {
@@ -160,14 +159,12 @@ bool coldReload() {
     constexpr uint8_t kLiftSurveys = campaign::kSurveyPump | campaign::kSurveyLift;
 
     // Exactly the checkpoint the LIFT dock commits: Cormorant, both repairs and
-    // surveys, three completed deliveries, no active job, service-full, with
-    // the selected LIFT deck pending.
+    // surveys, no active job, service-full, with the selected LIFT deck pending.
     game::reset(s_state);
     s_state.docked = static_cast<int8_t>(campaign::kCormorant);
     s_state.campaign = kLiftCheckpoint;
     s_state.surveys = kLiftSurveys;
     s_state.tools = static_cast<uint8_t>(exploration_data::CUTTER | exploration_data::SEAL);
-    s_state.delivered = 3;
     s_state.ending = 0;
     s_state.pendingStory = story_view::kCardLift;
     s_state.cargo = 0;
@@ -194,7 +191,6 @@ bool coldReload() {
     ok = s_state.docked == static_cast<int8_t>(campaign::kCormorant) && ok;
     ok = s_state.campaign == kLiftCheckpoint && ok;
     ok = s_state.surveys == kLiftSurveys && ok;
-    ok = s_state.delivered == 3 && ok;
     ok = !game::hasActiveJob(s_state) && ok;
 
     // Finish the resumed LIFT result deck: the second repair starts the joint

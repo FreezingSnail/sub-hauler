@@ -97,8 +97,7 @@ inline void LoopSuite(TestRunner &runner) {
         test.assertTrue(placeAtBerth(state, campaign::kBenthos), "destination metadata loads");
         test.assertTrue(station::stepFlight(state, idle(), fake), "the destination ring auto-docks");
         test.assertEqual(state.docked, static_cast<int8_t>(campaign::kBenthos), "the destination station is current");
-        test.assertEqual(state.delivered, 1, "delivery completes once");
-        test.assertEqual(state.lastDelivery, jobs::kDeliveryDelivered, "the delivery is recorded as complete");
+        test.assertTrue(campaign::missionCompleted(state, campaign::kFirst), "delivery completes once");
         test.assertTrue(!station::jobActive(state), "the contract is cleared on delivery");
         test.assertEqual(state.cargo, 0, "the delivered hold is empty");
         test.assertEqual(station::rowCount(state), station::kStationRowCount, "the board is back to WORK shape");
@@ -123,7 +122,6 @@ inline void LoopSuite(TestRunner &runner) {
         test.assertEqual(station::activate(station::kActiveWorkRow, state), station::kActionWork, "WORK does not clear the contract");
         test.assertTrue(station::jobActive(state), "contract survives WORK");
         test.assertEqual(state.cargo, game::kJobCrates, "the hold survives WORK");
-        test.assertEqual(state.delivered, 0, "no delivery is counted");
         runner.add(test);
     }
 
@@ -138,7 +136,6 @@ inline void LoopSuite(TestRunner &runner) {
         const uint8_t handoff = story_view::handoffForMission(first.mission);
         test.assertEqual(handoff, story_view::kHandoffFirst, "acceptance selects the FIRST departure brief");
         state.pendingStory = handoff;
-        test.assertTrue(campaign::stateValid(state), "accepted load with a pending handoff is a valid checkpoint");
         test.assertTrue(state.pendingStory <= story_view::kSceneMax, "pending handoff is in the saved scene range");
 
         state.pendingStory = story_view::kSceneNone;
@@ -154,7 +151,6 @@ inline void LoopSuite(TestRunner &runner) {
         game::State state;
         uint8_t station = game::kJobNone;
         test.assertTrue(dockAtHome(state, fake, station), "HAULER docks at home");
-        test.assertEqual(state.hullClass, static_cast<uint8_t>(roster::kHauler), "voyage starts as HAULER");
         const work_view::Row first = work_view::rowAt(state, 0);
         test.assertTrue(work_view::accept(state, first), "HAULER accepts the story contract");
         const uint8_t destination = state.activeJob.to;
@@ -166,10 +162,8 @@ inline void LoopSuite(TestRunner &runner) {
                          "contract undocks explicitly");
         test.assertTrue(placeAtBerth(state, destination), "destination metadata loads");
         test.assertTrue(station::stepFlight(state, idle(), fake), "destination auto-docks");
-        test.assertEqual(state.delivered, 1, "delivery completes");
-        test.assertEqual(state.lastDelivery, jobs::kDeliveryDelivered, "delivery records completion");
+        test.assertTrue(campaign::missionCompleted(state, campaign::kFirst), "delivery completes");
         test.assertTrue(!station::jobActive(state), "delivery closes the contract");
-        test.assertEqual(state.hullClass, static_cast<uint8_t>(roster::kHauler), "HAULER stays active");
         runner.add(test);
     }
 }

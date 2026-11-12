@@ -1,12 +1,9 @@
 # Sub-hauler
 
-Sub-hauler is an Arduboy FX game rendered with **Arduboy2Base** in native 1-bit
-mode. Each logical frame is one image; `FRAME(x)` is simply `x`. Cart data is
-fetched through `src/lib/Blit.cpp` and the display is pushed with
-`FX::display(CLEAR_BUFFER)`.
+Sub-hauler is a game for Arduboy FX and Arduboy Mini.
 
-Open the [offline player guide](docs/guide.html) to play. It is a static HTML
-file that uses relative checkout assets and needs no network access.
+Open the [offline player guide](docs/guide.html) to play; it uses relative
+checkout assets and needs no network access.
 
 Canonical project references:
 
@@ -17,26 +14,23 @@ Canonical project references:
 
 ## Status
 
-There is one shipping configuration. The fixed build enables the campaign,
-stations, exploration, chart, currents, particles, the fixed HAULER hull,
-startup splashes and ATMlib2FX synth music unconditionally. The developer-only
-`DEBUG=1` image adds map-inspection no-clip and is not shipped.
-
-The game runs on Arduboy FX and Arduboy Mini. Exact flash/RAM headroom, test
+There is one fixed shipping configuration. The developer-only `DEBUG=1` image
+adds map-inspection no-clip and is not shipped. Exact flash/RAM headroom, test
 counts and dated device measurements live in
 [`docs/platform.md`](docs/platform.md).
 
 ## Build and test
 
 ```sh
-make gen          # images/fonts -> FX image, sprites and generated headers
+make gen          # regenerate every shipped generated artifact
 make gen-check    # regeneration must be byte-identical
 make build        # FX firmware -> dist/fx/
 make mini         # Mini firmware -> dist/mini/
 make test         # host rules tests
 make test-tools   # Python tooling tests
-make docs-check   # local links and preview checks
+make docs-check   # doc links, generated pages and doc tooling
 make size         # whole-image flash/RAM report
+make fxtest       # fixed-build device suites via Ardens
 make run          # Ardens with the ELF + FX image
 ```
 
@@ -74,7 +68,7 @@ it or power-cycle it while holding **DOWN**, then start the upload.
 ```text
 src/game.hpp       pure rules; no Arduino headers
 src/render.hpp     native 1-bit scene and sprite drawing
-src/common.hpp     Arduboy2Base + FX + FRAME boundary
+src/common.hpp     device boundary: Arduboy2Base, FX cart and display
 src/app.hpp        shared application operations and state
 src/lib/Blit.*     headerless plus-mask FX blitter
 sub-hauler.ino     release entry (ARDUBOY_NO_USB, setup, loop)

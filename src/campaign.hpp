@@ -19,7 +19,6 @@ using game::State;
 
 constexpr uint8_t kMissionNone = game::kMissionNone;
 constexpr uint8_t kMissionCount = 8;
-constexpr uint8_t kDeliveryNone = 0;   // jobs::DeliveryResult::kDeliveryNone
 
 enum MissionId : uint8_t {
     kFirst = 0,
@@ -39,8 +38,7 @@ enum SurveyId : uint8_t {
 
 // Milestone bits. The campaign route is linear at the end: BEACON needs PUMP
 // and LIFT; DEEP RELAY needs BEACON plus all four tools; HOME needs BEACON and
-// the completed DEEP RELAY. Legacy checkpoints may hold HOME without
-// EXPEDITION and remain loadable; they cannot create a new HOME acceptance.
+// the completed DEEP RELAY.
 constexpr uint8_t kMilestoneFirst = 1u << 0;
 constexpr uint8_t kMilestonePump = 1u << 1;
 constexpr uint8_t kMilestoneLift = 1u << 2;
@@ -258,8 +256,7 @@ inline DockPoint dockPoint(const State &state) {
         return surveyRecorded(state, kLiftSurveyId) ? kDockPointLiftReady : kDockPointPump;
     if (!pump && lift)
         return surveyRecorded(state, kPumpSurveyId) ? kDockPointPumpReady : kDockPointLift;
-    // Legacy checkpoints can hold HOME without EXPEDITION; HOME is the final
-    // presentation state whenever it is set.
+    // HOME is the final presentation state whenever it is set.
     if (hasMilestone(state, kMilestoneHome))
         return kDockPointHome;
     if (!sealOwned(state))
@@ -318,18 +315,17 @@ inline bool missionAvailable(const State &state, uint8_t id) {
     return missionPrerequisites(state, id) && !missionCompleted(state, id);
 }
 
-// Pre-linear checkpoints could accept HOME with only BEACON. Keep that one
-// in-flight delivery completable and loadable so a build update cannot strand a
-// save mid-return. No new save can create this shape: accept() and the WORK row
-// both require the expedition milestone. A completed legacy HOME (with no
-// expedition bit) is likewise preserved by milestonesValid().
-inline bool legacyHomeJob(const game::ActiveJob &job, uint8_t campaign) {
-    return job.kind == game::kJobKindCampaign && job.mission == kHome && hasMilestone(campaign, kMilestoneBeacon) &&
-           !hasMilestone(campaign, kMilestoneExpedition);
-}
-
-inline bool legacyHomeJob(const State &state) {
-    return legacyHomeJob(state.activeJob, state.campaign);
+// Focused gameplay check for an active cargo contract. It deliberately does
+// not validate the whole save: a written checkpoint is loaded raw. Delivery
+// still refuses to complete a job whose mission metadata, origin, destination
+// or fixed crate requirement does not match.
+inline bool cargoJobMatches(const game::ActiveJob &job) {
+    if (job.kind != game::kJobKindCampaign)
+        return false;
+    MissionSpec spec;
+    if (!missionInfo(job.mission, spec) || !spec.cargo)
+        return false;
+    return job.from == spec.from && job.to == spec.to && job.crates == game::kJobCrates;
 }
 
 // WORK page rows. Story missions are compacted in stable mission-id order at
@@ -375,8 +371,7 @@ inline bool completeMission(State &state, uint8_t id) {
     MissionSpec spec;
     if (!missionInfo(id, spec) || missionCompleted(state, id))
         return false;
-    const bool legacyHome = id == kHome && legacyHomeJob(state);
-    if (!missionPrerequisites(state, id) && !legacyHome)
+    if (!missionPrerequisites(state, id))
         return false;
     if (!spec.cargo) {
         state.surveys |= static_cast<uint8_t>(1u << surveyForMission(id));
@@ -445,65 +440,9 @@ inline bool accept(State &state, uint8_t id) {
     state.activeJob.from = spec.from;
     state.activeJob.to = spec.to;
     state.activeJob.crates = game::kJobCrates;
-    state.lastDelivery = kDeliveryNone;
     game::setCargo(state, game::kJobCrates);
     state.ballast = static_cast<uint8_t>(game::neutralForNormalized(state.cargo));
     return true;
-}
-
-// Save-schema invariants shared with the storage task. These are structural;
-// they do not require a docked boat (an active checkpoint can be saved at a
-// service berth).
-inline bool milestonesValid(uint8_t mask) {
-    if ((mask & ~kMilestoneMask) != 0)
-        return false;
-    if ((mask & kMilestoneHome) && !(mask & kMilestoneBeacon))
-        return false;
-    // EXPEDITION is required for new HOME acceptance but is independent in the
-    // save mask: legacy pre-linear checkpoints may hold HOME without it, and a
-    // postgame checkpoint may hold EXPEDITION without HOME. Never reject those.
-    if ((mask & kMilestoneExpedition) && !(mask & kMilestoneBeacon))
-        return false;
-    if ((mask & kMilestoneBeacon) && (mask & (kMilestonePump | kMilestoneLift)) != (kMilestonePump | kMilestoneLift))
-        return false;
-    return true;
-}
-
-inline bool surveysValid(uint8_t mask) {
-    return (mask & ~kSurveyMask) == 0;
-}
-
-inline bool activeJobValid(const game::ActiveJob &job, uint8_t campaign, uint8_t surveys, uint8_t tools) {
-    if (job.kind == game::kJobKindNone) {
-        return job.mission == kMissionNone && job.from == game::kJobNone && job.to == game::kJobNone && job.crates == 0;
-    }
-    if (job.kind != game::kJobKindCampaign)
-        return false;
-    if (job.crates != game::kJobCrates || job.to >= kBerthCount)
-        return false;
-    world::Berth destination;
-    if (!world::berthInfo(job.to, destination))
-        return false;
-
-    MissionSpec spec;
-    if (!missionInfo(job.mission, spec) || !spec.cargo)
-        return false;
-    return job.from == spec.from && job.to == spec.to && !missionCompleted(campaign, surveys, job.mission) &&
-           (missionPrerequisites(campaign, surveys, tools, job.mission) || legacyHomeJob(job, campaign));
-}
-
-inline bool activeJobValid(const State &state) {
-    return activeJobValid(state.activeJob, state.campaign, state.surveys, state.tools);
-}
-
-inline bool checkpointValid(uint8_t campaign, uint8_t surveys, uint8_t ending, const game::ActiveJob &job, uint8_t tools) {
-    if (ending > 1 || (ending != 0 && !hasMilestone(campaign, kMilestoneHome)))
-        return false;
-    return milestonesValid(campaign) && surveysValid(surveys) && activeJobValid(job, campaign, surveys, tools);
-}
-
-inline bool stateValid(const State &state) {
-    return checkpointValid(state.campaign, state.surveys, state.ending, state.activeJob, state.tools);
 }
 
 }   // namespace campaign

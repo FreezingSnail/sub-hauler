@@ -351,8 +351,6 @@ template <typename Reader> inline void stepWorld(State &state, const Input &inpu
     // position advance does not outrun the camera and push the hull offscreen.
     updateCamera(state, speedScale > 1 ? kDevCameraMaxStepQ4 : kCameraMaxStepQ4);
     ++state.ticks;
-    // Flight tick for the campaign voyage clock (docked frames never step).
-    tickVoyage(state);
 }
 
 }   // namespace game

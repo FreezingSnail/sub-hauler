@@ -15,9 +15,12 @@ hardware and resource facts live in `docs/platform.md`.
   and the voyage clock keep production pacing. The release build and output
   directories are unchanged.
 - Ardens save continuity: `make save-migrate SAVE=/path/absim_<hash>.save`
-  copies an existing save under the current image's key. Add `DEBUG=1` to
-  migrate to the debug image. The source save and its payload are untouched;
-  the new key name is printed. The schema-7 save layout is unchanged.
+  copies an existing emulator save under the current image's key. Add `DEBUG=1`
+  to migrate to the debug image. The source save and its payload are untouched;
+  the new key name is printed. The utility does not convert or validate the
+  payload: the source must already contain a record compatible with the target
+  build. Old development saves from the pre-release save-format cleanup are
+  discarded and must be recreated.
 - One device suite while iterating: `make fxtest FXTEST_ONLY=test_boot`.
 - Full device gate: `make fxtest` compiles the 15 default fixed-build suites
   and requires an exact bare `P` marker from each. It excludes the longer
@@ -115,15 +118,18 @@ before title input. See
 
 - The fixed build calls `FX::begin(FX_DATA_PAGE, FX_SAVE_PAGE)`; the generated
   image ends with a 4 KiB `savesection`.
-- Voyage checkpoints live in one 4 KiB cart erase block with a single slot. A
-  save erases the block, programs two 256 B pages and writes the commit byte
-  last. A power interruption may lose the checkpoint or leave a torn record.
-  Load only treats `0xFF` in the first byte as no save; any other slot is read
-  raw, with no CRC, schema or semantic validation. Music is paused around the
-  synchronous erase/page transaction; no read or write belongs in the per-frame
-  path.
-- The standalone EEPROM chart writer is retired; schema 8 voyage checkpoints
-  are the only save path.
+- Voyage checkpoints live in one 4 KiB cart erase block with a single raw slot.
+  The slot is 16 scalar bytes plus the 256-byte chart, 272 meaningful bytes; the
+  two 256-byte page programs pad the rest with `0xFF`. A save erases the block
+  once and programs both pages, even when the state is identical to the last
+  save; there is no cache or skip. A power interruption may lose the checkpoint
+  or leave a torn record. Load only treats `0xFF` in the first byte as no save;
+  any other slot is read raw, with no header, schema, CRC or semantic
+  validation. Rescue loads only and writes zero bytes. Music is paused around
+  the synchronous erase/page transaction, and the runtime save page comes from
+  `FX::programSavePage`; no read or write belongs in the per-frame path.
+- The standalone EEPROM chart writer is retired; the raw single-slot voyage
+  checkpoint is the only save path. No old-save import or migration is built.
 - `make fxtest-save-chain` runs the exact production
   `updateStation()`→`requestSave()`→`saveVoyageNow()` path with the real sketch
   and ATMlib2FX synth music; it is emulator-only and performs real cart writes.

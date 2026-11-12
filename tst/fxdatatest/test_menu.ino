@@ -108,13 +108,9 @@ void setup() {
         state.tools = exploration_data::CUTTER;
     }
     state.docked = 0;
-    state.lastDelivery = jobs::kDeliveryFailed;
-    ok = stationCheck(0, 0xFF) && ok;
-    ++checks;
-    state.lastDelivery = jobs::kDeliveryNone;
     Serial.print(F("menu pixel cases="));
     Serial.println(checks);
-    ok = checks == 29 && ok;
+    ok = checks == 28 && ok;
     Serial.println(ok ? F("P") : F("F"));
 }
 

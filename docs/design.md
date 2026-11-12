@@ -7,9 +7,10 @@ fixed pilot art into FX and compacted the generated world metadata and AVR run
 state. The browser sandbox is retired (available in git history); the shipped
 device path is the cargo-free contract loop described below.
 
-Current implementation note (2026-11-01): the fixed build ships the
-eight-objective campaign and ending, schema 7 single-slot cart checkpoints,
-ATMlib2FX synth music and the boot introduction. Sonar is retired. The shop,
+Current implementation note (2026-11-12): the fixed build ships the
+eight-objective campaign and ending, raw single-slot cart checkpoints,
+ATMlib2FX synth music and the boot introduction. There is no serialized save
+header, schema, CRC or old-save migration. Sonar is retired. The shop,
 currency, job payouts, repeatable freight offers and credit caches were removed;
 campaign deliveries are intrinsic restoration work and all work is untimed.
 
@@ -50,9 +51,9 @@ statistic are retired.
 
 | Class | Hull | Hold (legacy) | Status |
 | --- | ---: | ---: | --- |
-| MINNOW | 64 px | 6×3 hex bay | retired; legacy save id 0 only |
+| MINNOW | 64 px | 6×3 hex bay | retired |
 | HAULER | 94 px | 11×3 split/notched bay | playable |
-| LEVIATHAN | 118 px | 14×4 twin-spine bay | retired; legacy save id 2 only |
+| LEVIATHAN | 118 px | 14×4 twin-spine bay | retired |
 
 The `FLEET` browser reference shows three round hulls, external and cutaway:
 - MINNOW: TADPOLE rounded shuttle with bow viewport and landing skids.
@@ -66,9 +67,8 @@ retired Minnow/Leviathan pilot sheets and the legacy hold dimensions are no
 longer packed: `sub-hauler-jxk.1` removed the cart declarations under the
 approved one-time ABI exception. `tools/gen_pilot.py` and `tools/gen_cargo.py`
 retain the historical hull fills/bank as archival provenance only. No flight,
-title or station code references them. Schema-8 saves keep their hull byte at
-the frozen offset, always write HAULER, and normalize an older
-Minnow/Leviathan byte to HAULER on load without dropping voyage progress.
+title or station code references them. The raw save has no hull byte and no
+retired-ID compatibility path; there is one playable HAULER hull.
 
 ## Contract loading loop
 

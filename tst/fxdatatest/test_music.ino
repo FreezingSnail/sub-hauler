@@ -143,17 +143,12 @@ void setup() {
     FX::display(CLEAR_BUFFER);
     noteGap(timedService());
     for (uint8_t card = 0; card < ending_view::kCardCount; ++card) {
-        ending_view::draw(card, s_state);
+        ending_view::draw(card);
         noteGap(timedService());
         FX::display(CLEAR_BUFFER);
         noteGap(timedService());
     }
-    voyage_flow::BootStatus boot;
-    boot.state = voyage_flow::kBootValid;
-    boot.hasValid = true;
-    
-    
-    voyage_view::drawTitle(boot, voyage_view::kTitleContinue, voyage_view::kTitleMenu);
+    voyage_view::drawTitle(voyage_flow::kBootWritten, voyage_view::kTitleContinue, voyage_view::kTitleMenu);
     noteGap(timedService());
     FX::display(CLEAR_BUFFER);
     noteGap(timedService());

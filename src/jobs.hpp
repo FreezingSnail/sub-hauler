@@ -15,18 +15,6 @@ using game::State;
 
 static_assert(sizeof(ActiveJob) == 5, "active job payload is five bytes");
 
-enum DeliveryResult : uint8_t {
-    kDeliveryNone,
-    kDeliveryDelivered,
-    kDeliveryFailed
-};
-
-// True only for the most recent failed delivery, so the station board can show
-// its one-line SHORT note. A fresh acceptance clears it.
-inline bool deliveryFailed(const State &state) {
-    return state.lastDelivery == kDeliveryFailed;
-}
-
 inline void clearActive(State &state) {
     state.activeJob.kind = game::kJobKindNone;
     state.activeJob.mission = game::kMissionNone;
@@ -35,40 +23,28 @@ inline void clearActive(State &state) {
     state.activeJob.crates = 0;
 }
 
-inline void countDelivered(State &state) {
-    if (state.delivered != 0xFFFFu)
-        ++state.delivered;
-}
-
 // Delivery is only evaluated at the active contract's destination. Docking at
-// the origin or any other station leaves the contract and hold intact. There
-// is no clock and no payout: a loaded arrival completes the campaign mission
-// exactly once.
-inline DeliveryResult deliver(State &state, uint8_t stationId) {
+// the origin or any other station leaves the contract and hold intact. There is
+// no clock and no payout: a loaded arrival with matching mission metadata
+// completes the campaign mission exactly once. A malformed load is still
+// cleared, but cannot complete its mission.
+inline bool deliver(State &state, uint8_t stationId) {
     if (!game::hasActiveJob(state) || state.activeJob.to != stationId)
-        return kDeliveryNone;
+        return false;
 
     const bool loaded = state.cargo >= state.activeJob.crates;
-    bool delivered = false;
-    if (state.activeJob.kind == game::kJobKindCampaign) {
-        // A campaign load completes exactly once. A malformed or already
-        // completed job cannot complete; it still resolves and clears the hold.
-        delivered = loaded && campaign::activeJobValid(state) && campaign::completeMission(state, state.activeJob.mission);
-    }
-
-    if (delivered)
-        countDelivered(state);
+    const bool delivered = loaded && campaign::cargoJobMatches(state.activeJob) &&
+                           campaign::completeMission(state, state.activeJob.mission);
 
     clearActive(state);
     game::setCargo(state, 0);
     state.ballast = static_cast<uint8_t>(game::neutralForNormalized(state.cargo));
-    state.lastDelivery = delivered ? kDeliveryDelivered : kDeliveryFailed;
-    return delivered ? kDeliveryDelivered : kDeliveryFailed;
+    return delivered;
 }
 
 // Dock hook: resolve any contract ending here. The station board has no offers
 // to refresh.
-inline DeliveryResult onDock(State &state, uint8_t stationId) {
+inline bool onDock(State &state, uint8_t stationId) {
     return deliver(state, stationId);
 }
 

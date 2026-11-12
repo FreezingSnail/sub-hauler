@@ -12,7 +12,6 @@
 #include "startup_test.hpp"
 #include "pixel_layer_test.hpp"
 #include "pilot_view_test.hpp"
-#include "roster_test.hpp"
 #include "roster_view_test.hpp"
 #include "test.hpp"
 #include "world_test.hpp"
@@ -52,7 +51,6 @@ int main() {
     MusicLogicSuite(runner);
     PilotViewSuite(runner);
     PixelLayerSuite(runner);
-    RosterSuite(runner);
     TitleSuite(runner);
     WorldSuite(runner);
     ExplorationSuite(runner);

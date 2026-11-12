@@ -60,13 +60,10 @@ constexpr uint24_t spriteBytes(uint8_t width, uint8_t height, uint8_t frames, bo
     return static_cast<uint24_t>(2) + static_cast<uint24_t>(width) * ((height + 7) / 8) * frames * (masked ? 2 : 1);
 }
 static_assert(berth_icons == txt_a_next + sizeof("A NEXT"), "berth icon sheet is the first packed panel sprite");
-static_assert(panel_abandon_confirm == berth_icons + spriteBytes(BERTH_ICONS_WIDTH, BERTH_ICONS_HEIGHT, BERTH_ICONS_FRAMES, BERTH_ICONS_MASKED), "story panels append after the berth icons");
-static_assert(panel_ending_network == panel_abandon_confirm + spriteBytes(PANEL_ABANDON_CONFIRM_WIDTH, PANEL_ABANDON_CONFIRM_HEIGHT, PANEL_ABANDON_CONFIRM_FRAMES, PANEL_ABANDON_CONFIRM_MASKED), "ending network follows the first prompt");
+static_assert(panel_ending_network == berth_icons + spriteBytes(BERTH_ICONS_WIDTH, BERTH_ICONS_HEIGHT, BERTH_ICONS_FRAMES, BERTH_ICONS_MASKED), "ending network follows the berth icons");
 static_assert(panel_ending_thanks == panel_ending_network + spriteBytes(PANEL_ENDING_NETWORK_WIDTH, PANEL_ENDING_NETWORK_HEIGHT, PANEL_ENDING_NETWORK_FRAMES, PANEL_ENDING_NETWORK_MASKED), "ending thanks follow the network card");
 static_assert(panel_rescue_confirm == panel_ending_thanks + spriteBytes(PANEL_ENDING_THANKS_WIDTH, PANEL_ENDING_THANKS_HEIGHT, PANEL_ENDING_THANKS_FRAMES, PANEL_ENDING_THANKS_MASKED), "rescue confirmation follows the ending cards");
-static_assert(panel_save_continue == panel_rescue_confirm + spriteBytes(PANEL_RESCUE_CONFIRM_WIDTH, PANEL_RESCUE_CONFIRM_HEIGHT, PANEL_RESCUE_CONFIRM_FRAMES, PANEL_RESCUE_CONFIRM_MASKED), "retained save panels follow the confirmations");
-static_assert(panel_save_retry == panel_save_continue + spriteBytes(PANEL_SAVE_CONTINUE_WIDTH, PANEL_SAVE_CONTINUE_HEIGHT, PANEL_SAVE_CONTINUE_FRAMES, PANEL_SAVE_CONTINUE_MASKED), "save retry follows save continue");
-static_assert(title_menu == panel_save_retry + spriteBytes(PANEL_SAVE_RETRY_WIDTH, PANEL_SAVE_RETRY_HEIGHT, PANEL_SAVE_RETRY_FRAMES, PANEL_SAVE_RETRY_MASKED), "title menu follows the prompts");
+static_assert(title_menu == panel_rescue_confirm + spriteBytes(PANEL_RESCUE_CONFIRM_WIDTH, PANEL_RESCUE_CONFIRM_HEIGHT, PANEL_RESCUE_CONFIRM_FRAMES, PANEL_RESCUE_CONFIRM_MASKED), "title menu follows the confirmations");
 static_assert(title_replace == title_menu + spriteBytes(TITLE_MENU_WIDTH, TITLE_MENU_HEIGHT, TITLE_MENU_FRAMES, TITLE_MENU_MASKED), "replace confirmation follows the compact menu sheet");
 static_assert(lift_cable == title_replace + spriteBytes(TITLE_REPLACE_WIDTH, TITLE_REPLACE_HEIGHT, TITLE_REPLACE_FRAMES, TITLE_REPLACE_MASKED), "restoration sprites follow the title sheet");
 static_assert(mooring == lift_cable + spriteBytes(LIFT_CABLE_WIDTH, LIFT_CABLE_HEIGHT, LIFT_CABLE_FRAMES, LIFT_CABLE_MASKED), "mooring follows the lift cable");
@@ -77,8 +74,7 @@ static_assert(txt_music_off == txt_music_on + sizeof("MUSIC ON"), "music off fol
 static_assert(musicRegions == txt_music_off + sizeof("MUSIC OFF"), "region plane follows the music labels");
 static_assert(pause_menu == musicRegions + music_regions::kPlaneBytes, "pause menu follows the region plane");
 static_assert(txt_saved_berth == pause_menu + spriteBytes(PAUSE_MENU_WIDTH, PAUSE_MENU_HEIGHT, PAUSE_MENU_FRAMES, PAUSE_MENU_MASKED), "HUD saved notice follows the pause menu");
-static_assert(txt_unsaved_find == txt_saved_berth + sizeof("SAVED AT BERTH"), "HUD unsaved notice follows saved notice");
-static_assert(txt_story == txt_unsaved_find + sizeof("UNSAVED FIND"), "WORK story label follows the HUD notices");
+static_assert(txt_story == txt_saved_berth + sizeof("SAVED AT BERTH"), "WORK story label follows the HUD notice");
 static_assert(txt_work_accept_hint == txt_story + sizeof("STORY"), "WORK accept hint follows the story label");
 static_assert(hud_notices == txt_work_accept_hint + sizeof("A ACCEPT  B BACK"), "HUD notice stamps append after every shipped WORK label");
 static_assert(startup == hud_notices + spriteBytes(HUD_NOTICES_WIDTH, HUD_NOTICES_HEIGHT, HUD_NOTICES_FRAMES, HUD_NOTICES_MASKED), "startup appends after the HUD notice stamp");

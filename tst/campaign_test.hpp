@@ -90,21 +90,7 @@ inline void CampaignSuite(TestRunner &runner) {
             }
         }
 
-        // Only campaign jobs are valid; every ordinary/retired kind is refused.
-        game::State state;
-        game::reset(state);
-        state.docked = static_cast<int8_t>(campaign::kTidewall);
-        state.activeJob.kind = game::kJobKindNone;
-        state.activeJob.mission = game::kMissionNone;
-        state.activeJob.from = game::kJobNone;
-        state.activeJob.to = game::kJobNone;
-        state.activeJob.crates = 0;
-        exact = exact && campaign::activeJobValid(state);
-        for (uint16_t kind = 1; kind < 256; ++kind) {
-            state.activeJob.kind = static_cast<uint8_t>(kind);
-            exact = exact && !campaign::activeJobValid(state);
-        }
-        test.assertTrue(exact, "fixed milestone table and campaign-only job kinds retain their contract");
+        test.assertTrue(exact, "fixed milestone table retains its contract");
         runner.add(test);
     }
 
@@ -182,8 +168,7 @@ inline void CampaignSuite(TestRunner &runner) {
         test.assertEqual(state.cargo, 4, "acceptance auto-loads four units");
         test.assertEqual(state.docked, static_cast<int8_t>(campaign::kTidewall), "acceptance stays docked");
         test.assertTrue(!campaign::accept(state, campaign::kFirst), "only one load slot");
-        test.assertTrue(campaign::activeJobValid(state), "accepted campaign job passes save invariants");
-        test.assertTrue(campaign::stateValid(state), "campaign state invariants hold");
+        test.assertTrue(campaign::cargoJobMatches(state.activeJob), "accepted campaign job matches its mission metadata");
 
         test.assertTrue(travelTo(state, campaign::kCormorant), "stop at the wrong berth");
         test.assertTrue(game::hasActiveJob(state), "wrong berth retains the campaign load");
@@ -191,16 +176,14 @@ inline void CampaignSuite(TestRunner &runner) {
 
         test.assertTrue(travelTo(state, campaign::kBenthos), "arrive at Benthos loaded");
         test.assertEqual(state.campaign & campaign::kMilestoneFirst, campaign::kMilestoneFirst, "FIRST milestone set");
-        test.assertEqual(state.delivered, 1, "delivered count increments");
         test.assertTrue(!game::hasActiveJob(state), "delivery clears the campaign job");
         test.assertEqual(state.cargo, 0, "delivery clears the hold");
-        test.assertEqual(state.lastDelivery, jobs::kDeliveryDelivered, "delivery records completion");
         test.assertTrue(campaign::missionCompleted(state, campaign::kFirst), "FIRST completion flag");
         test.assertTrue(!campaign::missionAvailable(state, campaign::kFirst), "completed FIRST never reappears");
 
         test.assertTrue(station::undock(state), "undock after delivery");
         test.assertTrue(at(state, campaign::kBenthos), "dock again");
-        test.assertEqual(state.delivered, 1, "repeated docking does not double-count");
+        test.assertTrue(campaign::missionCompleted(state, campaign::kFirst), "repeated docking does not double-complete");
 
         // Short cargo cannot set the milestone, but the free source can reissue
         // the mission after the failed load is cleared.
@@ -210,7 +193,6 @@ inline void CampaignSuite(TestRunner &runner) {
         shortState.cargo = 3;
         test.assertTrue(travelTo(shortState, campaign::kBenthos), "short load docks at Benthos");
         test.assertEqual(shortState.campaign & campaign::kMilestoneFirst, 0, "short cargo sets no milestone");
-        test.assertEqual(shortState.lastDelivery, jobs::kDeliveryFailed, "short cargo records failure");
         test.assertTrue(!game::hasActiveJob(shortState), "short cargo clears the job");
         test.assertTrue(campaign::missionAvailable(shortState, campaign::kFirst), "source can reissue after short load");
         test.assertTrue(at(shortState, campaign::kTidewall), "return to source");
@@ -273,15 +255,13 @@ inline void CampaignSuite(TestRunner &runner) {
 
         test.assertTrue(acceptAt(state, campaign::kDeepAnchor, campaign::kHome), "HOME explicitly accepted");
         test.assertTrue(travelTo(state, campaign::kTidewall), "dispatch delivered home");
-        test.assertEqual(state.delivered, 6, "six deliveries counted");
         test.assertTrue(campaign::missionCompleted(state, campaign::kHome), "HOME milestone set");
-        test.assertTrue(campaign::stateValid(state), "completed campaign state remains valid");
         test.assertTrue(campaign::markEndingPresented(state), "ending can be marked after HOME");
         test.assertEqual(state.ending, 1, "ending flag set");
 
         test.assertTrue(station::undock(state), "undock after ending");
         test.assertTrue(at(state, campaign::kTidewall), "redock at Tidewall");
-        test.assertEqual(state.delivered, 6, "HOME never counts twice");
+        test.assertTrue(campaign::missionCompleted(state, campaign::kHome), "HOME never completes twice");
         runner.add(test);
     }
 
@@ -308,8 +288,7 @@ inline void CampaignSuite(TestRunner &runner) {
         test.assertTrue(completeExpedition(state), "DEEP RELAY completes after BEACON");
         test.assertTrue(acceptAt(state, campaign::kDeepAnchor, campaign::kHome), "HOME accepted");
         test.assertTrue(travelTo(state, campaign::kTidewall), "HOME delivered");
-        test.assertEqual(state.delivered, 6, "six deliveries in reversed order");
-        test.assertTrue(campaign::stateValid(state), "reversed-order state is valid");
+        test.assertTrue(campaign::missionCompleted(state, campaign::kHome), "HOME completes in reversed order");
         runner.add(test);
     }
 
@@ -328,10 +307,8 @@ inline void CampaignSuite(TestRunner &runner) {
         test.assertTrue(station::undock(state), "story delivery undocks");
         for (uint16_t i = 0; i < 600; ++i)
             game::step(state, idle());
-        test.assertEqual(state.voyageTicks, 600, "voyage clock advances in flight");
         test.assertTrue(travelTo(state, campaign::kBenthos), "story arrives after a long flight");
-        test.assertEqual(state.delivered, 1, "story delivery counted");
-        test.assertEqual(state.lastDelivery, jobs::kDeliveryDelivered, "story delivery completes");
+        test.assertTrue(campaign::missionCompleted(state, campaign::kFirst), "story delivery completes");
 
         test.assertTrue(at(state, campaign::kTidewall), "dock at Tidewall for a fresh board");
         test.assertEqual(work_view::rowCount(state), 0, "completed FIRST leaves no Tidewall work row");
@@ -384,48 +361,7 @@ inline void CampaignSuite(TestRunner &runner) {
     }
 
     {
-        Test test("save invariants reject malformed campaign jobs");
-        game::State state;
-        game::reset(state);
-        test.assertTrue(campaign::stateValid(state), "fresh state is valid");
-        test.assertTrue(!campaign::milestonesValid(campaign::kMilestoneHome), "HOME needs BEACON");
-        test.assertTrue(campaign::milestonesValid(static_cast<uint8_t>(campaign::kMilestonePump | campaign::kMilestoneLift | campaign::kMilestoneBeacon | campaign::kMilestoneHome)),
-                        "legacy completed HOME without EXPEDITION remains loadable");
-        test.assertTrue(!campaign::milestonesValid(campaign::kMilestoneBeacon), "BEACON needs both repairs");
-        test.assertTrue(campaign::milestonesValid(campaign::kMilestoneBeacon | campaign::kMilestonePump | campaign::kMilestoneLift), "BEACON plus both repairs is valid");
-        test.assertTrue(!campaign::surveysValid(0x04), "survey mask is two bits");
-
-        test.assertTrue(at(state, campaign::kTidewall), "dock for job invariants");
-        test.assertTrue(campaign::accept(state, campaign::kFirst), "accept FIRST");
-        test.assertTrue(campaign::activeJobValid(state), "campaign active job is valid");
-        state.activeJob.kind = 9;
-        test.assertTrue(!campaign::activeJobValid(state), "unknown job kind is invalid");
-        runner.add(test);
-    }
-
-    {
-        Test test("legacy in-flight HOME stays completable while new HOME acceptance needs the relay");
-        game::State legacy;
-        game::reset(legacy);
-        legacy.campaign = static_cast<uint8_t>(campaign::kMilestoneFirst | campaign::kMilestonePump | campaign::kMilestoneLift | campaign::kMilestoneBeacon);
-        legacy.tools = exploration_data::SEAL;
-        legacy.docked = static_cast<int8_t>(campaign::kDeepAnchor);
-        legacy.activeJob.kind = game::kJobKindCampaign;
-        legacy.activeJob.mission = campaign::kHome;
-        legacy.activeJob.from = campaign::kDeepAnchor;
-        legacy.activeJob.to = campaign::kTidewall;
-        legacy.activeJob.crates = game::kJobCrates;
-        game::setCargo(legacy, game::kJobCrates);
-        test.assertTrue(!campaign::missionPrerequisites(legacy, campaign::kHome), "new prerequisites reject a pre-linear HOME");
-        test.assertTrue(campaign::legacyHomeJob(legacy), "the in-flight legacy job is recognized");
-        test.assertTrue(campaign::activeJobValid(legacy), "the legacy in-flight checkpoint validates");
-        test.assertTrue(campaign::stateValid(legacy), "the legacy in-flight state remains checkpoint-valid");
-        test.assertTrue(travelTo(legacy, campaign::kTidewall), "the pre-linear dispatch can still be delivered home");
-        test.assertTrue(campaign::missionCompleted(legacy, campaign::kHome), "legacy HOME completes");
-        test.assertEqual(legacy.lastDelivery, jobs::kDeliveryDelivered, "legacy delivery records success");
-        test.assertEqual(legacy.delivered, 1, "legacy HOME counts once");
-        test.assertTrue(campaign::stateValid(legacy), "completed legacy HOME without EXPEDITION remains valid");
-
+        Test test("new HOME acceptance needs the relay");
         game::State fresh;
         game::reset(fresh);
         fresh.campaign = static_cast<uint8_t>(campaign::kMilestoneFirst | campaign::kMilestonePump | campaign::kMilestoneLift | campaign::kMilestoneBeacon);
@@ -584,7 +520,7 @@ inline void CampaignSuite(TestRunner &runner) {
         test.assertTrue(campaign::missionCompleted(state, campaign::kExpedition), "expedition milestone set at the wreck");
         test.assertTrue(campaign::missionAvailable(state, campaign::kHome), "HOME opens after the relay");
         test.assertTrue(campaign::berthAvailable(state, campaign::kDeepRelay), "Deep Relay stays available after completion");
-        test.assertTrue(campaign::stateValid(state), "completed expedition checkpoint is valid");
+        test.assertTrue(campaign::missionCompleted(state, campaign::kExpedition), "completed expedition checkpoint is valid");
         const uint8_t beforeExpedition = static_cast<uint8_t>(state.campaign & ~campaign::kMilestoneExpedition);
         test.assertEqual(story_view::cardForNewMilestone(beforeExpedition, state.campaign),
                          story_view::kCardExpedition, "fresh expedition selects the relay result deck");
@@ -604,7 +540,7 @@ inline void CampaignSuite(TestRunner &runner) {
         test.assertEqual(state.cargo, game::kJobCrates, "loaded four units survive flight");
         test.assertTrue(state.air < airBefore, "loaded flight spends air");
         test.assertTrue(state.x > startX, "loaded route makes forward progress");
-        test.assertTrue(campaign::activeJobValid(state), "loaded route remains a valid checkpoint job");
+        test.assertTrue(campaign::cargoJobMatches(state.activeJob), "loaded route keeps matching mission metadata");
         test.assertEqual(state.activeJob.to, campaign::kBenthos, "loaded route keeps the frozen destination");
         test.assertEqual(state.activeJob.crates, game::kJobCrates, "loaded route keeps the four-unit load");
         runner.add(test);
@@ -683,7 +619,7 @@ inline void CampaignSuite(TestRunner &runner) {
         state.activeJob.to = campaign::kBenthos;
         state.activeJob.crates = game::kJobCrates;
         game::setCargo(state, game::kJobCrates);
-        test.assertTrue(campaign::activeJobValid(state), "loaded service-berth job is valid");
+        test.assertTrue(campaign::cargoJobMatches(state.activeJob), "loaded service-berth job matches its mission metadata");
         runner.add(test);
     }
 

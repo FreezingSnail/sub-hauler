@@ -59,11 +59,9 @@ void setup() {
 
     // Deliver through the real dock hook. There is no payout or clock.
     const uint8_t campaignBefore = state.campaign;
-    const uint16_t deliveredBefore = state.delivered;
     ok = dockAt(state, campaign::kBenthos) && ok;
-    ok = (state.lastDelivery == jobs::kDeliveryDelivered) && ok;
     ok = (state.campaign & campaign::kMilestoneFirst) && ok;
-    ok = (state.delivered == deliveredBefore + 1) && ok;
+    ok = campaign::missionCompleted(state, campaign::kFirst) && ok;
 
     // The FIRST milestone is a one-shot dock beat. Exercise the real panel
     // reader; a repeated dock reports no new card.
@@ -86,12 +84,11 @@ void setup() {
     ok = work_view::accept(state, work_view::rowAt(state, 0)) && ok;
     ok = (state.cargo == game::kJobCrates) && ok;
     ok = dockAt(state, campaign::kPumpRefuge) && ok;
-    ok = (state.lastDelivery == jobs::kDeliveryDelivered) && ok;
     ok = (state.campaign & campaign::kMilestonePump) && ok;
 
-    // Old timed/ordinary job kinds are no longer valid state.
+    // Old timed/ordinary job kinds cannot match cargo mission metadata.
     state.activeJob.kind = 3;
-    ok = !campaign::activeJobValid(state) && ok;
+    ok = !campaign::cargoJobMatches(state.activeJob) && ok;
     state.activeJob.kind = game::kJobKindNone;
     state.activeJob.mission = game::kMissionNone;
     state.activeJob.from = game::kJobNone;

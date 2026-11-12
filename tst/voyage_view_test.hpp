@@ -12,8 +12,7 @@
 inline void VoyageViewSuite(TestRunner &runner) {
     {
         Test test("voyage title: new voyage stays selected with a blank save");
-        voyage_flow::BootStatus blank{};
-        blank.state = voyage_flow::kBootBlank;
+        const voyage_flow::BootState blank = voyage_flow::kBootBlank;
         test.assertEqual(voyage_view::nextRow(voyage_view::kTitleNewVoyage, blank), voyage_view::kTitleNewVoyage, "new stays new");
         test.assertEqual(voyage_view::previousRow(voyage_view::kTitleNewVoyage, blank), voyage_view::kTitleNewVoyage, "previous new stays new");
         test.assertEqual(voyage_view::kTitleRowCount, 2, "two title rows");
@@ -21,10 +20,8 @@ inline void VoyageViewSuite(TestRunner &runner) {
     }
 
     {
-        Test test("voyage title: continue and new voyage wrap when valid");
-        voyage_flow::BootStatus valid{};
-        valid.state = voyage_flow::kBootValid;
-        valid.hasValid = true;
+        Test test("voyage title: continue and new voyage wrap when written");
+        const voyage_flow::BootState valid = voyage_flow::kBootWritten;
         test.assertEqual(voyage_view::nextRow(voyage_view::kTitleContinue, valid), voyage_view::kTitleNewVoyage, "continue -> new");
         test.assertEqual(voyage_view::nextRow(voyage_view::kTitleNewVoyage, valid), voyage_view::kTitleContinue, "new -> continue");
         test.assertEqual(voyage_view::previousRow(voyage_view::kTitleContinue, valid), voyage_view::kTitleNewVoyage, "previous continue -> new");
