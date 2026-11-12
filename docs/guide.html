@@ -5,58 +5,62 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Sub-hauler FAQ and walkthrough: controls, equipment, campaign objectives, and saves.">
   <meta name="color-scheme" content="light">
-  <title>Sub-hauler — FAQ / Walkthrough</title>
+  <title>Sub-hauler — Player’s Manual</title>
   <style>
+    :root { color-scheme:light; --ink:#18343a; --paper:#f5edda; --red:#a33c2f; --rule:#a99978; }
     * { box-sizing:border-box; }
-    body { max-width:88ch; margin:2rem auto; padding:0 1rem; background:#fafafa; color:#202020; font:15px/1.55 ui-monospace, 'SFMono-Regular', Consolas, monospace; }
-    a { color:#174c91; text-underline-offset:3px; }
-    a:focus-visible, summary:focus-visible, input:focus-visible, .map-scroll:focus-visible { outline:2px solid #174c91; outline-offset:4px; }
-    h1 { font-size:1.6rem; margin:0 0 .3rem; }
-    h2 { font-size:1.1rem; margin:0 0 1rem; }
-    h3 { font-size:1rem; margin:1.2rem 0 .4rem; }
-    p { margin:.5rem 0; }
-    header { border-bottom:3px double; padding-bottom:1rem; }
-    .meta, footer { font-size:.8rem; color:#505050; }
-    nav { margin:1rem 0 2rem; }
-    nav a { display:block; width:fit-content; padding:.15rem 0; }
-    section { border-top:1px solid #aaa; padding-top:1rem; margin-top:2rem; scroll-margin-top:1rem; }
-    li { margin:.35rem 0; }
-    ul, ol { padding-left:2rem; }
-    kbd { font:inherit; font-weight:bold; white-space:nowrap; }
+    html { background:#17373d; }
+    body { max-width:960px; margin:2rem auto; padding:0 clamp(1.1rem, 5vw, 4rem) 2rem; background:var(--paper); color:var(--ink); font:16px/1.6 Georgia, 'Times New Roman', serif; box-shadow:0 8px 35px #06191c99; }
+    a { color:#164f5c; text-underline-offset:3px; }
+    a:focus-visible, summary:focus-visible, input:focus-visible, .map-scroll:focus-visible { outline:3px solid var(--red); outline-offset:4px; }
+    h1, h2, h3, nav, summary, th, kbd, .meta, footer, .cover-kicker, .cover-caption { font-family:ui-monospace, 'SFMono-Regular', Consolas, monospace; }
+    h1 { font-size:clamp(2.7rem, 8vw, 5.8rem); line-height:.95; letter-spacing:-.07em; margin:.35rem 0 .5rem; }
+    h2 { font-size:1.13rem; letter-spacing:.04em; margin:0 0 1rem; padding:.55rem .75rem; background:var(--ink); color:var(--paper); }
+    h3 { font-size:1rem; margin:1.5rem 0 .5rem; color:var(--red); }
+    p { margin:.65rem 0; }
+    header { padding:2rem 0 1.4rem; border-bottom:4px double var(--ink); }
+    .cover-kicker, .cover-caption { font-size:.72rem; font-weight:bold; letter-spacing:.13em; text-transform:uppercase; }
+    .cover-kicker { display:flex; justify-content:space-between; gap:1rem; border-bottom:1px solid var(--ink); padding-bottom:.55rem; }
+    .cover-subtitle { font-style:italic; font-size:1.25rem; margin:.2rem 0 1rem; }
+    .cover-art { margin:1.3rem 0 .5rem; padding:.6rem; border:1px solid var(--ink); background:#152d30; }
+    .cover-art img { display:block; width:100%; max-height:270px; object-fit:contain; image-rendering:pixelated; margin:0; }
+    .cover-caption { display:flex; justify-content:space-between; gap:1rem; color:var(--red); }
+    .meta, footer { font-size:.78rem; color:#52605a; }
+    nav { margin:1.5rem 0 2rem; padding:1rem 1.2rem; border:1px solid var(--rule); background:#efe3c9; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.3rem 1rem; }
+    nav::before { content:'CONTENTS / FIELD INDEX'; grid-column:1/-1; color:var(--red); font-weight:bold; letter-spacing:.08em; font-size:.8rem; border-bottom:1px solid var(--rule); padding-bottom:.5rem; margin-bottom:.3rem; }
+    nav a { display:block; padding:.15rem 0; font-size:.85rem; }
+    section { border-top:1px solid var(--rule); padding-top:1rem; margin-top:2rem; scroll-margin-top:1rem; }
+    li { margin:.4rem 0; } ul, ol { padding-left:1.5rem; }
+    kbd { font-size:.9em; font-weight:bold; white-space:nowrap; color:var(--red); }
     .table-wrap { overflow-x:auto; }
     table { border-collapse:collapse; width:100%; font:inherit; }
-    th, td { padding:.5rem .7rem .5rem 0; text-align:left; vertical-align:top; border-bottom:1px solid #d3d3d3; }
-    th { font-size:.85rem; }
+    th, td { padding:.55rem .7rem .55rem 0; text-align:left; vertical-align:top; border-bottom:1px solid #cfc2a6; }
+    th { font-size:.78rem; text-transform:uppercase; letter-spacing:.05em; color:var(--red); }
     td:first-child { min-width:12ch; }
     details { margin:.8rem 0; }
-    summary { cursor:pointer; font-weight:bold; padding:.4rem 0; }
-    dt { font-weight:bold; margin-top:1rem; }
-    dd { margin:.2rem 0 0; }
+    summary { cursor:pointer; font-weight:bold; padding:.6rem .7rem; background:#e8dbbd; border-left:4px solid var(--red); }
+    details[open] > summary { margin-bottom:.7rem; }
+    dt { font-weight:bold; margin-top:1rem; } dd { margin:.2rem 0 0; }
     img { display:block; width:100%; height:auto; margin-top:.7rem; }
     .full-map { display:block; width:100%; aspect-ratio:2560 / 1530; margin-top:.7rem; }
-    .route-map { margin:1rem 0; border-bottom:1px solid #d3d3d3; padding-bottom:.5rem; }
-    .route-map p { font-size:.85rem; }
+    .route-map { margin:1rem 0; border-bottom:1px solid #cfc2a6; padding-bottom:.5rem; }
+    .route-map p { font-size:.9rem; }
     .map-scroll { overflow:auto; margin:.6rem 0; background:#263a47; }
     .map-scroll svg { display:block; width:100%; height:auto; }
     .map-zoom:checked ~ .map-scroll svg { min-width:1100px; }
-    .map-zoom + label { font-size:.8rem; cursor:pointer; }
+    .map-zoom + label { font: .8rem ui-monospace, monospace; cursor:pointer; }
     .route-line { fill:none; stroke:#ffdf65; stroke-width:5; stroke-linejoin:round; stroke-linecap:round; filter:drop-shadow(0 0 2px #000); }
     .route-stop { fill:#fff; stroke:#171717; stroke-width:2; }
     .route-number { fill:#111; font:bold 22px ui-monospace, monospace; text-anchor:middle; dominant-baseline:central; }
     .gate-label { font:bold 17px ui-monospace, monospace; paint-order:stroke; stroke:#081c2b; stroke-width:4; }
-    footer { border-top:1px solid #aaa; margin-top:2rem; padding:1rem 0; }
-    .skip { position:absolute; top:-4rem; }
-    .skip:focus { top:0; background:white; padding:.5rem; }
-    @media (max-width:540px) { body { margin:1rem auto; font-size:14px; } th, td { padding-right:.5rem; } }
+    footer { border-top:4px double var(--ink); margin-top:2rem; padding:1rem 0; }
+    .skip { position:absolute; top:-4rem; } .skip:focus { top:0; background:white; padding:.5rem; z-index:2; }
+    @media (max-width:540px) { body { margin:0; font-size:15px; } header { padding-top:1.2rem; } nav { grid-template-columns:1fr; } th, td { padding-right:.5rem; } .cover-kicker, .cover-caption { font-size:.65rem; } }
     @media print {
-      body { max-width:none; margin:0; padding:0; background:white; color:black; font-size:10pt; }
-      nav, .skip { display:none; }
-      h2, h3, summary { break-after:avoid; }
-      tr { break-inside:avoid; }
-      a { color:inherit; }
-      .table-wrap { overflow:visible; }
-      .map-zoom, .map-zoom + label { display:none; }
-      .map-scroll { overflow:visible; }
+      html, body { max-width:none; margin:0; padding:0; background:white; color:black; box-shadow:none; font-size:10pt; }
+      nav, .skip { display:none; } h2 { background:none; color:black; border-bottom:2px solid black; padding-left:0; }
+      h2, h3, summary { break-after:avoid; } tr { break-inside:avoid; } a { color:inherit; }
+      .table-wrap, .map-scroll { overflow:visible; } .map-zoom, .map-zoom + label { display:none; }
       .map-zoom:checked ~ .map-scroll svg { min-width:0; }
     }
   </style>
@@ -64,19 +68,23 @@
 <body>
   <a class="skip" href="#main">Skip contents</a>
   <header>
+    <div class="cover-kicker"><span>Arduboy FX</span><span>Player’s manual / 01</span></div>
     <h1>SUB-HAULER</h1>
-    <p>FAQ / Walkthrough</p>
-    <p class="meta">Arduboy FX · Fixed build · Updated 2026-11-09</p>
+    <p class="cover-subtitle">A field guide for the long way down.</p>
+    <div class="cover-art"><img src="assets/first-beat-animation/all-beats-v3/arrival-0.png" alt="A submarine approaches an undersea settlement."></div>
+    <div class="cover-caption"><span>Hauler operations</span><span>Keep this manual aboard</span></div>
+    <p class="meta">Controls · equipment · walkthrough · charts</p>
   </header>
   <nav aria-label="Contents">
     <a href="#start">[01] Quick start</a>
     <a href="#controls">[02] Controls / handling</a>
     <a href="#berths">[03] Jobs / docking</a>
     <a href="#exploration">[04] Equipment / map</a>
-    <a href="#campaign">[05] Walkthrough (spoilers)</a>
-    <a href="#route-maps">[05a] Route maps (spoilers)</a>
-    <a href="#saves">[06] Saving / recovery</a>
-    <a href="#reference">[07] FAQ</a>
+    <a href="#saves">[05] Saving / recovery</a>
+    <a href="#reference">[06] FAQ</a>
+    <a href="#campaign">[07] Walkthrough (spoilers)</a>
+    <a href="#route-maps">[07a] Route maps (spoilers)</a>
+    <a href="#full-map">[07b] Full map (spoilers)</a>
   </nav>
   <main id="main">
     <section id="start">
@@ -149,17 +157,41 @@
         </table>
       </div>
       <p>Collect all four tools for DEEP RELAY. Chart reveals during travel; your position and job destination blink. New finds remain unsaved until a successful berth save.</p>
-      <details>
-        <summary>Full map (spoilers)</summary>
-        <p class="meta">Fully rendered game world: 2560×1280 native pixels from the in-game cave, station, gate, pickup and current renderers, with all secrets shown and a gate key. Gold dots mark schools of fish and drifting jellyfish. Survey lens is in the upper-west Trench Cove, above Deep Anchor, at the end of a long jagged switchback side route. Route maps below add numbered walkthrough paths.</p>
-        <a href="assets/exploration-world-fish.svg">Open labeled map to zoom</a>
-        <object class="full-map" data="assets/exploration-world-fish.svg" type="image/svg+xml" aria-label="Game world with settlements, gates, equipment, currents and wildlife locations"><a href="assets/exploration-world-fish.svg">Open the wildlife map</a></object>
-        <p class="meta"><a href="assets/exploration-world-music-2026-11-09.png">Open music-region map</a> · <a href="assets/exploration-world-native-2026-11-09.png">Open exact unlabelled native render</a> · <a href="assets/exploration-equipment.png">Equipment and relay close-ups</a></p>
-      </details>
+
     </section>
 
+    <section id="saves">
+      <h2>[05] SAVING / RECOVERY</h2>
+      <ul>
+        <li><strong>One slot.</strong> Saves on new voyage, docking, and story-job acceptance.</li>
+        <li><strong>CONTINUE:</strong> restores last saved berth, equipment, active delivery and chart; full air. No midwater saves.</li>
+        <li><strong>RESCUE:</strong> A+B → RESCUE → A. Free return to checkpoint; unsaved finds/progress lost.</li>
+        <li><strong>SAVE FAILED:</strong> RETRY, or CONTINUE UNSAVED. Unsaved progress is not persistent.</li>
+        <li><strong>Power:</strong> let saving finish. Interrupted writes can lose the slot.</li>
+        <li><strong>NEW VOYAGE:</strong> confirms before replacing a valid save. Incompatible older saves are not migrated.</li>
+        <li><strong>Older voyage saves:</strong> a HOME dispatch already accepted before DEEP RELAY became mandatory can still be delivered, and completed endings still load. If HOME was not yet accepted, finish DEEP RELAY first.</li>
+      </ul>
+    </section>
+
+    <section id="reference">
+      <h2>[06] FAQ</h2>
+      <dl>
+        <dt>Out of air?</dt>
+        <dd>You cannot blow ballast. Use RESCUE if you cannot reach a berth.</dd>
+        <dt>Cannot dock again?</dt>
+        <dd>Leave the ring fully after undocking, then re-enter slowly.</dd>
+        <dt>Story job missing?</dt>
+        <dd>Check the source station, prerequisites and WORK clue. Finish the active job first; accepted jobs cannot be abandoned.</dd>
+        <dt>Which equipment do I need?</dt>
+        <dd>Collect the cutter, pressure seal, thruster and survey lens. DEEP RELAY requires all four plus BEACON restored; HOME unlocks only after DEEP RELAY.</dd>
+        <dt>Mute music?</dt>
+        <dd>A+B → MUSIC ON/OFF → A. All clues work without sound.</dd>
+        <dt>Enter uploader?</dt>
+        <dd>Hold Down during power-on/reset.</dd>
+      </dl>
+    </section>
     <section id="campaign">
-      <h2>[05] WALKTHROUGH</h2>
+      <h2>[07] WALKTHROUGH</h2>
       <details>
         <summary>Show objectives and ending route (spoilers)</summary>
         <ol>
@@ -176,7 +208,7 @@
         <p>After ending: continue exploration; Tidewall WORK → VIEW ENDING replays cards.</p>
       </details>
       <div id="route-maps">
-        <h3>[05a] ROUTE MAPS</h3>
+        <h3>[07a] ROUTE MAPS</h3>
         <p class="meta">Yellow line = route; numbers = stops in order. Gate labels: C cutter, P seal; T/TIDE = thruster tide. Enlarge to scroll. Base is the exact 2560×1280 native game render, scaled ½.</p>
         <details class="route-map" id="map-first">
 <summary>FIRST: Tidewall → Benthos</summary>
@@ -419,40 +451,18 @@
  </div>
  </details>
       </div>
+      <h3>[07b] FULL MAP</h3>
+      <details id="full-map">
+        <summary>Full map (spoilers)</summary>
+        <p class="meta">Fully rendered game world: 2560×1280 native pixels from the in-game cave, station, gate, pickup and current renderers, with all secrets shown and a gate key. Gold dots mark schools of fish and drifting jellyfish. Survey lens is in the upper-west Trench Cove, above Deep Anchor, at the end of a long jagged switchback side route. Route maps below add numbered walkthrough paths.</p>
+        <a href="assets/exploration-world-fish.svg">Open labeled map to zoom</a>
+        <object class="full-map" data="assets/exploration-world-fish.svg" type="image/svg+xml" aria-label="Game world with settlements, gates, equipment, currents and wildlife locations"><a href="assets/exploration-world-fish.svg">Open the wildlife map</a></object>
+        <p class="meta"><a href="assets/exploration-world-music-2026-11-09.png">Open music-region map</a> · <a href="assets/exploration-world-native-2026-11-09.png">Open exact unlabelled native render</a> · <a href="assets/exploration-equipment.png">Equipment and relay close-ups</a></p>
+      </details>
     </section>
 
-    <section id="saves">
-      <h2>[06] SAVING / RECOVERY</h2>
-      <ul>
-        <li><strong>One slot.</strong> Saves on new voyage, docking, and story-job acceptance.</li>
-        <li><strong>CONTINUE:</strong> restores last saved berth, equipment, active delivery and chart; full air. No midwater saves.</li>
-        <li><strong>RESCUE:</strong> A+B → RESCUE → A. Free return to checkpoint; unsaved finds/progress lost.</li>
-        <li><strong>SAVE FAILED:</strong> RETRY, or CONTINUE UNSAVED. Unsaved progress is not persistent.</li>
-        <li><strong>Power:</strong> let saving finish. Interrupted writes can lose the slot.</li>
-        <li><strong>NEW VOYAGE:</strong> confirms before replacing a valid save. Incompatible older saves are not migrated.</li>
-        <li><strong>Older voyage saves:</strong> a HOME dispatch already accepted before DEEP RELAY became mandatory can still be delivered, and completed endings still load. If HOME was not yet accepted, finish DEEP RELAY first.</li>
-      </ul>
-    </section>
-
-    <section id="reference">
-      <h2>[07] FAQ</h2>
-      <dl>
-        <dt>Out of air?</dt>
-        <dd>You cannot blow ballast. Use RESCUE if you cannot reach a berth.</dd>
-        <dt>Cannot dock again?</dt>
-        <dd>Leave the ring fully after undocking, then re-enter slowly.</dd>
-        <dt>Story job missing?</dt>
-        <dd>Check the source station, prerequisites and WORK clue. Finish the active job first; accepted jobs cannot be abandoned.</dd>
-        <dt>Which equipment do I need?</dt>
-        <dd>Collect the cutter, pressure seal, thruster and survey lens. DEEP RELAY requires all four plus BEACON restored; HOME unlocks only after DEEP RELAY.</dd>
-        <dt>Mute music?</dt>
-        <dd>A+B → MUSIC ON/OFF → A. All clues work without sound.</dd>
-        <dt>Enter uploader?</dt>
-        <dd>Hold Down during power-on/reset.</dd>
-      </dl>
-    </section>
   </main>
-  <footer><a href="../README.md">Project README</a> · Offline HTML. Open spoiler panels before printing to include them.</footer>
+  <footer><a href="https://github.com/FreezingSnail/sub-hauler">Project repository</a> · Works offline after download. Open spoiler panels before printing to include them.</footer>
   <script>
     (() => {
       const reveal = hash => {
