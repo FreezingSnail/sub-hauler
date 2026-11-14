@@ -63,13 +63,16 @@ inline void at(int16_t x, int16_t y) {
 
 // Draw one baked 128x8 row at the current cursor. Frame 0 is white glyphs and
 // frame 1 is the black/inverted selection variant.
-inline void stampFrame(uint24_t image, uint8_t frame, int16_t x, int16_t y) {
+inline void stampFrame(uint24_t image, uint8_t frame, int16_t x, int16_t y, uint8_t visibleWidth = kStampWidth) {
     cartService();
-    Blit::draw(x, y, kStampWidth, kStampHeight, image + 2, frame, Blit::PLUSMASK);
+    // Cropping changes the visible width, while the cart's frame stride stays
+    // the original 128-column plus-mask row.
+    const uint24_t address = image + 2 + static_cast<uint24_t>(frame) * kStampWidth * 2;
+    Blit::draw(x, y, visibleWidth, kStampHeight, address, 0, Blit::PLUSMASK);
 }
 
-inline void stamp(uint24_t image) {
-    stampFrame(image, invertedFlag() ? 1 : 0, stampX(), stampY());
+inline void stamp(uint24_t image, uint8_t visibleWidth = kStampWidth) {
+    stampFrame(image, invertedFlag() ? 1 : 0, stampX(), stampY(), visibleWidth);
 }
 
 inline void print(uint24_t address) {

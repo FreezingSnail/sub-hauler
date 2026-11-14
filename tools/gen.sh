@@ -6,6 +6,7 @@ cd "$(dirname "$0")/.."
 
 python3 tools/gen_font.py --output fxdata/fonts/font_6x8.png
 python3 tools/gen_pilot.py
+python3 tools/gen_parallax.py
 python3 tools/gen_sprites.py --input build/gen/pilot --output fxdata/PilotSprites.txt --header src/generated/pilot_sprites.hpp --shades 2
 python3 tools/gen_world.py
 python3 tools/gen_level.py

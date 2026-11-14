@@ -48,11 +48,6 @@ static game::State s_state;
 static world::FxTables s_tables;
 static world::TileCache s_cache;
 
-#if SH_DEV_MODE
-// Developer map-inspection toggle. The flag is compiled out of the fixed build.
-static bool s_debugNoClip = false;
-#endif
-
 // The screen tag exists whenever more than one screen can be reached. The
 // fixed build may show the title, pilot, station, work, story, ending and chart
 // screens; there is no multi-hull variant.
@@ -215,9 +210,6 @@ static void showStation() {
 // One boot/restart path. The setup call owns the full reset.
 static void resetRun() {
     game::resetWorld(s_state);
-#if SH_DEV_MODE
-    s_debugNoClip = false;
-#endif
     chart::reset(s_chart);
     chart::revealInitial(s_chart, s_state);
     s_pendingStory = story_view::kCardNone;
@@ -618,11 +610,9 @@ static void updateFlight() {
     const uint8_t beforeCampaign = s_state.campaign;
     const uint8_t beforeSurveys = s_state.surveys;
 #if SH_DEV_MODE
-    // A is otherwise free in flight. Hold it for a fast traverse; only the
-    // boat's position advance scales, so air, currents and the voyage clock
-    // keep production pacing. The same held A also drives the thruster boost.
-    const uint8_t speedScale = (held & A_BUTTON) ? game::kDevSpeedScale : 1;
-    const bool docked = station::stepFlight(s_state, input, s_tables, &s_cache, !s_debugNoClip, speedScale);
+    // Developer image: no-clip flight for map inspection. The former chart
+    // toggle and held-A fast traverse are retired to recover program flash.
+    const bool docked = station::stepFlight(s_state, input, s_tables, &s_cache, false);
 #else
     const bool docked = station::stepFlight(s_state, input, s_tables, &s_cache);
 #endif
@@ -701,14 +691,6 @@ static void updateChart() {
         showPilot();
         return;
     }
-
-#if SH_DEV_MODE
-    if (just(A_BUTTON)) {
-        s_debugNoClip = !s_debugNoClip;
-        drawChart();
-        return;
-    }
-#endif
 
     if (chart_view::needsRedraw(s_state, static_cast<uint8_t>(Arduboy2Base::frameCount)))
         drawChart();

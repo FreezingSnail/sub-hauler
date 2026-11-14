@@ -341,7 +341,7 @@ def decorate(level, base, spines):
                 py = min(candidates,key=lambda v:abs(v-y*8))
                 floors.append((px,py,region(x,y)))
 
-    def place(kind, x, y, variant):
+    def place(kind, x, y, variant, separate=False):
         points = {(x+px, y+py) for px, py in motif(kind, variant)}
         if any(not (8 <= px < WIDTH-8 and 8 <= py < HEIGHT-8) or safe[px, py] for px, py in points):
             return False
@@ -349,7 +349,19 @@ def decorate(level, base, spines):
             return False
         if any(occupied.getpixel((px, py)) for px, py in points):
             return False
-        white.update((px, py) for px, py in points if water(px, py))
+        visible = {(px, py) for px, py in points if water(px, py)}
+        if separate:
+            # A distant water landmark can touch the contour-cut wall. Its
+            # white outline then merges into the equally white cave. Etch a
+            # two-pixel black seam first; solid-tile pixels stay opaque under
+            # the parallax mask, while water pixels read as normal gap. A
+            # one-pixel seam disappears where a long hull runs tangent to the
+            # wall, so keep enough separation to read at native size.
+            radius = 2
+            black.update({(px+dx, py+dy) for px, py in visible
+                          for dx in range(-radius, radius+1)
+                          for dy in range(-radius, radius+1)} - visible)
+        white.update(visible)
         xs, ys = zip(*points)
         if kind in ('kelp','kelp-canopy'):
             # Permit neighboring strands to interleave into dense beds while
@@ -434,7 +446,7 @@ def decorate(level, base, spines):
         for x, y in candidates:
             placed = (place_wreck(item['kind'],x,y,seed+i) if mount=='wreck' else
                       place_wall(item['kind'],x,y,seed+i) if mount=='wall' else
-                      place(item['kind'],x,y,seed+i))
+                      place(item['kind'],x,y,seed+i,separate=True))
             if placed:
                 stats['landmarks'].append({'id': item['id'], 'room': item['room'], 'kind': item['kind'],
                                            'mount': mount, 'x': x, 'y': y})

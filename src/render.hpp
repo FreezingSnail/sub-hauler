@@ -12,6 +12,7 @@
 #include "fish_view.hpp"
 #include "hazard_view.hpp"
 #include "particles_view.hpp"
+#include "parallax_view.hpp"
 #include "pilot_view.hpp"
 #include "world.hpp"
 #include "world_fx.hpp"
@@ -20,6 +21,7 @@
 // camera derived from the pilot state.
 //
 // Terrain streams from a baked native image at the camera's exact pixel origin;
+// the detailed distant cave wall scrolls at half speed behind foreground overlays.
 // page-aligned Y frames keep eight 128-byte bursts, fractional Y frames combine page
 // rows through a small stack scratch. The 18x10 collision cache remains
 // tile-based and refreshes only when the camera tile moves. All cart reads
@@ -28,7 +30,10 @@ namespace view {
 
 inline void frame(const game::State &state, const cave::Camera &camera, world::TileCache &cache, world::FxTables &tables, uint8_t cues = 0) {
     world::refreshCache(cache, tables, cave::cacheOriginTileX(camera), cave::cacheOriginTileY(camera));
-    cave::streamFrame(camera, tables, Arduboy2Base::sBuffer);
+    cave::streamTerrain(camera, tables, Arduboy2Base::sBuffer);
+    parallax_view::draw(Arduboy2Base::sBuffer, camera, cache, tables);
+    parallax_view::clearBlack(Arduboy2Base::sBuffer, camera, cache, tables);
+    cave::drawSettlements(Arduboy2Base::sBuffer, camera);
     ambient_view::draw(Arduboy2Base::sBuffer, camera, state.ticks);
     fish_view::draw(Arduboy2Base::sBuffer, camera, state.ticks);
     bubble_view::draw(Arduboy2Base::sBuffer, state, camera, cues);

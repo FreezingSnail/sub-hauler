@@ -134,7 +134,7 @@ inline uint32_t cacheRowBits(const world::TileCache &cache, uint8_t row) {
 // Compose the visible 16x8 tile window and the settlement gantries. Reads only
 // the supplied cache, so the caller owns cart access through refreshCache().
 // This is the tile-grid host reference for cache/atlas behavior; the device
-// terrain path is streamFrame(), which owns arbitrary pixel origins.
+// terrain path is streamTerrain(), which owns arbitrary pixel origins.
 inline void composeFrame(const Camera &camera, const world::TileCache &cache, uint8_t *buffer) {
     for (uint16_t i = 0; i < static_cast<uint16_t>(VIEW_WIDTH) * VIEW_HEIGHT / 8; ++i)
         buffer[i] = 0;
@@ -234,7 +234,7 @@ inline uint8_t combineShiftedBytes(uint8_t currentPage, uint8_t nextPage, uint8_
 // 32-byte bursts into a 32-byte stack scratch. There is no whole-frame temporary
 // and no static buffer. Reader owns cart access; all reads finish before OLED
 // presentation.
-template <typename Reader> inline void streamFrame(const Camera &camera, Reader &reader, uint8_t *buffer) {
+template <typename Reader> inline void streamTerrain(const Camera &camera, Reader &reader, uint8_t *buffer) {
     const uint32_t firstLine = static_cast<uint32_t>(camera.tileY) * TERRAIN_ROW_BYTES + pixelOriginX(camera);
 
     if (camera.subY == 0) {
@@ -243,7 +243,6 @@ template <typename Reader> inline void streamFrame(const Camera &camera, Reader 
             reader.terrainBytes(offset, buffer + page * VIEW_WIDTH, VIEW_WIDTH);
             offset += TERRAIN_ROW_BYTES;
         }
-        drawSettlements(buffer, camera);
         return;
     }
 
@@ -277,6 +276,12 @@ template <typename Reader> inline void streamFrame(const Camera &camera, Reader 
         for (uint8_t i = 0; i < kChunk; ++i)
             last[x + i] = combineShiftedBytes(last[x + i], scratch[i], factor);
     }
+}
+
+// Keep the original panorama/reference composition available. Flight
+// inserts its distant parallax layer before drawing the foreground gantries.
+template <typename Reader> inline void streamFrame(const Camera &camera, Reader &reader, uint8_t *buffer) {
+    streamTerrain(camera, reader, buffer);
     drawSettlements(buffer, camera);
 }
 

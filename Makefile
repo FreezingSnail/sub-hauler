@@ -72,7 +72,7 @@ AVR_SIZE      ?= $(firstword $(wildcard $(HOME)/Library/Arduino15/packages/ardui
 IMAGES        := $(wildcard images/*.png)
 PILOT_IMAGES  := $(wildcard images/pilot/*.png)
 WORLD_TABLES  := fxdata/tables/world.bin fxdata/tables/world-chart.bin
-LEVEL_OUTPUTS := fxdata/tables/exploration.bin fxdata/tables/exploration-chart.bin fxdata/tables/exploration-objects.bin fxdata/tables/exploration-terrain.bin src/generated/level.hpp src/generated/exploration.hpp docs/assets/exploration-terrain.svg docs/assets/exploration-scenery.json
+LEVEL_OUTPUTS := fxdata/tables/exploration.bin fxdata/tables/exploration-chart.bin fxdata/tables/exploration-objects.bin fxdata/tables/exploration-terrain.bin fxdata/tables/foreground-opaque.bin fxdata/tables/foreground-mask.bin src/generated/level.hpp src/generated/exploration.hpp docs/assets/exploration-terrain.svg docs/assets/exploration-scenery.json
 CARGO_TABLES  := fxdata/tables/cargo.bin
 MUSIC_SOURCES := music/catalog.json $(wildcard music/*/song.json)
 REGION_OUTPUTS := src/generated/music_regions.hpp fxdata/tables/music-regions.bin
@@ -85,6 +85,7 @@ STORY_EDITOR_OUTPUTS := docs/assets/story-editor/schema.js docs/assets/story-edi
 TEXT_STAMP_INPUTS := tools/gen_text_images.py story/missions.json story/dock_hints.json tools/gen_font.py tools/gen_panels.py src/campaign.hpp fxdata/fxdata.txt
 TEXT_STAMP_OUTPUTS := src/generated/text_layout.hpp fxdata/TextData.txt src/generated/text_stamp_sprites.hpp
 FX_INPUTS     := $(IMAGES) $(PILOT_IMAGES) fxdata/fxdata.txt tools/gen.sh tools/gen_sprites.py \
+                 tools/gen_parallax.py tools/parallax_art.py src/generated/parallax.hpp fxdata/tables/parallax.bin \
                  tools/gen_hud.py images/hud/*.png \
                  tools/gen_splash.py images/splash/source/snailware_64x64.png images/splash/*.png \
                  tools/gen_panels.py images/panels/*.png images/campaign/*.png images/pause/*.png \
@@ -112,6 +113,10 @@ gen:
 # for the first time.
 gen-check:
 	@mkdir -p $(BUILD_DIR)/gen-check
+	@cp src/generated/parallax.hpp $(BUILD_DIR)/gen-check/parallax.hpp
+	@cp fxdata/tables/parallax.bin $(BUILD_DIR)/gen-check/parallax.bin
+	@mkdir -p $(BUILD_DIR)/gen-check/parallax-art
+	@cp images/parallax/*.png $(BUILD_DIR)/gen-check/parallax-art/
 	@mkdir -p $(BUILD_DIR)/gen-check/level
 	@cp $(LEVEL_OUTPUTS) $(BUILD_DIR)/gen-check/level/
 	@mkdir -p $(BUILD_DIR)/gen-check/panels $(BUILD_DIR)/gen-check/campaign
@@ -166,6 +171,11 @@ gen-check:
 	@cp src/generated/music_regions.hpp $(BUILD_DIR)/gen-check/music_regions.hpp
 	@cp fxdata/tables/music-regions.bin $(BUILD_DIR)/gen-check/music-regions.bin
 	@$(MAKE) --no-print-directory gen
+	@cmp -s src/generated/parallax.hpp $(BUILD_DIR)/gen-check/parallax.hpp || { echo "gen-check: parallax header changed" >&2; exit 1; }
+	@cmp -s fxdata/tables/parallax.bin $(BUILD_DIR)/gen-check/parallax.bin || { echo "gen-check: parallax data changed" >&2; exit 1; }
+	@for file in images/parallax/*.png; do \
+		cmp -s "$$file" "$(BUILD_DIR)/gen-check/parallax-art/$${file##*/}" || { echo "gen-check: $$file changed" >&2; exit 1; }; \
+	done
 	@cmp -s fxdata/fxdata.h src/fxdata.h || { echo "gen-check: src/fxdata.h is stale; run make gen" >&2; exit 1; }
 	@cmp -s fxdata/fxdata.h $(BUILD_DIR)/gen-check/fxdata.h || { echo "gen-check: fxdata header changed" >&2; exit 1; }
 	@cmp -s fxdata/fxdata.bin $(BUILD_DIR)/gen-check/fxdata.bin || { echo "gen-check: packed image changed" >&2; exit 1; }
@@ -327,6 +337,12 @@ music-viewer: music-viewer-build
 
 # Preview export only: reads generated game data without changing FX artifacts.
 WORLD_RENDER_DIR ?= build/world-render
+.PHONY: preview-parallax
+preview-parallax:
+	mkdir -p build/parallax-preview
+	$(CXX) -std=c++17 -O2 -Wall -Wextra -Isrc tools/preview_parallax.cpp -o build/parallax-preview/preview-parallax
+	build/parallax-preview/preview-parallax build/parallax-preview/index.html
+
 render-world:
 	mkdir -p $(WORLD_RENDER_DIR)
 	$(CXX) -std=c++17 -O2 -Wall -Wextra -Isrc tools/render_world.cpp -o $(WORLD_RENDER_DIR)/render-world
@@ -468,6 +484,7 @@ help:
 		'  make debug      build the developer no-clip image and launch Ardens (DEBUG=1)' \
 		'  make save-migrate SAVE=...  copy an Ardens save to the current image hash' \
 		'  make render-world export the native world, annotated overview and music map' \
+		'  make preview-parallax export a playable before/after cave-scrolling preview' \
 		'  make music-viewer audition the underwater tracks in the ATMlib2FX jukebox' \
 		'  make test       host C++ tests (g++, no device required)' \
 		'  make test-tools Python tooling unittest suite' \

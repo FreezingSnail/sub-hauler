@@ -7,6 +7,7 @@
 #include "src/fxdata.h"
 #include "src/generated/campaign_sprites.hpp"
 #include "src/generated/music_regions.hpp"
+#include "src/generated/parallax.hpp"
 #include "src/generated/panel_sprites.hpp"
 #include "src/generated/pause_sprites.hpp"
 #include "src/generated/pilot_sprites.hpp"
@@ -97,7 +98,10 @@ static_assert(IMG_BERTH_NAMES_FRAMES == 9 && IMG_BERTH_WORK_FRAMES == 8 && IMG_C
               IMG_DOCK_BARKS_FRAMES == text_layout::kDockBarkFrames && IMG_ROW_LABELS_FRAMES == 4 && IMG_STORY_ROW_FRAMES == 18 &&
               IMG_TXT_AIR_WIDTH == 128 && IMG_TXT_AIR_HEIGHT == 8 && IMG_TXT_AIR_FRAMES == 2 && IMG_TXT_AIR_MASKED,
               "baked stamp sheets and two-frame string rows");
-static_assert(FX_DATA_BYTES == img_txt_yes_no + spriteBytes(IMG_TXT_YES_NO_WIDTH, IMG_TXT_YES_NO_HEIGHT, IMG_TXT_YES_NO_FRAMES, IMG_TXT_YES_NO_MASKED), "FX image ends after the last text stamp");
+static_assert(caveBackdrops == img_txt_yes_no + spriteBytes(IMG_TXT_YES_NO_WIDTH, IMG_TXT_YES_NO_HEIGHT, IMG_TXT_YES_NO_FRAMES, IMG_TXT_YES_NO_MASKED), "background section appends after the last text stamp");
+static_assert(foregroundOpaque == caveBackdrops + parallax_data::kBytes, "foreground art flags follow the regional backgrounds");
+static_assert(foregroundMask == foregroundOpaque + 320UL * 160UL, "black interior masks follow the art flags");
+static_assert(FX_DATA_BYTES == foregroundMask + 320UL * 160UL * 8UL, "FX image ends after the black interior mask");
 static_assert(STORY_CARD_COUNT == STORY_IMAGE_CARD_COUNT + STORY_TEXT_CARD_COUNT &&
               STORY_FRAME_COUNT == STORY_IMAGE_COUNT * 4 + STORY_TEXT_CARD_COUNT,
               "source-backed image poses and paginated text cover every card and frame");

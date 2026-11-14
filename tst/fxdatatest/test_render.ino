@@ -25,6 +25,43 @@ static uint16_t checksum() {
     return value;
 }
 
+// Independent per-pixel source lookup checks the real AVR PROGMEM reads and
+// shifted byte-run kernel, including wrapped source pages and partial tiles.
+static bool parallaxPixelsCheck() {
+    bool ok = true;
+    for (uint8_t i = 0; i < parallax_data::kAreaCount; ++i) {
+        const cave::Camera camera = cave::cameraAtPixel(pgm_read_word(&parallax_data::kCheckX[i]),
+                                                       pgm_read_word(&parallax_data::kCheckY[i]));
+        world::TileCache water = {};
+        water.valid = 1;
+        water.originTileX = cave::cacheOriginTileX(camera);
+        water.originTileY = cave::cacheOriginTileY(camera);
+        memset(Arduboy2Base::sBuffer, 0, 1024);
+        parallax_view::draw(Arduboy2Base::sBuffer, camera, water, tables);
+        ok &= checksum() == pgm_read_word(&parallax_data::kCheckCrc[i]);
+    }
+    return ok;
+}
+
+// Cropped HUD stamps must keep the original cart frame stride, including the
+// black-glyph variant, and match the established full-width blitter exactly.
+static bool stampCropCheck() {
+    bool ok = true;
+    for (uint8_t frame = 0; frame < 2; ++frame) {
+        for (uint8_t pattern = 0; pattern < 2; ++pattern) {
+            memset(Arduboy2Base::sBuffer, pattern ? 0xFF : 0xA5, 1024);
+            Blit::draw(hud::kAirLabelX, hud::kAirLabelY, text::kStampWidth,
+                       text::kStampHeight, img_txt_air + 2, frame, Blit::PLUSMASK);
+            const uint16_t expected = checksum();
+            memset(Arduboy2Base::sBuffer, pattern ? 0xFF : 0xA5, 1024);
+            text::stampFrame(img_txt_air, frame, hud::kAirLabelX, hud::kAirLabelY,
+                             hud::kAirX - hud::kAirLabelX);
+            ok &= checksum() == expected;
+        }
+    }
+    return ok;
+}
+
 // Executes the actual AVR helper, not the host formula. Each source byte is
 // isolated against zero for all seven shifts, then a mixed deterministic pattern
 // checks both sources together.
@@ -179,6 +216,8 @@ void setup() {
     FX::setCursorRange(0, 32767);
     text::begin();
     bool ok = kernelCheck();
+    ok = parallaxPixelsCheck() && ok;
+    ok = stampCropCheck() && ok;
     ok = hudNoControlsCheck() && ok;
     ok = hudNoticeCheck() && ok;
     for (uint8_t cold = 0; cold < 2; ++cold) {

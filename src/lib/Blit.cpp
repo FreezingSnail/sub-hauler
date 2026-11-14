@@ -41,6 +41,11 @@ void draw(int16_t x, int16_t y, uint8_t w, uint8_t h, uint24_t image,
             uint8_t pixels = FX::readPendingUInt8();
             uint8_t mask = mode == PLUSMASK ? FX::readPendingUInt8() : heightMask;
             mask &= heightMask;
+            // Text rows and plus-mask sprites contain transparent padding.
+            // Its bytes still stream from FX, but no destination math or
+            // framebuffer access is needed for a zero mask.
+            if (!mask)
+                continue;
             if (mode == NEGATIVE)
                 pixels = static_cast<uint8_t>(~pixels);
 

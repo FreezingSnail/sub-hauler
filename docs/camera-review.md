@@ -7,9 +7,51 @@ in this environment; acceptance does not imply a commit or physical-device
 validation.
 
 The older dated figures in this camera checkpoint precede sonar removal and menu baking.
-The current fixed-build checkpoint measures **28,218 / 1,650 B** with the
+That fixed-build checkpoint measured **28,218 / 1,650 B** with the
 ATMlib2FX synth and an **11.096 ms** maximum complete-flight frame with the same
 camera behavior.
+
+## Foreground-mask checkpoint — 2026-11-14
+
+`parallax_view::clearBlack()` restores enclosed black pixels from the generated
+`foregroundMask` table after the dotted background pass. The complete
+938-frame, four-area probe measures **13,468 µs** maximum, zero 16 ms misses,
+music gap **1**, and zero underruns/errors. The probe target moved from
+**13,000 to 13,500 µs** with user acceptance to cover the mask pass; the
+**16,000 µs** hard deadline is unchanged. Removing the mask pass returns the
+probe to the earlier **12,468 µs** maximum, confirming its measured cost is
+about **1 ms**.
+
+## Dotted background checkpoint — 2026-11-12
+
+The four plates now use an artwork-anchored alternating-pixel screen. The same
+938-frame, four-area probe measures **12,468 µs** maximum, area mask **15**, zero
+16 ms misses, music gap **1**, and zero underruns/errors. Per-area maxima are
+**10,840 / 11,588 / 12,468 / 10,852 µs** for tide, kelp, works and deep.
+
+## Earlier regional background checkpoint — 2026-11-12
+
+The complete-flight probe now includes four hand-authored scenery backgrounds,
+all eight Y remainders per area, and both cold and warm cache paths. Coverage
+is **938 frames**, **94 cold / 844 warm**, with all six music cues and the
+existing notices, motion and reversal cases retained. Maximum work is
+**12,668 µs**, with zero 16 ms misses, area mask **15**, music gap **1** and zero
+audio underruns/errors. Per-area maxima are **11,144 / 11,892 / 12,668 / 11,164
+µs** for tide, kelp, works and deep respectively. These are instrumented Ardens
+measurements of the full production flight path, not hardware measurements.
+
+At that checkpoint the area drawings retained complete native strokes. Cart data precomputes eight
+vertical phases and indexes occupancy blocks so the decoder reads only the
+visible portion. Transparent plus-mask columns now skip destination work, and
+the AIR stamp reads only its visible HUD bounds while retaining its original
+cart frame stride. All 24 cached/cold framebuffer CRCs match the earlier
+native drawing output; an additional device case checks the cropped AIR stamp
+against the full-width blitter in both white and black variants.
+
+Current whole-image, stack and cart figures are in [platform.md](platform.md).
+Source artwork and the four-area preview are described in
+[cave-parallax.md](cave-parallax.md). The older checkpoints below retain their
+original counts and resource figures.
 
 ## HUD fill checkpoint — 2026-11-11
 
@@ -30,14 +72,14 @@ The release image changed from **28,554 to 28,626 B flash** and stayed at
 **640 B** and **683 B** stack reserve respectively. Host and device render
 checks passed; no physical-device or whole-session CPU measurement is claimed.
 
-## Verified implementation
+## Earlier verified implementation checkpoint
 
 The shipping FX and Mini images measure **28,218 B flash / 1,650 B static
 SRAM**, 1,478 B under the hardware flash limit and 50 B under the static planning
 ceiling. The combined music stack probe measures **642 B** reserve; the
 production save-chain probe measures **665 B**, against the 600 B floor.
 
-`make fxtest-flight` measures **842 complete flight frames** with active synth
+At this earlier checkpoint, the flight probe measured **842 complete flight frames** with active synth
 music: all eight Y remainders, all six cues, 30 cold and 812 warm frames,
 sustained motion/stop/reversal, camera boundaries, survey notices and discovery
 messages. Maximum work is **11.096 ms** with **zero frames

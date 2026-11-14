@@ -148,7 +148,7 @@ inline void draw(const game::State &state) {
     // Air bar: outline plus a white fill proportional to the tank. The baked
     // AIR stamp keeps its glyph inset at x=3.
     text::at(kAirLabelX, kAirLabelY);
-    text::stamp(img_txt_air);
+    text::stamp(img_txt_air, kAirX - kAirLabelX);
     arduboy.drawRect(kAirX, kAirY, kAirW, kAirH, WHITE);
     const uint8_t airInnerW = static_cast<uint8_t>(kAirW - 2);
     const uint8_t airFill = static_cast<uint8_t>(static_cast<uint16_t>(state.air) * airInnerW / game::airCapacity(state));

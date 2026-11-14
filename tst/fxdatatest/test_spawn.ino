@@ -35,6 +35,10 @@ struct RamStorage {
             return bytes[offset];
         return 0xFF;
     }
+    void write(const voyage_save::Record &record) {
+        voyage_save::programRecord(*this, record);
+    }
+
     void eraseBlock(uint8_t block) {
         if (block == 0) {
             for (uint16_t i = 0; i < voyage_save::kWriteBytes; ++i)

@@ -57,12 +57,34 @@ struct FakeWorld {
 }   // namespace world_test
 
 inline void WorldSuite(TestRunner &runner) {
+    {
+        Test test("interior cache refills batch packed rows when the reader supports bursts");
+        struct BurstWorld : world_test::FakeWorld {
+            uint8_t bursts = 0;
+            void tileBytes(uint16_t index, uint8_t *dest, uint8_t count) {
+                ++bursts;
+                for (uint8_t i = 0; i < count; ++i) dest[i] = tileByte(index + i);
+            }
+        } fake;
+        fake.setTile(10, 20, true);
+        fake.setTile(27, 29, true);
+        world::TileCache cache{};
+        world::refreshCache(cache, fake, 10, 20);
+        test.assertEqual(fake.bursts, world::CACHE_TILES_Y, "one burst per row");
+        test.assertEqual(fake.tileReads, 30, "same three source bytes per row");
+        bool exact = true;
+        for (int16_t y = 20; y < 30; ++y)
+            for (int16_t x = 10; x < 28; ++x)
+                exact &= world::tileSolidCached(cache, fake, x, y) == ((x == 10 && y == 20) || (x == 27 && y == 29));
+        test.assertTrue(exact, "all batched bits match the source");
+        runner.add(test);
+    }
     // The runtime cache is a fixed 18x10 bitmap, not a world-sized grid.
     static_assert(world::CACHE_TILES_X == 18, "cache width is part of the budget");
     static_assert(world::CACHE_TILES_Y == 10, "cache height is part of the budget");
     static_assert(world::CACHE_BITS == 180, "cache holds 180 tiles");
     static_assert(world::CACHE_BYTES == 23, "cache bitmap is 23 bytes");
-    static_assert(sizeof(world::TileCache) <= 32, "cache struct stays under 32 bytes");
+    static_assert(sizeof(world::TileCache) <= 56, "cache struct stays under 56 bytes");
     static_assert(sizeof(world::TileCache) < world::WORLD_BYTES, "cache must be far smaller than the baked world");
 
     {

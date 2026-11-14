@@ -22,6 +22,7 @@
 - [Level format and playable map](../levels/README.md)
 - [Music authoring](../music/README.md)
 - [Render performance](render-performance.md)
+- [Cave parallax and before/after preview](cave-parallax.md)
 - [Camera review](camera-review.md)
 - [Startup splashes](startup-splashes.md)
 - [Audio admission](archive/audio-admission.md)

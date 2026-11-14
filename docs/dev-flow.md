@@ -10,10 +10,10 @@ hardware and resource facts live in `docs/platform.md`.
 - Story text: `make editor`, then open
   `http://localhost:8000/docs/story-editor.html`.
 - Developer map inspection: `make debug` builds `DEBUG=1` and launches Ardens.
-  In that image, A on the chart toggles world collision off/on, and holding A
-  in flight moves the boat at 3x position speed while air, currents, docking
-  and the voyage clock keep production pacing. The release build and output
-  directories are unchanged.
+  The debug image flies with world collision disabled so inspectors can cross
+  rock freely; AI, docking and the voyage clock keep production pacing. The
+  old chart A collision toggle and held-A fast traverse were retired to recover
+  program flash. The release build and output directories are unchanged.
 - Ardens save continuity: `make save-migrate SAVE=/path/absim_<hash>.save`
   copies an existing emulator save under the current image's key. Add `DEBUG=1`
   to migrate to the debug image. The source save and its payload are untouched;
@@ -120,13 +120,15 @@ before title input. See
   image ends with a 4 KiB `savesection`.
 - Voyage checkpoints live in one 4 KiB cart erase block with a single raw slot.
   The slot is 16 scalar bytes plus the 256-byte chart, 272 meaningful bytes; the
-  two 256-byte page programs pad the rest with `0xFF`. A save erases the block
+  storage adapter splits one record write into a 256-byte page program and a
+  16-byte page program; the rest stays erased (`0xFF`). A save erases the block
   once and programs both pages, even when the state is identical to the last
   save; there is no cache or skip. A power interruption may lose the checkpoint
   or leave a torn record. Load only treats `0xFF` in the first byte as no save;
   any other slot is read raw, with no header, schema, CRC or semantic
   validation. Rescue loads only and writes zero bytes. Music is paused around
-  the synchronous erase/page transaction, and the runtime save page comes from
+  the synchronous erase/page transaction. CPU idle between flash status polls
+  avoids spinning through the erase delay. The runtime save page comes from
   `FX::programSavePage`; no read or write belongs in the per-frame path.
 - The standalone EEPROM chart writer is retired; the raw single-slot voyage
   checkpoint is the only save path. No old-save import or migration is built.

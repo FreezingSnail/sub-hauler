@@ -220,4 +220,16 @@ include "TextData.txt"
 // the single checkpoint slot; the generator pads the region to 4 KiB of erased
 // 0xFF bytes. No runtime image data changes, so every earlier symbol keeps its
 // flash offset.
+// Hand-authored area backgrounds and authored scenery-area ownership.
+// Pre-shifted scanlines trade cart space for exact, fast native pixel scroll.
+raw_t caveBackdrops = "../fxdata/tables/parallax.bin"
+
+// Foreground-art opacity beside the collision map. One bit per world tile;
+// parallax is suppressed on set tiles so black landmark/settlement interiors
+// stay opaque. Appended after all earlier data labels.
+// One byte per world tile: non-zero when the tile has black interiors.
+raw_t foregroundOpaque = "../fxdata/tables/foreground-opaque.bin"
+// Eight column bytes per world tile: enclosed black pixels to restore.
+raw_t foregroundMask = "../fxdata/tables/foreground-mask.bin"
+
 savesection 4096

@@ -113,12 +113,24 @@ class AuthoredLevelTest(unittest.TestCase):
         decorated,stats=gen_scenery.decorate(self.level,base,spines)
         protected=gen_scenery.protection(self.level,spines)
         contour=gen_contours.solid_image(self.level.world.grid)
-        wreck_pixels=set()
+        landmark_pixels=set()
         for item in stats['landmarks']:
-            if item['mount']=='wreck':
-                wreck_pixels.update((item['x']+px+dx,item['y']+py+dy)
-                                    for px,py in gen_scenery.motif(item['kind'],0)
-                                    for dx in (-1,0,1) for dy in (-1,0,1))
+            if item['mount']=='wall':continue
+            points={(item['x']+px,item['y']+py) for px,py in gen_scenery.motif(item['kind'],0)}
+            landmark_pixels.update(points)
+            landmark_pixels.update((px+dx,py+dy) for px,py in points
+                                   for dx in range(-2,3) for dy in range(-2,3))
+            if item['mount']=='water':
+                # The two-pixel water landmark seam must blacken its contact
+                # with rock, including the long tangent run that a one-pixel
+                # halo left visually welded to the wall.
+                visible={p for p in points if not contour.getpixel(p)}
+                halo={(px+dx,py+dy) for px,py in visible
+                      for dx in range(-2,3) for dy in range(-2,3)}-visible
+                for px,py in halo:
+                    if contour.getpixel((px,py)):
+                        self.assertEqual(decorated[(py//8)*2560+px]&(1<<(py&7)),0,
+                                         (px,py,'water landmark leaves a black wall seam'))
         changed=0
         for i,(a,b) in enumerate(zip(base,decorated)):
             delta=a^b
@@ -127,13 +139,46 @@ class AuthoredLevelTest(unittest.TestCase):
             for bit in range(8):
                 if not delta&(1<<bit):continue
                 y=page*8+bit
-                if (x,y) in wreck_pixels: continue
+                if (x,y) in landmark_pixels: continue
                 self.assertFalse(protected.getpixel((x,y)),(x,y,'route or interactive marker changed'))
                 # Use the curved visual wall here; the coarse collision tile
                 # can differ at its rounded corners by a couple of pixels.
                 self.assertEqual(bool(b&(1<<bit)),not bool(contour.getpixel((x,y))))
                 changed+=1
         self.assertGreater(changed,10000)
+        shape=(ROOT/'fxdata/tables/foreground-mask.bin').read_bytes()
+        self.assertEqual(len(shape),320*160*8)
+        def black(tx,ty,x,y):
+            return bool(shape[(ty*320+tx)*8+(x&7)]&(1<<(y&7)))
+        art_tiles=set()
+        for i,(a,b) in enumerate(zip(base,decorated)):
+            if a^b: art_tiles.add(((i%2560)//8,i//2560))
+        settled,_=gen_settlements.bake(self.level,decorated)
+        for i,(a,b) in enumerate(zip(base,settled)):
+            if a==b:continue
+            x,page=i%2560,i//2560
+            tx,ty=x//8,page;art_tiles.add((tx,ty))
+            for bit in range(8):
+                if (a^b)&(1<<bit) and (b&(1<<bit)):
+                    self.assertFalse(black(tx,ty,x,bit),'white art must not be cleared')
+        seed=self.source.get('scenery',{}).get('seed',0)
+        tender=None
+        for i,item in enumerate(stats['landmarks']):
+            pixels=gen_scenery.motif(item['kind'],seed+i)
+            xs=[item['x']+px for px,py in pixels]
+            ys=[item['y']+py for px,py in pixels]
+            for ty in range(min(ys)//8,max(ys)//8+1):
+                for tx in range(min(xs)//8,max(xs)//8+1): art_tiles.add((tx,ty))
+            if item['id']=='harbor-tender': tender=item
+        self.assertIsNotNone(tender)
+        found=False
+        for ty in range(tender['y']//8-1,tender['y']//8+5):
+            for tx in range(tender['x']//8-2,tender['x']//8+8):
+                for x in range(8):
+                    for y in range(8):
+                        found = found or black(tx,ty,x,y)
+        self.assertTrue(found,'tender black interior must be filled')
+
         self.assertEqual(bytes(self.level.world.grid),grid)
         self.assertEqual(bytes(self.level.world.chart),chart)
         self.assertEqual(gen_level.object_bytes(self.level),objects)

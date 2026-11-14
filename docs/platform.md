@@ -12,7 +12,7 @@ Keep dated measurements in the checkpoint table instead of copying them around.
 | MCU | ATmega32u4 |
 | Display | 128×64 SSD1306 OLED, native 1-bit |
 | Framebuffer | 1,024 B (`Arduboy2Base::sBuffer`) |
-| Cart | external FX flash; current `fxdata/fxdata.bin` image is 664,320 B; the unpadded 660,106 B payload is `fxdata/fxdata-data.bin`, with the 4,096 B save partition at `FX_SAVE_PAGE = 0xFFF0` |
+| Cart | external FX flash; current `fxdata/fxdata.bin` image is 1,314,560 B; the unpadded 1,310,230 B payload is `fxdata/fxdata-data.bin`, with the 4,096 B save partition at `FX_SAVE_PAGE = 0xFFF0` |
 | Display mode | native 1-bit via `Arduboy2Base` |
 | Logical frame | `FRAME(x)` = `x`; one image per frame |
 | Blitting | `Blit::draw` plus-mask blits into `sBuffer`; no OLED access |
@@ -44,6 +44,65 @@ is advisory for this work; no additional flash reserve is required. Static
 SRAM remains capped at **1,700 B** and measured stack reserve must remain at
 least **600 B**. Prior task documents quoting a hard 29,000 B flash ceiling
 are superseded by this decision.
+
+Dotted regional background checkpoint (2026-11-12, `sub-hauler-xdv`): an
+artwork-anchored checker turns alternating white pixels black in all four
+hand-authored area plates. It moves with the background and requires no runtime
+state or rendering changes. FX/Mini remain **28,804 B flash / 1,623 B static
+RAM**, with **892 B** flash and **77 B** static planning headroom. The
+**938-frame** complete-flight probe measured **12,468 µs** maximum across all
+four areas, with zero 16 ms misses, music gap **1** and zero underruns/errors.
+The FX background section is **189,324 B** and the payload/image are
+**849,430 / 853,760 B**; data/save pages are **F2F9 / FFF0**.
+
+Regional background checkpoint (2026-11-12, `sub-hauler-96d`, superseded above): four distinct
+hand-authored 256x128 area plates replace the rejected texture. Harbour
+modules/pilings, broad-leaf kelp, industrial pipes/gantries and basalt/crystals
+retain all native strokes while scrolling at half camera speed. Indexed
+occupancy blocks and eight precomputed vertical phases keep the artwork in
+cart flash. The appended section is **208,406 B**; the earlier **660,106 B**
+data prefix and all earlier label offsets are unchanged. FX payload/image are
+**868,512 / 872,704 B**, with `FX_DATA_PAGE = 0xF2AF` and the same
+`FX_SAVE_PAGE = 0xFFF0`.
+
+FX and Mini use **28,804 B flash / 1,623 B static RAM** (`.text/.data/.bss`
+**28,800 / 4 / 1,619 B**), **412 B less flash** than the previous texture
+checkpoint and unchanged static RAM. Headroom is **892 B** hardware flash and
+**77 B** static planning space. The expanded complete-flight probe covers
+**938 frames / 94 cold / 844 warm**, all four areas and all eight Y remainders
+per area: **12,668 µs** maximum, area mask **15**, zero 16 ms misses, music gap
+**1**, zero underruns/errors and `fail_mask=0`. Save/music stack reserves are
+**729 / 674 B**, both above 600 B. Transparent sprite padding is skipped and
+the AIR stamp is cropped to its HUD bounds with its original cart frame
+stride retained; all 24 cached/cold render CRCs are unchanged by these
+optimizations. See [cave-parallax.md](cave-parallax.md) for drawings and preview.
+
+Earlier texture trial (2026-11-12, `sub-hauler-yd1`, art rejected and replaced above): the sparse
+demo has been replaced by a continuous Porgy-inspired wall of layered rock,
+coral and kelp. The native pixelgen artwork is sampled through a fixed
+alternate-column screen, with **536 B** of program-flash art including seam
+padding. Packed collision-cache rows and ten short interior-window FX bursts
+recover frame time. FX and Mini use **29,216 B flash / 1,623 B static RAM**,
+**+1,270 B flash / 0 B static** versus the sparse demo, leaving **480 B**
+hardware flash and **77 B** static planning headroom. Complete flight:
+**842 frames / 12,612 µs maximum**, zero 16 ms misses, gap **1**, zero audio
+underruns/errors and `fail_mask=0`. Stack remains **731 B** for the exact
+production save chain and **676 B** for combined music. FX payload/image remain
+**660,106 / 664,320 B**. See [cave-parallax.md](cave-parallax.md) for the source
+art, composition, pixel checks and preview.
+
+Cave parallax demo checkpoint (2026-11-12, `sub-hauler-2er`, superseded above): sparse distant rock
+facets scroll at half camera speed in both axes, behind the gantries and live
+objects. FX uses **27,946 B flash / 1,623 B static RAM**, a **66 B flash**
+increase over the measured working-image baseline with **no static RAM
+increase**. That leaves **1,750 B** hardware flash and **77 B** static planning
+headroom. The complete **842-frame** flight probe measures **12,720 µs** maximum
+with zero 16 ms misses, audio underruns or errors. Mini matches the FX image
+sizes; save-chain and combined-music stack reserves are **731 B / 676 B**.
+The layer makes no cart
+reads and adds no persistent state; the FX payload/image remain
+**660,106 / 664,320 B**. See [cave-parallax.md](cave-parallax.md) for composition,
+tests and the playable before/after preview.
 
 Animated scenery checkpoint (2026-11-11, `sub-hauler-wfu`): the restored pump
 and lift animate after their respective milestones; two Kelp Cathedral fronds
@@ -304,14 +363,16 @@ order; a pre-release asset removal may deliberately shift later offsets.
 
 The partition is one 4 KiB erase block. The only slot is at offset 0 and has
 **272 meaningful bytes**: 16 scalar bytes followed by the 256-byte chart. The
-programmed region is still two 256-byte pages; after the 272 payload bytes the
-image writes `0xFF` padding through offset 511. There is no header, magic,
+record is passed to storage as one write; the adapter programs 256 bytes then
+16 bytes at hardware page boundaries. Bytes after the record stay erased
+(`0xFF`). There is no header, magic,
 schema, signature, length, CRC or commit byte. Save success is reported after
 both page programs; there is no post-write read-back.
 
 `voyage_save::FxStorage` wraps `FX::seekSave`, `FX::eraseSaveBlock`,
 `FX::programSavePage` + `FX::seekCommand(SFC_WRITE)` + `FX::writeByte` and
-`FX::waitWhileBusy`; all four use the same runtime save page selected by
+status polling with CPU idle between polls; the save operations use the same
+runtime save page selected by
 `FX::begin(FX_DATA_PAGE, FX_SAVE_PAGE)`. Each explicit save erases once and
 programs the two pages, including when the state is identical to the previous
 save; there is no CRC cache or skip path. Music is paused around the synchronous
@@ -376,6 +437,12 @@ headroom.
 
 | Date | Flash | Static RAM | Toolchain / notes |
 | --- | --- | --- | --- |
+| 2026-11-14 | 29,500 B | 1,623 B | Foreground-mask parallax checkpoint: `clearBlack` restores enclosed black pixels from `foregroundMask` after the background pass. Whole image **29,500 / 1,623 B** (`.text/.data/.bss` **29,496 / 4 / 1,619 B**), **196 B** hardware flash free and **77 B** static headroom. Save-chain stack **729 B**. Complete flight **938 frames (94 cold / 844 warm)**, **13,468 µs** maximum, zero 16 ms misses, gap **1**, zero underruns/errors, `fail_mask=0`. The flight target was raised **13,000 → 13,500 µs** on user acceptance; the **16,000 µs** hard deadline is unchanged. Host **255/0**, tooling **195 OK**, docs **18 Node tests**, all **15** device suites pass, save-chain/runtime-page pass, gen-check deterministic, FX/Mini match. Cart payload/image **1,310,230 / 1,314,560 B**, data/save pages **EBF1 / FFF0**; background section **189,324 B**. Preview `make preview-parallax`. |
+| 2026-11-12 | 29,184 B | 1,646 B | Foreground opacity for parallax (`sub-hauler-um0`): a generated one-bit-per-tile foreground map blocks distant dots in landmark, settlement and scenery black interiors. Appended FX section **6,400 B**; payload/image **855,830 / 860,160 B**, data/save pages **F2E0 / FFF0**. `.text/.data/.bss` **29,180 / 4 / 1,642 B**; **512 B** hardware flash free and **54 B** static planning headroom. Save/music stack **729 / 649 B**. Flight **938 frames / 12,808 µs maximum**, zero 16 ms misses, gap **1**, zero underruns/errors, `fail_mask=0`. Host **255/0**, tooling **195 OK**, docs **18 Node tests**, all default device suites pass, gen-check deterministic. Preview `make preview-parallax`. |
+| 2026-11-12 | 28,804 B | 1,623 B | Dotted regional backgrounds (`sub-hauler-xdv`): an artwork-anchored checker removes alternating white pixels from the four hand-authored plates before packing, keeping the dots fixed during scrolling. FX/Mini match; **892 B** hardware flash and **77 B** static planning headroom. Save/music stack **729 / 674 B**. Flight **938 frames / 12,468 µs maximum**, all four areas, zero 16 ms misses, gap **1**, zero underruns/errors. Host **254/0**, focused parallax tooling **6 OK**, docs **39 documents / 18 Node tests**, all **15** device suites pass, explicit save-chain/runtime-page pass, gen-check deterministic. Background section **189,324 B**; cart payload/image **849,430 / 853,760 B**, data/save pages **F2F9 / FFF0**; earlier **660,106 B** prefix unchanged. Logs `build/parallax-dots-*.log`; preview `make preview-parallax`. |
+| 2026-11-12 | 28,804 B | 1,623 B | Regional hand-authored backgrounds (`sub-hauler-96d`): four distinct native 256x128 plates, complete strokes, half-speed scroll, scenery-area map independent of music overrides. Appended FX section **208,406 B**, all earlier **660,106 B** data and label offsets unchanged. Cart payload/image **868,512 / 872,704 B**, data/save pages **F2AF / FFF0**. `.text/.data/.bss` **28,800 / 4 / 1,619 B**, FX/Mini equal; delta **−412 / 0 B** versus the texture trial, **892 B** flash free and **77 B** static headroom. Save/music stack **729 / 674 B**. Expanded flight **938 frames (94 cold / 844 warm), 12,668 µs max**, all four areas, area mask **15**, zero 16 ms misses, gap **1**, zero audio underruns/errors, `fail_mask=0`. Per-area maxima **11,144 / 11,892 / 12,668 / 11,164 µs**. Host **254/0**, tooling **194 OK**, docs **39 documents / 18 Node tests**, all **15** device suites pass, explicit save-chain/runtime-page pass, gen-check deterministic. Device checks cover all four native-area CRCs and cropped white/black HUD stamps; all 24 cached/cold scene CRCs match across blitter/HUD optimizations. Logs `build/parallax-areas-*.log`; preview `make preview-parallax`. No physical-device or human-art approval claimed. |
+| 2026-11-12 | 29,216 B | 1,623 B | Detailed Porgy-inspired backdrop (`sub-hauler-yd1`): native rock/coral/kelp art, half-speed scrolling, alternate-column screen and short byte runs sharing collision masks. Generated program-flash art **536 B**; no new cart data or persistent state. Collision refill packs rows and batches ten interior-window transactions; host scalar-reader semantics and sealed borders are preserved. `.text/.data/.bss` **29,212 / 4 / 1,619 B**; FX/Mini match. Delta **+1,270 / 0 B** versus sparse demo; **480 B** hardware flash free, **77 B** static headroom. Save/music stack **731 / 676 B**. Complete flight **842 frames / 12,612 µs max / 0 misses / gap 1 / 0 underruns or errors / fail_mask 0**. Host **254/0**, tooling **191 OK**, docs **39 documents / 18 Node tests**, all **15** device suites pass (including independent native-pixel/PROGMEM render check), explicit save-chain/runtime-page pass, gen-check deterministic. Pixelgen check/replay/check hard-valid and byte-identical; human art review unclaimed. Cart **660,106 / 664,320 B**, SHA unchanged. Logs `build/parallax-rich-*.log`; `make preview-parallax` updates the before/after comparison. |
+| 2026-11-12 | 27,946 B | 1,623 B | Cave parallax (`sub-hauler-2er`): half-speed distant facets in both axes, solid-tile occlusion and baked-line clearance, then opaque gantries and live foreground overlays. Working baseline **27,880 / 1,623 B**; delta **+66 / 0 B**, with **1,750 B** hardware flash free and **77 B** static planning headroom. `.text/.data/.bss` **27,942 / 4 / 1,619 B**; Mini matches. Stack **731 B** exact production save chain / **676 B** combined music. Complete flight **842 frames**, **12,720 µs** maximum, zero 16 ms misses, gap **1**, zero audio underruns/errors, `fail_mask=0`. Host **252 passed / 0 failed**; tooling **189 OK**; docs **39 documents / 18 Node tests**; all **15** default device suites pass, plus explicit save-chain/runtime-page and flight probes; gen-check deterministic. FX payload/image **660,106 / 664,320 B**, no new cart data or persistent state. Logs `build/parallax-*.log`; `make preview-parallax` exports a C++ before/after scrolling comparison. |
 | 2026-11-12 | 26,586 B | 1,622 B | Protections cleanup (`sub-hauler-bwg`): removed the voyage counters/`lastDelivery`/hull byte, `activeJobValid` and legacy HOME validators, serialized save header/CRC/commit, RAM CRC skip cache, one-value `SaveResult`, duplicate boot status and the dirty/departure save path. The checkpoint is now a raw **16 B scalar + 256 B chart at offset 0**, **272 meaningful bytes**, with no magic/schema/length/CRC/commit; every explicit save erases once and programs two 256 B pages with `0xFF` padding, including identical saves. Rescue loads only; runtime `FX::programSavePage` and music pause boundaries are retained. Whole image **26,586 B flash / 1,622 B static** (`.text/.data/.bss` **26,582 / 4 / 1,618 B**), **3,110 B** hardware flash free and **78 B** static headroom. AVR `game::State` **67 B**. FX payload/image **660,106 / 664,320 B**, **1,432,832 B** below 2 MiB; `FX_DATA_PAGE=0xF5DD`, `FX_SAVE_PAGE=0xFFF0`, `storyBeats=0x07C8DD`, `storyMeta=0x08DA56`; 17 scenes / 43 cards / 106 frames, story blob **70,009 B**. Host **243**, tooling **189**, docs **18**; **15/15** default device suites P; save-chain **738 B** (`save_repeat=1`), combined music **676 B**, runtime-page P; flight **842 frames**, **12,416 µs max**, 0 misses, gap 1, 0 underruns/errors. Gen-check deterministic; Mini **26,586 / 1,622 B**. Logs `build/protections-final-*.log`. No physical playthrough claimed. |
 | 2026-11-11 | 27,120 B | 1,640 B | Story guidance and prose (`sub-hauler-a7s`, including current cave scenery): opening names the Tidewall spawn berth; suppliers, receiving sites, seal/core handoff, relay return and physical HOME dispatch are explicit. Five appended presentation-only dock points add missing cutter/lens/thruster and surveyed repair-collection leads, shared by station and WORK boards. Lens clue points above Deep Anchor and vanishes when owned. Scene, mission and save IDs unchanged; 17 scenes / 43 cards / 106 frames, story blob **70,042 B**. FX/Mini `.text/.data/.bss` **27,116 / 4 / 1,636 B**, **2,576 B** flash free, **60 B** static headroom. Host **257**, tooling **173**, docs/Node **18**; 15 default device suites P; save-chain **683 B**, combined music **640 B**, runtime-page P; flight **842 frames**, **12,628 µs max**, 0 misses, gap 1, 0 underruns/errors. Gen-check deterministic; FX payload/image **671,496 / 675,840 B**; **1,421,312 B** below 2 MiB, save page **0xFFF0**. Logs `build/story-hints-*.log`. No physical playthrough claimed. |
 | 2026-11-11 | 27,784 B | 1,655 B | Story deck 24-bit frame offsets: refreshed `story/art.png` and `story/scenes.json` produced **106 frames** whose combined RLE payload plus the old two-byte offset table exceeded the 65,535 B ceiling. `story-beats.bin` now begins with 106 little-endian three-byte frame offsets (318 B), and `story_view::frameOffset` reads three bytes and returns `uint24_t`. `STORY_BEAT_BYTES` is 32-bit. Final story blob **67,468 B**; `.text/.data/.bss` **27,776 / 8 / 1,647 B**, **1,912 B** hardware flash free. `make gen` 17 scenes / 43 cards / 106 frames / 21 images; FX payload/image **658,682 / 662,784 B**, **1,434,368 B** below 2 MiB; `storyBeats=0x07E52A`, `storyMeta=0x08ECB6`, `FX_DATA_PAGE=0xF5E3`, `FX_SAVE_PAGE=0xFFF0` unchanged. `make gen-check` deterministic; host **264**, tooling **181**, docs **18**; all **15/15** default device suites print `P`, with `test_story` decoding **106** frame CRCs at **10,772 µs** max; Mini **27,784 / 1,655 B**. No physical playthrough or human art review claimed. |

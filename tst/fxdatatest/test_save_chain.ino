@@ -1,7 +1,8 @@
 // Exact production save-chain probe: includes the real sketch translation unit
 // (renamed setup/loop), draws the station frame path, invokes the actual
 // updateStation() -> requestSave() -> saveVoyageNow() chain with music active,
-// then measures stack reserve and post-save music diagnostics.
+// then measures save/erase/program/station time, stack reserve and post-save
+// music diagnostics. Station composition + presentation must fit 16 ms.
 //
 // Emulator/host-harness only. It performs real cart erase/page writes, so never
 // run it on a physical cart.
@@ -34,6 +35,10 @@ bool s_saveOk;
 bool s_audioOk;
 bool s_repeatOk;
 uint16_t s_reserve;
+uint32_t s_saveUs;
+uint32_t s_eraseUs;
+uint32_t s_programUs;
+uint32_t s_stationUs;
 
 // Counts the cart transaction through the exact save helper the sketch uses,
 // so the device test can prove an identical repeat still erases once and
@@ -46,15 +51,26 @@ struct CountingStorage {
     CountingStorage() : erases(0), pages(0) {}
 
     uint8_t read(uint16_t offset) { return storage.read(offset); }
+    void write(const voyage_save::Record &record) {
+        voyage_save::programRecord(*this, record);
+    }
+
     void eraseBlock(uint8_t block) {
         ++erases;
+        const uint32_t start = micros();
         storage.eraseBlock(block);
+        s_eraseUs += micros() - start;
     }
-    void pageBegin(uint16_t page) { storage.pageBegin(page); }
+    uint32_t pageStart;
+    void pageBegin(uint16_t page) {
+        pageStart = micros();
+        storage.pageBegin(page);
+    }
     void pageByte(uint8_t value) { storage.pageByte(value); }
     void pageEnd() {
         ++pages;
         storage.pageEnd();
+        s_programUs += micros() - pageStart;
     }
 };
 
@@ -97,10 +113,17 @@ void runProductionChain() {
     // for the refill window below.
     CountingStorage counted;
     const music_logic::PauseToken repeatToken = music::pauseForTransaction();
+    const uint32_t saveStart = micros();
     voyage_flow::saveCheckpoint(s_state, s_chart, counted);
+    s_saveUs = micros() - saveStart;
     music::resumeAfterTransaction(repeatToken);
     s_repeatOk = counted.erases == 1 && counted.pages == 2;
     s_saveOk = s_saveOk && s_repeatOk;
+
+    const uint32_t stationStart = micros();
+    showStation();
+    FX::display(CLEAR_BUFFER);
+    s_stationUs = micros() - stationStart;
 
     // Let the real streaming player refill after the synchronous cart write.
     for (uint8_t frame = 0; frame < 24; ++frame) {
@@ -129,6 +152,10 @@ void setup() {
     boot_driver::boot();
     runProductionChain();
 
+    Serial.print(F("save_us=")); Serial.println(s_saveUs);
+    Serial.print(F("erase_us=")); Serial.println(s_eraseUs);
+    Serial.print(F("program_us=")); Serial.println(s_programUs);
+    Serial.print(F("station_present_us=")); Serial.println(s_stationUs);
     Serial.print(F("stack_reserve="));
     Serial.println(s_reserve);
     Serial.print(F("save_chain="));
@@ -143,7 +170,7 @@ void setup() {
     Serial.print(F("save_errors="));
     Serial.println(music::error() ? 1 : 0);
 #endif
-    Serial.println(s_reserve >= kReserveTarget && s_saveOk && s_audioOk ? 'P' : 'F');
+    Serial.println(s_reserve >= kReserveTarget && s_saveOk && s_audioOk && s_stationUs < 16000 ? 'P' : 'F');
 }
 
 void loop() {}

@@ -89,6 +89,8 @@ constexpr uint8_t CACHE_TILES_Y = 10;
 constexpr uint16_t CACHE_BITS = static_cast<uint16_t>(CACHE_TILES_X) * CACHE_TILES_Y;
 constexpr uint8_t CACHE_BYTES = (CACHE_BITS + 7) / 8;
 
+
+
 struct TileCache {
     int16_t originTileX;
     int16_t originTileY;
@@ -133,7 +135,23 @@ inline void cacheSet(TileCache &cache, uint8_t index, bool solid) {
 
 // Refresh the window when the camera tile moves. Returns true only when the
 // cache was refilled, so callers can avoid paying for reads every frame.
-template <typename Reader> inline bool refreshCache(TileCache &cache, Reader &reader, int16_t cameraTileX, int16_t cameraTileY) {
+template <typename Reader> inline uint8_t rowByte(Reader &reader, int16_t column, int16_t row) {
+    return column < 0 || column >= WORLD_ROW_BYTES || row < 0 || row >= TILES_Y
+        ? 0xFF : reader.tileByte(static_cast<uint16_t>(row) * WORLD_ROW_BYTES + column);
+}
+
+// Device readers can fetch a packed row in one cart transaction. Pure host
+// readers keep the scalar interface and identical byte/read-count semantics.
+template <typename Reader> inline auto tileBytes(Reader &reader, uint16_t index,
+    uint8_t *dest, uint8_t count, int) -> decltype(reader.tileBytes(index, dest, count), void()) {
+    reader.tileBytes(index, dest, count);
+}
+template <typename Reader> inline void tileBytes(Reader &reader, uint16_t index,
+    uint8_t *dest, uint8_t count, ...) {
+    for (uint8_t i = 0; i < count; ++i) dest[i] = reader.tileByte(index + i);
+}
+
+template <typename Reader> __attribute__((noinline)) inline bool refreshCache(TileCache &cache, Reader &reader, int16_t cameraTileX, int16_t cameraTileY) {
     if (cache.valid && cache.originTileX == cameraTileX && cache.originTileY == cameraTileY)
         return false;
 
@@ -144,26 +162,33 @@ template <typename Reader> inline bool refreshCache(TileCache &cache, Reader &re
     for (uint8_t i = 0; i < CACHE_BYTES; ++i)
         cache.bits[i] = 0;
 
-    uint16_t packedIndex = UINT16_MAX;
-    uint8_t packed = 0;
+    const int16_t sourceX = cameraTileX >> 3;
+    const uint8_t shift = cameraTileX & 7;
+    const bool interior = cameraTileX >= 0 && cameraTileX + CACHE_TILES_X <= TILES_X &&
+                          cameraTileY >= 0 && cameraTileY + CACHE_TILES_Y <= TILES_Y;
     for (uint8_t row = 0; row < CACHE_TILES_Y; ++row) {
         const int16_t ty = static_cast<int16_t>(cameraTileY + row);
-        for (uint8_t col = 0; col < CACHE_TILES_X; ++col) {
-            const int16_t tx = static_cast<int16_t>(cameraTileX + col);
-            const uint8_t index = static_cast<uint8_t>(row * CACHE_TILES_X + col);
-            bool solid = true;
-            if (inTileBounds(tx, ty)) {
-                const uint16_t source = tileByteIndex(tx, ty);
-                // Adjacent tiles share one packed cart byte. Read it once,
-                // rather than seeking the same address up to eight times.
-                if (source != packedIndex) {
-                    packed = reader.tileByte(source);
-                    packedIndex = source;
-                }
-                solid = (packed & static_cast<uint8_t>(1u << (tx & 7))) != 0;
-            }
-            cacheSet(cache, index, solid);
+        uint32_t bits;
+        if (interior) {
+            uint8_t bytes[4] = {};
+            tileBytes(reader, static_cast<uint16_t>(ty) * WORLD_ROW_BYTES + sourceX,
+                      bytes, shift == 7 ? 4 : 3, 0);
+            bits = static_cast<uint32_t>(bytes[0]) | (static_cast<uint32_t>(bytes[1]) << 8) |
+                   (static_cast<uint32_t>(bytes[2]) << 16) | (static_cast<uint32_t>(bytes[3]) << 24);
+        } else {
+            bits = static_cast<uint32_t>(rowByte(reader, sourceX, ty)) |
+            (static_cast<uint32_t>(rowByte(reader, sourceX + 1, ty)) << 8) |
+            (static_cast<uint32_t>(rowByte(reader, sourceX + 2, ty)) << 16);
+            if (shift == 7)
+                bits |= static_cast<uint32_t>(rowByte(reader, sourceX + 3, ty)) << 24;
         }
+        bits = (bits >> shift) & 0x3FFFFUL;
+        const uint8_t destBit = row * CACHE_TILES_X;
+        bits <<= destBit & 7;
+        uint8_t *dest = cache.bits + (destBit >> 3);
+        dest[0] |= static_cast<uint8_t>(bits);
+        dest[1] = static_cast<uint8_t>(bits >> 8);
+        dest[2] = static_cast<uint8_t>(bits >> 16);
     }
     return true;
 }
@@ -286,7 +311,7 @@ inline bool surveyInfo(uint8_t index, Survey &out) {
 
 static_assert(CACHE_BITS == 180, "18x10 tile cache must hold 180 tiles");
 static_assert(CACHE_BYTES == 23, "18x10 packed bitmap must be 23 bytes");
-static_assert(sizeof(TileCache) <= 32, "visible-tile cache must stay small");
+static_assert(sizeof(TileCache) <= 56, "visible-tile cache must stay small");
 static_assert(sizeof(TileCache) < WORLD_BYTES, "cache must not be a full world grid");
 
 }   // namespace world

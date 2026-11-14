@@ -37,6 +37,7 @@ constexpr uint16_t kSaveBytes = voyage_save::kSaveBytes;
 struct FakeStorage {
     uint8_t bytes[kSaveBytes];
     uint16_t reads;
+    uint16_t writes;
     uint16_t pageBytes;
     uint16_t pageOps;
     uint16_t eraseOps;
@@ -45,7 +46,7 @@ struct FakeStorage {
     uint16_t pageIndex;
 
     explicit FakeStorage(uint8_t fill = 0xFF)
-        : reads(0), pageBytes(0), pageOps(0), eraseOps(0), erasedBlocks(0), page(0), pageIndex(0) {
+        : reads(0), writes(0), pageBytes(0), pageOps(0), eraseOps(0), erasedBlocks(0), page(0), pageIndex(0) {
         for (uint16_t i = 0; i < kSaveBytes; ++i)
             bytes[i] = fill;
     }
@@ -53,6 +54,11 @@ struct FakeStorage {
     uint8_t read(uint16_t offset) {
         ++reads;
         return offset < kSaveBytes ? bytes[offset] : 0xFF;
+    }
+
+    void write(const voyage_save::Record &record) {
+        ++writes;
+        voyage_save::programRecord(*this, record);
     }
 
     void eraseBlock(uint8_t block) {
@@ -70,7 +76,7 @@ struct FakeStorage {
     }
 
     void pageByte(uint8_t value) {
-        const uint16_t offset = static_cast<uint16_t>(page * voyage_save::kPageBytes + pageIndex);
+        const uint16_t offset = static_cast<uint16_t>(page * voyage_save::kPageBytes + pageIndex % voyage_save::kPageBytes);
         if (offset < kSaveBytes)
             bytes[offset] &= value;
         ++pageBytes;
@@ -83,6 +89,7 @@ struct FakeStorage {
 
     void resetCounters() {
         reads = 0;
+        writes = 0;
         pageBytes = 0;
         pageOps = 0;
         eraseOps = 0;
@@ -215,12 +222,13 @@ inline void VoyageSaveSuite(TestRunner &runner) {
         Fixture fixture;
         setValidPayload(fixture);
         fixture.save(storage);
+        test.assertEqual(storage.writes, 1, "one logical record write");
         test.assertEqual(storage.eraseOps, 1, "one block erase");
         test.assertEqual(storage.erasedBlocks, 1, "one block erased");
         test.assertEqual(storage.pageOps, 2, "two page programs");
-        test.assertEqual(storage.pageBytes, 2 * voyage_save::kPageBytes, "two full pages");
+        test.assertEqual(storage.pageBytes, voyage_save::kPayloadBytes, "only record bytes are programmed");
         test.assertTrue(allBytesAre(storage, voyage_save::kWriteBytes, kSaveBytes - 1, 0xFF), "block tail stays erased");
-        test.assertTrue(allBytesAre(storage, voyage_save::kPayloadBytes, voyage_save::kWriteBytes - 1, 0xFF), "payload is FF padded");
+        test.assertTrue(allBytesAre(storage, voyage_save::kPayloadBytes, voyage_save::kWriteBytes - 1, 0xFF), "unused page tail stays erased");
 
         test.assertTrue(voyage_save::hasSave(storage), "slot is written");
 
@@ -369,7 +377,7 @@ inline void VoyageSaveSuite(TestRunner &runner) {
         test.assertEqual(storage.eraseOps, 1, "identical save erases");
         test.assertEqual(storage.erasedBlocks, 1, "identical save erases the block");
         test.assertEqual(storage.pageOps, 2, "identical save programs two pages");
-        test.assertEqual(storage.pageBytes, 2 * voyage_save::kPageBytes, "identical save writes two full pages");
+        test.assertEqual(storage.pageBytes, voyage_save::kPayloadBytes, "identical save writes one record");
         bool same = true;
         for (uint16_t i = 0; i < voyage_save::kWriteBytes; ++i)
             same = storage.bytes[i] == before.bytes[i] && same;
@@ -545,7 +553,7 @@ inline void VoyageSaveSuite(TestRunner &runner) {
         fixture.save(storage);
         test.assertEqual(storage.eraseOps, 1, "one erase");
         test.assertEqual(storage.pageOps, 2, "two pages");
-        test.assertEqual(storage.pageBytes, 2 * voyage_save::kPageBytes, "two page programs");
+        test.assertEqual(storage.pageBytes, voyage_save::kPayloadBytes, "only record bytes are programmed");
         test.assertTrue(allBytesAre(storage, voyage_save::kWriteBytes, kSaveBytes - 1, 0xFF), "unused block tail is erased");
         runner.add(test);
     }

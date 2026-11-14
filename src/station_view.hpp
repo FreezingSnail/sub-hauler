@@ -165,7 +165,7 @@ inline void draw(const game::State &state, uint8_t selected, uint8_t arrivalTick
     if (state.docked < 0)
         return;
 
-    arduboy.fillRect(0, 0, 128, 64, BLACK);
+    arduboy.clear();
     drawHeader(state);
 
     const uint8_t rows = station::rowCount(state);
