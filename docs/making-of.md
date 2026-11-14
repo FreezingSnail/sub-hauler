@@ -344,7 +344,41 @@ Repository conventions:
 - The pure rules stay free of Arduino headers; device code stays free of
   floats, heap and `String`.
 
-## 11. Reproducing the build
+## 11. LLM coordination and implementation
+
+Sub-hauler was built with LLM agents as both the coordination and implementation
+layer. A human set direction, reviewed art and gameplay, and accepted
+physical-device evidence; agents turned that direction into bounded work, edited
+code and generated assets, wrote tests and docs, and ran the gates. The same
+repository contracts applied to every session.
+
+Work was organized as a bead graph (`bd`). An epic described a phase; child
+issues carried an explicit scope, design note, acceptance criteria and
+verification commands. Dependencies serialized anything that touched shared
+sources, generated sets or the FX layout. One integrator owned the shared
+mappings, regeneration and final gate; parallel workers had distinct file
+ownership so their edits could be merged without silently overwriting one
+another.
+
+Each worker task was one implement-verify loop: read the bead and linked
+contracts, change only the owned files, run the focused tests, report exact
+commands and measurements, and stop. Workers did not commit or push. The
+orchestrator reviewed each diff, resolved integration, regenerated the complete
+set, ran the full gate and committed between waves. A review pass compared the
+merged result with the issue's design and acceptance criteria; a failed gate or
+a missing budget became **BLOCKED** with a deficit, not a claimed pass.
+
+Documentation served as shared memory. `platform.md`, `design.md`,
+`dev-flow.md`, the story format and the dated checkpoint table were the
+contracts every session read, rather than relying on conversation history.
+Durable decisions and measurements were written back to those documents, so a
+later session could resume from repository state. This kept LLM output
+checkable: the model could propose a change, but `gen-check`, the host and
+tooling suites, the device suites, the whole-image size report, the flight probe
+and the docs check decided whether it shipped. Human acceptance remained
+explicit for art, playtests and physical hardware.
+
+## 12. Reproducing the build
 
 Prerequisites:
 

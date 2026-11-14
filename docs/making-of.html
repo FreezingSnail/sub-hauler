@@ -82,7 +82,8 @@
     <a href="#8-story">8. Story</a>
     <a href="#9-resource-accounting">9. Resource accounting</a>
     <a href="#10-working-method">10. Working method</a>
-    <a href="#11-reproducing-the-build">11. Reproducing the build</a>
+    <a href="#11-llm-coordination-and-implementation">11. LLM coordination and implementation</a>
+    <a href="#12-reproducing-the-build">12. Reproducing the build</a>
     <a href="#see-also">See also</a>
     <a href="https://github.com/FreezingSnail/sub-hauler">Project repository</a>
   </nav>
@@ -254,7 +255,12 @@ make mini</code></pre>
 <li>Commit messages are <code>&lt;what&gt; (sub-hauler-XXX.n)</code> style for task commits.</li>
 <li>The pure rules stay free of Arduino headers; device code stays free of floats, heap and <code>String</code>.</li>
 </ul>
-<h2 id="11-reproducing-the-build">11. Reproducing the build</h2>
+<h2 id="11-llm-coordination-and-implementation">11. LLM coordination and implementation</h2>
+<p>Sub-hauler was built with LLM agents as both the coordination and implementation layer. A human set direction, reviewed art and gameplay, and accepted physical-device evidence; agents turned that direction into bounded work, edited code and generated assets, wrote tests and docs, and ran the gates. The same repository contracts applied to every session.</p>
+<p>Work was organized as a bead graph (<code>bd</code>). An epic described a phase; child issues carried an explicit scope, design note, acceptance criteria and verification commands. Dependencies serialized anything that touched shared sources, generated sets or the FX layout. One integrator owned the shared mappings, regeneration and final gate; parallel workers had distinct file ownership so their edits could be merged without silently overwriting one another.</p>
+<p>Each worker task was one implement-verify loop: read the bead and linked contracts, change only the owned files, run the focused tests, report exact commands and measurements, and stop. Workers did not commit or push. The orchestrator reviewed each diff, resolved integration, regenerated the complete set, ran the full gate and committed between waves. A review pass compared the merged result with the issue's design and acceptance criteria; a failed gate or a missing budget became <strong>BLOCKED</strong> with a deficit, not a claimed pass.</p>
+<p>Documentation served as shared memory. <code>platform.md</code>, <code>design.md</code>, <code>dev-flow.md</code>, the story format and the dated checkpoint table were the contracts every session read, rather than relying on conversation history. Durable decisions and measurements were written back to those documents, so a later session could resume from repository state. This kept LLM output checkable: the model could propose a change, but <code>gen-check</code>, the host and tooling suites, the device suites, the whole-image size report, the flight probe and the docs check decided whether it shipped. Human acceptance remained explicit for art, playtests and physical hardware.</p>
+<h2 id="12-reproducing-the-build">12. Reproducing the build</h2>
 <p>Prerequisites:</p>
 <ul>
 <li><code>arduino-cli</code> with the <code>arduboy-homemade:avr</code> core;</li>
