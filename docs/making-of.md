@@ -378,7 +378,38 @@ tooling suites, the device suites, the whole-image size report, the flight probe
 and the docs check decided whether it shipped. Human acceptance remained
 explicit for art, playtests and physical hardware.
 
-## 12. Reproducing the build
+## 12. HTML prototyping and browser tools
+
+The project began with two browser HTML prototypes. `spike/` tested the
+auto-forward cave loop, cargo mass, collision height, mines and sonar;
+`spike-trim/` tested free 2D piloting, ballast and trim, four settlements,
+contracts, a shop and cargo packing. The cave flyer used a fixed-step loop and
+had its own Node tests. Neither was a pixel-for-pixel port: the browser world was
+320×160 tiles, while the shipping game had to compose a native 128×64 OLED
+frame. The prototypes established the handling, trim and docking feel that
+survived the device rewrite, then were retired once the firmware became the
+playable reference.
+
+HTML stayed useful after the port, but the role changed from game prototype to
+review and authoring surface. The player manual is an offline document with
+relative assets and inline SVG route maps. The story sketchbook plays every
+generated scene and card at native size and compares animation poses. The story
+editor reads the canonical JSON through the File System Access API, shows a
+native station preview and writes only those JSON files; the generator supplies
+its fixed schema, mission order and wrapping limits. The pixelgen comparison
+page and the generated making-of page serve the same review role for art and
+method.
+
+These pages are deliberately thin over canonical sources. The story tools load
+generated data rather than maintaining a second copy of the card text or
+frames; the guide embeds the generated native-world maps. `make gen` refreshes
+the preview data with the game assets, and `make docs-check` runs JavaScript
+syntax checks, link checks and the Node playback/editor tests. The HTML layer is
+not linked into firmware and adds no flash or cart bytes; it exists so a human
+can inspect 128×64 output, edit source text and compare animation before paying
+the cost of a device build.
+
+## 13. Reproducing the build
 
 Prerequisites:
 
