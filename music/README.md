@@ -1,7 +1,7 @@
 # Sub-hauler music
 
 Six original underwater loops, authored with the sibling
-ATMlib2FX [atm-music skill](../../ATMlib2FX/docs/skills/atm-music/SKILL.md).
+ATMlib2FX [atm-music skill](https://github.com/FreezingSnail/ATMlib2FX/blob/main/docs/skills/atm-music/SKILL.md).
 Round pulse voices, quiet replies, open bass and tiny noise bubbles keep the
 water theme across slow drifts, a waltz and a quicker current-riding cue.
 
