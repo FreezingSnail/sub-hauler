@@ -10,8 +10,10 @@ project, `docs/platform.md` for the hardware/resource contract, and
 - `src/game.hpp` is pure rules and must stay free of Arduino headers.
 - `src/render.hpp` and `src/common.hpp` are the device boundary.
 - `sub-hauler.ino` is the release entry; shared game operations live in `src/app.hpp`.
-- There is one fixed game build. Do not add feature, profile, development,
-  backend, USB or instrumentation selectors.
+- There is one fixed release game build. The existing `DEBUG=1` map-inspection
+  image is documented in `docs/dev-flow.md`; it is a developer tool with
+  separate outputs. Do not add feature, profile, backend, USB or instrumentation
+  selectors or additional development variants.
 - `make gen` is the only shipping generation entry. Never hand-edit
   `fxdata/Sprites.txt`, `fxdata/fxdata.bin`, `src/fxdata.h`, or
   `src/generated/`.
@@ -74,9 +76,35 @@ These are the invariants that change code behavior:
 
 ## Worker protocol
 
-One task = one implement-verify loop. Run the exact verification commands for
-the task, report exact output and numbers, and do not commit or push unless the
-orchestrator asks. If a build cannot fit or a gate fails, report BLOCKED with
-the deficit and options instead of faking a pass.
+One task = one bounded implement-verify loop. Keep the current scope and
+acceptance criteria in the issue. When the user changes direction, update the
+active description, design and acceptance criteria; mark earlier decisions as
+superseded. Historical notes and measurements are checkpoints, not current
+instructions. Link canonical documents rather than duplicating their contents.
+
+- Use the targeted inner loop in `docs/dev-flow.md`, then run the required
+  final gate on the integrated candidate before a commit. Repeat checks when
+  changes or unresolved failures justify them; label earlier results as
+  checkpoints and report the commands and measured results for the candidate.
+- When delegation is authorized, give workers distinct file ownership and a
+  bounded result. One integrator owns shared source mappings, generation and
+  the final gate. Preserve concurrent edits and reuse existing sessions for
+  related work; use completion notifications rather than repeated status polls
+  where available.
+- Verify the delivered patch or artifact matches the tested source, including
+  the complete generated set. A working-tree pass alone does not verify a
+  separately exported patch or release bundle.
+- For art or story changes, review a representative scene at native 128x64
+  before expanding the set. Report automated test results, human visual acceptance
+  and physical-device validation separately; each needs its own evidence.
+- When retiring behavior, remove its unused state, APIs, generated assets and
+  tests together, within the accepted scope and shipped FX ABI. Keep protections
+  tied to a current requirement and consumer. Record changed requirements as scope changes;
+  deletion counts and polling counts alone do not establish wasted effort.
+
+Do not commit or push unless the user or orchestrator asks. If a build cannot
+fit or a gate fails, report BLOCKED with the deficit and options instead of
+faking a pass. Keep persistent handoffs short: current decision, remaining work,
+candidate verification and links to supporting evidence.
 
 Use @pixelgen-assets for 128x64 monochrome assets.
