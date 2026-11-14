@@ -1,7 +1,7 @@
 # How sub-hauler is built
 
 This is the engineering companion to [`history.md`](history.md). It describes
-the current production pipeline at the last committed checkpoint (2026-11-11):
+the current production pipeline at the last committed checkpoint (2026-11-14):
 how content is authored, how the firmware is generated and tested, and how the
 resource budget is enforced. Current contracts remain authoritative in
 [`platform.md`](platform.md) and [`dev-flow.md`](dev-flow.md).
@@ -68,7 +68,8 @@ save section.
 
 | Pipeline | Source | Generator | Runtime artifact |
 | --- | --- | --- | --- |
-| Level | `levels/exploration.json` | `tools/gen_level.py` | Collision/chart/object tables, native terrain panorama, `level.hpp`, SVG preview |
+| Level | `levels/exploration.json` | `tools/gen_level.py` | Collision/chart/object tables, native terrain panorama, foreground opacity/mask maps, `level.hpp`, SVG preview |
+| Parallax | Room regions in `levels/exploration.json`, `tools/parallax_art.py` | `tools/gen_parallax.py` | Four 256×128 background plates, indexed phase tables, `parallax.hpp`, native PNGs |
 | Sprites/panels | `images/` PNGs | `tools/gen_sprites.py`, `gen_panels.py`, `gen_hud.py` | Plus-mask FX sheets |
 | Story | `story/scenes.json`, `story/art.png` | `tools/gen_story_beats.py` | RLE story blob, scene/card headers, frame CRC, HTML/PNG previews |
 | Dock hints | `story/dock_hints.json` | `tools/gen_text_images.py`, `gen_dock_barks.py` | Baked 128×8 text stamps and preview data |
@@ -124,6 +125,15 @@ world objects share the rounded origin, so the whole scene scrolls together.
 The camera uses a small velocity look-ahead; collision still walks one pixel at
 a time so a faster thruster cannot tunnel through rock.
 
+Distant scenery is four hand-authored 256×128 native plates packed in an
+appended FX section. They scroll at half camera speed in both axes, with eight
+vertical phases precomputed in cart flash and only visible blocks read at
+runtime. A generated foreground mask restores enclosed black pixels after the
+dotted background pass, so terrain silhouettes, gantries and equipment stay
+opaque over the moving plates. The mask pass is included in the complete-flight
+probe; [`cave-parallax.md`](cave-parallax.md) covers the art, packing, tests and
+preview.
+
 Runtime UI text is drawn from baked 128×8 plus-mask FX stamps
 (`src/text.hpp`, `text::stamp`/`stampFrame`). The release image links
 `Arduboy2Base`, so the inherited built-in `Print`/font path is not
@@ -155,7 +165,7 @@ The test pyramid is deliberately layered:
 | Device suites | `tst/fxdatatest/` via Ardens | Real AVR execution, FX reads, SPI, screen pixels, music and stack probes | A full manual playthrough |
 | Save-chain | `make fxtest-save-chain` | Exact production `updateStation()` → `requestSave()` → `saveVoyageNow()` path with music | Physical cart wear or power-loss injection |
 | Save runtime page | `make fxtest-save-runtime-page` | Runtime `FX::programSavePage` path, not the compile-time constant | Hardware; emulator-only |
-| Flight probe | `make fxtest-flight` | 842 complete flight frames with music, cold caches and camera boundaries | Whole-session CPU percentage |
+| Flight probe | `make fxtest-flight` | 938 complete flight frames with music, four background areas, cold/warm caches and camera boundaries | Whole-session CPU percentage |
 | Size | `make size` | Whole-image flash and static RAM | Stack depth; use the painted-stack probe |
 | Docs | `make docs-check` | Local links and retired-selector guards | Prose accuracy |
 
@@ -174,24 +184,24 @@ ATmega32u4's internal EEPROM. `fxdata/fxdata.txt` ends with
 `FX_SAVE_PAGE = 0xFFF0`. `FX::begin(FX_DATA_PAGE, FX_SAVE_PAGE)` opens both
 partitions, and every earlier FX offset stays unchanged.
 
-The current schema is **8**. It stores a 25-byte scalar payload with a schema
-signature (`0x61`), CRC and commit bytes. A save:
+The checkpoint is a raw single-slot record at offset 0: 16 scalar bytes followed
+by the 256-byte explored chart, **272 meaningful bytes**. A save:
 
 1. erases the 4 KiB block;
 2. programs two 256-byte pages;
-3. writes the commit byte last.
+3. leaves the rest of the block erased (`0xFF`).
 
-Success is reported after the second page; there is no post-write read-back. A
-power interruption may lose the checkpoint or leave a torn record. Load only
-checks whether the first byte is `0xFF`; any other value is read as the raw
-payload. There is no CRC, schema, commit or semantic validation, and no corrupt
-or incompatible title state. The retired hull byte stays at its frozen offset
-and is normalized to HAULER on load. Music is paused around the synchronous
-erase/program transaction. No save or cart write belongs in the per-frame path.
+There is no header, magic, schema, signature, length, CRC or commit byte, and
+no post-write read-back. Load only checks whether the first byte is `0xFF`;
+any other value is read as a written record with memory-safe bounds guards and
+no semantic validation. A power interruption may lose the previous checkpoint
+or leave a torn record that still loads raw. Rescue loads only and writes zero
+bytes. Music is paused around the synchronous erase/program transaction. No
+save or cart write belongs in the per-frame path. Old schema-era records and
+the retired chart block are not migrated or imported.
 
 `make gen` must be re-run after changing the save section; `make gen-check`
-compares the packed image, save partition and header. The EEPROM chart writer
-and the schema-6 economy fields are retired.
+compares the packed image, save partition and header.
 
 ## 7. Music
 
@@ -224,7 +234,7 @@ The story has two canonical editing sources:
 - [`story/scenes.json`](../story/scenes.json) — scene order, titles, paragraph
   text, image names and sprite-sheet row names.
 - [`story/art.png`](../story/art.png) — one opaque black/white Piskel sheet,
-  512×1216, with nineteen rows of four 128×64 poses.
+  512×1344, with twenty-one rows of four 128×64 poses.
 
 Editing flow:
 

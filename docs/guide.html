@@ -104,12 +104,12 @@
 <body>
   <a class="skip" href="#main">Skip contents</a>
   <header>
-    <div class="cover-kicker"><span>Arduboy FX</span><span>Player’s field manual / rev 03</span></div>
+    <div class="cover-kicker"><span>Arduboy FX</span><span>Player’s field manual / rev 04</span></div>
     <h1>SUB-HAULER</h1>
     <p class="cover-subtitle">A working handbook for the deep run.</p>
     <div class="cover-art"><img src="assets/first-beat-animation/all-beats-v3/arrival-0.png" alt="A submarine approaches an undersea settlement." width="128" height="64"></div>
     <div class="cover-caption"><span>128×64 / 1-bit</span><span>Keep this manual aboard</span></div>
-    <p class="meta">Controls · equipment · walkthrough · charts · rev 2026-11-11</p>
+    <p class="meta">Controls · equipment · walkthrough · charts · rev 2026-11-14</p>
     <p class="meta">Behind the game: <a href="making-of.html">How sub-hauler was made</a> — pipeline, rendering, saves, story, music and testing.</p>
     <div class="screen-log" aria-label="In-game screen log">
       <figure><img src="assets/first-beat-animation/all-beats-v3/delivery-loading-0.png" alt="A loaded submarine rests at a station berth." width="128" height="64" loading="lazy"><figcaption>LOAD / TIDEWALL</figcaption></figure>
@@ -220,7 +220,7 @@
     <section id="saves">
       <h2>[05] SAVING / RECOVERY</h2>
       <ul>
-        <li>The game keeps one voyage in one slot. It saves when you start a new voyage, when you dock, and when you accept a story job. If you are carrying unsaved progress, it also saves before you leave a berth.</li>
+        <li>The game keeps one voyage in one slot. It saves when you start a new voyage, when you dock, and when you accept a story job. There is no save when you undock: finds and progress since the last checkpoint are lost if you power off or use RESCUE.</li>
         <li><strong>CONTINUE</strong> returns you to the last saved berth with your tools, active delivery and chart. The tank is full and the boat is trimmed. There are no midwater saves.</li>
         <li><strong>RESCUE</strong> is on the pause menu: A+B, choose RESCUE, press A. It costs nothing and returns you to the last checkpoint. Finds and progress since that save are lost.</li>
         <li>Do not cut the power while the game is saving. An interrupted write can lose or damage the slot.</li>
@@ -554,7 +554,7 @@
     </section>
 
   </main>
-  <footer><a href="https://github.com/FreezingSnail/sub-hauler">Project repository</a> · <a href="making-of.html">How it was made</a> · Works offline after download. Open spoiler panels before printing to include them. · Rev 03 / 2026-11-11</footer>
+  <footer><a href="https://github.com/FreezingSnail/sub-hauler">Project repository</a> · <a href="making-of.html">How it was made</a> · Works offline after download. Open spoiler panels before printing to include them. · Rev 04 / 2026-11-14</footer>
   <script>
     (() => {
       const reveal = hash => {

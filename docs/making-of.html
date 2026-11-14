@@ -88,7 +88,7 @@
   </nav>
   <main id="main">
 
-<p>This is the engineering companion to <a href="https://github.com/FreezingSnail/sub-hauler/blob/main/docs/history.md"><code>history.md</code></a>. It describes the current production pipeline at the last committed checkpoint (2026-11-11): how content is authored, how the firmware is generated and tested, and how the resource budget is enforced. Current contracts remain authoritative in <a href="https://github.com/FreezingSnail/sub-hauler/blob/main/docs/platform.md"><code>platform.md</code></a> and <a href="https://github.com/FreezingSnail/sub-hauler/blob/main/docs/dev-flow.md"><code>dev-flow.md</code></a>.</p>
+<p>This is the engineering companion to <a href="https://github.com/FreezingSnail/sub-hauler/blob/main/docs/history.md"><code>history.md</code></a>. It describes the current production pipeline at the last committed checkpoint (2026-11-14): how content is authored, how the firmware is generated and tested, and how the resource budget is enforced. Current contracts remain authoritative in <a href="https://github.com/FreezingSnail/sub-hauler/blob/main/docs/platform.md"><code>platform.md</code></a> and <a href="https://github.com/FreezingSnail/sub-hauler/blob/main/docs/dev-flow.md"><code>dev-flow.md</code></a>.</p>
 <h2 id="1-one-fixed-build-two-board-outputs">1. One fixed build, two board outputs</h2>
 <p>Sub-hauler has one shipping game configuration. There are no feature profiles, runtime feature selectors, backend selectors or in-game loader rows. The same firmware is built for the Arduboy FX and the Arduboy Mini; only the board target changes.</p>
 <div class="table-wrap"><table>
@@ -124,7 +124,8 @@
 <div class="table-wrap"><table>
 <thead><tr><th>Pipeline</th><th>Source</th><th>Generator</th><th>Runtime artifact</th></tr></thead>
 <tbody>
-<tr><td>Level</td><td><code>levels/exploration.json</code></td><td><code>tools/gen_level.py</code></td><td>Collision/chart/object tables, native terrain panorama, <code>level.hpp</code>, SVG preview</td></tr>
+<tr><td>Level</td><td><code>levels/exploration.json</code></td><td><code>tools/gen_level.py</code></td><td>Collision/chart/object tables, native terrain panorama, foreground opacity/mask maps, <code>level.hpp</code>, SVG preview</td></tr>
+<tr><td>Parallax</td><td>Room regions in <code>levels/exploration.json</code>, <code>tools/parallax_art.py</code></td><td><code>tools/gen_parallax.py</code></td><td>Four 256×128 background plates, indexed phase tables, <code>parallax.hpp</code>, native PNGs</td></tr>
 <tr><td>Sprites/panels</td><td><code>images/</code> PNGs</td><td><code>tools/gen_sprites.py</code>, <code>gen_panels.py</code>, <code>gen_hud.py</code></td><td>Plus-mask FX sheets</td></tr>
 <tr><td>Story</td><td><code>story/scenes.json</code>, <code>story/art.png</code></td><td><code>tools/gen_story_beats.py</code></td><td>RLE story blob, scene/card headers, frame CRC, HTML/PNG previews</td></tr>
 <tr><td>Dock hints</td><td><code>story/dock_hints.json</code></td><td><code>tools/gen_text_images.py</code>, <code>gen_dock_barks.py</code></td><td>Baked 128×8 text stamps and preview data</td></tr>
@@ -149,6 +150,7 @@
 <p><code>src/lib/Blit.cpp</code> draws headerless plus-mask bytes into <code>sBuffer</code> and never touches the OLED. Generated sprite blobs start with a two-byte <code>(width, height)</code> header; <code>SpritesU::drawPlusMaskFX</code> owns that header, while <code>Blit::draw</code> expects the caller to skip it.</p>
 <p>The OLED and cart share SPI. Cart reads happen only during update/render, never during the OLED transaction. The frame ends with one <code>FX::display(CLEAR_BUFFER)</code>.</p>
 <p>The follow camera keeps fractional position in Q4, projects the sub before rounding, and bounds normal corrections to 2 px per tick. Terrain and integer world objects share the rounded origin, so the whole scene scrolls together. The camera uses a small velocity look-ahead; collision still walks one pixel at a time so a faster thruster cannot tunnel through rock.</p>
+<p>Distant scenery is four hand-authored 256×128 native plates packed in an appended FX section. They scroll at half camera speed in both axes, with eight vertical phases precomputed in cart flash and only visible blocks read at runtime. A generated foreground mask restores enclosed black pixels after the dotted background pass, so terrain silhouettes, gantries and equipment stay opaque over the moving plates. The mask pass is included in the complete-flight probe; <a href="https://github.com/FreezingSnail/sub-hauler/blob/main/docs/cave-parallax.md"><code>cave-parallax.md</code></a> covers the art, packing, tests and preview.</p>
 <p>Runtime UI text is drawn from baked 128×8 plus-mask FX stamps (<code>src/text.hpp</code>, <code>text::stamp</code>/<code>stampFrame</code>). The release image links <code>Arduboy2Base</code>, so the inherited built-in <code>Print</code>/font path is not instantiated; the external font renderer remains reference-test-only. Station rows keep the 7 px pitch and 128×64 clipping. HUD notices are generated rows rather than per-glyph cart reads.</p>
 <p>When a function selects a 24-bit FX address or <code>txt_*</code>/<code>img_*</code> constant across branches, assign it to one local and return it once at the end. Repeated <code>return &lt;24-bit&gt;;</code> sites emit duplicate three-byte constant loads. Eight-bit enum selectors are exempt.</p>
 <h2 id="5-rules-views-and-tests">5. Rules, views and tests</h2>
@@ -167,21 +169,21 @@
 <tr><td>Device suites</td><td><code>tst/fxdatatest/</code> via Ardens</td><td>Real AVR execution, FX reads, SPI, screen pixels, music and stack probes</td><td>A full manual playthrough</td></tr>
 <tr><td>Save-chain</td><td><code>make fxtest-save-chain</code></td><td>Exact production <code>updateStation()</code> → <code>requestSave()</code> → <code>saveVoyageNow()</code> path with music</td><td>Physical cart wear or power-loss injection</td></tr>
 <tr><td>Save runtime page</td><td><code>make fxtest-save-runtime-page</code></td><td>Runtime <code>FX::programSavePage</code> path, not the compile-time constant</td><td>Hardware; emulator-only</td></tr>
-<tr><td>Flight probe</td><td><code>make fxtest-flight</code></td><td>842 complete flight frames with music, cold caches and camera boundaries</td><td>Whole-session CPU percentage</td></tr>
+<tr><td>Flight probe</td><td><code>make fxtest-flight</code></td><td>938 complete flight frames with music, four background areas, cold/warm caches and camera boundaries</td><td>Whole-session CPU percentage</td></tr>
 <tr><td>Size</td><td><code>make size</code></td><td>Whole-image flash and static RAM</td><td>Stack depth; use the painted-stack probe</td></tr>
 <tr><td>Docs</td><td><code>make docs-check</code></td><td>Local links and retired-selector guards</td><td>Prose accuracy</td></tr>
 </tbody></table></div>
 <p>Tests are permanent and co-located with the code they cover. Device suites are separate fixed <code>.ino</code> sketches that keep USB for serial markers; the release sketch does not. The stack probe paints the free SRAM with <code>0xA5</code>, runs the real path, scans for the high-water mark, and requires at least <strong>600 B</strong> of reserve above <code>__bss_end</code>. Static free bytes alone are not accepted as proof of stack fit.</p>
 <h2 id="6-save-system">6. Save system</h2>
 <p>Voyage checkpoints live in the external FX cart save partition, not the ATmega32u4's internal EEPROM. <code>fxdata/fxdata.txt</code> ends with <code>savesection 4096</code>; the generator emits 4 KiB of erased bytes and <code>FX_SAVE_PAGE = 0xFFF0</code>. <code>FX::begin(FX_DATA_PAGE, FX_SAVE_PAGE)</code> opens both partitions, and every earlier FX offset stays unchanged.</p>
-<p>The current schema is <strong>8</strong>. It stores a 25-byte scalar payload with a schema signature (<code>0x61</code>), CRC and commit bytes. A save:</p>
+<p>The checkpoint is a raw single-slot record at offset 0: 16 scalar bytes followed by the 256-byte explored chart, <strong>272 meaningful bytes</strong>. A save:</p>
 <ol>
 <li>erases the 4 KiB block;</li>
 <li>programs two 256-byte pages;</li>
-<li>writes the commit byte last.</li>
+<li>leaves the rest of the block erased (<code>0xFF</code>).</li>
 </ol>
-<p>Success is reported after the second page; there is no post-write read-back. A power interruption may lose the checkpoint or leave a torn record. Load only checks whether the first byte is <code>0xFF</code>; any other value is read as the raw payload. There is no CRC, schema, commit or semantic validation, and no corrupt or incompatible title state. The retired hull byte stays at its frozen offset and is normalized to HAULER on load. Music is paused around the synchronous erase/program transaction. No save or cart write belongs in the per-frame path.</p>
-<p><code>make gen</code> must be re-run after changing the save section; <code>make gen-check</code> compares the packed image, save partition and header. The EEPROM chart writer and the schema-6 economy fields are retired.</p>
+<p>There is no header, magic, schema, signature, length, CRC or commit byte, and no post-write read-back. Load only checks whether the first byte is <code>0xFF</code>; any other value is read as a written record with memory-safe bounds guards and no semantic validation. A power interruption may lose the previous checkpoint or leave a torn record that still loads raw. Rescue loads only and writes zero bytes. Music is paused around the synchronous erase/program transaction. No save or cart write belongs in the per-frame path. Old schema-era records and the retired chart block are not migrated or imported.</p>
+<p><code>make gen</code> must be re-run after changing the save section; <code>make gen-check</code> compares the packed image, save partition and header.</p>
 <h2 id="7-music">7. Music</h2>
 <p>Six original underwater loops are authored as <code>atmlib-score</code> v1 JSON under <a href="https://github.com/FreezingSnail/sub-hauler/tree/main/music"><code>music/</code></a>. The score sources define tempo, meter, voices, effects and loop length; the generated streams are packed into FX and referenced by symbolic offsets and lengths.</p>
 <p>The shipping runtime uses the <strong>ATMlib2FX compact synth</strong> with <code>ATM_FX_COMPACT_LOOP=1</code> and <code>ATM_FX_COMPACT_RING=32</code>. The foreground services the FX refill between complete SPI transactions. The sample ISR decodes from SRAM and does not read FX, SPI or the OLED.</p>
@@ -191,7 +193,7 @@
 <p>The story has two canonical editing sources:</p>
 <ul>
 <li><a href="https://github.com/FreezingSnail/sub-hauler/blob/main/story/scenes.json"><code>story/scenes.json</code></a> — scene order, titles, paragraph text, image names and sprite-sheet row names.</li>
-<li><a href="https://github.com/FreezingSnail/sub-hauler/blob/main/story/art.png"><code>story/art.png</code></a> — one opaque black/white Piskel sheet, 512×1216, with nineteen rows of four 128×64 poses.</li>
+<li><a href="https://github.com/FreezingSnail/sub-hauler/blob/main/story/art.png"><code>story/art.png</code></a> — one opaque black/white Piskel sheet, 512×1344, with twenty-one rows of four 128×64 poses.</li>
 </ul>
 <p>Editing flow:</p>
 <ol>
